@@ -42,7 +42,27 @@ for match in data:
         continue
 
     favorite = "1" if odd1 < odd2 else "2"
+odds_response = requests.get(
+    "https://api.apinn.io/api/odds",
+    headers=headers,
+    params={"event_id": event_id},
+    timeout=30
+)
 
+event_odds = odds_response.json()
+
+for asian in event_odds:
+    if (
+        asian.get("market") == "spread"
+        and asian.get("period") == 0
+        and abs(asian.get("line", 99)) == 0.5
+    ):
+        print(
+            "ASIAN TEST:",
+            "| line:", asian.get("line"),
+            "| odds1:", asian.get("odds1"),
+            "| odds2:", asian.get("odds2")
+        )
     print(
         home, "vs", away,
         "| 1:", odd1,
