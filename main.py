@@ -48,15 +48,24 @@ for match in data:
         "| event:",
         match.get("event_id")
     )
+for match in data:
+    home = match.get("runner_home")
+    away = match.get("runner_away")
+    event_id = match.get("event_id")
 
-test_event = data[0].get("event_id")
+    moneyline = (match.get("odds") or {}).get("moneyline") or {}
+    odd1 = moneyline.get("odds1")
+    odd2 = moneyline.get("odds2")
 
-test_response = requests.get(
-    "https://api.apinn.io/api/odds",
-    headers=headers,
-    params={"event_id": test_event},
-    timeout=30
-)
+    if not odd1 or not odd2:
+        continue
 
-print("ODDS TEST:", test_response.status_code)
-print(test_response.text)
+    favorite = "1" if odd1 < odd2 else "2"
+
+    print(
+        home, "vs", away,
+        "| 1:", odd1,
+        "| 2:", odd2,
+        "| ΦΑΒΟΡΙ:", favorite,
+        "| event:", event_id
+    )
