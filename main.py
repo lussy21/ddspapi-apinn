@@ -1,6 +1,9 @@
 import os
 import requests
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
+GREECE_TZ = ZoneInfo("Europe/Athens")
+TODAY = datetime.now(GREECE_TZ).date()
 API_KEY = os.environ["APINN_API_KEY"]
 
 BOARD_URL = "https://api.apinn.io/api/board"
@@ -95,6 +98,9 @@ print("APINN CONNECTION OK")
 print("MATCHES FOUND:", len(matches))
 
 for match in matches:
+        starts = match.get("starts")
+    if not starts or datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ).date() != TODAY:
+        continue
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
