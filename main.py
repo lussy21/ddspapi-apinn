@@ -55,7 +55,7 @@ for asian in event_odds:
     if (
         asian.get("market") == "spread"
         and asian.get("period") == 0
-        and abs(asian.get("line", 99)) == 0.5
+        and asian.get("line") == -0.5
     ):
         print(
             "ASIAN TEST:",
