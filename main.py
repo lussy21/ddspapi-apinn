@@ -9,8 +9,33 @@ params = {
     "sport_id": 29,
     "live": 0,
     "with_odds": 1,
-    "limit": 10
+    "limit": 100
 }
+TARGET_COUNTRIES = [
+    "England",
+    "Germany",
+    "France",
+    "Greece",
+    "Italy",
+    "Spain",
+    "Belgium",
+    "Denmark",
+    "Norway",
+    "Netherlands",
+    "Scotland",
+    "Turkey",
+    "Brazil",
+    "Argentina",
+    "Sweden",
+    "Finland",
+    "USA",
+]
+
+TARGET_EUROPE = [
+    "Champions League",
+    "Europa League",
+    "Conference League",
+]
 
 headers = {
     "X-API-Key": API_KEY
@@ -30,7 +55,8 @@ data = response.json()
 print("APINN CONNECTION OK")
 
 
-for match in data:
+for match in data:    
+    print("LEAGUE TEST:", match.get("league_name"), "|", match.get("country_name"))
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
