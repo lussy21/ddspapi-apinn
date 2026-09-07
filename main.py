@@ -50,7 +50,7 @@ print("APINN CONNECTION OK")
 
 for match in data:
         if match.get("league_id") not in TARGET_LEAGUE_IDS:
-        continue
+            continue
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
