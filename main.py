@@ -29,25 +29,7 @@ data = response.json()
 
 print("APINN CONNECTION OK")
 
-for match in data:
-    odds = match.get("odds") or {}
-    moneyline = odds.get("moneyline") or {}
 
-    print(
-        match.get("starts"),
-        "|",
-        match.get("runner_home"),
-        "vs",
-        match.get("runner_away"),
-        "| 1:",
-        moneyline.get("odds1"),
-        "X:",
-        moneyline.get("odds0"),
-        "2:",
-        moneyline.get("odds2"),
-        "| event:",
-        match.get("event_id")
-    )
 for match in data:
     home = match.get("runner_home")
     away = match.get("runner_away")
@@ -56,7 +38,6 @@ for match in data:
     moneyline = (match.get("odds") or {}).get("moneyline") or {}
     odd1 = moneyline.get("odds1")
     odd2 = moneyline.get("odds2")
-
     if not odd1 or not odd2:
         continue
 
