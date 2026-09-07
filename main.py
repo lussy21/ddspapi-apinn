@@ -3,60 +3,104 @@ import requests
 
 API_KEY = os.environ["APINN_API_KEY"]
 
-url = "https://api.apinn.io/api/board"
-
-params = {
-    "sport_id": 29,
-    "live": 0,
-    "with_odds": 1,
-    "limit": 500
-}
-TARGET_LEAGUE_IDS = {
-    1980,  # England - Premier League
-    1842,  # Germany - Bundesliga
-    2036,  # France - Ligue 1
-    2081,  # Greece - Super League
-    2436,  # Italy - Serie A
-    2196,  # Spain - La Liga
-    1817,  # Belgium - Pro League
-    1913,  # Denmark - Superliga
-    2333,  # Norway - Eliteserien
-    1928,  # Netherlands - Eredivisie
-    2592,  # Turkey - Super League
-    1834,  # Brazil - Serie A
-    210697, # Argentina - Liga Pro
-    1728,  # Sweden - Allsvenskan
-    2663,  # USA - Major League Soccer
-    2627,  # UEFA - Champions League
-}
+BOARD_URL = "https://api.apinn.io/api/board"
+ODDS_URL = "https://api.apinn.io/api/odds"
 
 headers = {
     "X-API-Key": API_KEY
 }
-print("KEY FOUND:", bool(API_KEY))
-print("KEY LENGTH:", len(API_KEY))
+
+# Πρωταθλήματα με επιβεβαιωμένο league_id
+TARGET_LEAGUE_IDS = {
+    1980,    # England - Premier League
+    1842,    # Germany - Bundesliga
+    2036,    # France - Ligue 1
+    2081,    # Greece - Super League
+    2436,    # Italy - Serie A
+    2196,    # Spain - La Liga
+    1817,    # Belgium - Pro League
+    1913,    # Denmark - Superliga
+    2333,    # Norway - Eliteserien
+    1928,    # Netherlands - Eredivisie
+    2592,    # Turkey - Super League
+    1834,    # Brazil - Serie A
+    210697,  # Argentina - Liga Pro
+    1728,    # Sweden - Allsvenskan
+    2663,    # USA - Major League Soccer
+    2627,    # UEFA - Champions League
+}
+
+# Αυτά τα κρατάμε προσωρινά με όνομα
+# μέχρι να πιάσουμε και τα δικά τους league_id
+TARGET_LEAGUE_NAMES = {
+    "Finland - Veikkausliiga",
+    "Scotland - Premiership",
+    "UEFA - Europa League",
+    "UEFA - Conference League",
+}
+
+matches = []
+seen_events = set()
+
+# Παίρνουμε ξεχωριστά κάθε επιβεβαιωμένο πρωτάθλημα
+for league_id in TARGET_LEAGUE_IDS:
+    response = requests.get(
+        BOARD_URL,
+        headers=headers,
+        params={
+            "sport_id": 29,
+            "league_id": league_id,
+            "live": 0,
+            "with_odds": 1,
+            "limit": 100
+        },
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    for match in response.json():
+        event_id = match.get("event_id")
+
+        if event_id and event_id not in seen_events:
+            seen_events.add(event_id)
+            matches.append(match)
+
+# Προσωρινό fallback για τις λίγκες που δεν έχουμε ακόμα ID
 response = requests.get(
-    url,
+    BOARD_URL,
     headers=headers,
-    params=params,
+    params={
+        "sport_id": 29,
+        "live": 0,
+        "with_odds": 1,
+        "limit": 500
+    },
     timeout=30
 )
 
 response.raise_for_status()
-data = response.json()
 
-print("APINN CONNECTION OK")
-
-
-for match in data:
-    if match.get("league_id") not in TARGET_LEAGUE_IDS:
+for match in response.json():
+    if match.get("league_name") not in TARGET_LEAGUE_NAMES:
         continue
 
+    event_id = match.get("event_id")
+
+    if event_id and event_id not in seen_events:
+        seen_events.add(event_id)
+        matches.append(match)
+
+print("APINN CONNECTION OK")
+print("MATCHES FOUND:", len(matches))
+
+for match in matches:
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
 
     moneyline = (match.get("odds") or {}).get("moneyline") or {}
+
     odd1 = moneyline.get("odds1")
     odd2 = moneyline.get("odds2")
 
@@ -66,23 +110,34 @@ for match in data:
     favorite = "1" if odd1 < odd2 else "2"
 
     odds_response = requests.get(
-        "https://api.apinn.io/api/odds",
+        ODDS_URL,
         headers=headers,
         params={"event_id": event_id},
         timeout=30
     )
 
+    odds_response.raise_for_status()
     event_odds = odds_response.json()
+
     contra = None
 
-    for asian in event_odds:
-        if asian.get("market") != "spread" or asian.get("period") != 0:
-            continue
+    if isinstance(event_odds, list):
+        for asian in event_odds:
+            if asian.get("market") != "spread":
+                continue
 
-        if favorite == "1" and asian.get("line") == -0.5:
-            contra = asian.get("odds2")
-        elif favorite == "2" and asian.get("line") == 0.5:
-            contra = asian.get("odds1")
+            if asian.get("period") != 0:
+                continue
+
+            # ΦΑΒΟΡΙ 1 -> ΚΟΝΤΡΑ = 2 +0.5
+            if favorite == "1" and asian.get("line") == -0.5:
+                contra = asian.get("odds2")
+                break
+
+            # ΦΑΒΟΡΙ 2 -> ΚΟΝΤΡΑ = 1 +0.5
+            if favorite == "2" and asian.get("line") == 0.5:
+                contra = asian.get("odds1")
+                break
 
     print(
         home, "vs", away,
