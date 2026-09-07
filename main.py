@@ -11,30 +11,24 @@ params = {
     "with_odds": 1,
     "limit": 500
 }
-TARGET_LEAGUES = [
-    "England - Premier League",
-    "Germany - Bundesliga",
-    "France - Ligue 1",
-    "Greece - Super League",
-    "Italy - Serie A",
-    "Spain - La Liga",
-    "Belgium - Pro League",
-    "Denmark - Superliga",
-    "Norway - Eliteserien",
-    "Netherlands - Eredivisie",
-    "Scotland - Premiership",
-    "Turkey - Super League",
-    "Brazil - Serie A",
-    "Argentina - Liga Pro",
-    "Sweden - Allsvenskan",
-    "Finland - Veikkausliiga",
-    "USA - MLS",
-]
-TARGET_EUROPE = [
-    "Champions League",
-    "Europa League",
-    "Conference League",
-]
+TARGET_LEAGUE_IDS = {
+    1980,  # England - Premier League
+    1842,  # Germany - Bundesliga
+    2036,  # France - Ligue 1
+    2081,  # Greece - Super League
+    2436,  # Italy - Serie A
+    2196,  # Spain - La Liga
+    1817,  # Belgium - Pro League
+    1913,  # Denmark - Superliga
+    2333,  # Norway - Eliteserien
+    1928,  # Netherlands - Eredivisie
+    2592,  # Turkey - Super League
+    1834,  # Brazil - Serie A
+    210697, # Argentina - Liga Pro
+    1728,  # Sweden - Allsvenskan
+    2663,  # USA - Major League Soccer
+    2627,  # UEFA - Champions League
+}
 
 headers = {
     "X-API-Key": API_KEY
@@ -52,18 +46,10 @@ response.raise_for_status()
 data = response.json()
 
 print("APINN CONNECTION OK")
-for match in data:
-    print(
-        "LEAGUE ID TEST:",
-        match.get("league_id"),
-        "|",
-        match.get("league_name")
-    )
+
 
 for match in data:
-    league_name = match.get("league_name") or ""
-
-    if league_name not in TARGET_LEAGUES and not any(euro in league_name for euro in TARGET_EUROPE):
+        if match.get("league_id") not in TARGET_LEAGUE_IDS:
         continue
     home = match.get("runner_home")
     away = match.get("runner_away")
