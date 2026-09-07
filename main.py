@@ -92,10 +92,3 @@ for match in data:
         "| ΚΟΝΤΡΑ +0.5:", contra,
         "| event:", event_id
     )
-home, "vs", away,
-"| 1:", odd1,
-"| 2:", odd2,
-"| ΦΑΒΟΡΙ:", favorite,
-"| ΚΟΝΤΡΑ +0.5:", contra,
-"| event:", event_id
-)
