@@ -15,7 +15,8 @@ params = {
 headers = {
     "X-API-Key": API_KEY
 }
-
+print("KEY FOUND:", bool(API_KEY))
+print("KEY LENGTH:", len(API_KEY))
 response = requests.get(
     url,
     headers=headers,
