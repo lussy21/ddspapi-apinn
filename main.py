@@ -64,9 +64,9 @@ for asian in event_odds:
             "| odds2:", asian.get("odds2")
         )
 print(
-    home, "vs", away,
-    "| 1:", odd1,
-    "| 2:", odd2,
-    "| ΦΑΒΟΡΙ:", favorite,
-    "| event:", event_id
+home, "vs", away,
+"| 1:", odd1,
+"| 2:", odd2,
+"| ΦΑΒΟΡΙ:", favorite,
+"| event:", event_id
 )
