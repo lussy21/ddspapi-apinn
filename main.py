@@ -9,7 +9,7 @@ params = {
     "sport_id": 29,
     "live": 0,
     "with_odds": 1,
-    "limit": 100
+    "limit": 500
 }
 TARGET_LEAGUES = [
     "England - Premier League",
@@ -25,7 +25,7 @@ TARGET_LEAGUES = [
     "Scotland - Premiership",
     "Turkey - Super League",
     "Brazil - Serie A",
-    "Argentina - Liga Profesional",
+    "Argentina - Liga Pro",
     "Sweden - Allsvenskan",
     "Finland - Veikkausliiga",
     "USA - MLS",
