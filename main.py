@@ -52,7 +52,13 @@ response.raise_for_status()
 data = response.json()
 
 print("APINN CONNECTION OK")
-
+for match in data:
+    print(
+        "LEAGUE ID TEST:",
+        match.get("league_id"),
+        "|",
+        match.get("league_name")
+    )
 
 for match in data:
     league_name = match.get("league_name") or ""
