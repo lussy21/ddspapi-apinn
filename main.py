@@ -11,26 +11,25 @@ params = {
     "with_odds": 1,
     "limit": 100
 }
-TARGET_COUNTRIES = [
-    "England",
-    "Germany",
-    "France",
-    "Greece",
-    "Italy",
-    "Spain",
-    "Belgium",
-    "Denmark",
-    "Norway",
-    "Netherlands",
-    "Scotland",
-    "Turkey",
-    "Brazil",
-    "Argentina",
-    "Sweden",
-    "Finland",
-    "USA",
+TARGET_LEAGUES = [
+    "England - Premier League",
+    "Germany - Bundesliga",
+    "France - Ligue 1",
+    "Greece - Super League",
+    "Italy - Serie A",
+    "Spain - La Liga",
+    "Belgium - Pro League",
+    "Denmark - Superliga",
+    "Norway - Eliteserien",
+    "Netherlands - Eredivisie",
+    "Scotland - Premiership",
+    "Turkey - Super League",
+    "Brazil - Serie A",
+    "Argentina - Liga Profesional",
+    "Sweden - Allsvenskan",
+    "Finland - Veikkausliiga",
+    "USA - MLS",
 ]
-
 TARGET_EUROPE = [
     "Champions League",
     "Europa League",
@@ -56,7 +55,10 @@ print("APINN CONNECTION OK")
 
 
 for match in data:    
-    print("LEAGUE TEST:", match.get("league_name"), "|", match.get("country_name"))
+        league_name = match.get("league_name") or ""
+
+    if league_name not in TARGET_LEAGUES and not any(euro in league_name for euro in TARGET_EUROPE):
+        continue
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
