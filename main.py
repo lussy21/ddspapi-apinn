@@ -51,22 +51,22 @@ odds_response = requests.get(
 
 event_odds = odds_response.json()
 
+contra = None
+
 for asian in event_odds:
-    if (
-        asian.get("market") == "spread"
-        and asian.get("period") == 0
-        and asian.get("line") == -0.5
-    ):
-        print(
-            "ASIAN TEST:",
-            "| line:", asian.get("line"),
-            "| odds1:", asian.get("odds1"),
-            "| odds2:", asian.get("odds2")
-        )
+    if asian.get("market") != "spread" or asian.get("period") != 0:
+        continue
+
+    if favorite == "1" and asian.get("line") == -0.5:
+        contra = asian.get("odds2")
+
+    elif favorite == "2" and asian.get("line") == 0.5:
+        contra = asian.get("odds1")
 print(
 home, "vs", away,
 "| 1:", odd1,
 "| 2:", odd2,
 "| ΦΑΒΟΡΙ:", favorite,
+"| ΚΟΝΤΡΑ +0.5:", contra,
 "| event:", event_id
 )
