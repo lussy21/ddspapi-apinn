@@ -54,10 +54,10 @@ data = response.json()
 print("APINN CONNECTION OK")
 
 
-for match in data:    
-        league_name = match.get("league_name") or ""
+for match in data:
+    league_name = match.get("league_name") or ""
 
-        if league_name not in TARGET_LEAGUES and not any(euro in league_name for euro in TARGET_EUROPE):
+    if league_name not in TARGET_LEAGUES and not any(euro in league_name for euro in TARGET_EUROPE):
         continue
     home = match.get("runner_home")
     away = match.get("runner_away")
