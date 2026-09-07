@@ -49,8 +49,9 @@ print("APINN CONNECTION OK")
 
 
 for match in data:
-        if match.get("league_id") not in TARGET_LEAGUE_IDS:
-            continue
+    if match.get("league_id") not in TARGET_LEAGUE_IDS:
+        continue
+
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
@@ -58,31 +59,39 @@ for match in data:
     moneyline = (match.get("odds") or {}).get("moneyline") or {}
     odd1 = moneyline.get("odds1")
     odd2 = moneyline.get("odds2")
+
     if not odd1 or not odd2:
         continue
 
     favorite = "1" if odd1 < odd2 else "2"
-odds_response = requests.get(
-    "https://api.apinn.io/api/odds",
-    headers=headers,
-    params={"event_id": event_id},
-    timeout=30
-)
 
-event_odds = odds_response.json()
+    odds_response = requests.get(
+        "https://api.apinn.io/api/odds",
+        headers=headers,
+        params={"event_id": event_id},
+        timeout=30
+    )
 
-contra = None
+    event_odds = odds_response.json()
+    contra = None
 
-for asian in event_odds:
-    if asian.get("market") != "spread" or asian.get("period") != 0:
-        continue
+    for asian in event_odds:
+        if asian.get("market") != "spread" or asian.get("period") != 0:
+            continue
 
-    if favorite == "1" and asian.get("line") == -0.5:
-        contra = asian.get("odds2")
+        if favorite == "1" and asian.get("line") == -0.5:
+            contra = asian.get("odds2")
+        elif favorite == "2" and asian.get("line") == 0.5:
+            contra = asian.get("odds1")
 
-    elif favorite == "2" and asian.get("line") == 0.5:
-        contra = asian.get("odds1")
-print(
+    print(
+        home, "vs", away,
+        "| 1:", odd1,
+        "| 2:", odd2,
+        "| ΦΑΒΟΡΙ:", favorite,
+        "| ΚΟΝΤΡΑ +0.5:", contra,
+        "| event:", event_id
+    )
 home, "vs", away,
 "| 1:", odd1,
 "| 2:", odd2,
