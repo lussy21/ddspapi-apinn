@@ -48,3 +48,15 @@ for match in data:
         "| event:",
         match.get("event_id")
     )
+
+test_event = data[0].get("event_id")
+
+test_response = requests.get(
+    "https://api.apinn.io/api/odds",
+    headers=headers,
+    params={"event_id": test_event},
+    timeout=30
+)
+
+print("ODDS TEST:", test_response.status_code)
+print(test_response.text)
