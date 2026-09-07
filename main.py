@@ -146,7 +146,7 @@ for match in matches:
                 break
 
     print(
-        home, "vs", away,
+      datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ).strftime("%d/%m %H:%M"), "|",  home, "vs", away,
         "| 1:", odd1,
         "| 2:", odd2,
         "| ΦΑΒΟΡΙ:", favorite,
