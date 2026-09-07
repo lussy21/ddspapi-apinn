@@ -98,7 +98,7 @@ print("APINN CONNECTION OK")
 print("MATCHES FOUND:", len(matches))
 
 for match in matches:
-        starts = match.get("starts")
+    starts = match.get("starts")
     if not starts or datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ).date() != TODAY:
         continue
     home = match.get("runner_home")
