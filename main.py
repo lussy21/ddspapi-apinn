@@ -203,7 +203,7 @@ elif 0 < minutes_to_kickoff:
                 SHEET.update_cell(row_number, 9, contra)
 
     elif snapshot == "CLOSE":
-    SHEET.update_cell(row_number, 7, fav_odd)
-    SHEET.update_cell(row_number, 10, contra)
+        SHEET.update_cell(row_number, 7, fav_odd)
+        SHEET.update_cell(row_number, 10, contra)
          
          
