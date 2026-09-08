@@ -175,27 +175,19 @@ for match in matches:
     league_name = match.get("league_name") or ""
 
     # Βρίσκουμε αν το ματς υπάρχει ήδη στο Sheet
+       event_ids = SHEET.col_values(18)
+
     try:
-        event_cell = SHEET.find(event_id_text, in_column=18)
-        row_number = event_cell.row
+        row_number = event_ids.index(event_id_text) + 1
+    except ValueError:
+        SHEET.append_row(
+            [league_name, home, away, fav_side] +
+            [""] * 13 +
+            [event_id_text]
+        )
+        row_number = len(SHEET.get_all_values())
 
-    except gspread.exceptions.CellNotFound:
-        # Καινούριο ματς -> νέα γραμμή
-        SHEET.append_row([
-            league_name,
-            home,
-            away,
-            fav_side,
-            "", "", "",
-            "", "", "",
-            "", "", "", "",
-            "", "", "",
-            event_id_text
-        ])
-
-        event_cell = SHEET.find(event_id_text, in_column=18)
-        row_number = event_cell.row
-
+    
     # OPEN -> μία φορά γύρω στις 11:00
     if NOW.hour == 11:
         if not SHEET.cell(row_number, 5).value:
