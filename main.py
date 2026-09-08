@@ -169,7 +169,7 @@ for match in matches:
 
     row_number = None
     for i, row in enumerate(rows[1:], start=2):
-        if len(row) >= 16 and row[15] == event_id_text:
+        if len(row) >= 17 and row[16] == event_id_text:
             row_number = i
             break
 
