@@ -183,7 +183,7 @@ elif 0 < minutes_to_kickoff:
         row_number = None
 
     if row_number is None:
-            row_number = max(3, len(SHEET.col_values(2)) + 1)
+            row_number = max(3, len(SHEET.col_values(18)) + 1)
             SHEET.update(
                     range_name=f"A{row_number}:R{row_number}",
                     values=[[
