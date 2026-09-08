@@ -1,6 +1,7 @@
 import os
 import requests
 import gspread
+from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
 GREECE_TZ = ZoneInfo("Europe/Athens")
