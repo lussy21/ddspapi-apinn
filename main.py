@@ -164,7 +164,7 @@ for match in matches:
     )
     fav_odd = odd1 if favorite == "1" else odd2
     fav_side = "H" if favorite == "1" else "A"
-       event_id_text = str(event_id)
+    event_id_text = str(event_id)
     event_ids = SHEET.col_values(18)
 
     try:
