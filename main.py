@@ -174,12 +174,12 @@ for match in matches:
             break
 
         if row_number is None:
-        row_number = max(3, len(SHEET.col_values(2)) + 1)
-        SHEET.update(
-            range_name=f"A{row_number}:R{row_number}",
-            values=[[
-                "", home, away, fav_side,
-                "", "", "", "", "", "", "", "", "", "",
-                "", "", "", event_id_text
-            ]]
-        )
+            row_number = max(3, len(SHEET.col_values(2)) + 1)
+            SHEET.update(
+                    range_name=f"A{row_number}:R{row_number}",
+                    values=[[
+                        "", home, away, fav_side,
+                        "", "", "", "", "", "", "", "", "", "",
+                        "", "", "", event_id_text
+                    ]]
+                )
