@@ -163,7 +163,7 @@ for match in matches:
         "| ΚΟΝΤΡΑ +0.5:", contra,
         "| event:", event_id
     )
-        fav_odd = odd1 if favorite == "1" else odd2
+    fav_odd = odd1 if favorite == "1" else odd2
     kickoff = datetime.fromisoformat(
         starts.replace("Z", "+00:00")
     ).astimezone(GREECE_TZ)
