@@ -164,16 +164,15 @@ for match in matches:
     )
     fav_odd = odd1 if favorite == "1" else odd2
     fav_side = "H" if favorite == "1" else "A"
-    rows = SHEET.get_all_values()
-    event_id_text = str(event_id)
+       event_id_text = str(event_id)
+    event_ids = SHEET.col_values(18)
 
-    row_number = None
-    for i, row in enumerate(rows[1:], start=2):
-        if len(row) >= 18 and row[17] == event_id_text:
-            row_number = i
-            break
+    try:
+        row_number = event_ids.index(event_id_text) + 1
+    except ValueError:
+        row_number = None
 
-        if row_number is None:
+    if row_number is None:
             row_number = max(3, len(SHEET.col_values(2)) + 1)
             SHEET.update(
                     range_name=f"A{row_number}:R{row_number}",
