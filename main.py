@@ -168,11 +168,11 @@ for match in matches:
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
     snapshot = None
     if NOW.hour == 11:
-        snapshot = "OPEN"
-    elif 85 <= minutes_to_kickoff <= 95:
-        snapshot = "90MIN"
-    elif 0 <= minutes_to_kickoff <= 10:
-        snapshot = "CLOSE"
+    snapshot = "OPEN"
+elif 85 <= minutes_to_kickoff <= 95:
+    snapshot = "90MIN"
+elif 0 < minutes_to_kickoff:
+    snapshot = "CLOSE"
     fav_side = "H" if favorite == "1" else "A"
     event_id_text = str(event_id)
     event_ids = SHEET.col_values(18)
@@ -193,13 +193,17 @@ for match in matches:
                     ]]
                 )
     if snapshot == "OPEN":
-         SHEET.update_cell(row_number, 5, fav_odd)
-         SHEET.update_cell(row_number, 8, contra)
-    elif snapshot == "90MIN":
+    if not SHEET.cell(row_number, 5).value:
+        SHEET.update_cell(row_number, 5, fav_odd)
+        SHEET.update_cell(row_number, 8, contra)
+
+elif snapshot == "90MIN":
+    if not SHEET.cell(row_number, 6).value:
         SHEET.update_cell(row_number, 6, fav_odd)
         SHEET.update_cell(row_number, 9, contra)
-    elif snapshot == "CLOSE":
-        SHEET.update_cell(row_number, 7, fav_odd)
-        SHEET.update_cell(row_number, 10, contra)
+
+elif snapshot == "CLOSE":
+    SHEET.update_cell(row_number, 7, fav_odd)
+    SHEET.update_cell(row_number, 10, contra)
          
          
