@@ -192,7 +192,7 @@ for match in matches:
                         "", "", "", event_id_text
                     ]]
                 )
-     if snapshot == "OPEN":
+    if snapshot == "OPEN":
          SHEET.update_cell(row_number, 5, fav_odd)
          SHEET.update_cell(row_number, 8, contra)
     elif snapshot == "90MIN":
