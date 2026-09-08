@@ -2,7 +2,7 @@ import os
 import requests
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 GREECE_TZ = ZoneInfo("Europe/Athens")
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -13,6 +13,7 @@ CREDS = Credentials.from_service_account_file(
 GC = gspread.authorize(CREDS)
 SHEET = GC.open_by_key("1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM").worksheet("PINNACLE")
 TODAY = datetime.now(GREECE_TZ).date()
+NOW = datetime.now(GREECE_TZ)
 API_KEY = os.environ["APINN_API_KEY"]
 
 BOARD_URL = "https://api.apinn.io/api/board"
@@ -163,6 +164,15 @@ for match in matches:
         "| event:", event_id
     )
     fav_odd = odd1 if favorite == "1" else odd2
+    kickoff = datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ)
+    minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
+    snapshot = None
+    if NOW.hour == 11:
+        snapshot = "OPEN"
+    elif 85 <= minutes_to_kickoff <= 95:
+        snapshot = "90MIN"
+    elif 0 <= minutes_to_kickoff <= 10:
+        snapshot = "CLOSE"
     fav_side = "H" if favorite == "1" else "A"
     event_id_text = str(event_id)
     event_ids = SHEET.col_values(18)
