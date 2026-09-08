@@ -5,6 +5,13 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
 GREECE_TZ = ZoneInfo("Europe/Athens")
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+CREDS = Credentials.from_service_account_file(
+    "/etc/secrets/google-credentials.json",
+    scopes=SCOPES
+)
+GC = gspread.authorize(CREDS)
+SHEET = GC.open_by_key("1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM").worksheet("PINNACLE")
 TODAY = datetime.now(GREECE_TZ).date()
 API_KEY = os.environ["APINN_API_KEY"]
 
