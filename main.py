@@ -192,13 +192,13 @@ elif 0 < minutes_to_kickoff:
                         "", "", "", event_id_text
                     ]]
                 )
-    if snapshot == "OPEN":
-    if not SHEET.cell(row_number, 5).value:
+if snapshot == "OPEN":
+if not SHEET.cell(row_number, 5).value:
         SHEET.update_cell(row_number, 5, fav_odd)
         SHEET.update_cell(row_number, 8, contra)
 
 elif snapshot == "90MIN":
-    if not SHEET.cell(row_number, 6).value:
+if not SHEET.cell(row_number, 6).value:
         SHEET.update_cell(row_number, 6, fav_odd)
         SHEET.update_cell(row_number, 9, contra)
 
