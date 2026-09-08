@@ -167,7 +167,7 @@ for match in matches:
     kickoff = datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ)
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
     snapshot = None
-    if NOW.hour == 11:
+if NOW.hour == 11:
     snapshot = "OPEN"
 elif 85 <= minutes_to_kickoff <= 95:
     snapshot = "90MIN"
