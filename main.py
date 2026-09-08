@@ -192,3 +192,14 @@ for match in matches:
                         "", "", "", event_id_text
                     ]]
                 )
+     if snapshot == "OPEN":
+         SHEET.update_cell(row_number, 5, fav_odd)
+         SHEET.update_cell(row_number, 8, contra)
+    elif snapshot == "90MIN":
+        SHEET.update_cell(row_number, 6, fav_odd)
+        SHEET.update_cell(row_number, 9, contra)
+    elif snapshot == "CLOSE":
+        SHEET.update_cell(row_number, 7, fav_odd)
+        SHEET.update_cell(row_number, 10, contra)
+         
+         
