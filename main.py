@@ -162,3 +162,11 @@ for match in matches:
         "| ΚΟΝΤΡΑ +0.5:", contra,
         "| event:", event_id
     )
+        fav_odd = odd1 if favorite == "1" else odd2
+    fav_side = "H" if favorite == "1" else "A"
+    SHEET.append_row([
+        "", home, away, fav_side, fav_odd, "", "",
+        contra if contra is not None else "", "", "", "", "", "", "", "",
+        str(event_id), "", ""
+    ])
+    
