@@ -174,36 +174,39 @@ elif 85 <= minutes_to_kickoff <= 95:
 elif 0 < minutes_to_kickoff:
     snapshot = "CLOSE"
     fav_side = "H" if favorite == "1" else "A"
-    event_id_text = str(event_id)
-    event_ids = SHEET.col_values(18)
+event_id_text = str(event_id)
 
-    try:
-        row_number = event_ids.index(event_id_text) + 1
-    except ValueError:
-        row_number = None
+event_ids = SHEET.col_values(18)
 
-    if row_number is None:
-            row_number = max(3, len(SHEET.col_values(18)) + 1)
-            SHEET.update(
-                    range_name=f"A{row_number}:R{row_number}",
-                    values=[[
-                        "", home, away, fav_side,
-                        "", "", "", "", "", "", "", "", "", "",
-                        "", "", "", event_id_text
-                    ]]
-                )
-    if snapshot == "OPEN":
-        if not SHEET.cell(row_number, 5).value:
-            SHEET.update_cell(row_number, 5, fav_odd)
-            SHEET.update_cell(row_number, 8, contra)
+try:
+    row_number = event_ids.index(event_id_text) + 1
+except ValueError:
+    row_number = None
 
-    elif snapshot == "90MIN":
-        if not SHEET.cell(row_number, 6).value:
-                SHEET.update_cell(row_number, 6, fav_odd)
-                SHEET.update_cell(row_number, 9, contra)
+if row_number is None:
+    SHEET.append_row([
+        "", home, away, fav_side,
+        "", "", "", "", "", "",
+        "", "", "", "", "", "", "",
+        event_id_text
+    ])
+    row_number = len(SHEET.get_all_values())
 
-    elif snapshot == "CLOSE":
-        SHEET.update_cell(row_number, 7, fav_odd)
-        SHEET.update_cell(row_number, 10, contra)
+# OPEN - γράφεται μόνο μία φορά
+if snapshot == "OPEN":
+    if not SHEET.cell(row_number, 5).value:
+        SHEET.update_cell(row_number, 5, fav_odd)
+        SHEET.update_cell(row_number, 8, contra)
+
+# 90MIN - γράφεται μόνο μία φορά
+if snapshot == "90MIN":
+    if not SHEET.cell(row_number, 6).value:
+        SHEET.update_cell(row_number, 6, fav_odd)
+        SHEET.update_cell(row_number, 9, contra)
+
+# CLOSE - ανανεώνεται συνέχεια μέχρι τη σέντρα
+if minutes_to_kickoff > 0:
+    SHEET.update_cell(row_number, 7, fav_odd)
+    SHEET.update_cell(row_number, 10, contra)
          
          
