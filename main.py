@@ -1,5 +1,6 @@
 import os
 import requests
+import gspread
 from datetime import datetime
 from zoneinfo import ZoneInfo
 GREECE_TZ = ZoneInfo("Europe/Athens")
