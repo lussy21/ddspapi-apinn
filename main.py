@@ -163,50 +163,52 @@ for match in matches:
         "| ΚΟΝΤΡΑ +0.5:", contra,
         "| event:", event_id
     )
-    fav_odd = odd1 if favorite == "1" else odd2
-    kickoff = datetime.fromisoformat(starts.replace("Z", "+00:00")).astimezone(GREECE_TZ)
+        fav_odd = odd1 if favorite == "1" else odd2
+    kickoff = datetime.fromisoformat(
+        starts.replace("Z", "+00:00")
+    ).astimezone(GREECE_TZ)
+
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
-    snapshot = None
-if NOW.hour == 11:
-    snapshot = "OPEN"
-elif 85 <= minutes_to_kickoff <= 95:
-    snapshot = "90MIN"
-elif 0 < minutes_to_kickoff:
-    snapshot = "CLOSE"
+
     fav_side = "H" if favorite == "1" else "A"
-event_id_text = str(event_id)
+    event_id_text = str(event_id)
+    league_name = match.get("league_name") or ""
 
-event_ids = SHEET.col_values(18)
+    # Βρίσκουμε αν το ματς υπάρχει ήδη στο Sheet
+    try:
+        event_cell = SHEET.find(event_id_text, in_column=18)
+        row_number = event_cell.row
 
-try:
-    row_number = event_ids.index(event_id_text) + 1
-except ValueError:
-    row_number = None
+    except gspread.exceptions.CellNotFound:
+        # Καινούριο ματς -> νέα γραμμή
+        SHEET.append_row([
+            league_name,
+            home,
+            away,
+            fav_side,
+            "", "", "",
+            "", "", "",
+            "", "", "", "",
+            "", "", "",
+            event_id_text
+        ])
 
-if row_number is None:
-    SHEET.append_row([
-        "", home, away, fav_side,
-        "", "", "", "", "", "",
-        "", "", "", "", "", "", "",
-        event_id_text
-    ])
-    row_number = len(SHEET.get_all_values())
+        event_cell = SHEET.find(event_id_text, in_column=18)
+        row_number = event_cell.row
 
-# OPEN - γράφεται μόνο μία φορά
-if snapshot == "OPEN":
-    if not SHEET.cell(row_number, 5).value:
-        SHEET.update_cell(row_number, 5, fav_odd)
-        SHEET.update_cell(row_number, 8, contra)
+    # OPEN -> μία φορά γύρω στις 11:00
+    if NOW.hour == 11:
+        if not SHEET.cell(row_number, 5).value:
+            SHEET.update_cell(row_number, 5, fav_odd)
+            SHEET.update_cell(row_number, 8, contra)
 
-# 90MIN - γράφεται μόνο μία φορά
-if snapshot == "90MIN":
-    if not SHEET.cell(row_number, 6).value:
-        SHEET.update_cell(row_number, 6, fav_odd)
-        SHEET.update_cell(row_number, 9, contra)
+    # 90MIN -> μία φορά
+    if 85 <= minutes_to_kickoff <= 95:
+        if not SHEET.cell(row_number, 6).value:
+            SHEET.update_cell(row_number, 6, fav_odd)
+            SHEET.update_cell(row_number, 9, contra)
 
-# CLOSE - ανανεώνεται συνέχεια μέχρι τη σέντρα
-if minutes_to_kickoff > 0:
-    SHEET.update_cell(row_number, 7, fav_odd)
-    SHEET.update_cell(row_number, 10, contra)
-         
-         
+    # CLOSE -> ανανεώνεται σε κάθε run μέχρι τη σέντρα
+    if minutes_to_kickoff > 0:
+        SHEET.update_cell(row_number, 7, fav_odd)
+        SHEET.update_cell(row_number, 10, contra)
