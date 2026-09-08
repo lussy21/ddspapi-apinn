@@ -173,7 +173,7 @@ for match in matches:
             row_number = i
             break
 
-       if row_number is None:
+        if row_number is None:
         row_number = max(3, len(SHEET.col_values(2)) + 1)
         SHEET.update(
             range_name=f"A{row_number}:R{row_number}",
