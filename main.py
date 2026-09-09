@@ -175,7 +175,7 @@ for match in matches:
     league_name = match.get("league_name") or ""
 
     # Βρίσκουμε αν το ματς υπάρχει ήδη στο Sheet
-        event_ids = SHEET.col_values(18)
+            event_ids = SHEET.col_values(18)
 
     try:
         row_number = event_ids.index(event_id_text) + 1
