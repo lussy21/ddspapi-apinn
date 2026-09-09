@@ -42,7 +42,4 @@ for home, away in targets:
         print(f"\nARBWORLD MATCH {home} - {away}:")
         print(plain[start:end])
     else:
-        print(f"\nARBWORLD MATCH {home} - {away}: NOT FOUND")
-
-print("\nARBWORLD PAGE HEAD:")
-print(plain[:1800])
+        print(f"\nARBWORL
