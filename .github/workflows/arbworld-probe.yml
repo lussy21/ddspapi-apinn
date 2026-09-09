@@ -1,0 +1,26 @@
+name: Arbworld Probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "arbworld_probe.py"
+      - ".github/workflows/arbworld-probe.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Run Arbworld probe
+        run: python arbworld_probe.py
