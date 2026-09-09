@@ -5,6 +5,10 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from arbworld import fetch_today as fetch_arbworld_today
+from arbworld import find_match as find_arbworld_match
+from arbworld import metrics as arbworld_metrics
+
 GREECE_TZ = ZoneInfo("Europe/Athens")
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -100,6 +104,15 @@ for match in response.json():
 
 print("APINN CONNECTION OK")
 print("MATCHES FOUND:", len(matches))
+
+# Arbworld: one request per run for all today's 1X2 Moneyway data.
+try:
+    ARBWORLD_ROWS = fetch_arbworld_today()
+    print("ARBWORLD CONNECTION OK")
+    print("ARBWORLD MATCHES FOUND:", len(ARBWORLD_ROWS))
+except Exception as exc:
+    ARBWORLD_ROWS = []
+    print("ARBWORLD ERROR:", repr(exc))
 
 sheet_rows = SHEET.get_all_values()
 event_rows = {}
@@ -235,6 +248,91 @@ for match in matches:
             "range": f"J{row_number}",
             "values": [["" if contra is None else contra]],
         })
+
+    # ---------------- ARBWORLD ----------------
+    # K/L/M = τρέχοντα στοιχεία. Ανανεώνονται μέχρι 5' πριν και μετά παγώνουν.
+    # T:V = snapshot 11:00.
+    # W:Y = snapshot περίπου 90' πριν.
+    # Z:AB = CLOSE, που ανανεώνεται κάθε run και παγώνει στα 5' πριν.
+    if minutes_to_kickoff > 0 and ARBWORLD_ROWS:
+        arb_match = find_arbworld_match(home, away, ARBWORLD_ROWS)
+
+        if arb_match:
+            arb = arbworld_metrics(arb_match, fav_side)
+
+            if arb:
+                turnover = arb["turnover"]
+                favorite_pct = arb["favorite_pct"]
+                contra_pct = arb["contra_pct"]
+
+                morning_already = (
+                    len(current_row) >= 22
+                    and any(str(v).strip() for v in current_row[19:22])
+                )
+
+                snap90_already = (
+                    len(current_row) >= 25
+                    and any(str(v).strip() for v in current_row[22:25])
+                )
+
+                # 11:00 snapshot: γράφεται μία φορά.
+                if (
+                    NOW.hour == 11
+                    and NOW.minute < 20
+                    and not morning_already
+                ):
+                    updates.append({
+                        "range": f"T{row_number}:V{row_number}",
+                        "values": [[turnover, favorite_pct, contra_pct]],
+                    })
+                    print(
+                        "ARBWORLD 11:00 SNAPSHOT:",
+                        home, "vs", away,
+                        "| turnover:", turnover,
+                        "| fav%:", favorite_pct,
+                        "| contra%:", contra_pct,
+                    )
+
+                # 90' snapshot: γράφεται μία φορά.
+                if 85 <= minutes_to_kickoff <= 95 and not snap90_already:
+                    updates.append({
+                        "range": f"W{row_number}:Y{row_number}",
+                        "values": [[turnover, favorite_pct, contra_pct]],
+                    })
+                    print(
+                        "ARBWORLD 90 SNAPSHOT:",
+                        home, "vs", away,
+                        "| turnover:", turnover,
+                        "| fav%:", favorite_pct,
+                        "| contra%:", contra_pct,
+                    )
+
+                # CLOSE:
+                # Ανανεώνεται σε κάθε run από τις 11:00 μέχρι και 5' πριν.
+                # Στα τελευταία <5' δεν αλλάζει ξανά.
+                if NOW >= DAY_START and minutes_to_kickoff >= 5:
+                    updates.append({
+                        "range": f"K{row_number}:M{row_number}",
+                        "values": [[turnover, favorite_pct, contra_pct]],
+                    })
+                    updates.append({
+                        "range": f"Z{row_number}:AB{row_number}",
+                        "values": [[turnover, favorite_pct, contra_pct]],
+                    })
+
+                print(
+                    "ARBWORLD MATCH:",
+                    home, "vs", away,
+                    "=>", arb["arb_home"], "vs", arb["arb_away"],
+                    "| 1:", arb["volume_1"],
+                    "| X:", arb["volume_x"],
+                    "| 2:", arb["volume_2"],
+                    "| total:", turnover,
+                    "| fav%:", favorite_pct,
+                    "| contra%:", contra_pct,
+                )
+        else:
+            print("ARBWORLD MATCH NOT FOUND:", home, "vs", away)
 
 if updates:
     SHEET.batch_update(
