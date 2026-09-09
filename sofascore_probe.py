@@ -1,7 +1,5 @@
-from datetime import datetime
+atetime import datetime
 from zoneinfo import ZoneInfo
-import time
-
 import requests
 
 BASE_URL = "https://www.sofascore.com/api/v1"
@@ -11,11 +9,23 @@ HEADERS = {
     "Referer": "https://www.sofascore.com/",
 }
 
+# Test teams only. We use team event feeds instead of the blocked daily schedule endpoint.
+TEST_TEAMS = {
+    "Barcelona": 2817,
+    "Feyenoord": 2959,
+    "Atletico Madrid": 2836,
+}
+
 
 def pct(value, total):
-    if not total:
-        return 0.0
-    return round((value / total) * 100, 1)
+    return round((value / total) * 100, 1) if total else 0.0
+
+
+def event_date_athens(event):
+    ts = event.get("startTimestamp")
+    if not ts:
+        return None
+    return datetime.fromtimestamp(ts, ZoneInfo("Europe/Athens")).date().isoformat()
 
 
 def main():
@@ -23,85 +33,92 @@ def main():
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    schedule_url = f"{BASE_URL}/sport/football/scheduled-events/{today}"
-    response = session.get(schedule_url, timeout=30)
-    print("SCHEDULE STATUS:", response.status_code)
     print("DATE:", today)
+    seen = {}
+    good_feed = False
 
-    if response.status_code != 200:
-        print("SCHEDULE BODY:", response.text[:500])
-        return
+    # Try normal team event feeds. No login/captcha bypass.
+    for team_name, team_id in TEST_TEAMS.items():
+        for direction in ("next", "last"):
+            url = f"{BASE_URL}/team/{team_id}/events/{direction}/0"
+            try:
+                r = session.get(url, timeout=25)
+            except Exception as exc:
+                print("TEAM FEED ERROR:", team_name, direction, repr(exc))
+                continue
 
-    payload = response.json()
-    events = payload.get("events") or []
-    print("EVENTS FOUND:", len(events))
+            print("TEAM FEED:", team_name, direction, "STATUS:", r.status_code)
 
-    def popularity(event):
-        tournament = event.get("tournament") or {}
-        unique = tournament.get("uniqueTournament") or {}
-        return max(
-            int(event.get("userCount") or 0),
-            int(tournament.get("userCount") or 0),
-            int(unique.get("userCount") or 0),
-        )
+            if r.status_code != 200:
+                continue
 
-    events = sorted(events, key=popularity, reverse=True)
-    found = 0
+            good_feed = True
 
-    for event in events[:40]:
-        event_id = event.get("id")
-        home = (event.get("homeTeam") or {}).get("name") or "?"
-        away = (event.get("awayTeam") or {}).get("name") or "?"
-        status = (event.get("status") or {}).get("type") or "?"
+            try:
+                payload = r.json()
+            except Exception:
+                continue
 
-        if not event_id:
-            continue
+            for event in payload.get("events") or []:
+                event_id = event.get("id")
+                if not event_id or event_id in seen:
+                    continue
 
+                home = (event.get("homeTeam") or {}).get("name") or "?"
+                away = (event.get("awayTeam") or {}).get("name") or "?"
+                date_athens = event_date_athens(event)
+
+                # Keep today's events, plus print nearby events if today's date
+                # is missing from the provider payload.
+                if date_athens != today:
+                    continue
+
+                seen[event_id] = (home, away)
+
+    print("TODAY EVENTS FOUND:", len(seen))
+
+    found_votes = 0
+
+    for event_id, (home, away) in seen.items():
         votes_url = f"{BASE_URL}/event/{event_id}/votes"
         try:
-            vote_response = session.get(votes_url, timeout=20)
+            vr = session.get(votes_url, timeout=20)
         except Exception as exc:
-            print("VOTES ERROR:", event_id, home, "-", away, repr(exc))
+            print("VOTES ERROR:", event_id, repr(exc))
             continue
 
-        if vote_response.status_code != 200:
+        print("VOTES STATUS:", event_id, home, "-", away, vr.status_code)
+
+        if vr.status_code != 200:
             continue
 
         try:
-            votes_payload = vote_response.json()
+            vote_payload = vr.json()
         except Exception:
             continue
 
-        votes = votes_payload.get("vote") or {}
-        vote_1 = int(votes.get("vote1") or 0)
-        vote_x = int(votes.get("voteX") or 0)
-        vote_2 = int(votes.get("vote2") or 0)
-        total = vote_1 + vote_x + vote_2
+        votes = vote_payload.get("vote") or {}
+        v1 = int(votes.get("vote1") or 0)
+        vx = int(votes.get("voteX") or 0)
+        v2 = int(votes.get("vote2") or 0)
+        total = v1 + vx + v2
 
         if total <= 0:
             continue
 
-        found += 1
+        found_votes += 1
         print("---")
         print("MATCH:", home, "-", away)
-        print("EVENT ID:", event_id, "STATUS:", status)
-        print("RAW VOTES 1/X/2:", vote_1, vote_x, vote_2, "TOTAL:", total)
-        print(
-            "PCT 1/X/2:",
-            pct(vote_1, total),
-            pct(vote_x, total),
-            pct(vote_2, total),
-        )
+        print("EVENT ID:", event_id)
+        print("RAW VOTES 1/X/2:", v1, vx, v2, "TOTAL:", total)
+        print("PCT 1/X/2:", pct(v1, total), pct(vx, total), pct(v2, total))
 
-        if found >= 10:
-            break
-
-        time.sleep(0.15)
-
-    if found:
+    if found_votes:
         print("RESULT: SOFASCORE VOTES FOUND")
+    elif good_feed:
+        print("RESULT: TEAM FEEDS WORK, BUT NO VOTES FOUND")
     else:
-        print("RESULT: NO SOFASCORE VOTES FOUND")
+        print("RESULT: SOFASCORE TEAM FEEDS BLOCKED")
 
 
 if __name__ == "__main__":
