@@ -175,35 +175,20 @@ for match in matches:
     league_name = match.get("league_name") or ""
 
     # Βρίσκουμε αν το ματς υπάρχει ήδη στο Sheet
-    event_ids = SHEET.col_values(18)
+        event_ids = SHEET.col_values(18)
 
     try:
         row_number = event_ids.index(event_id_text) + 1
     except ValueError:
-        print("NEW MATCH -> WRITING TO SHEET:", home, "vs", away)
-        SHEET.append_row(
-            [league_name, home, away, fav_side] +
-            [""] * 13 +
-            [event_id_text]
+        row_number = max(3, len(SHEET.get_all_values()) + 1)
+
+        SHEET.update(
+            range_name=f"A{row_number}:R{row_number}",
+            values=[[
+                league_name, home, away, fav_side,
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", "", event_id_text
+            ]]
         )
+
         print("SHEET ROW CREATED:", row_number, home, "vs", away)
-        row_number = len(SHEET.get_all_values())
-
-    
-    # OPEN -> μία φορά γύρω στις 11:00
-    if NOW.hour == 11 and NOW.minute < 10:
-        if not SHEET.cell(row_number, 5).value:
-            SHEET.update_cell(row_number, 5, fav_odd)
-            SHEET.update_cell(row_number, 8, contra)
-
-    # 90MIN -> μία φορά περίπου 90 λεπτά πριν
-    if 85 <= minutes_to_kickoff <= 95:
-        if not SHEET.cell(row_number, 6).value:
-            SHEET.update_cell(row_number, 6, fav_odd)
-            SHEET.update_cell(row_number, 9, contra)
-
-    # CLOSE -> μία φορά περίπου 5 λεπτά πριν
-    if 0 < minutes_to_kickoff <= 7:
-        if not SHEET.cell(row_number, 7).value:
-            SHEET.update_cell(row_number, 7, fav_odd)
-            SHEET.update_cell(row_number, 10, contra)
