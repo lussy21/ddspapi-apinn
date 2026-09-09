@@ -1,3 +1,129 @@
+import os
+import requests
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+GREECE_TZ = ZoneInfo("Europe/Athens")
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+CREDS = Credentials.from_service_account_file(
+    "/etc/secrets/google-credentials.json",
+    scopes=SCOPES,
+)
+GC = gspread.authorize(CREDS)
+SHEET = GC.open_by_key(
+    "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM"
+).worksheet("PINNACLE")
+
+API_KEY = os.environ["APINN_API_KEY"]
+BOARD_URL = "https://api.apinn.io/api/board"
+ODDS_URL = "https://api.apinn.io/api/odds"
+HEADERS = {"X-API-Key": API_KEY}
+
+TARGET_LEAGUE_IDS = {
+    1980,    # England - Premier League
+    1842,    # Germany - Bundesliga
+    2036,    # France - Ligue 1
+    2081,    # Greece - Super League
+    2436,    # Italy - Serie A
+    2196,    # Spain - La Liga
+    1817,    # Belgium - Pro League
+    1913,    # Denmark - Superliga
+    2333,    # Norway - Eliteserien
+    1928,    # Netherlands - Eredivisie
+    2592,    # Turkey - Super League
+    1834,    # Brazil - Serie A
+    210697,  # Argentina - Liga Pro
+    1728,    # Sweden - Allsvenskan
+    2663,    # USA - Major League Soccer
+    2627,    # UEFA - Champions League
+}
+
+TARGET_LEAGUE_NAMES = {
+    "Finland - Veikkausliiga",
+    "Scotland - Premiership",
+    "UEFA - Europa League",
+    "UEFA - Conference League",
+}
+
+NOW = datetime.now(GREECE_TZ)
+TODAY = NOW.date()
+DAY_START = NOW.replace(hour=11, minute=0, second=0, microsecond=0)
+
+matches = []
+seen_events = set()
+
+for league_id in TARGET_LEAGUE_IDS:
+    response = requests.get(
+        BOARD_URL,
+        headers=HEADERS,
+        params={
+            "sport_id": 29,
+            "league_id": league_id,
+            "live": 0,
+            "with_odds": 1,
+            "limit": 100,
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+
+    for match in response.json():
+        event_id = match.get("event_id")
+        if event_id and event_id not in seen_events:
+            seen_events.add(event_id)
+            matches.append(match)
+
+response = requests.get(
+    BOARD_URL,
+    headers=HEADERS,
+    params={
+        "sport_id": 29,
+        "live": 0,
+        "with_odds": 1,
+        "limit": 500,
+    },
+    timeout=30,
+)
+response.raise_for_status()
+
+for match in response.json():
+    if match.get("league_name") not in TARGET_LEAGUE_NAMES:
+        continue
+
+    event_id = match.get("event_id")
+    if event_id and event_id not in seen_events:
+        seen_events.add(event_id)
+        matches.append(match)
+
+print("APINN CONNECTION OK")
+print("MATCHES FOUND:", len(matches))
+
+sheet_rows = SHEET.get_all_values()
+event_rows = {}
+
+for row_number, row in enumerate(sheet_rows, start=1):
+    if len(row) >= 18 and row[17]:
+        event_rows[str(row[17])] = row_number
+
+next_row = max(3, len(sheet_rows) + 1)
+updates = []
+
+for match in matches:
+    starts = match.get("starts")
+    if not starts:
+        continue
+
+    kickoff = datetime.fromisoformat(
+        starts.replace("Z", "+00:00")
+    ).astimezone(GREECE_TZ)
+
+    if kickoff.date() != TODAY:
+        continue
+
+    home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
     league_name = match.get("league_name") or ""
