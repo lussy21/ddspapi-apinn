@@ -310,7 +310,7 @@ for match in matches:
                 # CLOSE:
                 # Ανανεώνεται σε κάθε run από τις 11:00 μέχρι και 5' πριν.
                 # Στα τελευταία <5' δεν αλλάζει ξανά.
-                if NOW >= DAY_START and minutes_to_kickoff >= 5:
+                if minutes_to_kickoff >= 5:
                     updates.append({
                         "range": f"K{row_number}:M{row_number}",
                         "values": [[turnover, favorite_pct, contra_pct]],
