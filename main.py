@@ -180,6 +180,7 @@ for match in matches:
     try:
         row_number = event_ids.index(event_id_text) + 1
     except ValueError:
+        print("NEW MATCH -> WRITING TO SHEET:", home, "vs", away)
         SHEET.append_row(
             [league_name, home, away, fav_side] +
             [""] * 13 +
