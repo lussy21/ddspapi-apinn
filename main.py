@@ -253,7 +253,7 @@ for match in matches:
     # K/L/M = τρέχοντα στοιχεία. Ανανεώνονται μέχρι 5' πριν και μετά παγώνουν.
     # T:V = snapshot 11:00.
     # W:Y = snapshot περίπου 90' πριν.
-    # Z:AB = CLOSE, που ανανεώνεται κάθε run και παγώνει στα 5' πριν.
+    # K:M = CLOSE, που ανανεώνεται κάθε run και παγώνει στα 5' πριν.
     if minutes_to_kickoff > 0 and ARBWORLD_ROWS:
         arb_match = find_arbworld_match(home, away, ARBWORLD_ROWS)
 
@@ -313,10 +313,6 @@ for match in matches:
                 if NOW >= DAY_START and minutes_to_kickoff >= 5:
                     updates.append({
                         "range": f"K{row_number}:M{row_number}",
-                        "values": [[turnover, favorite_pct, contra_pct]],
-                    })
-                    updates.append({
-                        "range": f"Z{row_number}:AB{row_number}",
                         "values": [[turnover, favorite_pct, contra_pct]],
                     })
 
