@@ -186,6 +186,7 @@ for match in matches:
             [""] * 13 +
             [event_id_text]
         )
+        print("SHEET ROW CREATED:", row_number, home, "vs", away)
         row_number = len(SHEET.get_all_values())
 
     
