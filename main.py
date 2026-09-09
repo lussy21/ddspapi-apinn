@@ -189,18 +189,19 @@ for match in matches:
 
     
     # OPEN -> μία φορά γύρω στις 11:00
-    if NOW.hour == 11:
+    if NOW.hour == 11 and NOW.minute < 10:
         if not SHEET.cell(row_number, 5).value:
             SHEET.update_cell(row_number, 5, fav_odd)
             SHEET.update_cell(row_number, 8, contra)
 
-    # 90MIN -> μία φορά
+    # 90MIN -> μία φορά περίπου 90 λεπτά πριν
     if 85 <= minutes_to_kickoff <= 95:
         if not SHEET.cell(row_number, 6).value:
             SHEET.update_cell(row_number, 6, fav_odd)
             SHEET.update_cell(row_number, 9, contra)
 
-    # CLOSE -> ανανεώνεται σε κάθε run μέχρι τη σέντρα
-    if minutes_to_kickoff > 0:
-        SHEET.update_cell(row_number, 7, fav_odd)
-        SHEET.update_cell(row_number, 10, contra)
+    # CLOSE -> μία φορά περίπου 5 λεπτά πριν
+    if 0 < minutes_to_kickoff <= 7:
+        if not SHEET.cell(row_number, 7).value:
+            SHEET.update_cell(row_number, 7, fav_odd)
+            SHEET.update_cell(row_number, 10, contra)
