@@ -209,9 +209,13 @@ for match in matches:
         ]
 
         updates.append({
-            "range": f"A{row_number}:R{row_number}",
-            "values": [new_row],
-        })
+    "range": f"A{row_number}:N{row_number}",
+    "values": [new_row[:14]],
+})
+updates.append({
+    "range": f"P{row_number}:R{row_number}",
+    "values": [new_row[15:18]],
+})
 
         while len(sheet_rows) < row_number:
             sheet_rows.append([])
