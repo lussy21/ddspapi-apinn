@@ -208,7 +208,7 @@ for match in matches:
             event_id_text,
         ]
 
-        updates.append({
+updates.append({
     "range": f"A{row_number}:N{row_number}",
     "values": [new_row[:14]],
 })
