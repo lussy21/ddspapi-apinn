@@ -208,11 +208,11 @@ for match in matches:
             event_id_text,
         ]
 
-updates.append({
+        updates.append({
     "range": f"A{row_number}:N{row_number}",
     "values": [new_row[:14]],
 })
-updates.append({
+        updates.append({
     "range": f"P{row_number}:R{row_number}",
     "values": [new_row[15:18]],
 })
