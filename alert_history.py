@@ -126,7 +126,7 @@ def get_credentials():
         "service_account.json",
         "google_credentials.json",
         "/etc/secrets/credentials.json",
-        "/etc/secrets/google_credentials.json",
+        "/etc/secrets/google-credentials.json",
     )
 
     for path in possible_files:
