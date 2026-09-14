@@ -454,20 +454,20 @@ def get_log_sheet(spreadsheet):
         )
 
         ws.update(
-            "A1:J1",
-            [[
-                "TIME",
-                "KEY",
-                "ROW",
-                "LEAGUE",
-                "MATCH",
-                "EVENT",
-                "ALERT",
-                "DETAILS",
-                "SNAPSHOT_JSON",
-                "FORMULA",
-            ]],
-        )
+    range_name="A1:J1",
+    values=[[
+        "TIME",
+        "KEY",
+        "ROW",
+        "LEAGUE",
+        "MATCH",
+        "EVENT",
+        "ALERT",
+        "DETAILS",
+        "SNAPSHOT_JSON",
+        "FORMULA",
+    ]],
+)
 
     return ws
 
