@@ -381,7 +381,7 @@ def update_results(sheet, rows, apify_token, now):
         print("SOFASCORE RESULTS: nothing to write")
 
 
-def update_votes(sheet, rows, apify_token, apinn_key, now):
+def update_votes(sheet, rows, apify_token, apinn_key, now, only_blank=False):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
 
@@ -392,17 +392,20 @@ def update_votes(sheet, rows, apify_token, apinn_key, now):
         event_id = str(row[17]).strip()
         if not event_id:
             continue
+        sofa_value = row[13] if len(row) > 13 else ""
+        if only_blank and str(sofa_value).strip():
+            continue
         sheet_by_event[event_id] = {
             "row": row_number,
             "home": row[1] if len(row) > 1 else "",
             "away": row[2] if len(row) > 2 else "",
             "favorite_side": row[3] if len(row) > 3 else "",
-            "sofa_value": row[13] if len(row) > 13 else "",
+            "sofa_value": sofa_value,
         }
 
     if not sheet_by_event:
         print("SOFASCORE: no sheet events")
-        return
+        return True
 
     response = requests.get(
         APINN_BOARD_URL,
@@ -446,7 +449,7 @@ def update_votes(sheet, rows, apify_token, apinn_key, now):
 
     if not candidates:
         print("SOFASCORE: no upcoming matches for this snapshot")
-        return
+        return True
 
     fixture_pool = []
     dates = sorted({item["sofa_date"] for item in candidates})
@@ -481,7 +484,7 @@ def update_votes(sheet, rows, apify_token, apinn_key, now):
 
     if not matched:
         print("SOFASCORE: no matched events")
-        return
+        return True
 
     vote_rows = fetch_votes(
         apify_token, [item["sofa_event_id"] for item in matched]
@@ -520,6 +523,8 @@ def update_votes(sheet, rows, apify_token, apinn_key, now):
     else:
         print("SOFASCORE: nothing to write")
 
+    return True
+
 
 def main():
     apify_token = os.environ.get("APIFY_TOKEN", "").strip()
@@ -529,32 +534,54 @@ def main():
 
     now = datetime.now(GREECE_TZ)
 
-    # Render runs every 10 minutes. Only these windows make paid SofaScore calls.
-    vote_window = now.hour in (13, 17) and now.minute < 10
     result_window = (
         (now.hour == 7 and now.minute < 10)
         or (now.hour == 22 and 30 <= now.minute < 40)
     )
 
-    if not vote_window and not result_window:
-        print("SOFASCORE: outside scheduled windows - skipped")
-        return
-
     creds = Credentials.from_service_account_file(GOOGLE_CREDS, scopes=SCOPES)
     gc = gspread.authorize(creds)
-    sheet = gc.open_by_key(SHEET_KEY).worksheet(SHEET_NAME)
+    book = gc.open_by_key(SHEET_KEY)
+    sheet = book.worksheet(SHEET_NAME)
     rows = sheet.get_all_values()
 
     if result_window:
         update_results(sheet, rows, apify_token, now)
         return
 
+    # SofaScore snapshots: target 13:00 and 17:00, but if a cron run is lost,
+    # the next successful run catches the slot up instead of waiting hours.
+    if now.hour < 13:
+        print("SOFASCORE: before first vote snapshot - skipped")
+        return
+
+    target_hour = 13 if now.hour < 17 else 17
+    target_slot = f"{now.date().isoformat()}-{target_hour:02d}"
+
+    control = book.worksheet("ALERT STATS")
+    last_slot = str(control.acell("L2").value or "").strip()
+
     apinn_key = os.environ.get("APINN_API_KEY", "").strip()
     if not apinn_key:
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
         return
 
-    update_votes(sheet, rows, apify_token, apinn_key, now)
+    if last_slot != target_slot:
+        print("SOFASCORE CATCHUP/FULL SLOT:", target_slot, "| last:", last_slot or "none")
+        ok = update_votes(
+            sheet, rows, apify_token, apinn_key, now, only_blank=False
+        )
+        if ok:
+            control.update("L1:L2", [["SOFA LAST SLOT"], [target_slot]])
+            print("SOFASCORE SLOT SAVED:", target_slot)
+        return
+
+    # Slot already completed. Retry only still-blank Sofa cells; this exits
+    # before paid calls when there are no blanks left.
+    print("SOFASCORE SLOT ALREADY DONE - checking blanks only:", target_slot)
+    update_votes(
+        sheet, rows, apify_token, apinn_key, now, only_blank=True
+    )
 
 
 if __name__ == "__main__":
