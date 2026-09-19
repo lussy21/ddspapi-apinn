@@ -261,7 +261,9 @@ for match in matches:
         })
 
     # 90MIN: γράφεται μία φορά περίπου 90 λεπτά πριν.
-    if 85 <= minutes_to_kickoff <= 95 and not min90_already:
+    # Αν χαθεί το ακριβές 85-95' παράθυρο, κρατάμε την πρώτη
+    # επιτυχημένη τιμή πριν τη σέντρα αντί να μείνει κενό.
+    if 0 < minutes_to_kickoff <= 95 and not min90_already:
         updates.append({"range": f"F{row_number}", "values": [[fav_odd]]})
         updates.append({
             "range": f"I{row_number}",
@@ -323,7 +325,9 @@ for match in matches:
                     )
 
                 # 90' snapshot: γράφεται μία φορά.
-                if 85 <= minutes_to_kickoff <= 95 and not snap90_already:
+                # Αν χαθεί το ακριβές 85-95' παράθυρο, κρατάμε το πρώτο
+                # διαθέσιμο snapshot πριν τη σέντρα.
+                if 0 < minutes_to_kickoff <= 95 and not snap90_already:
                     updates.append({
                         "range": f"W{row_number}:Y{row_number}",
                         "values": [[turnover, favorite_pct, contra_pct]],
