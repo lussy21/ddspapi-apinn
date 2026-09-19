@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import gspread
 from google.oauth2.service_account import Credentials
@@ -25,6 +26,29 @@ API_KEY = os.environ["APINN_API_KEY"]
 BOARD_URL = "https://api.apinn.io/api/board"
 ODDS_URL = "https://api.apinn.io/api/odds"
 HEADERS = {"X-API-Key": API_KEY}
+
+def apinn_get(url, params, attempts=3):
+    """APINN request with retry. Returns None after repeated temporary failures."""
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.get(
+                url,
+                headers=HEADERS,
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            print(
+                f"APINN REQUEST ERROR attempt {attempt}/{attempts}:",
+                repr(exc),
+                "| params:",
+                params,
+            )
+            if attempt < attempts:
+                time.sleep(3 * attempt)
+    return None
 
 TARGET_LEAGUE_IDS = {
     1980,    # England - Premier League
@@ -60,19 +84,19 @@ matches = []
 seen_events = set()
 
 for league_id in TARGET_LEAGUE_IDS:
-    response = requests.get(
+    response = apinn_get(
         BOARD_URL,
-        headers=HEADERS,
-        params={
+        {
             "sport_id": 29,
             "league_id": league_id,
             "live": 0,
             "with_odds": 1,
             "limit": 100,
         },
-        timeout=30,
     )
-    response.raise_for_status()
+    if response is None:
+        print("APINN LEAGUE SKIPPED AFTER RETRIES:", league_id)
+        continue
 
     for match in response.json():
         event_id = match.get("event_id")
@@ -80,27 +104,27 @@ for league_id in TARGET_LEAGUE_IDS:
             seen_events.add(event_id)
             matches.append(match)
 
-response = requests.get(
+response = apinn_get(
     BOARD_URL,
-    headers=HEADERS,
-    params={
+    {
         "sport_id": 29,
         "live": 0,
         "with_odds": 1,
         "limit": 500,
     },
-    timeout=30,
 )
-response.raise_for_status()
 
-for match in response.json():
-    if match.get("league_name") not in TARGET_LEAGUE_NAMES:
-        continue
+if response is not None:
+    for match in response.json():
+        if match.get("league_name") not in TARGET_LEAGUE_NAMES:
+            continue
 
-    event_id = match.get("event_id")
-    if event_id and event_id not in seen_events:
-        seen_events.add(event_id)
-        matches.append(match)
+        event_id = match.get("event_id")
+        if event_id and event_id not in seen_events:
+            seen_events.add(event_id)
+            matches.append(match)
+else:
+    print("APINN ALL-LEAGUES REQUEST SKIPPED AFTER RETRIES")
 
 print("APINN CONNECTION OK")
 print("MATCHES FOUND:", len(matches))
@@ -153,14 +177,11 @@ for match in matches:
     fav_odd = odd1 if favorite == "1" else odd2
     event_id_text = str(event_id)
 
-    odds_response = requests.get(
+    odds_response = apinn_get(
         ODDS_URL,
-        headers=HEADERS,
-        params={"event_id": event_id},
-        timeout=30,
+        {"event_id": event_id},
     )
-    odds_response.raise_for_status()
-    event_odds = odds_response.json()
+    event_odds = odds_response.json() if odds_response is not None else []
 
     contra = None
 
