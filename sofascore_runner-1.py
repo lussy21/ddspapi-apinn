@@ -199,12 +199,13 @@ def load_sofa_cache(book):
         cache_sheet = book.worksheet(CACHE_SHEET_NAME)
     except gspread.WorksheetNotFound:
         cache_sheet = book.add_worksheet(
-            title=CACHE_SHEET_NAME, rows=2000, cols=5
+            title=CACHE_SHEET_NAME, rows=2000, cols=7
         )
         cache_sheet.update(
-            "A1:E1",
+            "A1:G1",
             [[
-                "APINN EVENT ID", "SOFA EVENT ID", "HOME", "AWAY", "DATE"
+                "APINN EVENT ID", "SOFA EVENT ID", "HOME", "AWAY", "DATE",
+                "FINAL 90 DONE", "FINAL 90 AT",
             ]],
             value_input_option="USER_ENTERED",
         )
@@ -214,7 +215,9 @@ def load_sofa_cache(book):
             pass
 
     cache = {}
-    for row in cache_sheet.get_all_values()[1:]:
+    final_done = set()
+    cache_rows = {}
+    for row_number, row in enumerate(cache_sheet.get_all_values()[1:], start=2):
         if len(row) < 2:
             continue
         apinn_event_id = str(row[0] or "").strip()
@@ -223,9 +226,13 @@ def load_sofa_cache(book):
             continue
         try:
             cache[apinn_event_id] = int(float(sofa_event_id))
+            cache_rows[apinn_event_id] = row_number
         except (TypeError, ValueError):
             continue
-    return cache_sheet, cache
+        final_flag = str(row[5] if len(row) > 5 else "").strip().upper()
+        if final_flag == "DONE":
+            final_done.add(apinn_event_id)
+    return cache_sheet, cache, final_done, cache_rows
 
 
 def append_sofa_cache(cache_sheet, rows):
@@ -239,11 +246,28 @@ def append_sofa_cache(cache_sheet, rows):
                 item["home"],
                 item["away"],
                 item["kickoff"].date().isoformat(),
+                "",
+                "",
             ]
             for item in rows
         ],
         value_input_option="USER_ENTERED",
     )
+
+
+def mark_final_done(cache_sheet, cache_rows, event_ids, now):
+    updates = []
+    stamp = now.strftime("%Y-%m-%d %H:%M")
+    for event_id in event_ids:
+        row_number = cache_rows.get(event_id)
+        if not row_number:
+            continue
+        updates.append({
+            "range": f"F{row_number}:G{row_number}",
+            "values": [["DONE", stamp]],
+        })
+    if updates:
+        cache_sheet.batch_update(updates, value_input_option="USER_ENTERED")
 
 
 def parse_sofa_start(item):
@@ -437,6 +461,7 @@ def update_results(sheet, rows, apify_token, now):
 def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
     only_blank=False, allow_fixture_lookup=True,
+    minutes_window=None, mark_final=False,
 ):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
@@ -490,6 +515,11 @@ def update_votes(
             continue
         if kickoff.date() != now.date() or kickoff <= now:
             continue
+        minutes_to_kickoff = (kickoff - now).total_seconds() / 60
+        if minutes_window is not None:
+            low, high = minutes_window
+            if not (low <= minutes_to_kickoff <= high):
+                continue
         tournament_id = sofa_tournament_id(match.get("league_id"), match.get("league_name"))
         if not tournament_id:
             print(
@@ -508,7 +538,16 @@ def update_votes(
         print("SOFASCORE: no upcoming matches for this snapshot")
         return True
 
-    cache_sheet, sofa_cache = load_sofa_cache(book)
+    cache_sheet, sofa_cache, final_done, cache_rows = load_sofa_cache(book)
+
+    if mark_final:
+        candidates = [
+            item for item in candidates
+            if item["apinn_event_id"] not in final_done
+        ]
+        if not candidates:
+            print("SOFASCORE FINAL 90: no matches due")
+            return True
 
     matched = []
     needs_lookup = []
@@ -564,6 +603,7 @@ def update_votes(
         append_sofa_cache(cache_sheet, newly_cached)
         if newly_cached:
             print("SOFASCORE CACHE SAVED:", len(newly_cached), "matches")
+            cache_sheet, sofa_cache, final_done, cache_rows = load_sofa_cache(book)
     elif needs_lookup:
         print(
             "SOFASCORE CACHE MISS:",
@@ -584,6 +624,7 @@ def update_votes(
     }
 
     updates = []
+    final_completed = []
     for item in matched:
         vote_item = votes_by_event.get(str(item["sofa_event_id"]))
         if not vote_item:
@@ -597,6 +638,8 @@ def update_votes(
             "range": f'N{item["row"]}',
             "values": [[metric["favorite_pct"]]],
         })
+        if mark_final:
+            final_completed.append(item["apinn_event_id"])
         print(
             f"SOFASCORE WRITE {snapshot_label}:",
             item["home"], "vs", item["away"],
@@ -609,6 +652,15 @@ def update_votes(
     if updates:
         sheet.batch_update(updates, value_input_option="USER_ENTERED")
         print("SOFASCORE SHEET UPDATED:", len(updates), "matches")
+        if mark_final and final_completed:
+            mark_final_done(
+                cache_sheet, cache_rows, final_completed, now
+            )
+            print(
+                "SOFASCORE FINAL 90 SAVED:",
+                len(final_completed),
+                "matches",
+            )
     else:
         print("SOFASCORE: nothing to write")
 
@@ -638,40 +690,47 @@ def main():
         update_results(sheet, rows, apify_token, now)
         return
 
-    # SofaScore snapshots: target 13:00 and 17:00, but if a cron run is lost,
-    # the next successful run catches the slot up instead of waiting hours.
-    if now.hour < 13:
-        print("SOFASCORE: before first vote snapshot - skipped")
-        return
-
-    target_hour = 13 if now.hour < 17 else 17
-    target_slot = f"{now.date().isoformat()}-{target_hour:02d}"
-
-    control = book.worksheet("ALERT STATS")
-    last_slot = str(control.acell("L2").value or "").strip()
-
     apinn_key = os.environ.get("APINN_API_KEY", "").strip()
     if not apinn_key:
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
         return
 
-    if last_slot != target_slot:
-        print("SOFASCORE CATCHUP/FULL SLOT:", target_slot, "| last:", last_slot or "none")
+    control = book.worksheet("ALERT STATS")
+
+    # One full daily SofaScore vote snapshot for ALL today's upcoming matches.
+    # 13:00 Greece time is used because the votes are usually populated by then.
+    initial_slot = f"{now.date().isoformat()}-13"
+    last_initial_slot = str(control.acell("L2").value or "").strip()
+
+    if now.hour >= 13 and last_initial_slot != initial_slot:
+        print(
+            "SOFASCORE DAILY FULL SNAPSHOT:",
+            initial_slot,
+            "| last:", last_initial_slot or "none",
+        )
         ok = update_votes(
             sheet, rows, book, apify_token, apinn_key, now,
-            only_blank=False, allow_fixture_lookup=True,
+            only_blank=False,
+            allow_fixture_lookup=True,
         )
         if ok:
-            control.update("L1:L2", [["SOFA LAST SLOT"], [target_slot]])
-            print("SOFASCORE SLOT SAVED:", target_slot)
-        return
+            control.update(
+                "L1:L2",
+                [["SOFA DAILY 13:00"], [initial_slot]],
+            )
+            print("SOFASCORE DAILY SLOT SAVED:", initial_slot)
+            rows = sheet.get_all_values()
 
-    # Slot already completed. Retry only still-blank Sofa cells; this exits
-    # before paid calls when there are no blanks left.
-    print("SOFASCORE SLOT ALREADY DONE - checking blanks only:", target_slot)
+    # Final SofaScore refresh around 90 minutes before EACH match.
+    # The runner executes every 10 minutes, so 80-100' guarantees one
+    # refresh close to the requested 90' point. Each match is marked DONE
+    # after a successful final refresh and will not be charged again.
     update_votes(
         sheet, rows, book, apify_token, apinn_key, now,
-        only_blank=True, allow_fixture_lookup=False,
+        only_blank=False,
+        allow_fixture_lookup=True,
+        minutes_window=(80, 100),
+        mark_final=True,
     )
 
 
