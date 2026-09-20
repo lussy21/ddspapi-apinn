@@ -270,6 +270,30 @@ def mark_final_done(cache_sheet, cache_rows, event_ids, now):
         cache_sheet.batch_update(updates, value_input_option="USER_ENTERED")
 
 
+def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
+    cache_sheet = book.worksheet(CACHE_SHEET_NAME)
+    marker = str(cache_sheet.acell("H2").value or "").strip()
+    target_marker = "RESULT CATCHUP 2026-09-19 DONE"
+    if marker == target_marker:
+        return False
+
+    print("SOFASCORE ONE-OFF RESULT CATCHUP: 2026-09-19")
+    update_results(
+        sheet,
+        rows,
+        apify_token,
+        now,
+        result_dates=["2026-09-19"],
+    )
+    cache_sheet.update(
+        "H1:H2",
+        [["ONE-OFF STATUS"], [target_marker]],
+        value_input_option="USER_ENTERED",
+    )
+    print("SOFASCORE ONE-OFF RESULT CATCHUP SAVED")
+    return True
+
+
 def parse_sofa_start(item):
     raw = item.get("startTimeIso")
     if raw:
@@ -376,7 +400,7 @@ def find_finished_match(home, away, fixtures):
     return best if best is not None and best_score >= 0.80 else None
 
 
-def update_results(sheet, rows, apify_token, now):
+def update_results(sheet, rows, apify_token, now, result_dates=None):
     print("SOFASCORE RESULTS: starting")
     pending = []
     for row_number, row in enumerate(rows, start=1):
@@ -402,13 +426,14 @@ def update_results(sheet, rows, apify_token, now):
         return
 
     tournament_ids = {item["tournament_id"] for item in pending}
-    if now.hour == 7:
-        result_dates = [
-            (now.date() - timedelta(days=1)).isoformat(),
-            now.date().isoformat(),
-        ]
-    else:
-        result_dates = [now.date().isoformat()]
+    if result_dates is None:
+        if now.hour == 7:
+            result_dates = [
+                (now.date() - timedelta(days=1)).isoformat(),
+                now.date().isoformat(),
+            ]
+        else:
+            result_dates = [now.date().isoformat()]
 
     fixture_pool = []
     for date_str in result_dates:
@@ -685,6 +710,11 @@ def main():
     book = gc.open_by_key(SHEET_KEY)
     sheet = book.worksheet(SHEET_NAME)
     rows = sheet.get_all_values()
+
+    if run_one_off_result_catchup(
+        book, sheet, rows, apify_token, now
+    ):
+        return
 
     if result_window:
         update_results(sheet, rows, apify_token, now)
