@@ -1,4 +1,5 @@
 import os
+import bisect
 import time
 import requests
 import gspread
@@ -49,6 +50,61 @@ def apinn_get(url, params, attempts=3):
             if attempt < attempts:
                 time.sleep(3 * attempt)
     return None
+
+def _as_float(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def percentile_rank_inc(values, x):
+    """Inclusive percentile rank, 0-100, with linear interpolation."""
+    nums = sorted(v for v in (_as_float(v) for v in values) if v is not None)
+    x = _as_float(x)
+    if x is None or not nums:
+        return None
+    if len(nums) == 1:
+        return 100.0
+    if x <= nums[0]:
+        return 0.0
+    if x >= nums[-1]:
+        return 100.0
+
+    left = bisect.bisect_left(nums, x)
+    right = bisect.bisect_right(nums, x)
+
+    if right > left:
+        index = (left + right - 1) / 2
+        return round((index / (len(nums) - 1)) * 100, 1)
+
+    lo = left - 1
+    hi = left
+    span = nums[hi] - nums[lo]
+    fraction = 0.0 if span == 0 else (x - nums[lo]) / span
+    rank = (lo + fraction) / (len(nums) - 1)
+    return round(rank * 100, 1)
+
+
+def turnover_percentile(sheet_rows, row_number, league_name, turnover):
+    """Rank current turnover only against the same league, replacing this row's old K."""
+    values = []
+    for idx, row in enumerate(sheet_rows, start=1):
+        if idx == row_number:
+            continue
+        if not row or str(row[0]).strip() != str(league_name).strip():
+            continue
+        if len(row) > 10:
+            value = _as_float(row[10])
+            if value is not None:
+                values.append(value)
+
+    current = _as_float(turnover)
+    if current is None:
+        return None
+    values.append(current)
+    return percentile_rank_inc(values, current)
 
 TARGET_LEAGUE_IDS = {
     1980,    # England - Premier League
@@ -344,10 +400,34 @@ for match in matches:
                 # Ανανεώνεται σε κάθε run από τις 11:00 μέχρι και 5' πριν.
                 # Στα τελευταία <5' δεν αλλάζει ξανά.
                 if minutes_to_kickoff >= 5:
+                    turnover_pct = turnover_percentile(
+                        sheet_rows, row_number, league_name, turnover
+                    )
+
                     updates.append({
                         "range": f"K{row_number}:M{row_number}",
                         "values": [[turnover, favorite_pct, contra_pct]],
                     })
+                    if turnover_pct is not None:
+                        updates.append({
+                            "range": f"BF{row_number}",
+                            "values": [[turnover_pct]],
+                        })
+
+                    # Keep the in-memory sheet snapshot current so the next
+                    # match in the same league is ranked against fresh values.
+                    while len(sheet_rows[row_number - 1]) < 58:
+                        sheet_rows[row_number - 1].append("")
+                    sheet_rows[row_number - 1][10] = turnover
+                    if turnover_pct is not None:
+                        sheet_rows[row_number - 1][57] = turnover_pct
+
+                    print(
+                        "TURNOVER PERCENTILE:",
+                        home, "vs", away,
+                        "| league:", league_name,
+                        "| pct:", turnover_pct,
+                    )
 
                 print(
                     "ARBWORLD MATCH:",
