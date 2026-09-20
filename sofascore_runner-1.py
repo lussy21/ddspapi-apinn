@@ -15,6 +15,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 SHEET_KEY = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM"
 SHEET_NAME = "PINNACLE"
+CACHE_SHEET_NAME = "SOFA CACHE"
 GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
@@ -190,6 +191,58 @@ def fetch_votes(token, event_ids):
             "includeOdds": False, "includeComments": False,
             "includeHeatmaps": False, "maxItems": len(ids),
         },
+    )
+
+
+def load_sofa_cache(book):
+    try:
+        cache_sheet = book.worksheet(CACHE_SHEET_NAME)
+    except gspread.WorksheetNotFound:
+        cache_sheet = book.add_worksheet(
+            title=CACHE_SHEET_NAME, rows=2000, cols=5
+        )
+        cache_sheet.update(
+            "A1:E1",
+            [[
+                "APINN EVENT ID", "SOFA EVENT ID", "HOME", "AWAY", "DATE"
+            ]],
+            value_input_option="USER_ENTERED",
+        )
+        try:
+            cache_sheet.hide()
+        except Exception:
+            pass
+
+    cache = {}
+    for row in cache_sheet.get_all_values()[1:]:
+        if len(row) < 2:
+            continue
+        apinn_event_id = str(row[0] or "").strip()
+        sofa_event_id = str(row[1] or "").strip()
+        if not apinn_event_id or not sofa_event_id:
+            continue
+        try:
+            cache[apinn_event_id] = int(float(sofa_event_id))
+        except (TypeError, ValueError):
+            continue
+    return cache_sheet, cache
+
+
+def append_sofa_cache(cache_sheet, rows):
+    if not rows:
+        return
+    cache_sheet.append_rows(
+        [
+            [
+                item["apinn_event_id"],
+                item["sofa_event_id"],
+                item["home"],
+                item["away"],
+                item["kickoff"].date().isoformat(),
+            ]
+            for item in rows
+        ],
+        value_input_option="USER_ENTERED",
     )
 
 
@@ -381,7 +434,7 @@ def update_results(sheet, rows, apify_token, now):
         print("SOFASCORE RESULTS: nothing to write")
 
 
-def update_votes(sheet, rows, apify_token, apinn_key, now, only_blank=False):
+def update_votes(\n    sheet, rows, book, apify_token, apinn_key, now,\n    only_blank=False, allow_fixture_lookup=True,\n):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
 
@@ -397,6 +450,7 @@ def update_votes(sheet, rows, apify_token, apinn_key, now, only_blank=False):
             continue
         sheet_by_event[event_id] = {
             "row": row_number,
+            "apinn_event_id": event_id,
             "home": row[1] if len(row) > 1 else "",
             "away": row[2] if len(row) > 2 else "",
             "favorite_side": row[3] if len(row) > 3 else "",
@@ -451,35 +505,67 @@ def update_votes(sheet, rows, apify_token, apinn_key, now, only_blank=False):
         print("SOFASCORE: no upcoming matches for this snapshot")
         return True
 
-    fixture_pool = []
-    dates = sorted({item["sofa_date"] for item in candidates})
-    for date_str in dates:
-        tids = {
-            item["tournament_id"] for item in candidates
-            if item["sofa_date"] == date_str
-        }
-        fixtures = fetch_fixtures(apify_token, date_str, tids)
-        fixture_pool.extend(fixtures)
-        print(
-            "SOFASCORE FIXTURES:", date_str,
-            "| tournaments:", sorted(tids), "| matches:", len(fixtures),
-        )
+    cache_sheet, sofa_cache = load_sofa_cache(book)
 
     matched = []
+    needs_lookup = []
     for item in candidates:
-        fixture = find_sofa_match(
-            item["home"], item["away"], item["kickoff"], fixture_pool
-        )
-        if not fixture:
-            print("SOFASCORE MATCH NOT FOUND:", item["home"], "vs", item["away"])
-            continue
-        sofa_event_id = fixture.get("eventId")
-        if not sofa_event_id:
-            continue
-        matched.append({**item, "sofa_event_id": int(sofa_event_id)})
+        cached_id = sofa_cache.get(item["apinn_event_id"])
+        if cached_id:
+            matched.append({**item, "sofa_event_id": cached_id})
+            print(
+                "SOFASCORE CACHE HIT:", item["home"], "vs", item["away"],
+                "| sofa event:", cached_id,
+            )
+        else:
+            needs_lookup.append(item)
+
+    newly_cached = []
+    if needs_lookup and allow_fixture_lookup:
+        fixture_pool = []
+        dates = sorted({item["sofa_date"] for item in needs_lookup})
+        for date_str in dates:
+            tids = {
+                item["tournament_id"] for item in needs_lookup
+                if item["sofa_date"] == date_str
+            }
+            fixtures = fetch_fixtures(apify_token, date_str, tids)
+            fixture_pool.extend(fixtures)
+            print(
+                "SOFASCORE FIXTURES:", date_str,
+                "| tournaments:", sorted(tids), "| matches:", len(fixtures),
+            )
+
+        for item in needs_lookup:
+            fixture = find_sofa_match(
+                item["home"], item["away"], item["kickoff"], fixture_pool
+            )
+            if not fixture:
+                print(
+                    "SOFASCORE MATCH NOT FOUND:",
+                    item["home"], "vs", item["away"],
+                )
+                continue
+            sofa_event_id = fixture.get("eventId")
+            if not sofa_event_id:
+                continue
+            cached_item = {**item, "sofa_event_id": int(sofa_event_id)}
+            matched.append(cached_item)
+            newly_cached.append(cached_item)
+            sofa_cache[item["apinn_event_id"]] = int(sofa_event_id)
+            print(
+                "SOFASCORE MATCH:", item["home"], "vs", item["away"],
+                "| sofa event:", sofa_event_id,
+            )
+
+        append_sofa_cache(cache_sheet, newly_cached)
+        if newly_cached:
+            print("SOFASCORE CACHE SAVED:", len(newly_cached), "matches")
+    elif needs_lookup:
         print(
-            "SOFASCORE MATCH:", item["home"], "vs", item["away"],
-            "| sofa event:", sofa_event_id,
+            "SOFASCORE CACHE MISS:",
+            len(needs_lookup),
+            "matches skipped until next full 13:00/17:00 lookup",
         )
 
     if not matched:
@@ -569,7 +655,8 @@ def main():
     if last_slot != target_slot:
         print("SOFASCORE CATCHUP/FULL SLOT:", target_slot, "| last:", last_slot or "none")
         ok = update_votes(
-            sheet, rows, apify_token, apinn_key, now, only_blank=False
+            sheet, rows, book, apify_token, apinn_key, now,
+            only_blank=False, allow_fixture_lookup=True,
         )
         if ok:
             control.update("L1:L2", [["SOFA LAST SLOT"], [target_slot]])
@@ -580,7 +667,8 @@ def main():
     # before paid calls when there are no blanks left.
     print("SOFASCORE SLOT ALREADY DONE - checking blanks only:", target_slot)
     update_votes(
-        sheet, rows, apify_token, apinn_key, now, only_blank=True
+        sheet, rows, book, apify_token, apinn_key, now,
+        only_blank=True, allow_fixture_lookup=False,
     )
 
 
