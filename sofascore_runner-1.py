@@ -434,7 +434,10 @@ def update_results(sheet, rows, apify_token, now):
         print("SOFASCORE RESULTS: nothing to write")
 
 
-def update_votes(\n    sheet, rows, book, apify_token, apinn_key, now,\n    only_blank=False, allow_fixture_lookup=True,\n):
+def update_votes(
+    sheet, rows, book, apify_token, apinn_key, now,
+    only_blank=False, allow_fixture_lookup=True,
+):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
 
