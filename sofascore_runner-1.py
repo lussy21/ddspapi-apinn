@@ -698,11 +698,12 @@ def main():
     control = book.worksheet("ALERT STATS")
 
     # One full daily SofaScore vote snapshot for ALL today's upcoming matches.
-    # 13:00 Greece time is used because the votes are usually populated by then.
-    initial_slot = f"{now.date().isoformat()}-13"
+    # Target time: 12:30 Greece time.
+    initial_slot = f"{now.date().isoformat()}-1230"
     last_initial_slot = str(control.acell("L2").value or "").strip()
 
-    if now.hour >= 13 and last_initial_slot != initial_slot:
+    after_initial_time = (now.hour, now.minute) >= (12, 30)
+    if after_initial_time and last_initial_slot != initial_slot:
         print(
             "SOFASCORE DAILY FULL SNAPSHOT:",
             initial_slot,
@@ -716,7 +717,7 @@ def main():
         if ok:
             control.update(
                 "L1:L2",
-                [["SOFA DAILY 13:00"], [initial_slot]],
+                [["SOFA DAILY 12:30"], [initial_slot]],
             )
             print("SOFASCORE DAILY SLOT SAVED:", initial_slot)
             rows = sheet.get_all_values()
