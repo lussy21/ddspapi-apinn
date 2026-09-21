@@ -325,6 +325,73 @@ for match in matches:
 
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
 
+    # NEW DATA-DRIVEN ALERTS.
+    # Existing strong alerts keep priority. These formulas are refreshed
+    # for each active match and only become eligible near the close.
+    excluded_new_alert_leagues = (
+        "^(Finland|Norway|Sweden|Denmark|Scotland|USA|Brazil|Argentina) - "
+    )
+
+    new_fav_turnover_formula = (
+        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
+        f'ISNUMBER($E{row_number});$E{row_number}>=1,2;$E{row_number}<=1,5;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>=65);'
+        '"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ";"")'
+    )
+
+    new_fav_sofa_turnover_formula = (
+        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
+        f'ISNUMBER($E{row_number});$E{row_number}>=1,2;$E{row_number}<=1,7;'
+        f'ISNUMBER($N{row_number});$N{row_number}>=82;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>=65);'
+        '"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ";"")'
+    )
+
+    new_contra_reversal_formula = (
+        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
+        f'ISNUMBER($E{row_number});$E{row_number}>=1,6;$E{row_number}<=2,1;'
+        f'ISNUMBER($F{row_number});ISNUMBER($G{row_number});'
+        f'$F{row_number}<=$E{row_number};$G{row_number}>=$F{row_number};'
+        f'ISNUMBER($K{row_number});ISNUMBER($W{row_number});'
+        f'$W{row_number}>0;$K{row_number}/$W{row_number}>=1,5);'
+        '"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ";"")'
+    )
+
+    alert_formula = (
+        f'=IF($BG{row_number}<>"";$BG{row_number};'
+        f'IF($BH{row_number}<>"";$BH{row_number};'
+        f'IF($BO{row_number}<>"";$BO{row_number};'
+        f'IF($BN{row_number}<>"";$BN{row_number};'
+        f'IF($BP{row_number}<>"";$BP{row_number};'
+        f'IF($BI{row_number}<>"";$BI{row_number};'
+        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number})))))))'
+    )
+
+    updates.append({
+        "range": f"BN{row_number}:BP{row_number}",
+        "values": [[
+            new_fav_turnover_formula,
+            new_fav_sofa_turnover_formula,
+            new_contra_reversal_formula,
+        ]],
+    })
+    updates.append({
+        "range": f"O{row_number}",
+        "values": [[alert_formula]],
+    })
+
+    # With the 10-minute cron, the last turnover snapshot normally lands
+    # inside this window. Mark it as close-ready so the new rules do not
+    # flash hours before kickoff.
+    if 0 < minutes_to_kickoff <= 15:
+        updates.append({
+            "range": f"BQ{row_number}",
+            "values": [["CLOSE"]],
+        })
+
     # OPEN: γράφεται μία φορά. Στόχος είναι γύρω στις 11:00.
     # Αν τα 11:00 runs χαθούν, κρατάμε την πρώτη επιτυχημένη τιμή μετά τις 11:00
     # αντί να αφήσουμε το OPEN κενό.
