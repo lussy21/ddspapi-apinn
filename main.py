@@ -451,17 +451,17 @@ for match in matches:
                     })
                     if turnover_pct is not None:
                         updates.append({
-                            "range": f"BF{row_number}",
+                            "range": f"BM{row_number}",
                             "values": [[turnover_pct]],
                         })
 
                     # Keep the in-memory sheet snapshot current so the next
                     # match in the same league is ranked against fresh values.
-                    while len(sheet_rows[row_number - 1]) < 58:
+                    while len(sheet_rows[row_number - 1]) < 65:
                         sheet_rows[row_number - 1].append("")
                     sheet_rows[row_number - 1][10] = turnover
                     if turnover_pct is not None:
-                        sheet_rows[row_number - 1][57] = turnover_pct
+                        sheet_rows[row_number - 1][64] = turnover_pct
 
                     print(
                         "TURNOVER PERCENTILE:",
