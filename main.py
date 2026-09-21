@@ -333,7 +333,7 @@ for match in matches:
     )
 
     new_fav_turnover_formula = (
-        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'=IF(AND('
         f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
         f'ISNUMBER($E{row_number});$E{row_number}>=1,2;$E{row_number}<=1,5;'
         f'ISNUMBER($BM{row_number});$BM{row_number}>=65);'
@@ -341,7 +341,7 @@ for match in matches:
     )
 
     new_fav_sofa_turnover_formula = (
-        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'=IF(AND('
         f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
         f'ISNUMBER($E{row_number});$E{row_number}>=1,2;$E{row_number}<=1,7;'
         f'ISNUMBER($N{row_number});$N{row_number}>=82;'
@@ -350,7 +350,7 @@ for match in matches:
     )
 
     new_contra_reversal_formula = (
-        f'=IF(AND($P{row_number}="";$BQ{row_number}="CLOSE";'
+        f'=IF(AND('
         f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
         f'ISNUMBER($E{row_number});$E{row_number}>=1,6;$E{row_number}<=2,1;'
         f'ISNUMBER($F{row_number});ISNUMBER($G{row_number});'
@@ -363,9 +363,9 @@ for match in matches:
     alert_formula = (
         f'=IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
-        f'IF($BO{row_number}<>"";$BO{row_number};'
-        f'IF($BN{row_number}<>"";$BN{row_number};'
-        f'IF($BP{row_number}<>"";$BP{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
         f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number})))))))'
     )
