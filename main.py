@@ -356,7 +356,7 @@ for match in matches:
         f'ISNUMBER($F{row_number});ISNUMBER($G{row_number});'
         f'$F{row_number}<=$E{row_number};$G{row_number}>=$F{row_number};'
         f'ISNUMBER($K{row_number});ISNUMBER($W{row_number});'
-        f'$W{row_number}>0;$K{row_number}/$W{row_number}>=1,5);'
+        f'$W{row_number}>0;IFERROR($K{row_number}/$W{row_number}>=1,5;FALSE));'
         '"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ";"")'
     )
 
