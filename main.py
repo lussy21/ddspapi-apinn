@@ -106,6 +106,25 @@ def turnover_percentile(sheet_rows, row_number, league_name, turnover):
     values.append(current)
     return percentile_rank_inc(values, current)
 
+def turnover_90_percentile(sheet_rows, row_number, league_name, turnover):
+    """Rank the 90-minute turnover against 90-minute snapshots from the same league."""
+    values = []
+    for idx, row in enumerate(sheet_rows, start=1):
+        if idx == row_number:
+            continue
+        if not row or str(row[0]).strip() != str(league_name).strip():
+            continue
+        if len(row) > 22:
+            value = _as_float(row[22])
+            if value is not None:
+                values.append(value)
+
+    current = _as_float(turnover)
+    if current is None:
+        return None
+    values.append(current)
+    return percentile_rank_inc(values, current)
+
 TARGET_LEAGUE_IDS = {
     1980,    # England - Premier League
     1842,    # Germany - Bundesliga
@@ -384,16 +403,38 @@ for match in matches:
                 # Αν χαθεί το ακριβές 85-95' παράθυρο, κρατάμε το πρώτο
                 # διαθέσιμο snapshot πριν τη σέντρα.
                 if 0 < minutes_to_kickoff <= 95 and not snap90_already:
+                    turnover_90_pct = turnover_90_percentile(
+                        sheet_rows, row_number, league_name, turnover
+                    )
+
                     updates.append({
                         "range": f"W{row_number}:Y{row_number}",
                         "values": [[turnover, favorite_pct, contra_pct]],
                     })
+                    if turnover_90_pct is not None:
+                        updates.append({
+                            "range": f"BL{row_number}",
+                            "values": [[turnover_90_pct]],
+                        })
+
+                    while len(sheet_rows[row_number - 1]) < 64:
+                        sheet_rows[row_number - 1].append("")
+                    sheet_rows[row_number - 1][22] = turnover
+                    if turnover_90_pct is not None:
+                        sheet_rows[row_number - 1][63] = turnover_90_pct
+
                     print(
                         "ARBWORLD 90 SNAPSHOT:",
                         home, "vs", away,
                         "| turnover:", turnover,
                         "| fav%:", favorite_pct,
                         "| contra%:", contra_pct,
+                    )
+                    print(
+                        "TURNOVER 90 PERCENTILE:",
+                        home, "vs", away,
+                        "| league:", league_name,
+                        "| pct:", turnover_90_pct,
                     )
 
                 # CLOSE:
