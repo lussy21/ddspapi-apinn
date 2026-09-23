@@ -382,6 +382,23 @@ for match in matches:
 
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
 
+    # Preserve any hand-written note in Q. Automatic multi-alert details are
+    # rendered from hidden helpers, while the original manual text lives in BW.
+    existing_comment = (
+        str(current_row[16]).strip() if len(current_row) > 16 else ""
+    )
+    stored_manual_comment = (
+        str(current_row[74]).strip() if len(current_row) > 74 else ""
+    )
+    auto_comment_visible = (
+        existing_comment.startswith("⚡") or " | ⚡" in existing_comment
+    )
+    if existing_comment and not stored_manual_comment and not auto_comment_visible:
+        updates.append({
+            "range": f"BW{row_number}",
+            "values": [[existing_comment]],
+        })
+
     # NEW DATA-DRIVEN ALERTS.
     # Existing strong alerts keep priority. These formulas are refreshed
     # for each active match and only become eligible near the close.
@@ -440,8 +457,41 @@ for match in matches:
         '"🔔 ΤΖΙΡΟΣ ↑";"")'
     )
 
-    alert_formula = (
-        f'=IF($BG{row_number}<>"";$BG{row_number};'
+    # Existing STRONG / SIMPLE / WATCH rules are hierarchical. Count only
+    # the highest active one from that family so a strong alert is not
+    # artificially counted again as simple/watch. Independent turnover/model
+    # alerts count separately.
+    alert_count_formula = (
+        f'=IF(IF($BG{row_number}<>"";$BG{row_number};$BH{row_number})<>"";1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");1;0)'
+        f'+IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");1;0)'
+        f'+IF(AND($BG{row_number}="";$BH{row_number}="";'
+        f'IF($BI{row_number}<>"";$BI{row_number};$BJ{row_number})<>"");1;0)'
+        f'+IF(AND($BG{row_number}="";$BH{row_number}="";'
+        f'$BI{row_number}="";$BJ{row_number}="";$BK{row_number}<>"");1;0)'
+    )
+
+    alert_list_formula = (
+        f'=TEXTJOIN(" | ";TRUE;'
+        f'IF($BG{row_number}<>"";$BG{row_number};$BH{row_number});'
+        f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};"");'
+        f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};"");'
+        f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};"");'
+        f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};"");'
+        f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};"");'
+        f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};"");'
+        f'IF(AND($BG{row_number}="";$BH{row_number}="");'
+        f'IF($BI{row_number}<>"";$BI{row_number};$BJ{row_number});"");'
+        f'IF(AND($BG{row_number}="";$BH{row_number}="";'
+        f'$BI{row_number}="";$BJ{row_number}="");$BK{row_number};""))'
+    )
+
+    primary_alert_expr = (
+        f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};'
@@ -451,6 +501,15 @@ for match in matches:
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
         f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))'
+    )
+    alert_formula = (
+        f'=IF($BU{row_number}>=2;"⚡"&$BU{row_number};{primary_alert_expr})'
+    )
+    comment_formula = (
+        f'=IF($BU{row_number}>=2;'
+        f'IF($BW{row_number}<>"";$BW{row_number}&" | ⚡"&$BU{row_number}&": "&$BV{row_number};'
+        f'"⚡"&$BU{row_number}&": "&$BV{row_number});'
+        f'$BW{row_number})'
     )
 
     updates.append({
@@ -462,16 +521,22 @@ for match in matches:
         ]],
     })
     updates.append({
-        "range": f"BR{row_number}:BT{row_number}",
+        "range": f"BR{row_number}:BV{row_number}",
         "values": [[
             fav_60_formula,
             fav_75_formula,
             turnover_up_formula,
+            alert_count_formula,
+            alert_list_formula,
         ]],
     })
     updates.append({
         "range": f"O{row_number}",
         "values": [[alert_formula]],
+    })
+    updates.append({
+        "range": f"Q{row_number}",
+        "values": [[comment_formula]],
     })
 
     # With the 10-minute cron, the last turnover snapshot normally lands
