@@ -87,7 +87,9 @@ def percentile_rank_inc(values, x):
     return round(rank * 100, 1)
 
 
-def turnover_percentile(sheet_rows, row_number, league_name, turnover):
+def turnover_percentile(
+                        sheet_rows, row_number, sheet_league_name, turnover
+                    ):
     """Rank current turnover only against the same league, replacing this row's old K."""
     values = []
     for idx, row in enumerate(sheet_rows, start=1):
@@ -106,7 +108,9 @@ def turnover_percentile(sheet_rows, row_number, league_name, turnover):
     values.append(current)
     return percentile_rank_inc(values, current)
 
-def turnover_90_percentile(sheet_rows, row_number, league_name, turnover):
+def turnover_90_percentile(
+                        sheet_rows, row_number, sheet_league_name, turnover
+                    ):
     """Rank the 90-minute turnover against 90-minute snapshots from the same league."""
     values = []
     for idx, row in enumerate(sheet_rows, start=1):
@@ -151,6 +155,51 @@ TARGET_LEAGUE_NAMES = {
     "UEFA - Conference League",
 }
 
+NATIONAL_COMPETITION_TERMS = (
+    "nations league",
+    "world cup",
+    "international friendly",
+    "international friendlies",
+    "friendly international",
+    "fifa internationals",
+    "fifa - internationals",
+    "friendlies",
+    "european championship",
+    "euro qualifier",
+    "euro qualification",
+    "euro qualifying",
+    "copa america",
+    "africa cup of nations",
+    "african cup of nations",
+    "afcon",
+    "asian cup",
+    "gold cup",
+    "concacaf nations",
+)
+
+NATIONAL_COMPETITION_EXCLUSIONS = (
+    "club world cup",
+    "club friendly",
+    "women",
+    "u17",
+    "u18",
+    "u19",
+    "u20",
+    "u21",
+    "u22",
+    "u23",
+    "youth",
+    "olympic",
+)
+
+def is_national_team_competition(league_name):
+    name = str(league_name or "").strip().lower()
+    if not name:
+        return False
+    if any(term in name for term in NATIONAL_COMPETITION_EXCLUSIONS):
+        return False
+    return any(term in name for term in NATIONAL_COMPETITION_TERMS)
+
 NOW = datetime.now(GREECE_TZ)
 TODAY = NOW.date()
 DAY_START = NOW.replace(hour=11, minute=0, second=0, microsecond=0)
@@ -191,7 +240,11 @@ response = apinn_get(
 
 if response is not None:
     for match in response.json():
-        if match.get("league_name") not in TARGET_LEAGUE_NAMES:
+        league_name = match.get("league_name") or ""
+        if (
+            league_name not in TARGET_LEAGUE_NAMES
+            and not is_national_team_competition(league_name)
+        ):
             continue
 
         event_id = match.get("event_id")
@@ -239,6 +292,10 @@ for match in matches:
     away = match.get("runner_away")
     event_id = match.get("event_id")
     league_name = match.get("league_name") or ""
+    national_match = is_national_team_competition(league_name)
+    sheet_league_name = (
+        f"ΕΘΝΙΚΕΣ - {league_name}" if national_match else league_name
+    )
 
     moneyline = (match.get("odds") or {}).get("moneyline") or {}
     odd1 = moneyline.get("odds1")
@@ -293,7 +350,7 @@ for match in matches:
         event_rows[event_id_text] = row_number
 
         new_row = [
-            league_name,
+            sheet_league_name,
             home,
             away,
             fav_side,
@@ -471,7 +528,7 @@ for match in matches:
                 # διαθέσιμο snapshot πριν τη σέντρα.
                 if 0 < minutes_to_kickoff <= 95 and not snap90_already:
                     turnover_90_pct = turnover_90_percentile(
-                        sheet_rows, row_number, league_name, turnover
+                        sheet_rows, row_number, sheet_league_name, turnover
                     )
 
                     updates.append({
@@ -509,7 +566,7 @@ for match in matches:
                 # Στα τελευταία <5' δεν αλλάζει ξανά.
                 if minutes_to_kickoff >= 5:
                     turnover_pct = turnover_percentile(
-                        sheet_rows, row_number, league_name, turnover
+                        sheet_rows, row_number, sheet_league_name, turnover
                     )
 
                     updates.append({
