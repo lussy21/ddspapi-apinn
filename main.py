@@ -1,10 +1,11 @@
 import os
 import bisect
+import math
 import time
 import requests
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from arbworld import fetch_today as fetch_arbworld_today
@@ -128,6 +129,468 @@ def turnover_90_percentile(
         return None
     values.append(current)
     return percentile_rank_inc(values, current)
+
+
+SELECTOR_COL = "BX"
+SELECTOR_FAV_TOKENS = {
+    "STRONG_FAV", "FAV", "WATCH_FAV", "FAV_TURN",
+    "FAV_SOFA_TURN", "FAV60", "FAV75", "TURN_UP",
+}
+SELECTOR_CONTRA_TOKENS = {
+    "STRONG_CONTRA", "STRONG_CONTRA10", "CONTRA",
+    "WATCH_CONTRA", "CONTRA_REVERSAL",
+}
+
+def _selector_num(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace("%", "")
+    if not text:
+        return None
+    if "," in text and "." in text:
+        text = text.replace(".", "").replace(",", ".")
+    elif "," in text:
+        text = text.replace(",", ".")
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _selector_result(value):
+    """Parse score text, including old score cells auto-converted to date serials."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+
+    normalized = text.replace("–", "-").replace("—", "-")
+    parts = [part.strip() for part in normalized.split("-")]
+    if len(parts) == 2 and all(part.isdigit() for part in parts):
+        return int(parts[0]), int(parts[1])
+
+    slash = [part.strip() for part in text.split("/")]
+    if len(slash) >= 2 and slash[0].isdigit() and slash[1].isdigit():
+        home_goals = int(slash[0])
+        away_goals = int(slash[1])
+        if 0 <= home_goals <= 20 and 0 <= away_goals <= 20:
+            return home_goals, away_goals
+
+    serial = _selector_num(text)
+    if serial is not None and 30000 <= serial <= 60000:
+        try:
+            date_value = datetime(1899, 12, 30) + timedelta(days=int(serial))
+            if 0 <= date_value.day <= 20 and 1 <= date_value.month <= 12:
+                return date_value.day, date_value.month
+        except (OverflowError, ValueError):
+            pass
+    return None
+
+
+def _selector_favorite_won(row):
+    if len(row) <= 15:
+        return None
+    score = _selector_result(row[15])
+    if score is None:
+        return None
+    side = str(row[3]).strip().upper() if len(row) > 3 else ""
+    home_goals, away_goals = score
+    if side == "H":
+        return home_goals > away_goals
+    if side == "A":
+        return away_goals > home_goals
+    return None
+
+
+def _selector_tokens_from_text(text):
+    tokens = []
+    for raw in str(text or "").split("|"):
+        part = raw.strip().upper()
+        if not part:
+            continue
+        token = None
+        if "ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)" in part:
+            token = "STRONG_CONTRA10"
+        elif "ΔΥΝΑΤΟ ΚΟΝΤΡΑ" in part:
+            token = "STRONG_CONTRA"
+        elif "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ" in part:
+            token = "CONTRA_REVERSAL"
+        elif "WATCH ΚΟΝΤΡΑ" in part:
+            token = "WATCH_CONTRA"
+        elif "ΚΟΝΤΡΑ" in part:
+            token = "CONTRA"
+        elif "ΔΥΝΑΤΟ ΦΑΒΟΡΙ" in part:
+            token = "STRONG_FAV"
+        elif "ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ" in part:
+            token = "FAV_SOFA_TURN"
+        elif "ΦΑΒΟΡΙ ΤΖΙΡΟΥ" in part:
+            token = "FAV_TURN"
+        elif "ΦΑΒ 75+" in part:
+            token = "FAV75"
+        elif "ΦΑΒ 60+" in part:
+            token = "FAV60"
+        elif "ΤΖΙΡΟΣ ↑" in part:
+            token = "TURN_UP"
+        elif "WATCH ΦΑΒΟΡΙ" in part:
+            token = "WATCH_FAV"
+        elif "ΦΑΒΟΡΙ" in part:
+            token = "FAV"
+        if token and token not in tokens:
+            tokens.append(token)
+    return tokens
+
+
+def _selector_visible_alert_text(row):
+    primary = str(row[14]).strip() if len(row) > 14 else ""
+    details = str(row[73]).strip() if len(row) > 73 else ""
+    return details or primary
+
+
+def _selector_reconstructed_tokens(row):
+    """Rebuild the alert profile from pre-match fields for historical learning."""
+    e = _selector_num(row[4]) if len(row) > 4 else None
+    f90 = _selector_num(row[5]) if len(row) > 5 else None
+    g = _selector_num(row[6]) if len(row) > 6 else None
+    h = _selector_num(row[7]) if len(row) > 7 else None
+    j = _selector_num(row[9]) if len(row) > 9 else None
+    k = _selector_num(row[10]) if len(row) > 10 else None
+    l = _selector_num(row[11]) if len(row) > 11 else None
+    n = _selector_num(row[13]) if len(row) > 13 else None
+    w = _selector_num(row[22]) if len(row) > 22 else None
+    bl = _selector_num(row[63]) if len(row) > 63 else None
+    bm = _selector_num(row[64]) if len(row) > 64 else None
+    tokens = []
+
+    if e is not None and l is not None and n is not None:
+        if 1.5 <= e <= 2.4 and l < 60 and n >= 50:
+            tokens.append("STRONG_CONTRA")
+        elif 1.7 <= e <= 2.4 and l <= 70 and n >= 50 and (n - l) >= 10:
+            tokens.append("STRONG_CONTRA10")
+        elif 1.25 <= e <= 1.9 and l >= 90 and n >= 82:
+            tokens.append("STRONG_FAV")
+        elif 1.5 <= e <= 2.4 and l <= 70 and n >= 50 and n >= l:
+            tokens.append("CONTRA")
+        elif 1.25 <= e <= 1.9 and l >= 80 and n >= 82:
+            tokens.append("FAV")
+        elif 1.5 <= e <= 2.4 and l < 75 and n >= 65 and n > l:
+            tokens.append("WATCH_CONTRA")
+        elif 1.25 <= e <= 2.1 and l >= 80 and n >= 75:
+            tokens.append("WATCH_FAV")
+
+    if e is not None and bm is not None:
+        if 1.2 <= e <= 1.5 and bm >= 65:
+            tokens.append("FAV_TURN")
+        if 1.2 <= e <= 1.7 and n is not None and n >= 82 and bm >= 65:
+            tokens.append("FAV_SOFA_TURN")
+        if e <= 1.7 and bm >= 75:
+            tokens.append("FAV75")
+        elif e <= 1.7 and bm >= 60:
+            tokens.append("FAV60")
+
+    if (
+        e is not None and f90 is not None and g is not None
+        and k is not None and w is not None and w > 0
+        and 1.6 <= e <= 2.1 and f90 <= e and g >= f90
+        and (k / w) >= 1.5
+    ):
+        tokens.append("CONTRA_REVERSAL")
+
+    if bl is not None and bm is not None and bl <= 75 and bm > 75:
+        tokens.append("TURN_UP")
+
+    return list(dict.fromkeys(tokens))
+
+
+def _selector_signature(row, prefer_visible=False):
+    visible = _selector_tokens_from_text(_selector_visible_alert_text(row))
+    if prefer_visible and visible:
+        return visible
+    combined = _selector_reconstructed_tokens(row)
+    for token in visible:
+        if token not in combined:
+            combined.append(token)
+    return combined
+
+
+def _selector_side(tokens, alert_text=""):
+    # For a multi-alert row, the first visible signal is the same primary family
+    # used by the sheet. This only resolves rare opposite-side combinations.
+    visible = _selector_tokens_from_text(alert_text)
+    ordered = visible or list(tokens)
+    for token in ordered:
+        if token in SELECTOR_CONTRA_TOKENS:
+            return "CONTRA"
+        if token in SELECTOR_FAV_TOKENS:
+            return "FAV"
+    return None
+
+
+def _selector_league_bucket(row):
+    league = str(row[0]).strip() if row else ""
+    if league.startswith("ΕΘΝΙΚΕΣ - "):
+        return "NATIONAL"
+    if league.startswith(("USA - ", "Brazil - ", "Argentina - ")):
+        return "AMERICA"
+    if league.startswith(("Finland - ", "Norway - ", "Sweden - ", "Denmark - ", "Scotland - ")):
+        return "OTHER_EUROPE"
+    return "MAIN"
+
+
+def _selector_features(row):
+    def n(index):
+        return _selector_num(row[index]) if len(row) > index else None
+
+    e, f90, g = n(4), n(5), n(6)
+    h, i90, j = n(7), n(8), n(9)
+    k, fav_pct, sofa = n(10), n(11), n(13)
+    w, fav90 = n(22), n(23)
+    bl, bm = n(63), n(64)
+
+    features = {
+        "open_fav": e,
+        "close_fav": g if g is not None else (f90 if f90 is not None else e),
+        "open_contra": h,
+        "close_contra": j if j is not None else (i90 if i90 is not None else h),
+        "fav_pct": fav_pct,
+        "sofa": sofa,
+        "turn90_pct": bl,
+        "turn_pct": bm,
+        "fav_home": 1.0 if len(row) > 3 and str(row[3]).strip().upper() == "H" else 0.0,
+    }
+    if e and g:
+        features["fav_move"] = (g - e) / e
+    else:
+        features["fav_move"] = None
+    if h and j:
+        features["contra_move"] = (j - h) / h
+    else:
+        features["contra_move"] = None
+    if k and w:
+        features["turn_growth"] = k / w
+    else:
+        features["turn_growth"] = None
+    if fav_pct is not None and fav90 is not None:
+        features["fav_pct_move"] = fav_pct - fav90
+    else:
+        features["fav_pct_move"] = None
+    if sofa is not None and fav_pct is not None:
+        features["sofa_gap"] = sofa - fav_pct
+    else:
+        features["sofa_gap"] = None
+    return features
+
+
+def _selector_scales(records):
+    keys = set()
+    for record in records:
+        keys.update(record["features"].keys())
+    scales = {}
+    for key in keys:
+        values = [
+            record["features"].get(key)
+            for record in records
+            if record["features"].get(key) is not None
+        ]
+        if len(values) < 2:
+            scales[key] = 1.0
+            continue
+        mean = sum(values) / len(values)
+        variance = sum((value - mean) ** 2 for value in values) / len(values)
+        scales[key] = max(math.sqrt(variance), 0.01)
+    return scales
+
+
+def _selector_distance(candidate, historical, scales):
+    squared = []
+    for key, value in candidate["features"].items():
+        other = historical["features"].get(key)
+        if value is None or other is None:
+            continue
+        scale = scales.get(key, 1.0)
+        squared.append(((value - other) / scale) ** 2)
+
+    if len(squared) < 4:
+        return None
+    distance = math.sqrt(sum(squared) / len(squared))
+
+    current_tokens = set(candidate["tokens"])
+    old_tokens = set(historical["tokens"])
+    union = current_tokens | old_tokens
+    if union:
+        overlap = len(current_tokens & old_tokens) / len(union)
+        distance += 0.75 * (1.0 - overlap)
+
+    if candidate["league_bucket"] != historical["league_bucket"]:
+        distance += 0.20
+    return distance
+
+
+def _selector_score(candidate, historical_rows):
+    side = candidate["side"]
+    eligible = []
+    for record in historical_rows:
+        tokens = set(record["tokens"])
+        if side == "FAV" and not (tokens & SELECTOR_FAV_TOKENS):
+            continue
+        if side == "CONTRA" and not (tokens & SELECTOR_CONTRA_TOKENS):
+            continue
+        eligible.append(record)
+
+    if len(eligible) < 8:
+        eligible = list(historical_rows)
+    if not eligible:
+        return None, None
+
+    scales = _selector_scales(eligible)
+    distances = []
+    for record in eligible:
+        distance = _selector_distance(candidate, record, scales)
+        if distance is not None:
+            distances.append((distance, record))
+    if not distances:
+        return None, None
+
+    distances.sort(key=lambda item: item[0])
+    k = min(18, max(8, int(math.sqrt(len(distances)) * 2.5)))
+    nearest = distances[:k]
+
+    weighted_total = 0.0
+    weight_sum = 0.0
+    for distance, record in nearest:
+        weight = 1.0 / (0.35 + distance)
+        fav_won = record["fav_won"]
+        success = fav_won if side == "FAV" else not fav_won
+        weighted_total += weight * (1.0 if success else 0.0)
+        weight_sum += weight
+
+    if weight_sum <= 0:
+        return None, None
+
+    # Small shrink toward the relevant historical base so tiny neighbour sets
+    # cannot dominate the ranking. The score is internal; the sheet shows rank only.
+    successes = [
+        (r["fav_won"] if side == "FAV" else not r["fav_won"])
+        for r in eligible
+    ]
+    base = sum(1.0 for success in successes if success) / len(successes)
+    score = (weighted_total + (3.0 * base)) / (weight_sum + 3.0)
+    avg_distance = sum(distance for distance, _ in nearest) / len(nearest)
+    return score, avg_distance
+
+
+def update_selector_ranking(sheet, all_rows, matches, now):
+    """Rank only today's upcoming rows with a live alert; restart at 1 each day."""
+    historical = []
+    for row_number, row in enumerate(all_rows[2:], start=3):
+        fav_won = _selector_favorite_won(row)
+        if fav_won is None:
+            continue
+        tokens = _selector_signature(row, prefer_visible=False)
+        if not tokens:
+            continue
+        historical.append({
+            "row": row_number,
+            "features": _selector_features(row),
+            "tokens": tokens,
+            "league_bucket": _selector_league_bucket(row),
+            "fav_won": fav_won,
+        })
+
+    row_by_event = {}
+    for row_number, row in enumerate(all_rows, start=1):
+        if len(row) > 17 and str(row[17]).strip():
+            row_by_event[str(row[17]).strip()] = row_number
+
+    upcoming_rows = []
+    for match in matches:
+        starts = match.get("starts")
+        event_id = match.get("event_id")
+        if not starts or event_id is None:
+            continue
+        try:
+            kickoff = datetime.fromisoformat(
+                starts.replace("Z", "+00:00")
+            ).astimezone(GREECE_TZ)
+        except ValueError:
+            continue
+        if kickoff.date() != now.date() or kickoff <= now:
+            continue
+        row_number = row_by_event.get(str(event_id))
+        if row_number:
+            upcoming_rows.append(row_number)
+
+    selector_updates = []
+    candidates = []
+    for row_number in sorted(set(upcoming_rows)):
+        row = all_rows[row_number - 1]
+        alert_text = _selector_visible_alert_text(row)
+        if not alert_text or alert_text.startswith("#"):
+            selector_updates.append({
+                "range": f"{SELECTOR_COL}{row_number}",
+                "values": [[""]],
+            })
+            continue
+
+        tokens = _selector_signature(row, prefer_visible=True)
+        side = _selector_side(tokens, alert_text)
+        if side is None:
+            selector_updates.append({
+                "range": f"{SELECTOR_COL}{row_number}",
+                "values": [[""]],
+            })
+            continue
+
+        candidate = {
+            "row": row_number,
+            "features": _selector_features(row),
+            "tokens": tokens,
+            "league_bucket": _selector_league_bucket(row),
+            "side": side,
+        }
+        score, avg_distance = _selector_score(candidate, historical)
+        candidate["score"] = -1.0 if score is None else score
+        candidate["avg_distance"] = 999.0 if avg_distance is None else avg_distance
+        candidates.append(candidate)
+
+    candidates.sort(
+        key=lambda candidate: (
+            -candidate["score"],
+            candidate["avg_distance"],
+            candidate["row"],
+        )
+    )
+
+    for rank, candidate in enumerate(candidates, start=1):
+        selector_updates.append({
+            "range": f"{SELECTOR_COL}{candidate['row']}",
+            "values": [[rank]],
+        })
+        print(
+            "SELECTOR RANK:",
+            rank,
+            "| row:", candidate["row"],
+            "| score:", round(candidate["score"], 4),
+            "| alerts:", ",".join(candidate["tokens"]),
+        )
+
+    if selector_updates:
+        sheet.batch_update(
+            selector_updates,
+            value_input_option="USER_ENTERED",
+        )
+        print(
+            "SELECTOR UPDATED:",
+            len(candidates),
+            "ranked of",
+            len(set(upcoming_rows)),
+            "upcoming rows",
+        )
+    else:
+        print("SELECTOR: NO UPCOMING ROWS")
+
 
 TARGET_LEAGUE_IDS = {
     1980,    # England - Premier League
@@ -715,3 +1178,14 @@ if updates:
     print("SHEET UPDATED:", len(updates), "ranges")
 else:
     print("NO SHEET UPDATES NEEDED")
+
+# Re-read after formula/turnover writes so the daily selector sees the current
+# alert state. Only the integer rank is shown in BX; its internal score stays hidden.
+time.sleep(1)
+try:
+    selector_rows = SHEET.get_all_values()
+    update_selector_ranking(SHEET, selector_rows, matches, NOW)
+except Exception as exc:
+    # Ranking must never stop the odds/turnover collector.
+    print("SELECTOR ERROR:", repr(exc))
+
