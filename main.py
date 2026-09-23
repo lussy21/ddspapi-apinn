@@ -446,7 +446,7 @@ for match in matches:
     fav_75_formula = (
         f'=IF(AND('
         f'ISNUMBER($E{row_number});$E{row_number}<=1,7;'
-        f'ISNUMBER($BM{row_number});$BM{row_number}>75);'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>=75);'
         '"🔔 ΦΑΒ 75+";"")'
     )
 
