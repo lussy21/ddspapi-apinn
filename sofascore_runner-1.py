@@ -174,6 +174,22 @@ def fetch_fixtures(token, date_str, tournament_ids):
     )
 
 
+def fetch_all_fixtures(token, date_str):
+    """Fallback for national-team competitions whose Sofa tournament ID is not pre-mapped."""
+    return apify_post(
+        APIFY_FIXTURES_URL, token,
+        {
+            "sports": ["football"], "liveOnly": False,
+            "dateFrom": date_str, "dateTo": date_str,
+            "maxItems": 500,
+        },
+    )
+
+
+def is_national_sheet_league(value):
+    return str(value or "").strip().lower().startswith("εθνικ")
+
+
 def fetch_votes(token, event_ids):
     ids = sorted({int(value) for value in event_ids if value})
     if not ids:
@@ -413,19 +429,23 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
         if not home or not away or str(result).strip():
             continue
         tournament_id = sheet_league_tournament_id(league)
-        if not tournament_id:
+        national_match = is_national_sheet_league(league)
+        if not tournament_id and not national_match:
             print("SOFASCORE RESULT LEAGUE NOT MAPPED:", league, "|", home, "vs", away)
             continue
         pending.append({
             "row": row_number, "league": league, "home": home, "away": away,
-            "tournament_id": tournament_id,
+            "tournament_id": tournament_id, "national_match": national_match,
         })
 
     if not pending:
         print("SOFASCORE RESULTS: no blank results to check")
         return
 
-    tournament_ids = {item["tournament_id"] for item in pending}
+    tournament_ids = {
+        item["tournament_id"] for item in pending if item["tournament_id"]
+    }
+    has_national_pending = any(item["national_match"] for item in pending)
     if result_dates is None:
         if now.hour == 7:
             result_dates = [
@@ -439,9 +459,16 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
     for date_str in result_dates:
         fixtures = fetch_fixtures(apify_token, date_str, tournament_ids)
         fixture_pool.extend(fixtures)
+        if has_national_pending:
+            national_fixtures = fetch_all_fixtures(apify_token, date_str)
+            fixture_pool.extend(national_fixtures)
+        else:
+            national_fixtures = []
         print(
             "SOFASCORE RESULT FIXTURES:", date_str,
-            "| tournaments:", sorted(tournament_ids), "| matches:", len(fixtures),
+            "| tournaments:", sorted(tournament_ids),
+            "| mapped:", len(fixtures),
+            "| all-for-nationals:", len(national_fixtures),
         )
 
     if not fixture_pool:
@@ -457,7 +484,11 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
                 fixture_tid = int(tournament.get("uniqueTournamentId") or 0)
             except (TypeError, ValueError):
                 fixture_tid = 0
-            if fixture_tid and fixture_tid != item["tournament_id"]:
+            if (
+                not item["national_match"]
+                and fixture_tid
+                and fixture_tid != item["tournament_id"]
+            ):
                 continue
             same_tournament.append(fixture)
 
@@ -507,6 +538,7 @@ def update_votes(
             "home": row[1] if len(row) > 1 else "",
             "away": row[2] if len(row) > 2 else "",
             "favorite_side": row[3] if len(row) > 3 else "",
+            "league": row[0] if len(row) > 0 else "",
             "sofa_value": sofa_value,
         }
 
@@ -545,8 +577,11 @@ def update_votes(
             low, high = minutes_window
             if not (low <= minutes_to_kickoff <= high):
                 continue
-        tournament_id = sofa_tournament_id(match.get("league_id"), match.get("league_name"))
-        if not tournament_id:
+        tournament_id = sofa_tournament_id(
+            match.get("league_id"), match.get("league_name")
+        )
+        national_match = is_national_sheet_league(sheet_item.get("league"))
+        if not tournament_id and not national_match:
             print(
                 "SOFASCORE TOURNAMENT NOT MAPPED:",
                 match.get("league_name"), match.get("league_id"),
@@ -556,6 +591,7 @@ def update_votes(
             **sheet_item,
             "kickoff": kickoff,
             "tournament_id": tournament_id,
+            "national_match": national_match,
             "sofa_date": kickoff.astimezone(UTC_TZ).date().isoformat(),
         })
 
@@ -592,15 +628,25 @@ def update_votes(
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
+            date_items = [
+                item for item in needs_lookup if item["sofa_date"] == date_str
+            ]
             tids = {
-                item["tournament_id"] for item in needs_lookup
-                if item["sofa_date"] == date_str
+                item["tournament_id"] for item in date_items
+                if item["tournament_id"]
             }
             fixtures = fetch_fixtures(apify_token, date_str, tids)
             fixture_pool.extend(fixtures)
+            if any(item["national_match"] for item in date_items):
+                national_fixtures = fetch_all_fixtures(apify_token, date_str)
+                fixture_pool.extend(national_fixtures)
+            else:
+                national_fixtures = []
             print(
                 "SOFASCORE FIXTURES:", date_str,
-                "| tournaments:", sorted(tids), "| matches:", len(fixtures),
+                "| tournaments:", sorted(tids),
+                "| mapped:", len(fixtures),
+                "| all-for-nationals:", len(national_fixtures),
             )
 
         for item in needs_lookup:
