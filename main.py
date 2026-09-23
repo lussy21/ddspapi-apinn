@@ -417,14 +417,40 @@ for match in matches:
         '"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ";"")'
     )
 
+    # Turnover alerts discovered from the historical PINNACLE sample.
+    # They are tracked for every league category; stats pages split the results.
+    fav_60_formula = (
+        f'=IF(AND('
+        f'ISNUMBER($E{row_number});$E{row_number}<=1,7;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>=60);'
+        '"🔔 ΦΑΒ 60+";"")'
+    )
+
+    fav_75_formula = (
+        f'=IF(AND('
+        f'ISNUMBER($E{row_number});$E{row_number}<=1,7;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>75);'
+        '"🔔 ΦΑΒ 75+";"")'
+    )
+
+    turnover_up_formula = (
+        f'=IF(AND('
+        f'ISNUMBER($BL{row_number});$BL{row_number}<=75;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>75);'
+        '"🔔 ΤΖΙΡΟΣ ↑";"")'
+    )
+
     alert_formula = (
         f'=IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
-        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number})))))))'
+        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))'
     )
 
     updates.append({
@@ -433,6 +459,14 @@ for match in matches:
             new_fav_turnover_formula,
             new_fav_sofa_turnover_formula,
             new_contra_reversal_formula,
+        ]],
+    })
+    updates.append({
+        "range": f"BR{row_number}:BT{row_number}",
+        "values": [[
+            fav_60_formula,
+            fav_75_formula,
+            turnover_up_formula,
         ]],
     })
     updates.append({
