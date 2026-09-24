@@ -663,9 +663,16 @@ def is_national_team_competition(league_name):
         return False
     return any(term in name for term in NATIONAL_COMPETITION_TERMS)
 
+def betting_day_start_for(kickoff):
+    """Our daily OPEN anchor: 11:00 Greece time before the match's betting day."""
+    anchor = kickoff.replace(hour=11, minute=0, second=0, microsecond=0)
+    if kickoff < anchor:
+        anchor -= timedelta(days=1)
+    return anchor
+
+
 NOW = datetime.now(GREECE_TZ)
 TODAY = NOW.date()
-DAY_START = NOW.replace(hour=11, minute=0, second=0, microsecond=0)
 
 matches = []
 seen_events = set()
@@ -748,7 +755,11 @@ for match in matches:
         starts.replace("Z", "+00:00")
     ).astimezone(GREECE_TZ)
 
-    if kickoff.date() != TODAY:
+    match_day_start = betting_day_start_for(kickoff)
+
+    # A match belongs to our betting day from 11:00 Greece time until kickoff.
+    # Example: a 25/09 02:30 Argentina match opens for us at 24/09 11:00.
+    if NOW < match_day_start or NOW >= kickoff:
         continue
 
     home = match.get("runner_home")
@@ -1011,10 +1022,11 @@ for match in matches:
             "values": [["CLOSE"]],
         })
 
-    # OPEN: γράφεται μία φορά. Στόχος είναι γύρω στις 11:00.
-    # Αν τα 11:00 runs χαθούν, κρατάμε την πρώτη επιτυχημένη τιμή μετά τις 11:00
-    # αντί να αφήσουμε το OPEN κενό.
-    if NOW >= DAY_START and minutes_to_kickoff > 0 and not open_already:
+    # OPEN ΗΜΕΡΑΣ: γράφεται μία φορά από τις 11:00 ώρα Ελλάδας
+    # της στοιχηματικής ημέρας του αγώνα. Για ματς 00:00-10:59,
+    # το OPEN ξεκινά στις 11:00 της προηγούμενης ημερολογιακής ημέρας.
+    # Αν χαθεί το ακριβές 11:00 run, κρατάμε την πρώτη επιτυχημένη τιμή μετά.
+    if NOW >= match_day_start and minutes_to_kickoff > 0 and not open_already:
         updates.append({"range": f"E{row_number}", "values": [[fav_odd]]})
         updates.append({
             "range": f"H{row_number}",
@@ -1031,8 +1043,9 @@ for match in matches:
             "values": [["" if contra is None else contra]],
         })
 
-    # CLOSE: από τις 11:00 και μετά ανανεώνεται σε κάθε run μέχρι τη σέντρα.
-    if NOW >= DAY_START and minutes_to_kickoff > 0:
+    # CLOSE: ανανεώνεται από το OPEN ΗΜΕΡΑΣ (11:00) μέχρι τη σέντρα,
+    # ακόμη κι όταν η σέντρα είναι μετά τα μεσάνυχτα.
+    if NOW >= match_day_start and minutes_to_kickoff > 0:
         updates.append({"range": f"G{row_number}", "values": [[fav_odd]]})
         updates.append({
             "range": f"J{row_number}",
@@ -1069,7 +1082,7 @@ for match in matches:
                 # Αν χαθούν τα 11:00 runs, κρατάμε το πρώτο διαθέσιμο snapshot
                 # μετά τις 11:00 ώστε τα αρχικά πονταρίσματα να μη μένουν κενά.
                 if (
-                    NOW >= DAY_START
+                    NOW >= match_day_start
                     and minutes_to_kickoff > 0
                     and not morning_already
                 ):
