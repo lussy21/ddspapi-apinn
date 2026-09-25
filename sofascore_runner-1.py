@@ -289,17 +289,17 @@ def mark_final_done(cache_sheet, cache_rows, event_ids, now):
 def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
     cache_sheet = book.worksheet(CACHE_SHEET_NAME)
     marker = str(cache_sheet.acell("H2").value or "").strip()
-    target_marker = "RESULT CATCHUP 2026-09-19 DONE"
+    target_marker = "RESULT CATCHUP 2026-09-24 DONE"
     if marker == target_marker:
         return False
 
-    print("SOFASCORE ONE-OFF RESULT CATCHUP: 2026-09-19")
+    print("SOFASCORE ONE-OFF RESULT CATCHUP: 2026-09-24")
     update_results(
         sheet,
         rows,
         apify_token,
         now,
-        result_dates=["2026-09-19"],
+        result_dates=["2026-09-24"],
     )
     cache_sheet.update(
         "H1:H2",
