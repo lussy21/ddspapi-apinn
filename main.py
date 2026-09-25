@@ -1035,10 +1035,12 @@ for match in matches:
         f'IF($BI{row_number}<>"";$BI{row_number};'
         f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))'
     )
-    # Keep the main alert column readable: always show the primary signal.
-    # BU/BV still track how many alerts are active and list every active signal.
+    # O is the visual "at a glance" column: primary alert + selector strength.
+    # The real alert state still lives in the helper columns; BX keeps the full score/stage.
     alert_formula = (
-        f'={primary_alert_expr}'
+        f'=LET(pa;{primary_alert_expr};'
+        f'IF(pa<>"";pa&IF($BX{row_number}<>"";'
+        f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");""))'
     )
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
