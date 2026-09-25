@@ -621,12 +621,8 @@ TARGET_LEAGUE_NAMES = {
 NATIONAL_COMPETITION_TERMS = (
     "nations league",
     "world cup",
-    "international friendly",
-    "international friendlies",
-    "friendly international",
     "fifa internationals",
     "fifa - internationals",
-    "friendlies",
     "european championship",
     "euro qualifier",
     "euro qualification",
@@ -642,7 +638,8 @@ NATIONAL_COMPETITION_TERMS = (
 
 NATIONAL_COMPETITION_EXCLUSIONS = (
     "club world cup",
-    "club friendly",
+    "friendly",
+    "friendlies",
     "women",
     "u17",
     "u18",
