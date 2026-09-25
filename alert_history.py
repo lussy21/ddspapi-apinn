@@ -529,6 +529,16 @@ def load_baselines(log_ws):
 # MAIN
 # -------------------------------------------------
 
+
+def normalize_display_alert(value):
+    """Remove the visual selector score suffix from column O for history logic."""
+    text = str(value or "").strip()
+    if " · " in text:
+        left, right = text.split(" · ", 1)
+        if "/10" in right:
+            return left.strip()
+    return text
+
 def main():
 
     # Περιμένουμε λίγο ώστε η Google Sheet
@@ -606,9 +616,9 @@ def main():
             row[2]
         ).strip()
 
-        alert = str(
+        alert = normalize_display_alert(
             row[14]
-        ).strip()
+        )
 
         event_id = str(
             row[17]
@@ -636,9 +646,9 @@ def main():
             row[53]
         ).strip()
 
-        old_alert = str(
+        old_alert = normalize_display_alert(
             row[54]
-        ).strip()
+        )
 
         old_open_text = str(
             row[55]
