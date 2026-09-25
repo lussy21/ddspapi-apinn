@@ -481,8 +481,77 @@ def _selector_score(candidate, historical_rows):
     return score, avg_distance
 
 
+def _selector_strength_text(score, stage):
+    if score is None or score < 0:
+        return ""
+    value = max(0.0, min(10.0, score * 10.0))
+    value_text = f"{value:.1f}".replace(".", ",")
+    return f"{value_text}/10 · {stage}"
+
+
+def _selector_live_stage(row):
+    close_ready = len(row) > 68 and str(row[68]).strip().upper() == "CLOSE"
+    if close_ready:
+        return "FINAL"
+
+    has_90 = any(
+        len(row) > index and str(row[index]).strip()
+        for index in (5, 8, 22, 23, 24, 63)
+    )
+    if has_90:
+        return "90'"
+    return "EARLY"
+
+
+def _selector_backfill_strengths(all_rows):
+    """Walk forward through finished rows and score each one only from earlier rows."""
+    prior_history = []
+    updates = []
+
+    for row_number, row in enumerate(all_rows[2:], start=3):
+        fav_won = _selector_favorite_won(row)
+        if fav_won is None:
+            continue
+
+        tokens = _selector_signature(row, prefer_visible=False)
+        if not tokens:
+            continue
+
+        alert_text = _selector_visible_alert_text(row)
+        side = _selector_side(tokens, alert_text)
+        if side is None:
+            continue
+
+        existing = str(row[75]).strip() if len(row) > 75 else ""
+        if "/10" not in existing and prior_history:
+            candidate = {
+                "row": row_number,
+                "features": _selector_features(row),
+                "tokens": tokens,
+                "league_bucket": _selector_league_bucket(row),
+                "side": side,
+            }
+            score, _ = _selector_score(candidate, prior_history)
+            strength = _selector_strength_text(score, "FINAL")
+            if strength:
+                updates.append({
+                    "range": f"{SELECTOR_COL}{row_number}",
+                    "values": [[strength]],
+                })
+
+        prior_history.append({
+            "row": row_number,
+            "features": _selector_features(row),
+            "tokens": tokens,
+            "league_bucket": _selector_league_bucket(row),
+            "fav_won": fav_won,
+        })
+
+    return updates
+
+
 def update_selector_ranking(sheet, all_rows, matches, now):
-    """Rank only today's upcoming rows with a live alert; restart at 1 each day."""
+    """Show each live alert's own model strength instead of a relative daily rank."""
     historical = []
     for row_number, row in enumerate(all_rows[2:], start=3):
         fav_won = _selector_favorite_won(row)
@@ -522,8 +591,9 @@ def update_selector_ranking(sheet, all_rows, matches, now):
         if row_number:
             upcoming_rows.append(row_number)
 
-    selector_updates = []
-    candidates = []
+    selector_updates = _selector_backfill_strengths(all_rows)
+    live_count = 0
+
     for row_number in sorted(set(upcoming_rows)):
         row = all_rows[row_number - 1]
         alert_text = _selector_visible_alert_text(row)
@@ -551,29 +621,21 @@ def update_selector_ranking(sheet, all_rows, matches, now):
             "side": side,
         }
         score, avg_distance = _selector_score(candidate, historical)
-        candidate["score"] = -1.0 if score is None else score
-        candidate["avg_distance"] = 999.0 if avg_distance is None else avg_distance
-        candidates.append(candidate)
+        stage = _selector_live_stage(row)
+        strength = _selector_strength_text(score, stage)
 
-    candidates.sort(
-        key=lambda candidate: (
-            -candidate["score"],
-            candidate["avg_distance"],
-            candidate["row"],
-        )
-    )
-
-    for rank, candidate in enumerate(candidates, start=1):
         selector_updates.append({
-            "range": f"{SELECTOR_COL}{candidate['row']}",
-            "values": [[rank]],
+            "range": f"{SELECTOR_COL}{row_number}",
+            "values": [[strength]],
         })
+        live_count += 1
         print(
-            "SELECTOR RANK:",
-            rank,
-            "| row:", candidate["row"],
-            "| score:", round(candidate["score"], 4),
-            "| alerts:", ",".join(candidate["tokens"]),
+            "SELECTOR STRENGTH:",
+            strength,
+            "| row:", row_number,
+            "| raw score:", None if score is None else round(score, 4),
+            "| avg distance:", None if avg_distance is None else round(avg_distance, 4),
+            "| alerts:", ",".join(tokens),
         )
 
     if selector_updates:
@@ -583,13 +645,13 @@ def update_selector_ranking(sheet, all_rows, matches, now):
         )
         print(
             "SELECTOR UPDATED:",
-            len(candidates),
-            "ranked of",
-            len(set(upcoming_rows)),
-            "upcoming rows",
+            live_count,
+            "live strengths |",
+            len(selector_updates) - live_count,
+            "clears/backfills",
         )
     else:
-        print("SELECTOR: NO UPCOMING ROWS")
+        print("SELECTOR: NO UPDATES")
 
 
 TARGET_LEAGUE_IDS = {
