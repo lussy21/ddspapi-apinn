@@ -51,8 +51,10 @@ LEAGUE_NAME_TO_SOFA_TOURNAMENT = {
     "turkey - super lig": 52,
     "brazil - serie a": 325,
     "argentina - liga profesional": 155,
+    "argentina - liga pro": 155,
     "sweden - allsvenskan": 40,
     "usa - mls": 242,
+    "usa - major league soccer": 242,
     "mls": 242,
     "uefa - champions league": 7,
     "finland - veikkausliiga": 41,
@@ -187,7 +189,12 @@ def fetch_all_fixtures(token, date_str):
 
 
 def is_national_sheet_league(value):
-    return str(value or "").strip().lower().startswith("εθνικ")
+    text = str(value or "").strip().lower()
+    return (
+        text.startswith("εθνικ")
+        and "friendly" not in text
+        and "friendlies" not in text
+    )
 
 
 def fetch_votes(token, event_ids):
@@ -295,6 +302,7 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
 
     print("SOFASCORE ONE-OFF RESULT CATCHUP: 2026-09-24")
     update_results(
+        book,
         sheet,
         rows,
         apify_token,
@@ -416,7 +424,7 @@ def find_finished_match(home, away, fixtures):
     return best if best is not None and best_score >= 0.80 else None
 
 
-def update_results(sheet, rows, apify_token, now, result_dates=None):
+def update_results(book, sheet, rows, apify_token, now, result_dates=None):
     print("SOFASCORE RESULTS: starting")
     pending = []
     for row_number, row in enumerate(rows, start=1):
@@ -436,6 +444,7 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
         pending.append({
             "row": row_number, "league": league, "home": home, "away": away,
             "tournament_id": tournament_id, "national_match": national_match,
+            "apinn_event_id": str(row[17] if len(row) > 17 else "").strip(),
         })
 
     if not pending:
@@ -456,45 +465,77 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
             result_dates = [now.date().isoformat()]
 
     fixture_pool = []
+    fixture_error = None
     for date_str in result_dates:
-        fixtures = fetch_fixtures(apify_token, date_str, tournament_ids)
+        try:
+            fixtures = fetch_fixtures(apify_token, date_str, tournament_ids)
+        except requests.RequestException as exc:
+            fixture_error = exc
+            fixtures = []
+            print("SOFASCORE RESULT FIXTURES ERROR:", date_str, repr(exc))
         fixture_pool.extend(fixtures)
-        if has_national_pending:
-            national_fixtures = fetch_all_fixtures(apify_token, date_str)
-            fixture_pool.extend(national_fixtures)
-        else:
-            national_fixtures = []
         print(
             "SOFASCORE RESULT FIXTURES:", date_str,
             "| tournaments:", sorted(tournament_ids),
             "| mapped:", len(fixtures),
-            "| all-for-nationals:", len(national_fixtures),
         )
 
-    if not fixture_pool:
-        print("SOFASCORE RESULTS: no fixtures returned")
-        return
+    # National-team results do not use the expensive all-fixtures fallback.
+    # We already have Sofa event IDs from the vote snapshots in SOFA CACHE,
+    # so fetch those exact events directly instead.
+    _, sofa_cache, _, _ = load_sofa_cache(book)
+    national_ids = sorted({
+        sofa_cache.get(item["apinn_event_id"])
+        for item in pending
+        if item["national_match"] and item["apinn_event_id"]
+        and sofa_cache.get(item["apinn_event_id"])
+    })
+    direct_error = None
+    direct_by_event = {}
+    if national_ids:
+        try:
+            direct_rows = fetch_votes(apify_token, national_ids)
+            direct_by_event = {
+                str(item.get("eventId")): item
+                for item in direct_rows if item.get("eventId") is not None
+            }
+            print("SOFASCORE RESULT DIRECT EVENTS:", len(direct_by_event))
+        except requests.RequestException as exc:
+            direct_error = exc
+            print("SOFASCORE RESULT DIRECT ERROR:", repr(exc))
 
     updates = []
     for item in pending:
-        same_tournament = []
-        for fixture in fixture_pool:
-            tournament = fixture.get("tournament") or {}
-            try:
-                fixture_tid = int(tournament.get("uniqueTournamentId") or 0)
-            except (TypeError, ValueError):
-                fixture_tid = 0
-            if (
-                not item["national_match"]
-                and fixture_tid
-                and fixture_tid != item["tournament_id"]
-            ):
-                continue
-            same_tournament.append(fixture)
+        match = None
 
-        match = find_finished_match(item["home"], item["away"], same_tournament)
+        if item["national_match"]:
+            sofa_id = sofa_cache.get(item["apinn_event_id"])
+            direct_match = direct_by_event.get(str(sofa_id)) if sofa_id else None
+            if direct_match and is_finished(direct_match):
+                match = direct_match
+        else:
+            same_tournament = []
+            for fixture in fixture_pool:
+                tournament = fixture.get("tournament") or {}
+                try:
+                    fixture_tid = int(tournament.get("uniqueTournamentId") or 0)
+                except (TypeError, ValueError):
+                    fixture_tid = 0
+                if (
+                    fixture_tid
+                    and fixture_tid != item["tournament_id"]
+                ):
+                    continue
+                same_tournament.append(fixture)
+            match = find_finished_match(
+                item["home"], item["away"], same_tournament
+            )
+
         if not match:
-            print("SOFASCORE RESULT NOT FINISHED/FOUND:", item["home"], "vs", item["away"])
+            print(
+                "SOFASCORE RESULT NOT FINISHED/FOUND:",
+                item["home"], "vs", item["away"],
+            )
             continue
 
         home_score = extract_score(match.get("homeScore"))
@@ -512,6 +553,11 @@ def update_results(sheet, rows, apify_token, now, result_dates=None):
         print("SOFASCORE RESULTS UPDATED:", len(updates), "matches")
     else:
         print("SOFASCORE RESULTS: nothing to write")
+
+    # A transient provider failure should keep the one-off catch-up pending
+    # so the next 10-minute run retries instead of marking it complete.
+    if fixture_error is not None or direct_error is not None:
+        raise RuntimeError("SofaScore result provider call failed; retry pending")
 
 
 def update_votes(
@@ -638,7 +684,11 @@ def update_votes(
             fixtures = fetch_fixtures(apify_token, date_str, tids)
             fixture_pool.extend(fixtures)
             if any(item["national_match"] for item in date_items):
-                national_fixtures = fetch_all_fixtures(apify_token, date_str)
+                try:
+                    national_fixtures = fetch_all_fixtures(apify_token, date_str)
+                except requests.RequestException as exc:
+                    national_fixtures = []
+                    print("SOFASCORE NATIONAL FIXTURES ERROR:", date_str, repr(exc))
                 fixture_pool.extend(national_fixtures)
             else:
                 national_fixtures = []
@@ -763,7 +813,7 @@ def main():
         return
 
     if result_window:
-        update_results(sheet, rows, apify_token, now)
+        update_results(book, sheet, rows, apify_token, now)
         return
 
     apinn_key = os.environ.get("APINN_API_KEY", "").strip()
