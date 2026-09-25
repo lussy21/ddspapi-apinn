@@ -96,7 +96,7 @@ def turnover_percentile(
     for idx, row in enumerate(sheet_rows, start=1):
         if idx == row_number:
             continue
-        if not row or str(row[0]).strip() != str(league_name).strip():
+        if not row or str(row[0]).strip() != str(sheet_league_name).strip():
             continue
         if len(row) > 10:
             value = _as_float(row[10])
@@ -117,7 +117,7 @@ def turnover_90_percentile(
     for idx, row in enumerate(sheet_rows, start=1):
         if idx == row_number:
             continue
-        if not row or str(row[0]).strip() != str(league_name).strip():
+        if not row or str(row[0]).strip() != str(sheet_league_name).strip():
             continue
         if len(row) > 22:
             value = _as_float(row[22])
