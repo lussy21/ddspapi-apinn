@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "teodor_banea~sofascore-live-scores-fixtures-scraper/"
+    "incognito_mode~sofascore-live-scores-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -325,27 +325,46 @@ def _normalize_apify_fixture(item):
     }
 
 
-def _backup_schedule_payload(date_str, max_items=500):
-    return {
-        "mode": "scheduled",
+def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
+    payload = {
         "sports": ["football"],
-        "date": date_str,
-        "includeOdds": False,
-        "maxEvents": max_items,
+        "liveOnly": False,
+        "dateFrom": date_str,
+        "dateTo": date_str,
+        "maxItems": max_items,
     }
+    ids = sorted({int(value) for value in (tournament_ids or []) if value})
+    if ids:
+        payload["tournamentIds"] = ids
+    else:
+        # National-team competitions are not all statically mapped. Let the
+        # Actor discover a wider daily card so they are not silently omitted.
+        payload["maxTournamentsPerDate"] = 100
+        payload["maxDiscoveryPages"] = 8
+    return payload
 
 
 def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
     rows = apify_post(
         APIFY_FIXTURES_URL, token,
-        _backup_schedule_payload(date_str),
+        _backup_schedule_payload(date_str, tournament_ids=tournament_ids),
         timeout=timeout, attempts=attempts,
     )
-    return [
+    normalized_rows = [
         normalized for normalized in
         (_normalize_apify_fixture(item) for item in rows)
         if normalized is not None
+        and (normalized.get("id") or normalized.get("eventId"))
+        and (normalized.get("homeTeam") or {}).get("name")
+        and (normalized.get("awayTeam") or {}).get("name")
     ]
+    if rows and not normalized_rows:
+        first = rows[0] if isinstance(rows[0], dict) else {}
+        print(
+            "SOFASCORE APIFY FIXTURE DIAGNOSTIC:",
+            str(first.get("error") or first.get("message") or list(first.keys())[:12])
+        )
+    return normalized_rows
 
 
 def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
