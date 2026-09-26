@@ -517,6 +517,17 @@ def apify_run_async(url, token, payload, timeout=180, poll_seconds=3):
 
         time.sleep(poll_seconds)
 
+    # Do not leave a timed-out Actor running (and billing) in Apify.
+    try:
+        requests.post(
+            f"https://api.apify.com/v2/actor-runs/{run_id}/abort",
+            params={"token": token},
+            headers={"Accept": "application/json"},
+            timeout=20,
+        )
+        print("APIFY ACTOR ABORTED AFTER CLIENT TIMEOUT:", run_id)
+    except Exception as exc:
+        print("APIFY ACTOR ABORT ERROR:", repr(exc).replace(token, "***"))
     raise TimeoutError(
         f"Apify actor did not finish within {timeout}s; last status={last_status}"
     )
