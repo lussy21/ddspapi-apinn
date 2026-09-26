@@ -196,8 +196,10 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
         )
         try:
             response.raise_for_status()
-        except requests.RequestException as exc:
-            last_error = exc
+        except requests.RequestException:
+            last_error = RuntimeError(
+                f"Apify actor HTTP {response.status_code}"
+            )
 
         # Actor runs can fail transiently even with valid input. Retry 400/429/5xx.
         if attempt < attempts and (
