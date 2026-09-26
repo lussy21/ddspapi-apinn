@@ -368,7 +368,7 @@ def _sofa_get_via_apify_proxy(path, timeout=20):
                 )
 
     if last_error is not None:
-        raise last_error
+        raise RuntimeError("SofaScore request failed through Apify Proxy")
     return None
 
 
