@@ -1169,7 +1169,7 @@ def update_votes(
     response = requests.get(
         APINN_BOARD_URL,
         headers={"X-API-Key": apinn_key},
-        params={"sport_id": 29, "live": 0, "with_odds": 1, "limit": 500},
+        params={"sport_id": 29, "live": 0, "limit": 500},
         timeout=30,
     )
     response.raise_for_status()
@@ -1386,6 +1386,12 @@ def update_votes(
         vote_item = votes_by_event.get(str(item["sofa_event_id"]))
         if not vote_item:
             print("SOFASCORE VOTES NOT RETURNED:", item["home"], "vs", item["away"])
+            continue
+        if item["favorite_side"] not in {"H", "A"}:
+            print(
+                "SOFASCORE FAVORITE NOT SET:",
+                item["home"], "vs", item["away"],
+            )
             continue
         metric = favorite_vote_metric(vote_item, item["favorite_side"])
         if not metric:
