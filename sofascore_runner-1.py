@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "getascraper~sofascore-live-events-scraper/"
+    "bovi~sofascore-live-events/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -293,45 +293,87 @@ def fetch_sofa_votes_direct(event_id):
 
 
 def _normalize_apify_fixture(item):
-    """Normalize the backup Actor's flat match row to SofaScore-like shape."""
+    """Normalize supported Apify SofaScore event rows to SofaScore-like shape."""
     if not isinstance(item, dict):
         return None
 
-    event_id = item.get("eventId") or item.get("id")
+    event_id = (
+        item.get("eventId")
+        or item.get("event_id")
+        or item.get("id")
+    )
     home_raw = item.get("homeTeam")
     away_raw = item.get("awayTeam")
     if isinstance(home_raw, dict) and isinstance(away_raw, dict):
         return item
 
-    home_name = item.get("homeTeamName") or home_raw or ""
-    away_name = item.get("awayTeamName") or away_raw or ""
-    status_type = str(item.get("statusType") or "").strip().lower()
-    status_code = 100 if status_type == "finished" else 0
+    home_name = (
+        item.get("homeTeamName")
+        or item.get("home_team")
+        or home_raw
+        or ""
+    )
+    away_name = (
+        item.get("awayTeamName")
+        or item.get("away_team")
+        or away_raw
+        or ""
+    )
+    status_type = str(
+        item.get("statusType")
+        or item.get("status")
+        or ""
+    ).strip().lower()
+    raw_status_code = item.get("statusCode")
+    if raw_status_code is None:
+        raw_status_code = item.get("status_code")
+    try:
+        status_code = int(raw_status_code)
+    except (TypeError, ValueError):
+        status_code = 100 if status_type == "finished" else 0
 
     return {
         "id": event_id,
         "eventId": event_id,
         "homeTeam": {"name": home_name},
         "awayTeam": {"name": away_name},
-        "homeScore": item.get("homeScore"),
-        "awayScore": item.get("awayScore"),
+        "homeScore": (
+            item.get("homeScore")
+            if item.get("homeScore") is not None
+            else item.get("home_score")
+        ),
+        "awayScore": (
+            item.get("awayScore")
+            if item.get("awayScore") is not None
+            else item.get("away_score")
+        ),
         "status": {
             "type": status_type,
             "code": status_code,
-            "description": item.get("statusDescription") or "",
+            "description": (
+                item.get("statusDescription")
+                or item.get("status_description")
+                or ""
+            ),
         },
-        "startTimestamp": item.get("startTimestamp"),
-        "startTimeIso": item.get("startTime") or item.get("startTimeIso"),
+        "startTimestamp": (
+            item.get("startTimestamp")
+            if item.get("startTimestamp") is not None
+            else item.get("start_timestamp")
+        ),
+        "startTimeIso": (
+            item.get("startTime")
+            or item.get("startTimeIso")
+            or item.get("start_time")
+        ),
     }
 
 
 def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
-    # This Actor uses SofaScore through Apify RESIDENTIAL proxies, which is
-    # important because Render/datacenter IPs are currently receiving 403.
-    # It returns the whole football card for one date; tournament filtering is
-    # intentionally done locally so national-team competitions are not lost.
+    # Full daily feed through Apify residential proxy. This does not depend on
+    # Render's blocked SofaScore IP and includes scheduled/live/finished games.
     return {
-        "mode": "scheduledEvents",
+        "mode": "by-date",
         "sport": "football",
         "date": date_str,
         "statusFilter": "all",
