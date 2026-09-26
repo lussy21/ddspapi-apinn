@@ -714,21 +714,12 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             )
 
         if not fixtures:
-            try:
-                fixtures = fetch_all_fixtures(
-                    apify_token, date_str, timeout=75, attempts=1
-                )
-                print(
-                    "SOFASCORE APIFY RESULT FALLBACK:",
-                    date_str,
-                    "| events:", len(fixtures),
-                )
-            except Exception as exc:
-                print(
-                    "SOFASCORE APIFY RESULT FALLBACK ERROR:",
-                    date_str,
-                    repr(exc),
-                )
+            # Cost guard: never launch a paid Apify Actor for result lookup.
+            # Results can be filled manually while direct SofaScore is blocked.
+            print(
+                "SOFASCORE APIFY RESULT FALLBACK: DISABLED BY COST GUARD",
+                date_str,
+            )
 
         fixture_pool.extend(fixtures)
 
