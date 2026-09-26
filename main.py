@@ -675,11 +675,64 @@ TARGET_LEAGUE_IDS = {
 }
 
 TARGET_LEAGUE_NAMES = {
+    "England - Premier League",
+    "Germany - Bundesliga",
+    "France - Ligue 1",
+    "Greece - Super League",
+    "Italy - Serie A",
+    "Spain - La Liga",
+    "Belgium - Pro League",
+    "Denmark - Superliga",
+    "Norway - Eliteserien",
+    "Netherlands - Eredivisie",
+    "Turkey - Super League",
+    "Turkey - Super Lig",
+    "Brazil - Serie A",
+    "Argentina - Liga Pro",
+    "Argentina - Liga Profesional",
+    "Sweden - Allsvenskan",
+    "USA - Major League Soccer",
+    "USA - MLS",
+    "UEFA - Champions League",
     "Finland - Veikkausliiga",
     "Scotland - Premiership",
     "UEFA - Europa League",
     "UEFA - Conference League",
 }
+
+
+def is_target_league_name(league_name):
+    name = str(league_name or "").strip().lower()
+    if not name:
+        return False
+
+    exact = {value.lower() for value in TARGET_LEAGUE_NAMES}
+    if name in exact:
+        return True
+
+    aliases = (
+        ("england", "premier league"),
+        ("germany", "bundesliga"),
+        ("france", "ligue 1"),
+        ("greece", "super league"),
+        ("italy", "serie a"),
+        ("spain", "la liga"),
+        ("belgium", "pro league"),
+        ("denmark", "superliga"),
+        ("norway", "eliteserien"),
+        ("netherlands", "eredivisie"),
+        ("turkey", "super lig"),
+        ("brazil", "serie a"),
+        ("argentina", "liga"),
+        ("sweden", "allsvenskan"),
+        ("usa", "major league soccer"),
+        ("uefa", "champions league"),
+        ("finland", "veikkausliiga"),
+        ("scotland", "premiership"),
+        ("uefa", "europa league"),
+        ("uefa", "conference league"),
+    )
+    return any(country in name and league in name for country, league in aliases)
 
 NATIONAL_COMPETITION_TERMS = (
     "nations league",
@@ -772,7 +825,7 @@ if response is not None:
     for match in response.json():
         league_name = match.get("league_name") or ""
         if (
-            league_name not in TARGET_LEAGUE_NAMES
+            not is_target_league_name(league_name)
             and not is_national_team_competition(league_name)
         ):
             continue
