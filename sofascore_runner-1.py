@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "incognito_mode~sofascore-live-scores-scraper/"
+    "getascraper~sofascore-live-events-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -326,22 +326,21 @@ def _normalize_apify_fixture(item):
 
 
 def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
-    payload = {
-        "sports": ["football"],
-        "liveOnly": False,
-        "dateFrom": date_str,
-        "dateTo": date_str,
+    # This Actor uses SofaScore through Apify RESIDENTIAL proxies, which is
+    # important because Render/datacenter IPs are currently receiving 403.
+    # It returns the whole football card for one date; tournament filtering is
+    # intentionally done locally so national-team competitions are not lost.
+    return {
+        "mode": "scheduledEvents",
+        "sport": "football",
+        "date": date_str,
+        "statusFilter": "all",
         "maxItems": max_items,
+        "proxyConfiguration": {
+            "useApifyProxy": True,
+            "apifyProxyGroups": ["RESIDENTIAL"],
+        },
     }
-    ids = sorted({int(value) for value in (tournament_ids or []) if value})
-    if ids:
-        payload["tournamentIds"] = ids
-    else:
-        # National-team competitions are not all statically mapped. Let the
-        # Actor discover a wider daily card so they are not silently omitted.
-        payload["maxTournamentsPerDate"] = 100
-        payload["maxDiscoveryPages"] = 8
-    return payload
 
 
 def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
