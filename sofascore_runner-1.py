@@ -1373,17 +1373,15 @@ def update_votes(
     newly_cached = []
     embedded_vote_rows = []
     if needs_lookup and allow_fixture_lookup:
-        # Cost guard: automatic discovery is paused. The current paid Actor
-        # can stay RUNNING past the timeout and burn credit without returning
-        # fixtures. Cached Sofa event IDs still work and are reused normally.
+        # Controlled discovery: at most one targeted paid Actor call per date.
+        # No full-day schedule scrape, no proxy retry chain.
         print(
-            "SOFASCORE DISCOVERY PAUSED:",
+            "SOFASCORE CONTROLLED DISCOVERY:",
             len(needs_lookup),
-            "cache misses | no paid Actor started",
+            "cache misses | max one targeted Actor per date",
         )
-        needs_lookup = []
         fixture_pool = []
-        dates = []
+        dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
             # Cost guard: do not request SofaScore's full daily schedule.
             # Render and both proxy paths are blocked. Resolve only the exact
@@ -1399,7 +1397,7 @@ def update_votes(
                 try:
                     targeted = fetch_target_matches(
                         apify_token, date_items,
-                        include_votes=True, timeout=60,
+                        include_votes=True, timeout=90,
                     )
                     if targeted:
                         fixtures = targeted
