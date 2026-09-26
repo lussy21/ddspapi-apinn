@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "maximedupre~sofascore-live-events-scraper/"
+    "incognito_mode~sofascore-live-scores-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -370,14 +370,20 @@ def _normalize_apify_fixture(item):
 
 
 def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
-    # Official input schema for the selected Apify SofaScore actor.
-    return {
-        "mode": "scheduledEvents",
-        "sport": "football",
-        "date": date_str,
-        "statusFilter": "all",
+    payload = {
+        "sports": ["football"],
+        "liveOnly": False,
+        "dateFrom": date_str,
+        "dateTo": date_str,
         "maxItems": max_items,
     }
+    ids = sorted({int(value) for value in (tournament_ids or []) if value})
+    if ids:
+        payload["tournamentIds"] = ids
+    else:
+        payload["maxTournamentsPerDate"] = 30
+        payload["maxDiscoveryPages"] = 2
+    return payload
 
 
 def fetch_fixtures(token, date_str, tournament_ids, timeout=180, attempts=1):
