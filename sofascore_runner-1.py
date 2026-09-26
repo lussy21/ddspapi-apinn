@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import unicodedata
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
@@ -151,15 +152,46 @@ def sheet_league_tournament_id(league_name):
 
 
 def apify_post(url, token, payload, timeout=180):
-    response = requests.post(
-        url, params={"token": token}, json=payload,
-        headers={"Accept": "application/json"}, timeout=timeout,
-    )
-    response.raise_for_status()
-    data = response.json()
-    if not isinstance(data, list):
-        raise RuntimeError("Unexpected Apify dataset response")
-    return data
+    """Call an Apify actor with short retries and useful diagnostics."""
+    last_error = None
+    for attempt in range(1, 4):
+        response = requests.post(
+            url, params={"token": token}, json=payload,
+            headers={"Accept": "application/json"}, timeout=timeout,
+        )
+        if response.ok:
+            data = response.json()
+            if not isinstance(data, list):
+                raise RuntimeError("Unexpected Apify dataset response")
+            return data
+
+        body = (response.text or "")[:1500].replace(token, "***")
+        print(
+            "APIFY POST ERROR:",
+            response.status_code,
+            "| attempt:", attempt,
+            "| actor:", url.rsplit("/", 2)[-2],
+            "| response:", body,
+        )
+        try:
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            last_error = exc
+
+        # Actor runs can fail transiently even with valid input. Retry 400/429/5xx.
+        if attempt < 3 and (
+            response.status_code == 400
+            or response.status_code == 429
+            or response.status_code >= 500
+        ):
+            time.sleep(2 * attempt)
+            continue
+        if last_error is not None:
+            raise last_error
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Apify request failed")
 
 
 def fetch_fixtures(token, date_str, tournament_ids):
@@ -201,10 +233,15 @@ def fetch_votes(token, event_ids):
     ids = sorted({int(value) for value in event_ids if value})
     if not ids:
         return []
-    return apify_post(
-        APIFY_MATCH_URL, token,
-        {
-            "eventIds": ids,
+
+    # Keep direct match requests small. This isolates a bad event ID instead of
+    # letting one large national-team batch fail the whole result refresh.
+    rows = []
+    batch_size = 5
+    for start in range(0, len(ids), batch_size):
+        batch = ids[start:start + batch_size]
+        payload = {
+            "eventIds": batch,
             "includeStatistics": False, "includeLineups": False,
             "includeIncidents": False, "includeShotmap": False,
             "includeGraph": False, "includeAveragePositions": False,
@@ -212,9 +249,23 @@ def fetch_votes(token, event_ids):
             "includeVotes": True, "includeWinProbability": False,
             "includeManagers": False, "includeH2H": False,
             "includeOdds": False, "includeComments": False,
-            "includeHeatmaps": False, "maxItems": len(ids),
-        },
-    )
+            "includeHeatmaps": False, "maxItems": len(batch),
+        }
+        try:
+            rows.extend(apify_post(APIFY_MATCH_URL, token, payload))
+        except requests.RequestException:
+            if len(batch) == 1:
+                raise
+            print("SOFASCORE DIRECT BATCH FAILED; retrying IDs one by one:", batch)
+            for event_id in batch:
+                single = dict(payload)
+                single["eventIds"] = [event_id]
+                single["maxItems"] = 1
+                try:
+                    rows.extend(apify_post(APIFY_MATCH_URL, token, single))
+                except requests.RequestException as exc:
+                    print("SOFASCORE DIRECT EVENT FAILED:", event_id, repr(exc))
+    return rows
 
 
 def load_sofa_cache(book):
@@ -295,27 +346,42 @@ def mark_final_done(cache_sheet, cache_rows, event_ids, now):
 
 def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
     cache_sheet = book.worksheet(CACHE_SHEET_NAME)
-    marker = str(cache_sheet.acell("H2").value or "").strip()
-    target_marker = "RESULT CATCHUP 2026-09-24 DONE"
-    if marker == target_marker:
-        return False
 
-    print("SOFASCORE ONE-OFF RESULT CATCHUP: 2026-09-24")
-    update_results(
-        book,
-        sheet,
-        rows,
-        apify_token,
-        now,
-        result_dates=["2026-09-24"],
-    )
-    cache_sheet.update(
-        "H1:H2",
-        [["ONE-OFF STATUS"], [target_marker]],
-        value_input_option="USER_ENTERED",
-    )
-    print("SOFASCORE ONE-OFF RESULT CATCHUP SAVED")
-    return True
+    # Keep historical repair markers separate so a new repair does not erase
+    # the fact that the previous one completed.
+    repairs = [
+        ("H2", "RESULT CATCHUP 2026-09-24 DONE", "2026-09-24"),
+        ("H3", "RESULT CATCHUP 2026-09-25 DONE", "2026-09-25"),
+    ]
+    for cell, target_marker, date_str in repairs:
+        marker = str(cache_sheet.acell(cell).value or "").strip()
+        if marker == target_marker:
+            continue
+
+        print("SOFASCORE ONE-OFF RESULT CATCHUP:", date_str)
+        update_results(
+            book,
+            sheet,
+            rows,
+            apify_token,
+            now,
+            result_dates=[date_str],
+        )
+        cache_sheet.update(
+            f"{cell}:{cell}",
+            [[target_marker]],
+            value_input_option="USER_ENTERED",
+        )
+        if cell == "H2":
+            cache_sheet.update(
+                "H1",
+                [["ONE-OFF STATUS"]],
+                value_input_option="USER_ENTERED",
+            )
+        print("SOFASCORE ONE-OFF RESULT CATCHUP SAVED:", date_str)
+        return True
+
+    return False
 
 
 def parse_sofa_start(item):
@@ -480,21 +546,20 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             "| mapped:", len(fixtures),
         )
 
-    # National-team results do not use the expensive all-fixtures fallback.
-    # We already have Sofa event IDs from the vote snapshots in SOFA CACHE,
-    # so fetch those exact events directly instead.
+    # Prefer exact Sofa event IDs whenever we already have them in SOFA CACHE.
+    # This is more reliable than searching a whole tournament/date and also
+    # covers national-team competitions without special discovery.
     _, sofa_cache, _, _ = load_sofa_cache(book)
-    national_ids = sorted({
+    direct_ids = sorted({
         sofa_cache.get(item["apinn_event_id"])
         for item in pending
-        if item["national_match"] and item["apinn_event_id"]
-        and sofa_cache.get(item["apinn_event_id"])
+        if item["apinn_event_id"] and sofa_cache.get(item["apinn_event_id"])
     })
     direct_error = None
     direct_by_event = {}
-    if national_ids:
+    if direct_ids:
         try:
-            direct_rows = fetch_votes(apify_token, national_ids)
+            direct_rows = fetch_votes(apify_token, direct_ids)
             direct_by_event = {
                 str(item.get("eventId")): item
                 for item in direct_rows if item.get("eventId") is not None
@@ -508,12 +573,14 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
     for item in pending:
         match = None
 
-        if item["national_match"]:
-            sofa_id = sofa_cache.get(item["apinn_event_id"])
-            direct_match = direct_by_event.get(str(sofa_id)) if sofa_id else None
-            if direct_match and is_finished(direct_match):
-                match = direct_match
-        else:
+        sofa_id = sofa_cache.get(item["apinn_event_id"])
+        direct_match = direct_by_event.get(str(sofa_id)) if sofa_id else None
+        if direct_match and is_finished(direct_match):
+            match = direct_match
+
+        # If no exact cached event was available, fall back to tournament/date
+        # matching for mapped club leagues.
+        if match is None and not item["national_match"]:
             same_tournament = []
             for fixture in fixture_pool:
                 tournament = fixture.get("tournament") or {}
