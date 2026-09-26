@@ -497,7 +497,7 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
     # the fact that the previous one completed.
     repairs = [
         ("H2", "RESULT CATCHUP 2026-09-24 DONE", "2026-09-24"),
-        ("H3", "RESULT CATCHUP 2026-09-25 DONE", "2026-09-25"),
+        # 2026-09-25 entered manually; do not retry this historical catch-up.
     ]
     for cell, target_marker, date_str in repairs:
         marker = str(cache_sheet.acell(cell).value or "").strip()
