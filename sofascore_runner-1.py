@@ -583,16 +583,26 @@ def find_sofa_match(home, away, kickoff, fixtures):
 
 
 def favorite_vote_metric(item, favorite_side):
-    votes_root = item.get("votes") or {}
-    poll = votes_root.get("vote") or votes_root
+    votes_root = item.get("votes") or item.get("fanVotes") or {}
+    poll = votes_root.get("vote") or votes_root.get("votes") or votes_root
 
-    def number(key):
-        try:
-            return int(float(poll.get(key) or 0))
-        except (TypeError, ValueError):
-            return 0
+    def number(*keys):
+        for key in keys:
+            try:
+                value = poll.get(key)
+            except AttributeError:
+                return 0
+            if value is None:
+                continue
+            try:
+                return int(float(value))
+            except (TypeError, ValueError):
+                continue
+        return 0
 
-    vote1, votex, vote2 = number("vote1"), number("voteX"), number("vote2")
+    vote1 = number("vote1", "home", "homeVotes", "voteHome")
+    votex = number("voteX", "draw", "drawVotes", "voteDraw")
+    vote2 = number("vote2", "away", "awayVotes", "voteAway")
     total = vote1 + votex + vote2
     if total <= 0:
         return None
