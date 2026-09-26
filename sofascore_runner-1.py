@@ -785,82 +785,20 @@ def fetch_votes(token, event_ids):
     if not ids:
         return []
 
-    # Prefer SofaScore's own lightweight votes endpoint. Apify stays as a
-    # fallback for transient direct-access blocks or endpoint changes.
-    rows = []
-    fallback_ids = []
-    for event_id in ids:
-        try:
-            item = fetch_sofa_votes_direct(event_id)
-        except Exception as exc:
-            print("SOFASCORE DIRECT VOTES ERROR:", event_id, repr(exc))
-            item = None
-        if item is not None:
-            rows.append(item)
-        else:
-            fallback_ids.append(event_id)
-
-    if not fallback_ids:
-        return rows
-
-    # Preferred fallback: exact Sofa event IDs through the same maintained
-    # search/url Actor used for discovery. This avoids another full fixture run.
+    # Cost guard: one exact-ID Actor request only. The direct Sofa endpoint is
+    # blocked from Render, and chained fallbacks were burning Apify credit.
     try:
-        exact_rows = fetch_matches_by_sofa_ids(
-            token, fallback_ids, include_votes=True, timeout=120
+        rows = fetch_matches_by_sofa_ids(
+            token, ids, include_votes=True, timeout=60
         )
-        rows.extend(item for item in exact_rows if item.get("votes"))
-        returned_ids = {
-            int(item.get("eventId"))
-            for item in exact_rows
-            if item.get("eventId") is not None and item.get("votes")
-        }
-        fallback_ids = [
-            event_id for event_id in fallback_ids
-            if event_id not in returned_ids
-        ]
+        print(
+            "SOFASCORE COST GUARD VOTES:",
+            len(ids), "requested |", len(rows), "returned",
+        )
+        return [item for item in rows if item.get("votes")]
     except Exception as exc:
-        print("SOFASCORE EXACT-ID VOTES FALLBACK ERROR:", repr(exc))
-
-    if not fallback_ids:
-        return rows
-
-    print("SOFASCORE VOTES APIFY FALLBACK:", len(fallback_ids), "events")
-    batch_size = 5
-    for start in range(0, len(fallback_ids), batch_size):
-        batch = fallback_ids[start:start + batch_size]
-        payload = {
-            "eventIds": batch,
-            "includeStatistics": False,
-            "includeLineups": False,
-            "includeIncidents": False,
-            "includeShotmap": False,
-            "includeGraph": False,
-            "includeAveragePositions": False,
-            "includeBestPlayers": False,
-            "includeTeamStreaks": False,
-            "includeVotes": True,
-            "includeWinProbability": False,
-            "includeManagers": False,
-            "includeH2H": False,
-            "includeOdds": False,
-            "includeComments": False,
-            "includeHeatmaps": False,
-            "maxItems": len(batch),
-        }
-        try:
-            rows.extend(
-                apify_post(
-                    APIFY_MATCH_URL, token, payload,
-                    timeout=45, attempts=1,
-                )
-            )
-        except Exception as exc:
-            print(
-                "SOFASCORE VOTES FALLBACK BATCH FAILED:",
-                batch, repr(exc),
-            )
-    return rows
+        print("SOFASCORE EXACT-ID VOTES ERROR:", repr(exc))
+        return []
 
 def load_sofa_cache(book):
     try:
@@ -1433,19 +1371,10 @@ def update_votes(
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
+            # Cost guard: do not request SofaScore's full daily schedule.
+            # Render and both proxy paths are blocked. Resolve only the exact
+            # APINN/Pinnacle matches below.
             fixtures = []
-            try:
-                fixtures = fetch_sofa_schedule(date_str)
-                print(
-                    "SOFASCORE DIRECT FIXTURES:",
-                    date_str,
-                    "| events:", len(fixtures),
-                )
-            except Exception as exc:
-                print(
-                    "SOFASCORE DIRECT FIXTURES ERROR:",
-                    date_str, repr(exc),
-                )
 
             date_items = [
                 item for item in needs_lookup
@@ -1456,7 +1385,7 @@ def update_votes(
                 try:
                     targeted = fetch_target_matches(
                         apify_token, date_items,
-                        include_votes=True, timeout=180,
+                        include_votes=True, timeout=60,
                     )
                     if targeted:
                         fixtures = targeted
@@ -1475,37 +1404,10 @@ def update_votes(
                     )
 
             if not fixtures:
-                tournament_ids = {
-                    item["tournament_id"]
-                    for item in date_items
-                    if item.get("tournament_id")
-                }
-                has_unmapped_national = any(
-                    item.get("national_match") and not item.get("tournament_id")
-                    for item in date_items
+                print(
+                    "SOFASCORE COST GUARD: targeted lookup returned no fixtures;",
+                    "no full-day/proxy retry",
                 )
-                try:
-                    if tournament_ids:
-                        fixtures = fetch_fixtures(
-                            apify_token, date_str, tournament_ids,
-                            timeout=120, attempts=1,
-                        )
-                    if has_unmapped_national and not fixtures:
-                        fixtures = fetch_all_fixtures(
-                            apify_token, date_str,
-                            timeout=120, attempts=1,
-                        )
-                    print(
-                        "SOFASCORE APIFY FIXTURES FALLBACK:",
-                        date_str,
-                        "| events:", len(fixtures),
-                    )
-                except Exception as exc:
-                    fixtures = []
-                    print(
-                        "SOFASCORE APIFY FIXTURES FALLBACK ERROR:",
-                        date_str, repr(exc),
-                    )
 
             fixture_pool.extend(fixtures)
 
@@ -1700,9 +1602,9 @@ def main():
 
     # Historical repair is deliberately last so it can never delay today's
     # 12:30 snapshot or the final 90-minute refresh.
-    run_one_off_result_catchup(
-        book, sheet, rows, apify_token, now
-    )
+    # Cost guard: historical result repair stays paused while the SofaScore
+    # access path is being stabilized. It must not launch paid retries every 10m.
+    print("SOFASCORE RESULT CATCHUP: paused by cost guard")
 
 
 if __name__ == "__main__":
