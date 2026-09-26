@@ -33,7 +33,10 @@ APIFY_MATCH_URL = (
     "run-sync-get-dataset-items"
 )
 
-SOFA_API_BASE = "https://api.sofascore.com/api/v1"
+SOFA_API_BASES = (
+    "https://www.sofascore.com/api/v1",
+    "https://api.sofascore.com/api/v1",
+)
 SOFA_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -218,37 +221,43 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
 
 
 def sofa_get(path, attempts=3, timeout=20):
-    """Small resilient GET wrapper for SofaScore's public JSON endpoints."""
-    url = f"{SOFA_API_BASE}{path}"
+    """Small resilient GET wrapper for SofaScore JSON endpoints."""
     last_error = None
-    for attempt in range(1, attempts + 1):
-        try:
-            response = requests.get(
-                url,
-                headers=SOFA_HEADERS,
-                timeout=timeout,
-            )
-            if response.status_code == 404:
-                return None
-            response.raise_for_status()
-            return response.json()
-        except (requests.RequestException, ValueError) as exc:
-            last_error = exc
-            print(
-                "SOFASCORE DIRECT GET ERROR:",
-                path,
-                "| attempt:", attempt,
-                "|", repr(exc),
-            )
-            # A Render IP blocked with HTTP 403 will not recover by retrying
-            # the same endpoint seconds later. Fail fast and use Apify/cache.
-            status_code = getattr(
-                getattr(exc, "response", None), "status_code", None
-            )
-            if status_code == 403:
-                raise
-            if attempt < attempts:
-                time.sleep(2 * attempt)
+
+    # Try the website host first, then the legacy API host. Render IPs can be
+    # blocked on one host while the same public JSON route still works on the
+    # other.
+    for base_url in SOFA_API_BASES:
+        url = f"{base_url}{path}"
+        for attempt in range(1, attempts + 1):
+            try:
+                response = requests.get(
+                    url,
+                    headers=SOFA_HEADERS,
+                    timeout=timeout,
+                )
+                if response.status_code == 404:
+                    break
+                response.raise_for_status()
+                print("SOFASCORE DIRECT HOST OK:", base_url)
+                return response.json()
+            except (requests.RequestException, ValueError) as exc:
+                last_error = exc
+                print(
+                    "SOFASCORE DIRECT GET ERROR:",
+                    path,
+                    "| host:", base_url,
+                    "| attempt:", attempt,
+                    "|", repr(exc),
+                )
+                status_code = getattr(
+                    getattr(exc, "response", None), "status_code", None
+                )
+                if status_code == 403:
+                    break
+                if attempt < attempts:
+                    time.sleep(2 * attempt)
+
     if last_error is not None:
         raise last_error
     return None
