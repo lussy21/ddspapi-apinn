@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "bovi~sofascore-live-events/"
+    "maximedupre~sofascore-live-events-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -370,18 +370,13 @@ def _normalize_apify_fixture(item):
 
 
 def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
-    # Full daily feed through Apify residential proxy. This does not depend on
-    # Render's blocked SofaScore IP and includes scheduled/live/finished games.
+    # Official input schema for the selected Apify SofaScore actor.
     return {
-        "mode": "by-date",
+        "mode": "scheduledEvents",
         "sport": "football",
         "date": date_str,
         "statusFilter": "all",
         "maxItems": max_items,
-        "proxyConfiguration": {
-            "useApifyProxy": True,
-            "apifyProxyGroups": ["RESIDENTIAL"],
-        },
     }
 
 
