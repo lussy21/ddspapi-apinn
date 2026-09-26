@@ -1096,7 +1096,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                 try:
                     fixtures = fetch_matches_by_sofa_ids(
                         apify_token, cached_ids,
-                        include_votes=False, timeout=120,
+                        include_votes=False, timeout=180,
                     )
                     print(
                         "SOFASCORE CACHED-ID RESULT FALLBACK:",
@@ -1365,7 +1365,7 @@ def update_votes(
                 try:
                     targeted = fetch_target_matches(
                         apify_token, date_items,
-                        include_votes=True, timeout=120,
+                        include_votes=True, timeout=180,
                     )
                     if targeted:
                         fixtures = targeted
