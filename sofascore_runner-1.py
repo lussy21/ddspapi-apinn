@@ -643,6 +643,28 @@ def fetch_votes(token, event_ids):
     if not fallback_ids:
         return rows
 
+    # Preferred fallback: exact Sofa event IDs through the same maintained
+    # search/url Actor used for discovery. This avoids another full fixture run.
+    try:
+        exact_rows = fetch_matches_by_sofa_ids(
+            token, fallback_ids, include_votes=True, timeout=120
+        )
+        rows.extend(item for item in exact_rows if item.get("votes"))
+        returned_ids = {
+            int(item.get("eventId"))
+            for item in exact_rows
+            if item.get("eventId") is not None and item.get("votes")
+        }
+        fallback_ids = [
+            event_id for event_id in fallback_ids
+            if event_id not in returned_ids
+        ]
+    except Exception as exc:
+        print("SOFASCORE EXACT-ID VOTES FALLBACK ERROR:", repr(exc))
+
+    if not fallback_ids:
+        return rows
+
     print("SOFASCORE VOTES APIFY FALLBACK:", len(fallback_ids), "events")
     batch_size = 5
     for start in range(0, len(fallback_ids), batch_size):
