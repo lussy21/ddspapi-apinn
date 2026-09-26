@@ -24,14 +24,10 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "incognito_mode~sofascore-live-scores-scraper/"
+    "abotapi~sofascore-scraper/"
     "run-sync-get-dataset-items"
 )
-APIFY_MATCH_URL = (
-    "https://api.apify.com/v2/acts/"
-    "incognito_mode~sofascore-match-analytics-scraper/"
-    "run-sync-get-dataset-items"
-)
+APIFY_MATCH_URL = APIFY_FIXTURES_URL
 
 SOFA_API_BASE = "https://api.sofascore.com/api/v1"
 SOFA_HEADERS = {
