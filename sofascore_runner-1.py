@@ -794,7 +794,7 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
 
         print("SOFASCORE ONE-OFF RESULT CATCHUP:", date_str)
         try:
-            update_results(
+            repair_ok = update_results(
                 book,
                 sheet,
                 rows,
@@ -802,6 +802,12 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
                 now,
                 result_dates=[date_str],
             )
+            if not repair_ok:
+                print(
+                    "SOFASCORE ONE-OFF RESULT CATCHUP PENDING:",
+                    date_str,
+                )
+                return False
         except Exception as exc:
             # Historical repair must never prevent today's SofaScore votes.
             # Leave the marker pending so it can be repaired on a later run.
@@ -967,7 +973,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
     if not pending:
         print("SOFASCORE RESULTS: no blank results to check")
-        return
+        return True
 
     if result_dates is None:
         if now.hour == 7:
@@ -1074,6 +1080,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
     exact_cache = {}
 
     updates = []
+    resolved_result_ids = set()
     for item in pending:
         match = find_finished_match(
             item["home"], item["away"], fixture_pool
@@ -1119,6 +1126,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             "range": f'P{item["row"]}',
             "values": [[result_text]],
         })
+        resolved_result_ids.add(item["apinn_event_id"])
         print(
             "SOFASCORE RESULT WRITE:",
             item["home"], "vs", item["away"],
@@ -1133,6 +1141,22 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         print("SOFASCORE RESULTS UPDATED:", len(updates), "matches")
     else:
         print("SOFASCORE RESULTS: nothing to write")
+
+    dated_pending = [
+        item for item in pending
+        if cache_dates.get(item["apinn_event_id"]) in target_dates
+    ]
+    unresolved = [
+        item for item in dated_pending
+        if item["apinn_event_id"] not in resolved_result_ids
+    ]
+    if unresolved:
+        print(
+            "SOFASCORE RESULTS STILL PENDING:",
+            len(unresolved), "matches",
+        )
+        return False
+    return True
 
 def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
