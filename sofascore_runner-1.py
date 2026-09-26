@@ -47,7 +47,7 @@ SOFA_HEADERS = {
 }
 
 # Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
-RUNNER_HARD_TIMEOUT_SECONDS = 240
+RUNNER_HARD_TIMEOUT_SECONDS = 480
 
 
 def _runner_timeout_handler(signum, frame):
@@ -385,7 +385,7 @@ def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
     }
 
 
-def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
+def fetch_fixtures(token, date_str, tournament_ids, timeout=180, attempts=1):
     rows = apify_post(
         APIFY_FIXTURES_URL, token,
         _backup_schedule_payload(date_str, tournament_ids=tournament_ids),
@@ -408,7 +408,7 @@ def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
     return normalized_rows
 
 
-def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
+def fetch_all_fixtures(token, date_str, timeout=180, attempts=1):
     """Fallback for national-team competitions and result backfills."""
     return fetch_fixtures(
         token, date_str, tournament_ids=[],
@@ -787,7 +787,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         if not fixtures:
             try:
                 fixtures = fetch_all_fixtures(
-                    apify_token, date_str, timeout=75, attempts=1
+                    apify_token, date_str, timeout=180, attempts=1
                 )
                 print(
                     "SOFASCORE APIFY RESULT FALLBACK:",
@@ -1032,12 +1032,12 @@ def update_votes(
                     if has_national:
                         fixtures = fetch_all_fixtures(
                             apify_token, date_str,
-                            timeout=75, attempts=1,
+                            timeout=180, attempts=1,
                         )
                     else:
                         fixtures = fetch_fixtures(
                             apify_token, date_str, tournament_ids,
-                            timeout=75, attempts=1,
+                            timeout=180, attempts=1,
                         )
                     print(
                         "SOFASCORE APIFY FIXTURES FALLBACK:",
