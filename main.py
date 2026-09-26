@@ -817,9 +817,13 @@ for match in matches:
 
     match_day_start = betting_day_start_for(kickoff)
 
-    # A match belongs to our betting day from 11:00 Greece time until kickoff.
-    # Example: a 25/09 02:30 Argentina match opens for us at 24/09 11:00.
-    if NOW < match_day_start or NOW >= kickoff:
+    # Keep today's upcoming matches visible even before 11:00 so a missed
+    # 11:00 run cannot make the whole day disappear. OPEN snapshots still
+    # start at match_day_start below. Overnight matches (00:00-10:59) keep
+    # belonging to the previous betting day from 11:00.
+    if NOW >= kickoff:
+        continue
+    if kickoff.date() != TODAY and NOW < match_day_start:
         continue
 
     home = match.get("runner_home")
@@ -1040,7 +1044,7 @@ for match in matches:
     # The real alert state still lives in the helper columns; BX keeps the full score/stage.
     alert_formula = (
         f'=LET(pa;{primary_alert_expr};'
-        f'IF(pa<>"";pa&IF($BX{row_number}<>"";'
+        f'IF(pa<>"";pa&IF(AND($BX{row_number}<>"";REGEXMATCH(TO_TEXT($BX{row_number});"/10"));'
         f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");""))'
     )
     comment_formula = (
@@ -1270,6 +1274,7 @@ except Exception as exc:
 # Python interpreter has remained alive after all synchronous work completed,
 # which prevents the SofaScore result runner from starting. All sheet writes
 # above are already complete, so exit explicitly and let the next command run.
+print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
