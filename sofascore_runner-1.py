@@ -1203,6 +1203,7 @@ def update_votes(
             needs_lookup.append(item)
 
     newly_cached = []
+    embedded_vote_rows = []
     if needs_lookup and allow_fixture_lookup:
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
@@ -1221,11 +1222,34 @@ def update_votes(
                     date_str, repr(exc),
                 )
 
+            date_items = [
+                item for item in needs_lookup
+                if item["sofa_date"] == date_str
+            ]
+
             if not fixtures:
-                date_items = [
-                    item for item in needs_lookup
-                    if item["sofa_date"] == date_str
-                ]
+                try:
+                    targeted = fetch_target_matches(
+                        apify_token, date_items,
+                        include_votes=True, timeout=120,
+                    )
+                    if targeted:
+                        fixtures = targeted
+                        embedded_vote_rows.extend(
+                            item for item in targeted if item.get("votes")
+                        )
+                        print(
+                            "SOFASCORE TARGETED FALLBACK:",
+                            date_str,
+                            "| events:", len(fixtures),
+                        )
+                except Exception as exc:
+                    print(
+                        "SOFASCORE TARGETED FALLBACK ERROR:",
+                        date_str, repr(exc),
+                    )
+
+            if not fixtures:
                 tournament_ids = {
                     item["tournament_id"]
                     for item in date_items
@@ -1239,14 +1263,12 @@ def update_votes(
                     if tournament_ids:
                         fixtures = fetch_fixtures(
                             apify_token, date_str, tournament_ids,
-                            timeout=180, attempts=1,
+                            timeout=120, attempts=1,
                         )
-                    if has_unmapped_national:
-                        fixtures.extend(
-                            fetch_all_fixtures(
-                                apify_token, date_str,
-                                timeout=180, attempts=1,
-                            )
+                    if has_unmapped_national and not fixtures:
+                        fixtures = fetch_all_fixtures(
+                            apify_token, date_str,
+                            timeout=120, attempts=1,
                         )
                     print(
                         "SOFASCORE APIFY FIXTURES FALLBACK:",
@@ -1300,9 +1322,18 @@ def update_votes(
         print("SOFASCORE: no matched events")
         return False
 
-    vote_rows = fetch_votes(
-        apify_token, [item["sofa_event_id"] for item in matched]
-    )
+    embedded_by_event = {
+        str(item.get("eventId")): item
+        for item in embedded_vote_rows
+        if item.get("eventId") is not None and item.get("votes")
+    }
+    missing_vote_ids = [
+        item["sofa_event_id"] for item in matched
+        if str(item["sofa_event_id"]) not in embedded_by_event
+    ]
+    vote_rows = list(embedded_by_event.values())
+    if missing_vote_ids:
+        vote_rows.extend(fetch_votes(apify_token, missing_vote_ids))
     votes_by_event = {
         str(item.get("eventId")): item
         for item in vote_rows if item.get("eventId") is not None
