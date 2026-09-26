@@ -263,7 +263,7 @@ def fetch_sofa_votes_direct(event_id):
     }
 
 
-def fetch_fixtures(token, date_str, tournament_ids):
+def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
     ids = sorted({int(value) for value in tournament_ids if value})
     if not ids:
         return []
@@ -274,10 +274,11 @@ def fetch_fixtures(token, date_str, tournament_ids):
             "dateFrom": date_str, "dateTo": date_str,
             "tournamentIds": ids, "maxItems": 500,
         },
+        timeout=timeout, attempts=attempts,
     )
 
 
-def fetch_all_fixtures(token, date_str):
+def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
     """Fallback for national-team competitions whose Sofa tournament ID is not pre-mapped."""
     return apify_post(
         APIFY_FIXTURES_URL, token,
@@ -286,6 +287,7 @@ def fetch_all_fixtures(token, date_str):
             "dateFrom": date_str, "dateTo": date_str,
             "maxItems": 500,
         },
+        timeout=timeout, attempts=attempts,
     )
 
 
@@ -606,13 +608,15 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             result_dates = [now.date().isoformat()]
 
     # Primary result source: SofaScore's own daily schedule JSON.
-    # This avoids depending on a paid Actor just to read final scores.
+    # Render can occasionally receive 403s from SofaScore. In that case use
+    # the existing Apify fixture actor as a bounded fallback instead of
+    # leaving results permanently blank.
     fixture_pool = []
     direct_schedule_failed = False
     for date_str in result_dates:
+        fixtures = []
         try:
             fixtures = fetch_sofa_schedule(date_str)
-            fixture_pool.extend(fixtures)
             print(
                 "SOFASCORE DIRECT SCHEDULE:",
                 date_str,
@@ -625,6 +629,25 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                 date_str,
                 repr(exc),
             )
+
+        if not fixtures:
+            try:
+                fixtures = fetch_all_fixtures(
+                    apify_token, date_str, timeout=75, attempts=1
+                )
+                print(
+                    "SOFASCORE APIFY RESULT FALLBACK:",
+                    date_str,
+                    "| events:", len(fixtures),
+                )
+            except Exception as exc:
+                print(
+                    "SOFASCORE APIFY RESULT FALLBACK ERROR:",
+                    date_str,
+                    repr(exc),
+                )
+
+        fixture_pool.extend(fixtures)
 
     # Exact cached Sofa event IDs are a second independent matching path.
     # Restrict exact-event checks to the requested result date(s) so future
@@ -821,20 +844,57 @@ def update_votes(
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
+            fixtures = []
             try:
                 fixtures = fetch_sofa_schedule(date_str)
+                print(
+                    "SOFASCORE DIRECT FIXTURES:",
+                    date_str,
+                    "| events:", len(fixtures),
+                )
             except Exception as exc:
-                fixtures = []
                 print(
                     "SOFASCORE DIRECT FIXTURES ERROR:",
                     date_str, repr(exc),
                 )
+
+            if not fixtures:
+                date_items = [
+                    item for item in needs_lookup
+                    if item["sofa_date"] == date_str
+                ]
+                tournament_ids = {
+                    item["tournament_id"]
+                    for item in date_items
+                    if item.get("tournament_id")
+                }
+                has_national = any(
+                    item.get("national_match") for item in date_items
+                )
+                try:
+                    if has_national:
+                        fixtures = fetch_all_fixtures(
+                            apify_token, date_str,
+                            timeout=75, attempts=1,
+                        )
+                    else:
+                        fixtures = fetch_fixtures(
+                            apify_token, date_str, tournament_ids,
+                            timeout=75, attempts=1,
+                        )
+                    print(
+                        "SOFASCORE APIFY FIXTURES FALLBACK:",
+                        date_str,
+                        "| events:", len(fixtures),
+                    )
+                except Exception as exc:
+                    fixtures = []
+                    print(
+                        "SOFASCORE APIFY FIXTURES FALLBACK ERROR:",
+                        date_str, repr(exc),
+                    )
+
             fixture_pool.extend(fixtures)
-            print(
-                "SOFASCORE DIRECT FIXTURES:",
-                date_str,
-                "| events:", len(fixtures),
-            )
 
         for item in needs_lookup:
             fixture = find_sofa_match(
