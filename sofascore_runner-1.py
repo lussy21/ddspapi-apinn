@@ -24,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "incognito_mode~sofascore-live-scores-scraper/"
+    "maximedupre~sofascore-live-events-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
