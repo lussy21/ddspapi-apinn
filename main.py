@@ -827,7 +827,6 @@ response = apinn_get(
     {
         "sport_id": 29,
         "live": 0,
-        "with_odds": 1,
         "limit": 500,
     },
 )
