@@ -61,6 +61,58 @@ APINN_TO_SOFA_TOURNAMENT = {
     210697: 155, 1728: 40, 2663: 242, 2627: 7,
 }
 
+NATIONAL_TOURNAMENT_KEYWORDS = (
+    ("concacaf nations league", 14100),
+    ("uefa nations league", 10783),
+    ("nations league a", 10783),
+    ("nations league b", 10783),
+    ("nations league c", 10783),
+    ("nations league d", 10783),
+    ("africa cup of nations qualifiers", 1848),
+    ("africa cup of nations qualification", 1848),
+    ("afcon qualifiers", 1848),
+    ("afcon qualification", 1848),
+    ("world cup qualification uefa", 11),
+    ("world championship qual uefa", 11),
+    ("world cup qualifiers uefa", 11),
+    ("world cup qualification caf", 13),
+    ("world championship qual caf", 13),
+    ("world cup qualifiers caf", 13),
+    ("world cup qualification afc", 308),
+    ("world championship qual afc", 308),
+    ("world cup qualifiers afc", 308),
+    ("world cup qualification concacaf", 14),
+    ("world championship qual concacaf", 14),
+    ("world cup qualifiers concacaf", 14),
+    ("world cup qualification conmebol", 295),
+    ("world championship qual conmebol", 295),
+    ("world cup qualifiers conmebol", 295),
+    ("world cup qualification ofc", 309),
+    ("world championship qual ofc", 309),
+    ("world cup qualifiers ofc", 309),
+    ("inter confederation", 10618),
+    ("european championship qualification", 27),
+    ("euro qualification", 27),
+    ("euro qualifiers", 27),
+    ("afc asian cup qualification", 28),
+    ("afc asian cup qualifiers", 28),
+    ("afc asian cup", 246),
+    ("africa cup of nations", 270),
+    ("concacaf gold cup", 140),
+    ("copa america", 133),
+    ("european championship", 1),
+    ("fifa world cup", 16),
+)
+
+
+def national_tournament_id_from_name(value):
+    name = normalize_team(value)
+    for keyword, tournament_id in NATIONAL_TOURNAMENT_KEYWORDS:
+        if normalize_team(keyword) in name:
+            return tournament_id
+    return None
+
+
 LEAGUE_NAME_TO_SOFA_TOURNAMENT = {
     "england - premier league": 17,
     "germany - bundesliga": 35,
@@ -152,7 +204,12 @@ def sofa_tournament_id(apinn_league_id, league_name):
         league_id = None
     if league_id in APINN_TO_SOFA_TOURNAMENT:
         return APINN_TO_SOFA_TOURNAMENT[league_id]
-    return LEAGUE_NAME_TO_SOFA_TOURNAMENT.get(str(league_name or "").strip().lower())
+    mapped = LEAGUE_NAME_TO_SOFA_TOURNAMENT.get(
+        str(league_name or "").strip().lower()
+    )
+    if mapped:
+        return mapped
+    return national_tournament_id_from_name(league_name)
 
 
 def sheet_league_tournament_id(league_name):
@@ -161,6 +218,9 @@ def sheet_league_tournament_id(league_name):
         return None
     if name in LEAGUE_NAME_TO_SOFA_TOURNAMENT:
         return LEAGUE_NAME_TO_SOFA_TOURNAMENT[name]
+    national_id = national_tournament_id_from_name(name)
+    if national_id:
+        return national_id
     checks = [
         ("premier league", 17), ("bundesliga", 35), ("ligue 1", 34),
         ("greece", 185), ("serie a", 23), ("la liga", 8),
