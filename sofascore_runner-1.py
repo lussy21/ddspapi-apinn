@@ -1108,13 +1108,11 @@ def main():
     sheet = book.worksheet(SHEET_NAME)
     rows = sheet.get_all_values()
 
-    if run_one_off_result_catchup(
-        book, sheet, rows, apify_token, now
-    ):
-        return
-
     if result_window:
-        update_results(book, sheet, rows, apify_token, now)
+        try:
+            update_results(book, sheet, rows, apify_token, now)
+        except Exception as exc:
+            print("SOFASCORE CURRENT RESULTS ERROR:", repr(exc))
         return
 
     apinn_key = os.environ.get("APINN_API_KEY", "").strip()
@@ -1159,6 +1157,12 @@ def main():
         allow_fixture_lookup=True,
         minutes_window=(80, 100),
         mark_final=True,
+    )
+
+    # Historical repair is deliberately last so it can never delay today's
+    # 12:30 snapshot or the final 90-minute refresh.
+    run_one_off_result_catchup(
+        book, sheet, rows, apify_token, now
     )
 
 
