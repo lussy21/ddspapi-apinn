@@ -706,6 +706,17 @@ def is_target_league_name(league_name):
     if not name:
         return False
 
+    # Keep the men's target leagues only. Some women's league names contain
+    # strings like "Serie A", "Eredivisie" or "Allsvenskan" and were being
+    # caught by the broad fallback matcher.
+    target_exclusions = (
+        "women", "woman", "ladies", "female", "feminin",
+        "damallsvenskan", "wsl", "u17", "u18", "u19", "u20",
+        "u21", "u22", "u23", "youth",
+    )
+    if any(term in name for term in target_exclusions):
+        return False
+
     exact = {value.lower() for value in TARGET_LEAGUE_NAMES}
     if name in exact:
         return True
