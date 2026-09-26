@@ -859,6 +859,75 @@ for row_number, row in enumerate(sheet_rows, start=1):
 next_row = max(3, len(sheet_rows) + 1)
 updates = []
 
+# Create today's/upcoming rows even when Pinnacle has not published both
+# moneyline sides yet. Odds/favorite fields are filled on later runs.
+for match in matches:
+    starts = match.get("starts")
+    if not starts:
+        continue
+    try:
+        kickoff = datetime.fromisoformat(
+            starts.replace("Z", "+00:00")
+        ).astimezone(GREECE_TZ)
+    except ValueError:
+        continue
+
+    match_day_start = betting_day_start_for(kickoff)
+    if NOW >= kickoff:
+        continue
+    if kickoff.date() != TODAY and NOW < match_day_start:
+        continue
+
+    home = match.get("runner_home")
+    away = match.get("runner_away")
+    event_id = match.get("event_id")
+    league_name = match.get("league_name") or ""
+    if not home or not away or event_id is None:
+        continue
+
+    event_id_text = str(event_id)
+    if event_id_text in event_rows:
+        continue
+
+    national_match = is_national_team_competition(league_name)
+    sheet_league_name = (
+        f"ΕΘΝΙΚΕΣ - {league_name}" if national_match else league_name
+    )
+
+    row_number = next_row
+    next_row += 1
+    event_rows[event_id_text] = row_number
+
+    new_row = [
+        sheet_league_name,
+        home,
+        away,
+        "",
+        "", "", "",
+        "", "", "",
+        "", "", "", "",
+        "", "", "",
+        event_id_text,
+    ]
+
+    updates.append({
+        "range": f"A{row_number}:N{row_number}",
+        "values": [new_row[:14]],
+    })
+    updates.append({
+        "range": f"P{row_number}:R{row_number}",
+        "values": [new_row[15:18]],
+    })
+
+    while len(sheet_rows) < row_number:
+        sheet_rows.append([])
+    sheet_rows[row_number - 1] = new_row
+
+    print(
+        "SHEET ROW CREATED PENDING ODDS:",
+        row_number, home, "vs", away,
+    )
+
 for match in matches:
     starts = match.get("starts")
     if not starts:
@@ -893,6 +962,7 @@ for match in matches:
     odd2 = moneyline.get("odds2")
 
     if not odd1 or not odd2:
+        print("PINNACLE ODDS PENDING:", home, "vs", away)
         continue
 
     favorite = "1" if odd1 < odd2 else "2"
@@ -968,6 +1038,22 @@ for match in matches:
         print("SHEET ROW CREATED:", row_number, home, "vs", away)
 
     current_row = sheet_rows[row_number - 1] if row_number <= len(sheet_rows) else []
+
+    # Placeholder rows created before odds are available get their favorite
+    # side as soon as both Pinnacle moneyline prices appear.
+    current_fav_side = (
+        str(current_row[3]).strip() if len(current_row) > 3 else ""
+    )
+    if current_fav_side != fav_side:
+        updates.append({
+            "range": f"D{row_number}",
+            "values": [[fav_side]],
+        })
+        while len(sheet_rows[row_number - 1]) < 4:
+            sheet_rows[row_number - 1].append("")
+        sheet_rows[row_number - 1][3] = fav_side
+        current_row = sheet_rows[row_number - 1]
+
     open_already = len(current_row) >= 5 and current_row[4] != ""
     min90_already = len(current_row) >= 6 and current_row[5] != ""
 
