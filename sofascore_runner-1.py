@@ -357,6 +357,75 @@ def fetch_sofa_votes_direct(event_id):
     }
 
 
+def apify_run_async(url, token, payload, timeout=180, poll_seconds=3):
+    """Start an Apify Actor asynchronously and fetch its dataset on success."""
+    try:
+        actor_part = url.split("/acts/", 1)[1].split("/", 1)[0]
+    except (IndexError, AttributeError):
+        raise RuntimeError("Invalid Apify Actor URL")
+
+    run_url = f"https://api.apify.com/v2/acts/{actor_part}/runs"
+    response = requests.post(
+        run_url,
+        params={"token": token},
+        json=payload,
+        headers={"Accept": "application/json"},
+        timeout=30,
+    )
+    if not response.ok:
+        body = (response.text or "")[:1500].replace(token, "***")
+        raise RuntimeError(
+            f"Apify async start HTTP {response.status_code}: {body}"
+        )
+    data = response.json().get("data") or {}
+    run_id = str(data.get("id") or "").strip()
+    if not run_id:
+        raise RuntimeError("Apify async run ID missing")
+
+    deadline = time.monotonic() + timeout
+    last_status = ""
+    while time.monotonic() < deadline:
+        status_response = requests.get(
+            f"https://api.apify.com/v2/actor-runs/{run_id}",
+            params={"token": token},
+            headers={"Accept": "application/json"},
+            timeout=20,
+        )
+        status_response.raise_for_status()
+        run_data = status_response.json().get("data") or {}
+        last_status = str(run_data.get("status") or "").upper()
+
+        if last_status == "SUCCEEDED":
+            dataset_id = str(run_data.get("defaultDatasetId") or "").strip()
+            if not dataset_id:
+                return []
+            items_response = requests.get(
+                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+                params={
+                    "token": token,
+                    "clean": "true",
+                    "format": "json",
+                },
+                headers={"Accept": "application/json"},
+                timeout=30,
+            )
+            items_response.raise_for_status()
+            items = items_response.json()
+            return items if isinstance(items, list) else []
+
+        if last_status in {"FAILED", "ABORTED", "TIMED-OUT"}:
+            status_message = str(run_data.get("statusMessage") or "")
+            raise RuntimeError(
+                f"Apify actor {last_status}: {status_message}"
+            )
+
+        time.sleep(poll_seconds)
+
+    raise TimeoutError(
+        f"Apify actor did not finish within {timeout}s; last status={last_status}"
+    )
+
+
 def _normalize_apify_fixture(item):
     """Normalize supported Apify SofaScore event rows to SofaScore-like shape."""
     if not isinstance(item, dict):
@@ -550,7 +619,7 @@ def _target_search_payload(targets, include_votes=False):
         "includeH2H": False,
         "includeStandings": False,
         "includeSquad": False,
-        "maxItems": max(20, min(200, len(queries) * 5)),
+        "maxItems": max(1, min(80, len(queries) * 2)),
         "proxy": {"useApifyProxy": True},
     }
 
@@ -559,9 +628,9 @@ def fetch_target_matches(token, targets, include_votes=False, timeout=120):
     payload = _target_search_payload(targets, include_votes=include_votes)
     if not payload["searchQueries"]:
         return []
-    rows = apify_post(
+    rows = apify_run_async(
         APIFY_SEARCH_URL, token, payload,
-        timeout=timeout, attempts=1,
+        timeout=timeout,
     )
     matches = [
         normalized for normalized in
@@ -594,9 +663,9 @@ def fetch_matches_by_sofa_ids(token, event_ids, include_votes=False, timeout=120
         "maxItems": len(ids),
         "proxy": {"useApifyProxy": True},
     }
-    rows = apify_post(
+    rows = apify_run_async(
         APIFY_SEARCH_URL, token, payload,
-        timeout=timeout, attempts=1,
+        timeout=timeout,
     )
     matches = [
         normalized for normalized in
