@@ -1,4 +1,5 @@
 import os
+import sys
 import bisect
 import math
 import time
@@ -1264,4 +1265,12 @@ try:
 except Exception as exc:
     # Ranking must never stop the odds/turnover collector.
     print("SELECTOR ERROR:", repr(exc))
+
+# Render runs the collectors with shell &&. On some heavy 11:00 runs the
+# Python interpreter has remained alive after all synchronous work completed,
+# which prevents the SofaScore result runner from starting. All sheet writes
+# above are already complete, so exit explicitly and let the next command run.
+sys.stdout.flush()
+sys.stderr.flush()
+os._exit(0)
 
