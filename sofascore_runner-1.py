@@ -385,23 +385,34 @@ def fetch_votes(token, event_ids):
     for start in range(0, len(fallback_ids), batch_size):
         batch = fallback_ids[start:start + batch_size]
         payload = {
-            "eventIds": batch,
-            "includeStatistics": False, "includeLineups": False,
-            "includeIncidents": False, "includeShotmap": False,
-            "includeGraph": False, "includeAveragePositions": False,
-            "includeBestPlayers": False, "includeTeamStreaks": False,
-            "includeVotes": True, "includeWinProbability": False,
-            "includeManagers": False, "includeH2H": False,
-            "includeOdds": False, "includeComments": False,
-            "includeHeatmaps": False, "maxItems": len(batch),
+            "mode": "url",
+            "urls": [
+                "https://www.sofascore.com/event/" + str(event_id)
+                for event_id in batch
+            ],
+            "includeStatistics": False,
+            "includeLineups": False,
+            "includeIncidents": False,
+            "includeOdds": False,
+            "includeVotes": True,
+            "includeStandings": False,
+            "includeSquad": False,
+            "maxItems": len(batch),
         }
         try:
-            rows.extend(
-                apify_post(
-                    APIFY_MATCH_URL, token, payload,
-                    timeout=45, attempts=1,
-                )
+            backup_rows = apify_post(
+                APIFY_MATCH_URL, token, payload,
+                timeout=45, attempts=1,
             )
+            for item in backup_rows:
+                event_id = item.get("eventId") or item.get("id")
+                votes = item.get("votes")
+                if event_id is None or not isinstance(votes, dict):
+                    continue
+                rows.append({
+                    "eventId": int(event_id),
+                    "votes": votes,
+                })
         except requests.RequestException as exc:
             print("SOFASCORE VOTES FALLBACK BATCH FAILED:", batch, repr(exc))
     return rows
