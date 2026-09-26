@@ -316,6 +316,8 @@ def fetch_votes(token, event_ids):
             fallback_ids.append(event_id)
         if item is not None:
             rows.append(item)
+        else:
+            fallback_ids.append(event_id)
 
     if not fallback_ids:
         return rows
@@ -647,7 +649,18 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                 )
 
     # Exact cached Sofa event IDs are a second independent matching path.
-    _, sofa_cache, _, _ = load_sofa_cache(book)
+    # Restrict exact-event checks to the requested result date(s) so future
+    # matches are not queried unnecessarily.
+    cache_sheet, sofa_cache, _, _ = load_sofa_cache(book)
+    target_dates = set(result_dates)
+    cache_dates = {}
+    for cache_row in cache_sheet.get_all_values()[1:]:
+        if len(cache_row) < 5:
+            continue
+        apinn_id = str(cache_row[0] or "").strip()
+        date_value = str(cache_row[4] or "").strip()
+        if apinn_id and date_value:
+            cache_dates[apinn_id] = date_value
     exact_cache = {}
 
     updates = []
@@ -658,7 +671,8 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
         if match is None:
             sofa_id = sofa_cache.get(item["apinn_event_id"])
-            if sofa_id:
+            cache_date = cache_dates.get(item["apinn_event_id"])
+            if sofa_id and cache_date in target_dates:
                 key = str(sofa_id)
                 if key not in exact_cache:
                     try:
