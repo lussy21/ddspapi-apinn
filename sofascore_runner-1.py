@@ -7,7 +7,6 @@ import unicodedata
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from zoneinfo import ZoneInfo
-from urllib.parse import quote
 
 import gspread
 import requests
@@ -25,7 +24,7 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "incognito_mode~sofascore-live-scores-scraper/"
+    "teodor_banea~sofascore-live-scores-fixtures-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -33,17 +32,8 @@ APIFY_MATCH_URL = (
     "incognito_mode~sofascore-match-analytics-scraper/"
     "run-sync-get-dataset-items"
 )
-APIFY_SEARCH_URL = (
-    "https://api.apify.com/v2/acts/"
-    "abotapi~sofascore-scraper/"
-    "run-sync-get-dataset-items"
-)
 
-SOFA_API_BASES = (
-    "https://api.sofascore.app/api/v1",
-    "https://api.sofascore.com/api/v1",
-    "https://www.sofascore.com/api/v1",
-)
+SOFA_API_BASE = "https://api.sofascore.com/api/v1"
 SOFA_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -51,17 +41,10 @@ SOFA_HEADERS = {
         "Chrome/120.0.0.0 Safari/537.36"
     ),
     "Accept": "application/json,text/plain,*/*",
-    # SofaScore's current WAF expects requests to look like site XHR traffic.
-    "X-Requested-With": "XMLHttpRequest",
-    "Referer": "https://www.sofascore.com/",
-    "Origin": "https://www.sofascore.com",
 }
 
-_APIFY_PROXY_PASSWORD = None
-_APIFY_PROXY_UNAVAILABLE = False
-
 # Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
-RUNNER_HARD_TIMEOUT_SECONDS = 480
+RUNNER_HARD_TIMEOUT_SECONDS = 240
 
 
 def _runner_timeout_handler(signum, frame):
@@ -74,58 +57,6 @@ APINN_TO_SOFA_TOURNAMENT = {
     1817: 38, 1913: 39, 2333: 20, 1928: 37, 2592: 52, 1834: 325,
     210697: 155, 1728: 40, 2663: 242, 2627: 7,
 }
-
-NATIONAL_TOURNAMENT_KEYWORDS = (
-    ("concacaf nations league", 14100),
-    ("uefa nations league", 10783),
-    ("nations league a", 10783),
-    ("nations league b", 10783),
-    ("nations league c", 10783),
-    ("nations league d", 10783),
-    ("africa cup of nations qualifiers", 1848),
-    ("africa cup of nations qualification", 1848),
-    ("afcon qualifiers", 1848),
-    ("afcon qualification", 1848),
-    ("world cup qualification uefa", 11),
-    ("world championship qual uefa", 11),
-    ("world cup qualifiers uefa", 11),
-    ("world cup qualification caf", 13),
-    ("world championship qual caf", 13),
-    ("world cup qualifiers caf", 13),
-    ("world cup qualification afc", 308),
-    ("world championship qual afc", 308),
-    ("world cup qualifiers afc", 308),
-    ("world cup qualification concacaf", 14),
-    ("world championship qual concacaf", 14),
-    ("world cup qualifiers concacaf", 14),
-    ("world cup qualification conmebol", 295),
-    ("world championship qual conmebol", 295),
-    ("world cup qualifiers conmebol", 295),
-    ("world cup qualification ofc", 309),
-    ("world championship qual ofc", 309),
-    ("world cup qualifiers ofc", 309),
-    ("inter confederation", 10618),
-    ("european championship qualification", 27),
-    ("euro qualification", 27),
-    ("euro qualifiers", 27),
-    ("afc asian cup qualification", 28),
-    ("afc asian cup qualifiers", 28),
-    ("afc asian cup", 246),
-    ("africa cup of nations", 270),
-    ("concacaf gold cup", 140),
-    ("copa america", 133),
-    ("european championship", 1),
-    ("fifa world cup", 16),
-)
-
-
-def national_tournament_id_from_name(value):
-    name = normalize_team(value)
-    for keyword, tournament_id in NATIONAL_TOURNAMENT_KEYWORDS:
-        if normalize_team(keyword) in name:
-            return tournament_id
-    return None
-
 
 LEAGUE_NAME_TO_SOFA_TOURNAMENT = {
     "england - premier league": 17,
@@ -218,12 +149,7 @@ def sofa_tournament_id(apinn_league_id, league_name):
         league_id = None
     if league_id in APINN_TO_SOFA_TOURNAMENT:
         return APINN_TO_SOFA_TOURNAMENT[league_id]
-    mapped = LEAGUE_NAME_TO_SOFA_TOURNAMENT.get(
-        str(league_name or "").strip().lower()
-    )
-    if mapped:
-        return mapped
-    return national_tournament_id_from_name(league_name)
+    return LEAGUE_NAME_TO_SOFA_TOURNAMENT.get(str(league_name or "").strip().lower())
 
 
 def sheet_league_tournament_id(league_name):
@@ -232,9 +158,6 @@ def sheet_league_tournament_id(league_name):
         return None
     if name in LEAGUE_NAME_TO_SOFA_TOURNAMENT:
         return LEAGUE_NAME_TO_SOFA_TOURNAMENT[name]
-    national_id = national_tournament_id_from_name(name)
-    if national_id:
-        return national_id
     checks = [
         ("premier league", 17), ("bundesliga", 35), ("ligue 1", 34),
         ("greece", 185), ("serie a", 23), ("la liga", 8),
@@ -273,10 +196,8 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
         )
         try:
             response.raise_for_status()
-        except requests.RequestException:
-            last_error = RuntimeError(
-                f"Apify actor HTTP {response.status_code}"
-            )
+        except requests.RequestException as exc:
+            last_error = exc
 
         # Actor runs can fail transiently even with valid input. Retry 400/429/5xx.
         if attempt < attempts and (
@@ -294,131 +215,38 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
     raise RuntimeError("Apify request failed")
 
 
-def _apify_proxy_password():
-    global _APIFY_PROXY_PASSWORD, _APIFY_PROXY_UNAVAILABLE
-    if _APIFY_PROXY_PASSWORD:
-        return _APIFY_PROXY_PASSWORD
-    if _APIFY_PROXY_UNAVAILABLE:
-        return None
-
-    token = os.environ.get("APIFY_TOKEN", "").strip()
-    if not token:
-        _APIFY_PROXY_UNAVAILABLE = True
-        return None
-
-    try:
-        response = requests.get(
-            "https://api.apify.com/v2/users/me",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/json",
-            },
-            timeout=20,
-        )
-        response.raise_for_status()
-        data = response.json().get("data") or {}
-        password = str((data.get("proxy") or {}).get("password") or "").strip()
-        if password:
-            _APIFY_PROXY_PASSWORD = password
-            return password
-    except Exception as exc:
-        safe = str(exc).replace(token, "***")
-        print("APIFY PROXY CREDENTIAL ERROR:", safe)
-
-    _APIFY_PROXY_UNAVAILABLE = True
-    return None
-
-
-def _sofa_get_via_apify_proxy(path, timeout=20):
-    password = _apify_proxy_password()
-    if not password:
-        return None
-
-    escaped = quote(password, safe="")
-    last_error = None
-    proxy_modes = (
-        ("datacenter", "auto"),
-        ("residential", "groups-RESIDENTIAL"),
-    )
-
-    for mode_name, username in proxy_modes:
-        proxy_url = f"http://{username}:{escaped}@proxy.apify.com:8000"
-        proxies = {"http": proxy_url, "https": proxy_url}
-        for base_url in SOFA_API_BASES:
-            url = f"{base_url}{path}"
-            try:
-                response = requests.get(
-                    url,
-                    headers=SOFA_HEADERS,
-                    proxies=proxies,
-                    timeout=timeout,
-                )
-                if response.status_code == 404:
-                    continue
-                response.raise_for_status()
-                print(
-                    "SOFASCORE APIFY PROXY OK:",
-                    mode_name,
-                    "| host:", base_url,
-                )
-                return response.json()
-            except (requests.RequestException, ValueError) as exc:
-                last_error = exc
-                safe = repr(exc).replace(password, "***").replace(escaped, "***")
-                print(
-                    "SOFASCORE APIFY PROXY ERROR:",
-                    mode_name,
-                    "| host:", base_url,
-                    "|", safe,
-                )
-
-    if last_error is not None:
-        raise RuntimeError("SofaScore request failed through Apify Proxy")
-    return None
-
-
 def sofa_get(path, attempts=3, timeout=20):
-    """GET SofaScore JSON directly, then through Apify Proxy if blocked."""
+    """Small resilient GET wrapper for SofaScore's public JSON endpoints."""
+    url = f"{SOFA_API_BASE}{path}"
     last_error = None
-
-    for base_url in SOFA_API_BASES:
-        url = f"{base_url}{path}"
-        for attempt in range(1, attempts + 1):
-            try:
-                response = requests.get(
-                    url,
-                    headers=SOFA_HEADERS,
-                    timeout=timeout,
-                )
-                if response.status_code == 404:
-                    break
-                response.raise_for_status()
-                print("SOFASCORE DIRECT HOST OK:", base_url)
-                return response.json()
-            except (requests.RequestException, ValueError) as exc:
-                last_error = exc
-                print(
-                    "SOFASCORE DIRECT GET ERROR:",
-                    path,
-                    "| host:", base_url,
-                    "| attempt:", attempt,
-                    "|", repr(exc),
-                )
-                status_code = getattr(
-                    getattr(exc, "response", None), "status_code", None
-                )
-                if status_code == 403:
-                    break
-                if attempt < attempts:
-                    time.sleep(2 * attempt)
-
-    try:
-        proxied = _sofa_get_via_apify_proxy(path, timeout=timeout)
-        if proxied is not None:
-            return proxied
-    except Exception as exc:
-        last_error = exc
-
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.get(
+                url,
+                headers=SOFA_HEADERS,
+                timeout=timeout,
+            )
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return response.json()
+        except (requests.RequestException, ValueError) as exc:
+            last_error = exc
+            print(
+                "SOFASCORE DIRECT GET ERROR:",
+                path,
+                "| attempt:", attempt,
+                "|", repr(exc),
+            )
+            # A Render IP blocked with HTTP 403 will not recover by retrying
+            # the same endpoint seconds later. Fail fast and use Apify/cache.
+            status_code = getattr(
+                getattr(exc, "response", None), "status_code", None
+            )
+            if status_code == 403:
+                raise
+            if attempt < attempts:
+                time.sleep(2 * attempt)
     if last_error is not None:
         raise last_error
     return None
@@ -453,338 +281,68 @@ def fetch_sofa_votes_direct(event_id):
     }
 
 
-def apify_run_async(url, token, payload, timeout=180, poll_seconds=3):
-    """Start an Apify Actor asynchronously and fetch its dataset on success."""
-    try:
-        actor_part = url.split("/acts/", 1)[1].split("/", 1)[0]
-    except (IndexError, AttributeError):
-        raise RuntimeError("Invalid Apify Actor URL")
-
-    run_url = f"https://api.apify.com/v2/acts/{actor_part}/runs"
-    response = requests.post(
-        run_url,
-        params={"token": token},
-        json=payload,
-        headers={"Accept": "application/json"},
-        timeout=30,
-    )
-    if not response.ok:
-        body = (response.text or "")[:1500].replace(token, "***")
-        raise RuntimeError(
-            f"Apify async start HTTP {response.status_code}: {body}"
-        )
-    data = response.json().get("data") or {}
-    run_id = str(data.get("id") or "").strip()
-    if not run_id:
-        raise RuntimeError("Apify async run ID missing")
-
-    deadline = time.monotonic() + timeout
-    last_status = ""
-    while time.monotonic() < deadline:
-        status_response = requests.get(
-            f"https://api.apify.com/v2/actor-runs/{run_id}",
-            params={"token": token},
-            headers={"Accept": "application/json"},
-            timeout=20,
-        )
-        status_response.raise_for_status()
-        run_data = status_response.json().get("data") or {}
-        last_status = str(run_data.get("status") or "").upper()
-
-        if last_status == "SUCCEEDED":
-            dataset_id = str(run_data.get("defaultDatasetId") or "").strip()
-            if not dataset_id:
-                return []
-            items_response = requests.get(
-                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                params={
-                    "token": token,
-                    "clean": "true",
-                    "format": "json",
-                },
-                headers={"Accept": "application/json"},
-                timeout=30,
-            )
-            items_response.raise_for_status()
-            items = items_response.json()
-            return items if isinstance(items, list) else []
-
-        if last_status in {"FAILED", "ABORTED", "TIMED-OUT"}:
-            status_message = str(run_data.get("statusMessage") or "")
-            raise RuntimeError(
-                f"Apify actor {last_status}: {status_message}"
-            )
-
-        time.sleep(poll_seconds)
-
-    # Do not leave a timed-out Actor running (and billing) in Apify.
-    try:
-        requests.post(
-            f"https://api.apify.com/v2/actor-runs/{run_id}/abort",
-            params={"token": token},
-            headers={"Accept": "application/json"},
-            timeout=20,
-        )
-        print("APIFY ACTOR ABORTED AFTER CLIENT TIMEOUT:", run_id)
-    except Exception as exc:
-        print("APIFY ACTOR ABORT ERROR:", repr(exc).replace(token, "***"))
-    raise TimeoutError(
-        f"Apify actor did not finish within {timeout}s; last status={last_status}"
-    )
-
-
 def _normalize_apify_fixture(item):
-    """Normalize supported Apify SofaScore event rows to SofaScore-like shape."""
+    """Normalize the backup Actor's flat match row to SofaScore-like shape."""
     if not isinstance(item, dict):
         return None
 
-    event_id = (
-        item.get("eventId")
-        or item.get("event_id")
-        or item.get("id")
-    )
+    event_id = item.get("eventId") or item.get("id")
     home_raw = item.get("homeTeam")
     away_raw = item.get("awayTeam")
     if isinstance(home_raw, dict) and isinstance(away_raw, dict):
         return item
 
-    home_name = (
-        item.get("homeTeamName")
-        or item.get("home_team")
-        or home_raw
-        or ""
-    )
-    away_name = (
-        item.get("awayTeamName")
-        or item.get("away_team")
-        or away_raw
-        or ""
-    )
-    status_type = str(
-        item.get("statusType")
-        or item.get("status")
-        or ""
-    ).strip().lower()
-    raw_status_code = item.get("statusCode")
-    if raw_status_code is None:
-        raw_status_code = item.get("status_code")
-    try:
-        status_code = int(raw_status_code)
-    except (TypeError, ValueError):
-        status_code = 100 if status_type == "finished" else 0
+    home_name = item.get("homeTeamName") or home_raw or ""
+    away_name = item.get("awayTeamName") or away_raw or ""
+    status_type = str(item.get("statusType") or "").strip().lower()
+    status_code = 100 if status_type == "finished" else 0
 
     return {
         "id": event_id,
         "eventId": event_id,
         "homeTeam": {"name": home_name},
         "awayTeam": {"name": away_name},
-        "homeScore": (
-            item.get("homeScore")
-            if item.get("homeScore") is not None
-            else item.get("home_score")
-        ),
-        "awayScore": (
-            item.get("awayScore")
-            if item.get("awayScore") is not None
-            else item.get("away_score")
-        ),
-        "status": {
-            "type": status_type,
-            "code": status_code,
-            "description": (
-                item.get("statusDescription")
-                or item.get("status_description")
-                or ""
-            ),
-        },
-        "startTimestamp": (
-            item.get("startTimestamp")
-            if item.get("startTimestamp") is not None
-            else item.get("start_timestamp")
-        ),
-        "startTimeIso": (
-            item.get("startTime")
-            or item.get("startTimeIso")
-            or item.get("start_time")
-        ),
-    }
-
-
-def _backup_schedule_payload(date_str, tournament_ids=None, max_items=500):
-    payload = {
-        "sports": ["football"],
-        "liveOnly": False,
-        "dateFrom": date_str,
-        "dateTo": date_str,
-        "maxItems": max_items,
-    }
-    ids = sorted({int(value) for value in (tournament_ids or []) if value})
-    if ids:
-        payload["tournamentIds"] = ids
-    else:
-        payload["maxTournamentsPerDate"] = 30
-        payload["maxDiscoveryPages"] = 2
-    return payload
-
-
-def fetch_fixtures(token, date_str, tournament_ids, timeout=180, attempts=1):
-    rows = apify_post(
-        APIFY_FIXTURES_URL, token,
-        _backup_schedule_payload(date_str, tournament_ids=tournament_ids),
-        timeout=timeout, attempts=attempts,
-    )
-    normalized_rows = [
-        normalized for normalized in
-        (_normalize_apify_fixture(item) for item in rows)
-        if normalized is not None
-        and (normalized.get("id") or normalized.get("eventId"))
-        and (normalized.get("homeTeam") or {}).get("name")
-        and (normalized.get("awayTeam") or {}).get("name")
-    ]
-    if rows and not normalized_rows:
-        first = rows[0] if isinstance(rows[0], dict) else {}
-        print(
-            "SOFASCORE APIFY FIXTURE DIAGNOSTIC:",
-            str(first.get("error") or first.get("message") or list(first.keys())[:12])
-        )
-    return normalized_rows
-
-
-def fetch_all_fixtures(token, date_str, timeout=180, attempts=1):
-    """Fallback for national-team competitions and result backfills."""
-    return fetch_fixtures(
-        token, date_str, tournament_ids=[],
-        timeout=timeout, attempts=attempts,
-    )
-
-
-def _normalize_search_match(item):
-    if not isinstance(item, dict):
-        return None
-    row_type = str(item.get("type") or item.get("rowType") or "").strip().lower()
-    if row_type and row_type not in {"match", "event", "eventdetail"}:
-        return None
-    event_id = item.get("eventId") or item.get("id")
-    home_raw = item.get("homeTeam")
-    away_raw = item.get("awayTeam")
-    home_name = home_raw.get("name") if isinstance(home_raw, dict) else home_raw
-    away_name = away_raw.get("name") if isinstance(away_raw, dict) else away_raw
-    if not event_id or not home_name or not away_name:
-        return None
-
-    status_raw = item.get("status")
-    status_type = str(item.get("statusType") or "").strip().lower()
-    status_code = 0
-    status_description = ""
-    if isinstance(status_raw, dict):
-        status_type = status_type or str(status_raw.get("type") or "").strip().lower()
-        status_description = str(status_raw.get("description") or "")
-        try:
-            status_code = int(status_raw.get("code") or 0)
-        except (TypeError, ValueError):
-            status_code = 0
-    elif status_raw:
-        status_type = status_type or str(status_raw).strip().lower()
-    if status_type == "finished" and not status_code:
-        status_code = 100
-
-    return {
-        "id": event_id,
-        "eventId": event_id,
-        "homeTeam": {"name": str(home_name)},
-        "awayTeam": {"name": str(away_name)},
         "homeScore": item.get("homeScore"),
         "awayScore": item.get("awayScore"),
         "status": {
             "type": status_type,
             "code": status_code,
-            "description": status_description,
+            "description": item.get("statusDescription") or "",
         },
         "startTimestamp": item.get("startTimestamp"),
         "startTimeIso": item.get("startTime") or item.get("startTimeIso"),
-        "votes": item.get("votes") or item.get("fanVotes"),
-        "url": item.get("url") or item.get("matchUrl"),
     }
 
 
-def _target_search_payload(targets, include_votes=False):
-    queries = []
-    for item in targets:
-        home = str(item.get("home") or "").strip()
-        away = str(item.get("away") or "").strip()
-        if home and away:
-            queries.append(f"{home} {away}")
+def _backup_schedule_payload(date_str, max_items=500):
     return {
-        "mode": "search",
-        "searchQueries": queries,
-        "searchType": "match",
-        "includeStatistics": False,
-        "includeLineups": False,
-        "includeIncidents": False,
+        "mode": "scheduled",
+        "sports": ["football"],
+        "date": date_str,
         "includeOdds": False,
-        "includeVotes": bool(include_votes),
-        "includeH2H": False,
-        "includeStandings": False,
-        "includeSquad": False,
-        "maxItems": max(1, min(80, len(queries) * 2)),
-        "proxy": {"useApifyProxy": True},
+        "maxEvents": max_items,
     }
 
 
-def fetch_target_matches(token, targets, include_votes=False, timeout=120):
-    payload = _target_search_payload(targets, include_votes=include_votes)
-    if not payload["searchQueries"]:
-        return []
-    rows = apify_run_async(
-        APIFY_SEARCH_URL, token, payload,
-        timeout=timeout,
+def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
+    rows = apify_post(
+        APIFY_FIXTURES_URL, token,
+        _backup_schedule_payload(date_str),
+        timeout=timeout, attempts=attempts,
     )
-    matches = [
+    return [
         normalized for normalized in
-        (_normalize_search_match(item) for item in rows)
+        (_normalize_apify_fixture(item) for item in rows)
         if normalized is not None
     ]
-    print(
-        "SOFASCORE TARGET SEARCH:",
-        len(payload["searchQueries"]), "queries | matches:", len(matches),
-        "| votes:", bool(include_votes),
-    )
-    return matches
 
 
-def fetch_matches_by_sofa_ids(token, event_ids, include_votes=False, timeout=120):
-    ids = sorted({int(value) for value in event_ids if value})
-    if not ids:
-        return []
-    payload = {
-        "mode": "url",
-        "urls": [f"https://www.sofascore.com/event/{event_id}" for event_id in ids],
-        "includeStatistics": False,
-        "includeLineups": False,
-        "includeIncidents": False,
-        "includeOdds": False,
-        "includeVotes": bool(include_votes),
-        "includeH2H": False,
-        "includeStandings": False,
-        "includeSquad": False,
-        "maxItems": len(ids),
-        "proxy": {"useApifyProxy": True},
-    }
-    rows = apify_run_async(
-        APIFY_SEARCH_URL, token, payload,
-        timeout=timeout,
+def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
+    """Fallback for national-team competitions and result backfills."""
+    return fetch_fixtures(
+        token, date_str, tournament_ids=[],
+        timeout=timeout, attempts=attempts,
     )
-    matches = [
-        normalized for normalized in
-        (_normalize_search_match(item) for item in rows)
-        if normalized is not None
-    ]
-    print(
-        "SOFASCORE ID LOOKUP:",
-        len(ids), "ids | matches:", len(matches),
-        "| votes:", bool(include_votes),
-    )
-    return matches
 
 
 def is_national_sheet_league(value):
@@ -801,20 +359,60 @@ def fetch_votes(token, event_ids):
     if not ids:
         return []
 
-    # Cost guard: one exact-ID Actor request only. The direct Sofa endpoint is
-    # blocked from Render, and chained fallbacks were burning Apify credit.
-    try:
-        rows = fetch_matches_by_sofa_ids(
-            token, ids, include_votes=True, timeout=60
-        )
-        print(
-            "SOFASCORE COST GUARD VOTES:",
-            len(ids), "requested |", len(rows), "returned",
-        )
-        return [item for item in rows if item.get("votes")]
-    except Exception as exc:
-        print("SOFASCORE EXACT-ID VOTES ERROR:", repr(exc))
-        return []
+    # Prefer SofaScore's own lightweight votes endpoint. Apify stays as a
+    # fallback for transient direct-access blocks or endpoint changes.
+    rows = []
+    fallback_ids = []
+    for event_id in ids:
+        try:
+            item = fetch_sofa_votes_direct(event_id)
+        except Exception as exc:
+            print("SOFASCORE DIRECT VOTES ERROR:", event_id, repr(exc))
+            item = None
+        if item is not None:
+            rows.append(item)
+        else:
+            fallback_ids.append(event_id)
+
+    if not fallback_ids:
+        return rows
+
+    print("SOFASCORE VOTES APIFY FALLBACK:", len(fallback_ids), "events")
+    batch_size = 5
+    for start in range(0, len(fallback_ids), batch_size):
+        batch = fallback_ids[start:start + batch_size]
+        payload = {
+            "eventIds": batch,
+            "includeStatistics": False,
+            "includeLineups": False,
+            "includeIncidents": False,
+            "includeShotmap": False,
+            "includeGraph": False,
+            "includeAveragePositions": False,
+            "includeBestPlayers": False,
+            "includeTeamStreaks": False,
+            "includeVotes": True,
+            "includeWinProbability": False,
+            "includeManagers": False,
+            "includeH2H": False,
+            "includeOdds": False,
+            "includeComments": False,
+            "includeHeatmaps": False,
+            "maxItems": len(batch),
+        }
+        try:
+            rows.extend(
+                apify_post(
+                    APIFY_MATCH_URL, token, payload,
+                    timeout=45, attempts=1,
+                )
+            )
+        except Exception as exc:
+            print(
+                "SOFASCORE VOTES FALLBACK BATCH FAILED:",
+                batch, repr(exc),
+            )
+    return rows
 
 def load_sofa_cache(book):
     try:
@@ -908,7 +506,7 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
 
         print("SOFASCORE ONE-OFF RESULT CATCHUP:", date_str)
         try:
-            repair_ok = update_results(
+            update_results(
                 book,
                 sheet,
                 rows,
@@ -916,12 +514,6 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
                 now,
                 result_dates=[date_str],
             )
-            if not repair_ok:
-                print(
-                    "SOFASCORE ONE-OFF RESULT CATCHUP PENDING:",
-                    date_str,
-                )
-                return False
         except Exception as exc:
             # Historical repair must never prevent today's SofaScore votes.
             # Leave the marker pending so it can be repaired on a later run.
@@ -1087,7 +679,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
     if not pending:
         print("SOFASCORE RESULTS: no blank results to check")
-        return True
+        return
 
     if result_dates is None:
         if now.hour == 7:
@@ -1098,19 +690,10 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         else:
             result_dates = [now.date().isoformat()]
 
-    # Result collection uses the cache first when Render is blocked by
-    # SofaScore. Cached Sofa event IDs are exact and avoid scraping a full day.
-    cache_sheet, sofa_cache, _, _ = load_sofa_cache(book)
-    target_dates = set(result_dates)
-    cache_dates = {}
-    for cache_row in cache_sheet.get_all_values()[1:]:
-        if len(cache_row) < 5:
-            continue
-        apinn_id = str(cache_row[0] or "").strip()
-        date_value = str(cache_row[4] or "").strip()
-        if apinn_id and date_value:
-            cache_dates[apinn_id] = date_value
-
+    # Primary result source: SofaScore's own daily schedule JSON.
+    # Render can occasionally receive 403s from SofaScore. In that case use
+    # the existing Apify fixture actor as a bounded fallback instead of
+    # leaving results permanently blank.
     fixture_pool = []
     direct_schedule_failed = False
     for date_str in result_dates:
@@ -1131,45 +714,10 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             )
 
         if not fixtures:
-            cached_ids = [
-                sofa_cache.get(item["apinn_event_id"])
-                for item in pending
-                if cache_dates.get(item["apinn_event_id"]) == date_str
-                and sofa_cache.get(item["apinn_event_id"])
-            ]
-            if cached_ids:
-                try:
-                    fixtures = fetch_matches_by_sofa_ids(
-                        apify_token, cached_ids,
-                        include_votes=False, timeout=180,
-                    )
-                    print(
-                        "SOFASCORE CACHED-ID RESULT FALLBACK:",
-                        date_str,
-                        "| events:", len(fixtures),
-                    )
-                except Exception as exc:
-                    print(
-                        "SOFASCORE CACHED-ID RESULT FALLBACK ERROR:",
-                        date_str, repr(exc),
-                    )
-
-        if not fixtures:
             try:
-                result_tournament_ids = {
-                    item["tournament_id"]
-                    for item in pending
-                    if item.get("tournament_id")
-                }
-                if result_tournament_ids:
-                    fixtures = fetch_fixtures(
-                        apify_token, date_str, result_tournament_ids,
-                        timeout=120, attempts=1
-                    )
-                else:
-                    fixtures = fetch_all_fixtures(
-                        apify_token, date_str, timeout=120, attempts=1
-                    )
+                fixtures = fetch_all_fixtures(
+                    apify_token, date_str, timeout=75, attempts=1
+                )
                 print(
                     "SOFASCORE APIFY RESULT FALLBACK:",
                     date_str,
@@ -1184,17 +732,30 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
         fixture_pool.extend(fixtures)
 
+    # If direct SofaScore is blocked and the bounded Apify fallback also
+    # returned nothing, stop this repair immediately. Do not spend minutes
+    # retrying every cached event ID against the same blocked Render IP.
     if direct_schedule_failed and not fixture_pool:
         raise RuntimeError(
-            "SofaScore schedule blocked and all result fallbacks returned no fixtures"
+            "SofaScore schedule blocked and Apify result fallback returned no fixtures"
         )
 
-    # Exact direct lookup remains only as a last path when Render can reach
-    # SofaScore directly.
+    # Exact cached Sofa event IDs are a second independent matching path.
+    # Restrict exact-event checks to the requested result date(s) so future
+    # matches are not queried unnecessarily.
+    cache_sheet, sofa_cache, _, _ = load_sofa_cache(book)
+    target_dates = set(result_dates)
+    cache_dates = {}
+    for cache_row in cache_sheet.get_all_values()[1:]:
+        if len(cache_row) < 5:
+            continue
+        apinn_id = str(cache_row[0] or "").strip()
+        date_value = str(cache_row[4] or "").strip()
+        if apinn_id and date_value:
+            cache_dates[apinn_id] = date_value
     exact_cache = {}
 
     updates = []
-    resolved_result_ids = set()
     for item in pending:
         match = find_finished_match(
             item["home"], item["away"], fixture_pool
@@ -1240,7 +801,6 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             "range": f'P{item["row"]}',
             "values": [[result_text]],
         })
-        resolved_result_ids.add(item["apinn_event_id"])
         print(
             "SOFASCORE RESULT WRITE:",
             item["home"], "vs", item["away"],
@@ -1255,22 +815,6 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         print("SOFASCORE RESULTS UPDATED:", len(updates), "matches")
     else:
         print("SOFASCORE RESULTS: nothing to write")
-
-    dated_pending = [
-        item for item in pending
-        if cache_dates.get(item["apinn_event_id"]) in target_dates
-    ]
-    unresolved = [
-        item for item in dated_pending
-        if item["apinn_event_id"] not in resolved_result_ids
-    ]
-    if unresolved:
-        print(
-            "SOFASCORE RESULTS STILL PENDING:",
-            len(unresolved), "matches",
-        )
-        return False
-    return True
 
 def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
@@ -1382,55 +926,59 @@ def update_votes(
             needs_lookup.append(item)
 
     newly_cached = []
-    embedded_vote_rows = []
     if needs_lookup and allow_fixture_lookup:
-        # Controlled discovery: at most one targeted paid Actor call per date.
-        # No full-day schedule scrape, no proxy retry chain.
-        print(
-            "SOFASCORE CONTROLLED DISCOVERY:",
-            len(needs_lookup),
-            "cache misses | max one targeted Actor per date",
-        )
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
-            # Cost guard: do not request SofaScore's full daily schedule.
-            # Render and both proxy paths are blocked. Resolve only the exact
-            # APINN/Pinnacle matches below.
             fixtures = []
-
-            date_items = [
-                item for item in needs_lookup
-                if item["sofa_date"] == date_str
-            ]
+            try:
+                fixtures = fetch_sofa_schedule(date_str)
+                print(
+                    "SOFASCORE DIRECT FIXTURES:",
+                    date_str,
+                    "| events:", len(fixtures),
+                )
+            except Exception as exc:
+                print(
+                    "SOFASCORE DIRECT FIXTURES ERROR:",
+                    date_str, repr(exc),
+                )
 
             if not fixtures:
+                date_items = [
+                    item for item in needs_lookup
+                    if item["sofa_date"] == date_str
+                ]
+                tournament_ids = {
+                    item["tournament_id"]
+                    for item in date_items
+                    if item.get("tournament_id")
+                }
+                has_national = any(
+                    item.get("national_match") for item in date_items
+                )
                 try:
-                    targeted = fetch_target_matches(
-                        apify_token, date_items,
-                        include_votes=True, timeout=90,
-                    )
-                    if targeted:
-                        fixtures = targeted
-                        embedded_vote_rows.extend(
-                            item for item in targeted if item.get("votes")
+                    if has_national:
+                        fixtures = fetch_all_fixtures(
+                            apify_token, date_str,
+                            timeout=75, attempts=1,
                         )
-                        print(
-                            "SOFASCORE TARGETED FALLBACK:",
-                            date_str,
-                            "| events:", len(fixtures),
+                    else:
+                        fixtures = fetch_fixtures(
+                            apify_token, date_str, tournament_ids,
+                            timeout=75, attempts=1,
                         )
-                except Exception as exc:
                     print(
-                        "SOFASCORE TARGETED FALLBACK ERROR:",
+                        "SOFASCORE APIFY FIXTURES FALLBACK:",
+                        date_str,
+                        "| events:", len(fixtures),
+                    )
+                except Exception as exc:
+                    fixtures = []
+                    print(
+                        "SOFASCORE APIFY FIXTURES FALLBACK ERROR:",
                         date_str, repr(exc),
                     )
-
-            if not fixtures:
-                print(
-                    "SOFASCORE COST GUARD: targeted lookup returned no fixtures;",
-                    "no full-day/proxy retry",
-                )
 
             fixture_pool.extend(fixtures)
 
@@ -1472,18 +1020,9 @@ def update_votes(
         print("SOFASCORE: no matched events")
         return False
 
-    embedded_by_event = {
-        str(item.get("eventId")): item
-        for item in embedded_vote_rows
-        if item.get("eventId") is not None and item.get("votes")
-    }
-    missing_vote_ids = [
-        item["sofa_event_id"] for item in matched
-        if str(item["sofa_event_id"]) not in embedded_by_event
-    ]
-    vote_rows = list(embedded_by_event.values())
-    if missing_vote_ids:
-        vote_rows.extend(fetch_votes(apify_token, missing_vote_ids))
+    vote_rows = fetch_votes(
+        apify_token, [item["sofa_event_id"] for item in matched]
+    )
     votes_by_event = {
         str(item.get("eventId")): item
         for item in vote_rows if item.get("eventId") is not None
@@ -1495,12 +1034,6 @@ def update_votes(
         vote_item = votes_by_event.get(str(item["sofa_event_id"]))
         if not vote_item:
             print("SOFASCORE VOTES NOT RETURNED:", item["home"], "vs", item["away"])
-            continue
-        if item["favorite_side"] not in {"H", "A"}:
-            print(
-                "SOFASCORE FAVORITE NOT SET:",
-                item["home"], "vs", item["away"],
-            )
             continue
         metric = favorite_vote_metric(vote_item, item["favorite_side"])
         if not metric:
@@ -1625,9 +1158,9 @@ def main():
 
     # Historical repair is deliberately last so it can never delay today's
     # 12:30 snapshot or the final 90-minute refresh.
-    # Cost guard: historical result repair stays paused while the SofaScore
-    # access path is being stabilized. It must not launch paid retries every 10m.
-    print("SOFASCORE RESULT CATCHUP: paused by cost guard")
+    run_one_off_result_catchup(
+        book, sheet, rows, apify_token, now
+    )
 
 
 if __name__ == "__main__":
