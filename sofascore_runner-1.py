@@ -7,6 +7,7 @@ import unicodedata
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from zoneinfo import ZoneInfo
+from urllib.parse import quote
 
 import gspread
 import requests
@@ -50,6 +51,9 @@ SOFA_HEADERS = {
     ),
     "Accept": "application/json,text/plain,*/*",
 }
+
+_APIFY_PROXY_PASSWORD = None
+_APIFY_PROXY_UNAVAILABLE = False
 
 # Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
 RUNNER_HARD_TIMEOUT_SECONDS = 480
@@ -285,13 +289,93 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
     raise RuntimeError("Apify request failed")
 
 
+def _apify_proxy_password():
+    global _APIFY_PROXY_PASSWORD, _APIFY_PROXY_UNAVAILABLE
+    if _APIFY_PROXY_PASSWORD:
+        return _APIFY_PROXY_PASSWORD
+    if _APIFY_PROXY_UNAVAILABLE:
+        return None
+
+    token = os.environ.get("APIFY_TOKEN", "").strip()
+    if not token:
+        _APIFY_PROXY_UNAVAILABLE = True
+        return None
+
+    try:
+        response = requests.get(
+            "https://api.apify.com/v2/users/me",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        data = response.json().get("data") or {}
+        password = str((data.get("proxy") or {}).get("password") or "").strip()
+        if password:
+            _APIFY_PROXY_PASSWORD = password
+            return password
+    except Exception as exc:
+        safe = str(exc).replace(token, "***")
+        print("APIFY PROXY CREDENTIAL ERROR:", safe)
+
+    _APIFY_PROXY_UNAVAILABLE = True
+    return None
+
+
+def _sofa_get_via_apify_proxy(path, timeout=20):
+    password = _apify_proxy_password()
+    if not password:
+        return None
+
+    escaped = quote(password, safe="")
+    last_error = None
+    proxy_modes = (
+        ("datacenter", "auto"),
+        ("residential", "groups-RESIDENTIAL"),
+    )
+
+    for mode_name, username in proxy_modes:
+        proxy_url = f"http://{username}:{escaped}@proxy.apify.com:8000"
+        proxies = {"http": proxy_url, "https": proxy_url}
+        for base_url in SOFA_API_BASES:
+            url = f"{base_url}{path}"
+            try:
+                response = requests.get(
+                    url,
+                    headers=SOFA_HEADERS,
+                    proxies=proxies,
+                    timeout=timeout,
+                )
+                if response.status_code == 404:
+                    continue
+                response.raise_for_status()
+                print(
+                    "SOFASCORE APIFY PROXY OK:",
+                    mode_name,
+                    "| host:", base_url,
+                )
+                return response.json()
+            except (requests.RequestException, ValueError) as exc:
+                last_error = exc
+                safe = repr(exc).replace(password, "***").replace(escaped, "***")
+                print(
+                    "SOFASCORE APIFY PROXY ERROR:",
+                    mode_name,
+                    "| host:", base_url,
+                    "|", safe,
+                )
+
+    if last_error is not None:
+        raise last_error
+    return None
+
+
 def sofa_get(path, attempts=3, timeout=20):
-    """Small resilient GET wrapper for SofaScore JSON endpoints."""
+    """GET SofaScore JSON directly, then through Apify Proxy if blocked."""
     last_error = None
 
-    # Try the website host first, then the legacy API host. Render IPs can be
-    # blocked on one host while the same public JSON route still works on the
-    # other.
     for base_url in SOFA_API_BASES:
         url = f"{base_url}{path}"
         for attempt in range(1, attempts + 1):
@@ -322,6 +406,13 @@ def sofa_get(path, attempts=3, timeout=20):
                     break
                 if attempt < attempts:
                     time.sleep(2 * attempt)
+
+    try:
+        proxied = _sofa_get_via_apify_proxy(path, timeout=timeout)
+        if proxied is not None:
+            return proxied
+    except Exception as exc:
+        last_error = exc
 
     if last_error is not None:
         raise last_error
