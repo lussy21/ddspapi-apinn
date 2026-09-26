@@ -161,10 +161,10 @@ def sheet_league_tournament_id(league_name):
     return None
 
 
-def apify_post(url, token, payload, timeout=180):
-    """Call an Apify actor with short retries and useful diagnostics."""
+def apify_post(url, token, payload, timeout=180, attempts=3):
+    """Call an Apify actor with bounded retries and useful diagnostics."""
     last_error = None
-    for attempt in range(1, 4):
+    for attempt in range(1, attempts + 1):
         response = requests.post(
             url, params={"token": token}, json=payload,
             headers={"Accept": "application/json"}, timeout=timeout,
@@ -179,7 +179,7 @@ def apify_post(url, token, payload, timeout=180):
         print(
             "APIFY POST ERROR:",
             response.status_code,
-            "| attempt:", attempt,
+            "| attempt:", f"{attempt}/{attempts}",
             "| actor:", url.rsplit("/", 2)[-2],
             "| response:", body,
         )
@@ -189,7 +189,7 @@ def apify_post(url, token, payload, timeout=180):
             last_error = exc
 
         # Actor runs can fail transiently even with valid input. Retry 400/429/5xx.
-        if attempt < 3 and (
+        if attempt < attempts and (
             response.status_code == 400
             or response.status_code == 429
             or response.status_code >= 500
@@ -338,7 +338,12 @@ def fetch_votes(token, event_ids):
             "includeHeatmaps": False, "maxItems": len(batch),
         }
         try:
-            rows.extend(apify_post(APIFY_MATCH_URL, token, payload))
+            rows.extend(
+                apify_post(
+                    APIFY_MATCH_URL, token, payload,
+                    timeout=45, attempts=1,
+                )
+            )
         except requests.RequestException as exc:
             print("SOFASCORE VOTES FALLBACK BATCH FAILED:", batch, repr(exc))
     return rows
@@ -621,33 +626,6 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                 repr(exc),
             )
 
-    # If direct daily schedule access is blocked, retain the old Apify
-    # fixture route as a fallback for mapped club competitions.
-    fixture_fallback_failed = False
-    if direct_schedule_failed:
-        tournament_ids = {
-            item["tournament_id"]
-            for item in pending if item["tournament_id"]
-        }
-        for date_str in result_dates:
-            try:
-                fixtures = fetch_fixtures(
-                    apify_token, date_str, tournament_ids
-                )
-                fixture_pool.extend(fixtures)
-                print(
-                    "SOFASCORE RESULT APIFY FALLBACK:",
-                    date_str,
-                    "| mapped:", len(fixtures),
-                )
-            except requests.RequestException as exc:
-                fixture_fallback_failed = True
-                print(
-                    "SOFASCORE RESULT APIFY FALLBACK ERROR:",
-                    date_str,
-                    repr(exc),
-                )
-
     # Exact cached Sofa event IDs are a second independent matching path.
     # Restrict exact-event checks to the requested result date(s) so future
     # matches are not queried unnecessarily.
@@ -724,11 +702,10 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
     else:
         print("SOFASCORE RESULTS: nothing to write")
 
-    # Keep one-off repair pending only when both schedule routes failed.
-    if direct_schedule_failed and fixture_fallback_failed and not fixture_pool:
-        raise RuntimeError(
-            "Both direct SofaScore and Apify result schedule calls failed"
-        )
+    # Keep one-off repair pending when the direct schedule route failed.
+    # The next 10-minute run will retry; do not launch long failing Actor runs.
+    if direct_schedule_failed and not fixture_pool:
+        raise RuntimeError("Direct SofaScore result schedule call failed")
 
 def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
@@ -844,29 +821,19 @@ def update_votes(
         fixture_pool = []
         dates = sorted({item["sofa_date"] for item in needs_lookup})
         for date_str in dates:
-            date_items = [
-                item for item in needs_lookup if item["sofa_date"] == date_str
-            ]
-            tids = {
-                item["tournament_id"] for item in date_items
-                if item["tournament_id"]
-            }
-            fixtures = fetch_fixtures(apify_token, date_str, tids)
+            try:
+                fixtures = fetch_sofa_schedule(date_str)
+            except Exception as exc:
+                fixtures = []
+                print(
+                    "SOFASCORE DIRECT FIXTURES ERROR:",
+                    date_str, repr(exc),
+                )
             fixture_pool.extend(fixtures)
-            if any(item["national_match"] for item in date_items):
-                try:
-                    national_fixtures = fetch_all_fixtures(apify_token, date_str)
-                except requests.RequestException as exc:
-                    national_fixtures = []
-                    print("SOFASCORE NATIONAL FIXTURES ERROR:", date_str, repr(exc))
-                fixture_pool.extend(national_fixtures)
-            else:
-                national_fixtures = []
             print(
-                "SOFASCORE FIXTURES:", date_str,
-                "| tournaments:", sorted(tids),
-                "| mapped:", len(fixtures),
-                "| all-for-nationals:", len(national_fixtures),
+                "SOFASCORE DIRECT FIXTURES:",
+                date_str,
+                "| events:", len(fixtures),
             )
 
         for item in needs_lookup:
@@ -879,7 +846,7 @@ def update_votes(
                     item["home"], "vs", item["away"],
                 )
                 continue
-            sofa_event_id = fixture.get("eventId")
+            sofa_event_id = fixture.get("id") or fixture.get("eventId")
             if not sofa_event_id:
                 continue
             cached_item = {**item, "sofa_event_id": int(sofa_event_id)}
@@ -887,7 +854,8 @@ def update_votes(
             newly_cached.append(cached_item)
             sofa_cache[item["apinn_event_id"]] = int(sofa_event_id)
             print(
-                "SOFASCORE MATCH:", item["home"], "vs", item["away"],
+                "SOFASCORE MATCH:",
+                item["home"], "vs", item["away"],
                 "| sofa event:", sofa_event_id,
             )
 
@@ -899,7 +867,7 @@ def update_votes(
         print(
             "SOFASCORE CACHE MISS:",
             len(needs_lookup),
-            "matches skipped until next full 13:00/17:00 lookup",
+            "matches skipped until a full fixture lookup",
         )
 
     if not matched:
