@@ -40,8 +40,9 @@ APIFY_SEARCH_URL = (
 )
 
 SOFA_API_BASES = (
-    "https://www.sofascore.com/api/v1",
+    "https://api.sofascore.app/api/v1",
     "https://api.sofascore.com/api/v1",
+    "https://www.sofascore.com/api/v1",
 )
 SOFA_HEADERS = {
     "User-Agent": (
@@ -50,6 +51,10 @@ SOFA_HEADERS = {
         "Chrome/120.0.0.0 Safari/537.36"
     ),
     "Accept": "application/json,text/plain,*/*",
+    # SofaScore's current WAF expects requests to look like site XHR traffic.
+    "X-Requested-With": "XMLHttpRequest",
+    "Referer": "https://www.sofascore.com/",
+    "Origin": "https://www.sofascore.com",
 }
 
 _APIFY_PROXY_PASSWORD = None
