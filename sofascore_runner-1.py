@@ -277,30 +277,73 @@ def fetch_sofa_votes_direct(event_id):
     }
 
 
-def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
-    ids = sorted({int(value) for value in tournament_ids if value})
-    if not ids:
-        return []
-    return apify_post(
-        APIFY_FIXTURES_URL, token,
-        {
-            "sports": ["football"], "liveOnly": False,
-            "dateFrom": date_str, "dateTo": date_str,
-            "tournamentIds": ids, "maxItems": 500,
+def _normalize_apify_fixture(item):
+    """Normalize the backup Actor's flat match row to SofaScore-like shape."""
+    if not isinstance(item, dict):
+        return None
+
+    event_id = item.get("eventId") or item.get("id")
+    home_raw = item.get("homeTeam")
+    away_raw = item.get("awayTeam")
+    if isinstance(home_raw, dict) and isinstance(away_raw, dict):
+        return item
+
+    home_name = item.get("homeTeamName") or home_raw or ""
+    away_name = item.get("awayTeamName") or away_raw or ""
+    status_type = str(item.get("statusType") or "").strip().lower()
+    status_code = 100 if status_type == "finished" else 0
+
+    return {
+        "id": event_id,
+        "eventId": event_id,
+        "homeTeam": {"name": home_name},
+        "awayTeam": {"name": away_name},
+        "homeScore": item.get("homeScore"),
+        "awayScore": item.get("awayScore"),
+        "status": {
+            "type": status_type,
+            "code": status_code,
+            "description": item.get("statusDescription") or "",
         },
+        "startTimestamp": item.get("startTimestamp"),
+        "startTimeIso": item.get("startTime") or item.get("startTimeIso"),
+    }
+
+
+def _backup_schedule_payload(date_str, max_items=500):
+    return {
+        "mode": "scheduled",
+        "sports": ["football"],
+        "date": date_str,
+        "daysAhead": 0,
+        "includeStatistics": False,
+        "includeLineups": False,
+        "includeIncidents": False,
+        "includeOdds": False,
+        "includeVotes": False,
+        "includeStandings": False,
+        "includeSquad": False,
+        "maxItems": max_items,
+    }
+
+
+def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
+    rows = apify_post(
+        APIFY_FIXTURES_URL, token,
+        _backup_schedule_payload(date_str),
         timeout=timeout, attempts=attempts,
     )
+    return [
+        normalized for normalized in
+        (_normalize_apify_fixture(item) for item in rows)
+        if normalized is not None
+    ]
 
 
 def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
-    """Fallback for national-team competitions whose Sofa tournament ID is not pre-mapped."""
-    return apify_post(
-        APIFY_FIXTURES_URL, token,
-        {
-            "sports": ["football"], "liveOnly": False,
-            "dateFrom": date_str, "dateTo": date_str,
-            "maxItems": 500,
-        },
+    """Fallback for national-team competitions and result backfills."""
+    return fetch_fixtures(
+        token, date_str, tournament_ids=[],
         timeout=timeout, attempts=attempts,
     )
 
