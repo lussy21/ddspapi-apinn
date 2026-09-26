@@ -956,10 +956,19 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         else:
             result_dates = [now.date().isoformat()]
 
-    # Primary result source: SofaScore's own daily schedule JSON.
-    # Render can occasionally receive 403s from SofaScore. In that case use
-    # the existing Apify fixture actor as a bounded fallback instead of
-    # leaving results permanently blank.
+    # Result collection uses the cache first when Render is blocked by
+    # SofaScore. Cached Sofa event IDs are exact and avoid scraping a full day.
+    cache_sheet, sofa_cache, _, _ = load_sofa_cache(book)
+    target_dates = set(result_dates)
+    cache_dates = {}
+    for cache_row in cache_sheet.get_all_values()[1:]:
+        if len(cache_row) < 5:
+            continue
+        apinn_id = str(cache_row[0] or "").strip()
+        date_value = str(cache_row[4] or "").strip()
+        if apinn_id and date_value:
+            cache_dates[apinn_id] = date_value
+
     fixture_pool = []
     direct_schedule_failed = False
     for date_str in result_dates:
@@ -980,6 +989,30 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             )
 
         if not fixtures:
+            cached_ids = [
+                sofa_cache.get(item["apinn_event_id"])
+                for item in pending
+                if cache_dates.get(item["apinn_event_id"]) == date_str
+                and sofa_cache.get(item["apinn_event_id"])
+            ]
+            if cached_ids:
+                try:
+                    fixtures = fetch_matches_by_sofa_ids(
+                        apify_token, cached_ids,
+                        include_votes=False, timeout=120,
+                    )
+                    print(
+                        "SOFASCORE CACHED-ID RESULT FALLBACK:",
+                        date_str,
+                        "| events:", len(fixtures),
+                    )
+                except Exception as exc:
+                    print(
+                        "SOFASCORE CACHED-ID RESULT FALLBACK ERROR:",
+                        date_str, repr(exc),
+                    )
+
+        if not fixtures:
             try:
                 result_tournament_ids = {
                     item["tournament_id"]
@@ -989,11 +1022,11 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                 if result_tournament_ids:
                     fixtures = fetch_fixtures(
                         apify_token, date_str, result_tournament_ids,
-                        timeout=180, attempts=1
+                        timeout=120, attempts=1
                     )
                 else:
                     fixtures = fetch_all_fixtures(
-                        apify_token, date_str, timeout=180, attempts=1
+                        apify_token, date_str, timeout=120, attempts=1
                     )
                 print(
                     "SOFASCORE APIFY RESULT FALLBACK:",
@@ -1009,27 +1042,13 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
         fixture_pool.extend(fixtures)
 
-    # If direct SofaScore is blocked and the bounded Apify fallback also
-    # returned nothing, stop this repair immediately. Do not spend minutes
-    # retrying every cached event ID against the same blocked Render IP.
     if direct_schedule_failed and not fixture_pool:
         raise RuntimeError(
-            "SofaScore schedule blocked and Apify result fallback returned no fixtures"
+            "SofaScore schedule blocked and all result fallbacks returned no fixtures"
         )
 
-    # Exact cached Sofa event IDs are a second independent matching path.
-    # Restrict exact-event checks to the requested result date(s) so future
-    # matches are not queried unnecessarily.
-    cache_sheet, sofa_cache, _, _ = load_sofa_cache(book)
-    target_dates = set(result_dates)
-    cache_dates = {}
-    for cache_row in cache_sheet.get_all_values()[1:]:
-        if len(cache_row) < 5:
-            continue
-        apinn_id = str(cache_row[0] or "").strip()
-        date_value = str(cache_row[4] or "").strip()
-        if apinn_id and date_value:
-            cache_dates[apinn_id] = date_value
+    # Exact direct lookup remains only as a last path when Render can reach
+    # SofaScore directly.
     exact_cache = {}
 
     updates = []
