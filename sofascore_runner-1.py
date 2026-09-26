@@ -32,6 +32,11 @@ APIFY_MATCH_URL = (
     "incognito_mode~sofascore-match-analytics-scraper/"
     "run-sync-get-dataset-items"
 )
+APIFY_SEARCH_URL = (
+    "https://api.apify.com/v2/acts/"
+    "abotapi~sofascore-scraper/"
+    "run-sync-get-dataset-items"
+)
 
 SOFA_API_BASES = (
     "https://www.sofascore.com/api/v1",
@@ -475,6 +480,135 @@ def fetch_all_fixtures(token, date_str, timeout=180, attempts=1):
         token, date_str, tournament_ids=[],
         timeout=timeout, attempts=attempts,
     )
+
+
+def _normalize_search_match(item):
+    if not isinstance(item, dict):
+        return None
+    row_type = str(item.get("type") or item.get("rowType") or "").strip().lower()
+    if row_type and row_type not in {"match", "event", "eventdetail"}:
+        return None
+    event_id = item.get("eventId") or item.get("id")
+    home_raw = item.get("homeTeam")
+    away_raw = item.get("awayTeam")
+    home_name = home_raw.get("name") if isinstance(home_raw, dict) else home_raw
+    away_name = away_raw.get("name") if isinstance(away_raw, dict) else away_raw
+    if not event_id or not home_name or not away_name:
+        return None
+
+    status_raw = item.get("status")
+    status_type = str(item.get("statusType") or "").strip().lower()
+    status_code = 0
+    status_description = ""
+    if isinstance(status_raw, dict):
+        status_type = status_type or str(status_raw.get("type") or "").strip().lower()
+        status_description = str(status_raw.get("description") or "")
+        try:
+            status_code = int(status_raw.get("code") or 0)
+        except (TypeError, ValueError):
+            status_code = 0
+    elif status_raw:
+        status_type = status_type or str(status_raw).strip().lower()
+    if status_type == "finished" and not status_code:
+        status_code = 100
+
+    return {
+        "id": event_id,
+        "eventId": event_id,
+        "homeTeam": {"name": str(home_name)},
+        "awayTeam": {"name": str(away_name)},
+        "homeScore": item.get("homeScore"),
+        "awayScore": item.get("awayScore"),
+        "status": {
+            "type": status_type,
+            "code": status_code,
+            "description": status_description,
+        },
+        "startTimestamp": item.get("startTimestamp"),
+        "startTimeIso": item.get("startTime") or item.get("startTimeIso"),
+        "votes": item.get("votes") or item.get("fanVotes"),
+        "url": item.get("url") or item.get("matchUrl"),
+    }
+
+
+def _target_search_payload(targets, include_votes=False):
+    queries = []
+    for item in targets:
+        home = str(item.get("home") or "").strip()
+        away = str(item.get("away") or "").strip()
+        if home and away:
+            queries.append(f"{home} {away}")
+    return {
+        "mode": "search",
+        "searchQueries": queries,
+        "searchType": "match",
+        "includeStatistics": False,
+        "includeLineups": False,
+        "includeIncidents": False,
+        "includeOdds": False,
+        "includeVotes": bool(include_votes),
+        "includeH2H": False,
+        "includeStandings": False,
+        "includeSquad": False,
+        "maxItems": max(20, min(200, len(queries) * 5)),
+        "proxy": {"useApifyProxy": True},
+    }
+
+
+def fetch_target_matches(token, targets, include_votes=False, timeout=120):
+    payload = _target_search_payload(targets, include_votes=include_votes)
+    if not payload["searchQueries"]:
+        return []
+    rows = apify_post(
+        APIFY_SEARCH_URL, token, payload,
+        timeout=timeout, attempts=1,
+    )
+    matches = [
+        normalized for normalized in
+        (_normalize_search_match(item) for item in rows)
+        if normalized is not None
+    ]
+    print(
+        "SOFASCORE TARGET SEARCH:",
+        len(payload["searchQueries"]), "queries | matches:", len(matches),
+        "| votes:", bool(include_votes),
+    )
+    return matches
+
+
+def fetch_matches_by_sofa_ids(token, event_ids, include_votes=False, timeout=120):
+    ids = sorted({int(value) for value in event_ids if value})
+    if not ids:
+        return []
+    payload = {
+        "mode": "url",
+        "urls": [f"https://www.sofascore.com/event/{event_id}" for event_id in ids],
+        "includeStatistics": False,
+        "includeLineups": False,
+        "includeIncidents": False,
+        "includeOdds": False,
+        "includeVotes": bool(include_votes),
+        "includeH2H": False,
+        "includeStandings": False,
+        "includeSquad": False,
+        "maxItems": len(ids),
+        "proxy": {"useApifyProxy": True},
+    }
+    rows = apify_post(
+        APIFY_SEARCH_URL, token, payload,
+        timeout=timeout, attempts=1,
+    )
+    matches = [
+        normalized for normalized in
+        (_normalize_search_match(item) for item in rows)
+        if normalized is not None
+    ]
+    print(
+        "SOFASCORE ID LOOKUP:",
+        len(ids), "ids | matches:", len(matches),
+        "| votes:", bool(include_votes),
+    )
+    return matches
 
 
 def is_national_sheet_league(value):
