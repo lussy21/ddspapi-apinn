@@ -24,10 +24,14 @@ GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "abotapi~sofascore-scraper/"
+    "teodor_banea~sofascore-live-scores-fixtures-scraper/"
     "run-sync-get-dataset-items"
 )
-APIFY_MATCH_URL = APIFY_FIXTURES_URL
+APIFY_MATCH_URL = (
+    "https://api.apify.com/v2/acts/"
+    "incognito_mode~sofascore-match-analytics-scraper/"
+    "run-sync-get-dataset-items"
+)
 
 SOFA_API_BASE = "https://api.sofascore.com/api/v1"
 SOFA_HEADERS = {
@@ -315,15 +319,8 @@ def _backup_schedule_payload(date_str, max_items=500):
         "mode": "scheduled",
         "sports": ["football"],
         "date": date_str,
-        "daysAhead": 0,
-        "includeStatistics": False,
-        "includeLineups": False,
-        "includeIncidents": False,
         "includeOdds": False,
-        "includeVotes": False,
-        "includeStandings": False,
-        "includeSquad": False,
-        "maxItems": max_items,
+        "maxEvents": max_items,
     }
 
 
@@ -385,36 +382,36 @@ def fetch_votes(token, event_ids):
     for start in range(0, len(fallback_ids), batch_size):
         batch = fallback_ids[start:start + batch_size]
         payload = {
-            "mode": "url",
-            "urls": [
-                "https://www.sofascore.com/event/" + str(event_id)
-                for event_id in batch
-            ],
+            "eventIds": batch,
             "includeStatistics": False,
             "includeLineups": False,
             "includeIncidents": False,
-            "includeOdds": False,
+            "includeShotmap": False,
+            "includeGraph": False,
+            "includeAveragePositions": False,
+            "includeBestPlayers": False,
+            "includeTeamStreaks": False,
             "includeVotes": True,
-            "includeStandings": False,
-            "includeSquad": False,
+            "includeWinProbability": False,
+            "includeManagers": False,
+            "includeH2H": False,
+            "includeOdds": False,
+            "includeComments": False,
+            "includeHeatmaps": False,
             "maxItems": len(batch),
         }
         try:
-            backup_rows = apify_post(
-                APIFY_MATCH_URL, token, payload,
-                timeout=45, attempts=1,
+            rows.extend(
+                apify_post(
+                    APIFY_MATCH_URL, token, payload,
+                    timeout=45, attempts=1,
+                )
             )
-            for item in backup_rows:
-                event_id = item.get("eventId") or item.get("id")
-                votes = item.get("votes")
-                if event_id is None or not isinstance(votes, dict):
-                    continue
-                rows.append({
-                    "eventId": int(event_id),
-                    "votes": votes,
-                })
-        except requests.RequestException as exc:
-            print("SOFASCORE VOTES FALLBACK BATCH FAILED:", batch, repr(exc))
+        except Exception as exc:
+            print(
+                "SOFASCORE VOTES FALLBACK BATCH FAILED:",
+                batch, repr(exc),
+            )
     return rows
 
 def load_sofa_cache(book):
@@ -1021,7 +1018,7 @@ def update_votes(
 
     if not matched:
         print("SOFASCORE: no matched events")
-        return True
+        return False
 
     vote_rows = fetch_votes(
         apify_token, [item["sofa_event_id"] for item in matched]
@@ -1072,7 +1069,7 @@ def update_votes(
     else:
         print("SOFASCORE: nothing to write")
 
-    return True
+    return bool(updates)
 
 
 def main():
