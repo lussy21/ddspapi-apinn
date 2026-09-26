@@ -847,9 +847,20 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
         if not fixtures:
             try:
-                fixtures = fetch_all_fixtures(
-                    apify_token, date_str, timeout=180, attempts=1
-                )
+                result_tournament_ids = {
+                    item["tournament_id"]
+                    for item in pending
+                    if item.get("tournament_id")
+                }
+                if result_tournament_ids:
+                    fixtures = fetch_fixtures(
+                        apify_token, date_str, result_tournament_ids,
+                        timeout=180, attempts=1
+                    )
+                else:
+                    fixtures = fetch_all_fixtures(
+                        apify_token, date_str, timeout=180, attempts=1
+                    )
                 print(
                     "SOFASCORE APIFY RESULT FALLBACK:",
                     date_str,
@@ -1086,19 +1097,22 @@ def update_votes(
                     for item in date_items
                     if item.get("tournament_id")
                 }
-                has_national = any(
-                    item.get("national_match") for item in date_items
+                has_unmapped_national = any(
+                    item.get("national_match") and not item.get("tournament_id")
+                    for item in date_items
                 )
                 try:
-                    if has_national:
-                        fixtures = fetch_all_fixtures(
-                            apify_token, date_str,
-                            timeout=180, attempts=1,
-                        )
-                    else:
+                    if tournament_ids:
                         fixtures = fetch_fixtures(
                             apify_token, date_str, tournament_ids,
                             timeout=180, attempts=1,
+                        )
+                    if has_unmapped_national:
+                        fixtures.extend(
+                            fetch_all_fixtures(
+                                apify_token, date_str,
+                                timeout=180, attempts=1,
+                            )
                         )
                     print(
                         "SOFASCORE APIFY FIXTURES FALLBACK:",
