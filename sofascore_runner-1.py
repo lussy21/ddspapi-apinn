@@ -1,5 +1,7 @@
 import os
 import re
+import signal
+import sys
 import time
 import unicodedata
 from datetime import datetime, timedelta
@@ -40,6 +42,15 @@ SOFA_HEADERS = {
     ),
     "Accept": "application/json,text/plain,*/*",
 }
+
+# Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
+RUNNER_HARD_TIMEOUT_SECONDS = 240
+
+
+def _runner_timeout_handler(signum, frame):
+    raise TimeoutError(
+        f"SofaScore runner exceeded {RUNNER_HARD_TIMEOUT_SECONDS}s hard limit"
+    )
 
 APINN_TO_SOFA_TOURNAMENT = {
     1980: 17, 1842: 35, 2036: 34, 2081: 185, 2436: 23, 2196: 8,
@@ -227,6 +238,13 @@ def sofa_get(path, attempts=3, timeout=20):
                 "| attempt:", attempt,
                 "|", repr(exc),
             )
+            # A Render IP blocked with HTTP 403 will not recover by retrying
+            # the same endpoint seconds later. Fail fast and use Apify/cache.
+            status_code = getattr(
+                getattr(exc, "response", None), "status_code", None
+            )
+            if status_code == 403:
+                raise
             if attempt < attempts:
                 time.sleep(2 * attempt)
     if last_error is not None:
@@ -315,7 +333,6 @@ def fetch_votes(token, event_ids):
         except Exception as exc:
             print("SOFASCORE DIRECT VOTES ERROR:", event_id, repr(exc))
             item = None
-            fallback_ids.append(event_id)
         if item is not None:
             rows.append(item)
         else:
@@ -441,14 +458,23 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
             continue
 
         print("SOFASCORE ONE-OFF RESULT CATCHUP:", date_str)
-        update_results(
-            book,
-            sheet,
-            rows,
-            apify_token,
-            now,
-            result_dates=[date_str],
-        )
+        try:
+            update_results(
+                book,
+                sheet,
+                rows,
+                apify_token,
+                now,
+                result_dates=[date_str],
+            )
+        except Exception as exc:
+            # Historical repair must never prevent today's SofaScore votes.
+            # Leave the marker pending so it can be repaired on a later run.
+            print(
+                "SOFASCORE ONE-OFF RESULT CATCHUP ERROR:",
+                date_str, repr(exc),
+            )
+            return False
         cache_sheet.update(
             f"{cell}:{cell}",
             [[target_marker]],
@@ -649,6 +675,14 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
 
         fixture_pool.extend(fixtures)
 
+    # If direct SofaScore is blocked and the bounded Apify fallback also
+    # returned nothing, stop this repair immediately. Do not spend minutes
+    # retrying every cached event ID against the same blocked Render IP.
+    if direct_schedule_failed and not fixture_pool:
+        raise RuntimeError(
+            "SofaScore schedule blocked and Apify result fallback returned no fixtures"
+        )
+
     # Exact cached Sofa event IDs are a second independent matching path.
     # Restrict exact-event checks to the requested result date(s) so future
     # matches are not queried unnecessarily.
@@ -670,7 +704,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             item["home"], item["away"], fixture_pool
         )
 
-        if match is None:
+        if match is None and not direct_schedule_failed:
             sofa_id = sofa_cache.get(item["apinn_event_id"])
             cache_date = cache_dates.get(item["apinn_event_id"])
             if sofa_id and cache_date in target_dates:
@@ -724,11 +758,6 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
         print("SOFASCORE RESULTS UPDATED:", len(updates), "matches")
     else:
         print("SOFASCORE RESULTS: nothing to write")
-
-    # Keep one-off repair pending when the direct schedule route failed.
-    # The next 10-minute run will retry; do not launch long failing Actor runs.
-    if direct_schedule_failed and not fixture_pool:
-        raise RuntimeError("Direct SofaScore result schedule call failed")
 
 def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
@@ -987,6 +1016,17 @@ def update_votes(
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+
+    print("SOFASCORE RUNNER START", flush=True)
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, _runner_timeout_handler)
+        signal.alarm(RUNNER_HARD_TIMEOUT_SECONDS)
+
     apify_token = os.environ.get("APIFY_TOKEN", "").strip()
     if not apify_token:
         print("SOFASCORE: APIFY_TOKEN missing - skipped")
@@ -1066,4 +1106,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print("SOFASCORE ERROR:", repr(exc))
+        print("SOFASCORE ERROR:", repr(exc), flush=True)
+    finally:
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
