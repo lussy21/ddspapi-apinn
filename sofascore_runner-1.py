@@ -33,14 +33,21 @@ APIFY_MATCH_URL = (
     "run-sync-get-dataset-items"
 )
 
-SOFA_API_BASE = "https://api.sofascore.com/api/v1"
+SOFA_API_BASES = (
+    "https://api.sofascore.com/api/v1",
+    "https://www.sofascore.com/api/v1",
+)
 SOFA_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/140.0.0.0 Safari/537.36"
     ),
     "Accept": "application/json,text/plain,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.sofascore.com/",
+    "Origin": "https://www.sofascore.com",
+    "X-Requested-With": "XMLHttpRequest",
 }
 
 # Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
@@ -63,6 +70,7 @@ LEAGUE_NAME_TO_SOFA_TOURNAMENT = {
     "germany - bundesliga": 35,
     "france - ligue 1": 34,
     "greece - super league": 185,
+    "greece - super league 2": 186,
     "italy - serie a": 23,
     "spain - la liga": 8,
     "belgium - pro league": 38,
@@ -160,7 +168,7 @@ def sheet_league_tournament_id(league_name):
         return LEAGUE_NAME_TO_SOFA_TOURNAMENT[name]
     checks = [
         ("premier league", 17), ("bundesliga", 35), ("ligue 1", 34),
-        ("greece", 185), ("serie a", 23), ("la liga", 8),
+        ("super league 2", 186), ("greece", 185), ("serie a", 23), ("la liga", 8),
         ("pro league", 38), ("superliga", 39), ("eliteserien", 20),
         ("eredivisie", 37), ("super lig", 52), ("allsvenskan", 40),
         ("mls", 242), ("champions league", 7), ("veikkausliiga", 41),
@@ -216,37 +224,42 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
 
 
 def sofa_get(path, attempts=3, timeout=20):
-    """Small resilient GET wrapper for SofaScore's public JSON endpoints."""
-    url = f"{SOFA_API_BASE}{path}"
+    """Try free direct SofaScore HTTP paths before any paid fallback."""
     last_error = None
-    for attempt in range(1, attempts + 1):
-        try:
-            response = requests.get(
-                url,
-                headers=SOFA_HEADERS,
-                timeout=timeout,
-            )
-            if response.status_code == 404:
-                return None
-            response.raise_for_status()
-            return response.json()
-        except (requests.RequestException, ValueError) as exc:
-            last_error = exc
-            print(
-                "SOFASCORE DIRECT GET ERROR:",
-                path,
-                "| attempt:", attempt,
-                "|", repr(exc),
-            )
-            # A Render IP blocked with HTTP 403 will not recover by retrying
-            # the same endpoint seconds later. Fail fast and use Apify/cache.
-            status_code = getattr(
-                getattr(exc, "response", None), "status_code", None
-            )
-            if status_code == 403:
-                raise
-            if attempt < attempts:
-                time.sleep(2 * attempt)
+    for base in SOFA_API_BASES:
+        url = f"{base}{path}"
+        for attempt in range(1, attempts + 1):
+            try:
+                response = requests.get(
+                    url,
+                    headers=SOFA_HEADERS,
+                    timeout=timeout,
+                )
+                if response.status_code == 404:
+                    break
+                response.raise_for_status()
+                payload = response.json()
+                print("SOFASCORE DIRECT GET OK:", base, path)
+                return payload
+            except (requests.RequestException, ValueError) as exc:
+                last_error = exc
+                print(
+                    "SOFASCORE DIRECT GET ERROR:",
+                    base,
+                    path,
+                    "| attempt:", attempt,
+                    "|", repr(exc),
+                )
+                status_code = getattr(
+                    getattr(exc, "response", None), "status_code", None
+                )
+                # A 403 on one host should immediately try the next free host,
+                # not repeat the same blocked request several times.
+                if status_code in (403, 404):
+                    break
+                if attempt < attempts:
+                    time.sleep(2 * attempt)
+
     if last_error is not None:
         raise last_error
     return None
