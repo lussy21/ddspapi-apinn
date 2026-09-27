@@ -908,7 +908,26 @@ response = apinn_get(
 )
 
 if response is not None:
-    for match in response.json():
+    all_board_matches = response.json()
+    print("APINN ALL-BOARD RAW COUNT:", len(all_board_matches))
+
+    raw_nations = []
+    for raw_match in all_board_matches:
+        raw_league = raw_match.get("league_name") or ""
+        if "nations league" in str(raw_league).lower():
+            raw_nations.append(raw_match)
+
+    print("APINN RAW NATIONS LEAGUE COUNT:", len(raw_nations))
+    for raw_match in raw_nations:
+        print(
+            "APINN RAW NATIONS:",
+            raw_match.get("runner_home"), "vs", raw_match.get("runner_away"),
+            "| league:", raw_match.get("league_name"),
+            "| starts:", raw_match.get("starts"),
+            "| event:", raw_match.get("event_id"),
+        )
+
+    for match in all_board_matches:
         league_name = match.get("league_name") or ""
         if (
             not is_target_league_name(league_name)
