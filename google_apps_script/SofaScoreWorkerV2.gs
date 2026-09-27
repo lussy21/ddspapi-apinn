@@ -245,7 +245,10 @@ function dryRunSofaAllToday() {
   const sh=ss_().getSheetByName(SOFA_CFG.pinnacleSheet);
   const last=sh.getLastRow();
   const rows=last>=3 ? sh.getRange(3,1,last-2,18).getValues() : [];
-  const fixtures=allToday_();
+  const nowMs=Date.now();
+  const fixtures=allToday_().filter(f =>
+    Number(f.startTimestamp || 0) * 1000 > nowMs
+  );
   let matched=0, withVotes=0;
   rows.forEach((row,i)=>{
     const home=String(row[1]||'').trim(), away=String(row[2]||'').trim();
@@ -269,8 +272,18 @@ function runSofaDaily() {
   const lock=LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
   try {
+    const props=PropertiesService.getScriptProperties();
+    const today=today_();
+    if (props.getProperty('SOFA_VOTES_DONE_DATE')===today) {
+      control_('P2','SKIPPED '+stamp_()+' | already done today');
+      return;
+    }
+
     control_('P2','RUNNING '+stamp_());
-    const fixtures=allToday_();
+    const nowMs=Date.now();
+    const fixtures=allToday_().filter(f =>
+      Number(f.startTimestamp || 0) * 1000 > nowMs
+    );
     if (!fixtures.length) {
       control_('P2','STOPPED '+stamp_()+' | fixtures=0');
       return;
@@ -325,6 +338,7 @@ function runSofaDaily() {
       Utilities.sleep(80);
     });
 
+    props.setProperty('SOFA_VOTES_DONE_DATE',today);
     control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors='+errors);
   } catch(e) {
     control_('P2','ERROR '+stamp_()+' | '+String(e).slice(0,120));
