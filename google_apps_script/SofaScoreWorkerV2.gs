@@ -334,10 +334,12 @@ function runSofaDaily() {
         ? oldRaw
         : Number(String(oldRaw||'').replace('%','').replace(',','.').trim());
       const val=p;
+      const cell=sh.getRange(rowNo,14);
       if (!Number.isFinite(oldNum) || oldNum!==val || typeof oldRaw!=='number') {
-        sh.getRange(rowNo,14).setValue(val);
+        cell.setValue(val);
         written++;
       }
+      cell.setNumberFormat('0"%"');
       Utilities.sleep(80);
     });
 
@@ -363,11 +365,17 @@ function repairTodayNumericVotes() {
   const todayApinn={};
   cacheRows.forEach(r=>{
     const apinn=String(r[0]||'').trim();
-    const d=Utilities.formatDate(
-      r[4] instanceof Date ? r[4] : new Date(String(r[4]||'')),
-      SOFA_CFG.tz,
-      'yyyy-MM-dd'
-    );
+    let d='';
+    if (r[4] instanceof Date) {
+      d=Utilities.formatDate(r[4],SOFA_CFG.tz,'yyyy-MM-dd');
+    } else {
+      const s=String(r[4]||'').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d=s;
+      else if (s) {
+        const dt=new Date(s);
+        if (!isNaN(dt.getTime())) d=Utilities.formatDate(dt,SOFA_CFG.tz,'yyyy-MM-dd');
+      }
+    }
     if (apinn && d===day) todayApinn[apinn]=true;
   });
 
@@ -379,25 +387,42 @@ function repairTodayNumericVotes() {
 
   const rows=pin.getRange(3,1,last-2,18).getValues();
   let converted=0;
+  let formatted=0;
+
   rows.forEach((row,i)=>{
     const apinn=String(row[17]||'').trim();
     if (!todayApinn[apinn]) return;
 
     const raw=row[13];
-    if (typeof raw!=='string') return;
+    if (raw==='' || raw===null) return;
 
-    const text=raw.trim();
-    if (!/^\\d+(?:[.,]\\d+)?%$/.test(text)) return;
+    let n=null;
+    if (typeof raw==='number') {
+      n=raw;
+      if (n>=0 && n<=1) n=n*100;
+    } else {
+      const text=String(raw).trim();
+      if (/^\d+(?:[.,]\d+)?%$/.test(text)) {
+        n=Number(text.replace('%','').replace(',','.'));
+      } else if (/^\d+(?:[.,]\d+)?$/.test(text)) {
+        n=Number(text.replace(',','.'));
+      }
+    }
 
-    const n=Number(text.replace('%','').replace(',','.'));
     if (!Number.isFinite(n)) return;
+    n=Math.round(n);
 
-    pin.getRange(i+3,14).setValue(n);
-    converted++;
+    const cell=pin.getRange(i+3,14);
+    if (typeof raw!=='number' || Math.abs(raw-n)>1e-9) {
+      cell.setValue(n);
+      converted++;
+    }
+    cell.setNumberFormat('0"%"');
+    formatted++;
   });
 
   SpreadsheetApp.flush();
-  Logger.log('REPAIR DONE | converted='+converted+' | values preserved');
+  Logger.log('REPAIR DONE | converted='+converted+' | formatted='+formatted+' | values preserved');
 }
 
 function installSofaDailyTrigger() {
