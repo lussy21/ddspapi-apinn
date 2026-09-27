@@ -14,6 +14,7 @@
 const SOFA_CFG = {
   tz: 'Europe/Athens',
   apiBase: 'https://api.sofascore.com/api/v1',
+  spreadsheetId: '1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM',
   pinnacleSheet: 'PINNACLE',
   cacheSheet: 'SOFA CACHE',
   controlSheet: 'ALERT STATS',
@@ -49,8 +50,12 @@ function todayKey_() {
   return Utilities.formatDate(new Date(), SOFA_CFG.tz, 'yyyy-MM-dd');
 }
 
+function ss_() {
+  return SpreadsheetApp.openById(SOFA_CFG.spreadsheetId);
+}
+
 function controlSheet_() {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SOFA_CFG.controlSheet);
+  return ss_().getSheetByName(SOFA_CFG.controlSheet);
 }
 
 function setControl_(cell, value) {
@@ -252,7 +257,7 @@ function favoritePct_(payload, favoriteSide) {
 }
 
 function loadCache_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = ss_();
   const sheet = ss.getSheetByName(SOFA_CFG.cacheSheet);
   const lastRow = Math.max(sheet.getLastRow(), 1);
   const values = lastRow >= 2
@@ -317,7 +322,7 @@ function runSofaDaily() {
       return;
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = ss_();
     const pinnacle = ss.getSheetByName(SOFA_CFG.pinnacleSheet);
     const lastRow = pinnacle.getLastRow();
     if (lastRow < 3) {
