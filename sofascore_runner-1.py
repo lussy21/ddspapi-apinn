@@ -1096,6 +1096,58 @@ def manual_full_sofa_run():
     print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
 
 
+def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_key, now):
+    """Run one full SofaScore refresh when ALERT STATS!M2 is armed.
+
+    The request is consumed BEFORE any paid/provider work starts so a failed
+    run cannot repeat automatically on the next 10-minute cron.
+    """
+    raw = str(control.acell("M2").value or "").strip().upper()
+    if raw not in {"TRUE", "RUN", "1", "YES"}:
+        return False
+
+    stamp = now.strftime("%Y-%m-%d %H:%M")
+    # Disarm first: this makes the manual run strictly one-shot.
+    control.update(
+        "M2:M3",
+        [["FALSE"], [f"RUNNING {stamp}"]],
+        value_input_option="USER_ENTERED",
+    )
+    print("SOFASCORE MANUAL FULL REQUEST: CONSUMED", stamp, flush=True)
+
+    if not apinn_key:
+        control.update(
+            "M3",
+            [[f"FAILED {stamp} - APINN_API_KEY missing"]],
+            value_input_option="USER_ENTERED",
+        )
+        print("SOFASCORE MANUAL FULL RUN: APINN_API_KEY missing", flush=True)
+        return True
+
+    try:
+        ok = update_votes(
+            sheet, rows, book, apify_token, apinn_key, now,
+            only_blank=False,
+            allow_fixture_lookup=True,
+        )
+        end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
+        control.update(
+            "M3",
+            [[f"DONE {end_stamp} | wrote={bool(ok)}"]],
+            value_input_option="USER_ENTERED",
+        )
+        print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
+    except Exception as exc:
+        end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
+        control.update(
+            "M3",
+            [[f"FAILED {end_stamp}"]],
+            value_input_option="USER_ENTERED",
+        )
+        print("SOFASCORE MANUAL FULL RUN ERROR:", repr(exc), flush=True)
+    return True
+
+
 def main():
     try:
         sys.stdout.reconfigure(line_buffering=True)
@@ -1115,6 +1167,22 @@ def main():
 
     now = datetime.now(GREECE_TZ)
 
+    creds = Credentials.from_service_account_file(GOOGLE_CREDS, scopes=SCOPES)
+    gc = gspread.authorize(creds)
+    book = gc.open_by_key(SHEET_KEY)
+    sheet = book.worksheet(SHEET_NAME)
+    rows = sheet.get_all_values()
+    control = book.worksheet("ALERT STATS")
+
+    apinn_key = os.environ.get("APINN_API_KEY", "").strip()
+
+    # Manual one-shot FULL SOFA request from ALERT STATS!M2.
+    # It takes priority over normal time windows and auto-disarms immediately.
+    if consume_manual_full_request(
+        control, sheet, rows, book, apify_token, apinn_key, now
+    ):
+        return
+
     # Retry result collection across a wider window. A single transient
     # provider failure can no longer make us wait until the next day.
     result_window = (
@@ -1123,12 +1191,6 @@ def main():
         or (now.hour == 23 and now.minute < 20)
     )
 
-    creds = Credentials.from_service_account_file(GOOGLE_CREDS, scopes=SCOPES)
-    gc = gspread.authorize(creds)
-    book = gc.open_by_key(SHEET_KEY)
-    sheet = book.worksheet(SHEET_NAME)
-    rows = sheet.get_all_values()
-
     if result_window:
         try:
             update_results(book, sheet, rows, apify_token, now)
@@ -1136,12 +1198,9 @@ def main():
             print("SOFASCORE CURRENT RESULTS ERROR:", repr(exc))
         return
 
-    apinn_key = os.environ.get("APINN_API_KEY", "").strip()
     if not apinn_key:
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
         return
-
-    control = book.worksheet("ALERT STATS")
 
     # One full daily SofaScore vote snapshot for ALL today's upcoming matches.
     # Target time: 12:30 Greece time.
