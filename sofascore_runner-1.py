@@ -1300,36 +1300,11 @@ def main():
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
         return
 
-    # One full daily SofaScore vote snapshot for ALL today's upcoming matches.
-    # Target time: 12:30 Greece time.
-    initial_slot = f"{now.date().isoformat()}-1230"
-    last_initial_slot = str(control.acell("L2").value or "").strip()
+    # Automatic SofaScore vote snapshots are owned by Google Apps Script.
+    # Render must never write column N automatically. Manual FULL remains available.
+    print("SOFASCORE DAILY VOTES: DISABLED ON RENDER | owner=GOOGLE_APPS_SCRIPT")
 
-    after_initial_time = (now.hour, now.minute) >= (12, 30)
-    if after_initial_time and last_initial_slot != initial_slot:
-        print(
-            "SOFASCORE DAILY FULL SNAPSHOT:",
-            initial_slot,
-            "| last:", last_initial_slot or "none",
-        )
-        ok = update_votes(
-            sheet, rows, book, apify_token, apinn_key, now,
-            only_blank=False,
-            allow_fixture_lookup=True,
-            allow_paid_fallback=False,
-        )
-        if SOFA_DIRECT_BLOCKED:
-            save_sofa_block(control, now)
-        if ok:
-            control.update(
-                "L1:L2",
-                [["SOFA DAILY 12:30"], [initial_slot]],
-            )
-            print("SOFASCORE DAILY SLOT SAVED:", initial_slot)
-            rows = sheet.get_all_values()
-
-    # Automatic 90-minute SofaScore refresh disabled.
-    # Keep only the daily 12:30 snapshot and explicit manual FULL runs.
+    # Automatic 90-minute SofaScore refresh remains disabled.
 
     # Historical repair is deliberately last so it can never delay today's
     # 12:30 snapshot.
