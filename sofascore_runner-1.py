@@ -10,6 +10,10 @@ from zoneinfo import ZoneInfo
 
 import gspread
 import requests
+try:
+    from curl_cffi import requests as curl_requests
+except Exception:
+    curl_requests = None
 from google.oauth2.service_account import Credentials
 
 GREECE_TZ = ZoneInfo("Europe/Athens")
@@ -52,6 +56,8 @@ SOFA_HEADERS = {
 
 # Never let SofaScore maintenance block the 10-minute Render cron indefinitely.
 RUNNER_HARD_TIMEOUT_SECONDS = 240
+SOFA_BLOCK_HOURS = 6
+SOFA_DIRECT_BLOCKED = False
 
 
 def _runner_timeout_handler(signum, frame):
@@ -224,25 +230,55 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
 
 
 def sofa_get(path, attempts=3, timeout=20):
-    """Try free direct SofaScore HTTP paths before any paid fallback."""
+    """Use a browser-like TLS client first, then fail fast on anti-bot blocks."""
+    global SOFA_DIRECT_BLOCKED
+
     last_error = None
+    saw_403 = False
     for base in SOFA_API_BASES:
         url = f"{base}{path}"
         for attempt in range(1, attempts + 1):
             try:
-                response = requests.get(
-                    url,
-                    headers=SOFA_HEADERS,
-                    timeout=timeout,
-                )
-                if response.status_code == 404:
+                if curl_requests is not None:
+                    response = curl_requests.get(
+                        url,
+                        headers=SOFA_HEADERS,
+                        impersonate="chrome",
+                        timeout=timeout,
+                    )
+                    transport = "curl_cffi"
+                else:
+                    response = requests.get(
+                        url,
+                        headers=SOFA_HEADERS,
+                        timeout=timeout,
+                    )
+                    transport = "requests"
+
+                status_code = int(response.status_code)
+                if status_code == 404:
+                    break
+                if status_code == 403:
+                    saw_403 = True
+                    print(
+                        "SOFASCORE DIRECT 403:",
+                        transport, base, path,
+                    )
                     break
                 response.raise_for_status()
                 payload = response.json()
-                print("SOFASCORE DIRECT GET OK:", base, path)
+                print(
+                    "SOFASCORE DIRECT GET OK:",
+                    transport, base, path,
+                )
                 return payload
-            except (requests.RequestException, ValueError) as exc:
+            except Exception as exc:
                 last_error = exc
+                status_code = getattr(
+                    getattr(exc, "response", None), "status_code", None
+                )
+                if status_code == 403:
+                    saw_403 = True
                 print(
                     "SOFASCORE DIRECT GET ERROR:",
                     base,
@@ -250,16 +286,14 @@ def sofa_get(path, attempts=3, timeout=20):
                     "| attempt:", attempt,
                     "|", repr(exc),
                 )
-                status_code = getattr(
-                    getattr(exc, "response", None), "status_code", None
-                )
-                # A 403 on one host should immediately try the next free host,
-                # not repeat the same blocked request several times.
                 if status_code in (403, 404):
                     break
                 if attempt < attempts:
                     time.sleep(2 * attempt)
 
+    if saw_403:
+        SOFA_DIRECT_BLOCKED = True
+        raise RuntimeError("SofaScore direct access blocked with HTTP 403")
     if last_error is not None:
         raise last_error
     return None
@@ -367,7 +401,7 @@ def is_national_sheet_league(value):
     )
 
 
-def fetch_votes(token, event_ids):
+def fetch_votes(token, event_ids, allow_paid_fallback=False):
     ids = sorted({int(value) for value in event_ids if value})
     if not ids:
         return []
@@ -388,6 +422,13 @@ def fetch_votes(token, event_ids):
             fallback_ids.append(event_id)
 
     if not fallback_ids:
+        return rows
+
+    if not allow_paid_fallback:
+        print(
+            "SOFASCORE VOTES APIFY FALLBACK: DISABLED FOR AUTOMATIC RUN",
+            len(fallback_ids), "events",
+        )
         return rows
 
     print("SOFASCORE VOTES APIFY FALLBACK:", len(fallback_ids), "events")
@@ -824,6 +865,7 @@ def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
     only_blank=False, allow_fixture_lookup=True,
     minutes_window=None, mark_final=False,
+    allow_paid_fallback=False,
 ):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
@@ -948,7 +990,7 @@ def update_votes(
                     date_str, repr(exc),
                 )
 
-            if not fixtures:
+            if not fixtures and allow_paid_fallback:
                 date_items = [
                     item for item in needs_lookup
                     if item["sofa_date"] == date_str
@@ -983,6 +1025,11 @@ def update_votes(
                         "SOFASCORE APIFY FIXTURES FALLBACK ERROR:",
                         date_str, repr(exc),
                     )
+            elif not fixtures:
+                print(
+                    "SOFASCORE APIFY FIXTURES FALLBACK: DISABLED FOR AUTOMATIC RUN",
+                    date_str,
+                )
 
             fixture_pool.extend(fixtures)
 
@@ -1025,7 +1072,9 @@ def update_votes(
         return False
 
     vote_rows = fetch_votes(
-        apify_token, [item["sofa_event_id"] for item in matched]
+        apify_token,
+        [item["sofa_event_id"] for item in matched],
+        allow_paid_fallback=allow_paid_fallback,
     )
     votes_by_event = {
         str(item.get("eventId")): item
@@ -1105,6 +1154,7 @@ def manual_full_sofa_run():
         sheet, rows, book, apify_token, apinn_key, now,
         only_blank=False,
         allow_fixture_lookup=True,
+        allow_paid_fallback=True,
     )
     print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
 
@@ -1142,6 +1192,7 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
             sheet, rows, book, apify_token, apinn_key, now,
             only_blank=False,
             allow_fixture_lookup=True,
+            allow_paid_fallback=True,
         )
         end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
         control.update(
@@ -1159,6 +1210,30 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
         )
         print("SOFASCORE MANUAL FULL RUN ERROR:", repr(exc), flush=True)
     return True
+
+
+def sofa_block_until(control):
+    raw = str(control.acell("N2").value or "").strip()
+    if not raw:
+        return None
+    try:
+        value = datetime.fromisoformat(raw)
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=GREECE_TZ)
+        return value.astimezone(GREECE_TZ)
+    except ValueError:
+        return None
+
+
+def save_sofa_block(control, now):
+    until = now + timedelta(hours=SOFA_BLOCK_HOURS)
+    control.update(
+        "N1:N2",
+        [["SOFA BLOCK UNTIL"], [until.isoformat(timespec="minutes")]],
+        value_input_option="USER_ENTERED",
+    )
+    print("SOFASCORE CIRCUIT BREAKER SET UNTIL:", until.isoformat(timespec="minutes"))
+    return until
 
 
 def main():
@@ -1196,6 +1271,14 @@ def main():
     ):
         return
 
+    blocked_until = sofa_block_until(control)
+    if blocked_until and now < blocked_until:
+        print(
+            "SOFASCORE CIRCUIT BREAKER ACTIVE UNTIL:",
+            blocked_until.isoformat(timespec="minutes"),
+        )
+        return
+
     # Retry result collection across a wider window. A single transient
     # provider failure can no longer make us wait until the next day.
     result_window = (
@@ -1209,6 +1292,8 @@ def main():
             update_results(book, sheet, rows, apify_token, now)
         except Exception as exc:
             print("SOFASCORE CURRENT RESULTS ERROR:", repr(exc))
+        if SOFA_DIRECT_BLOCKED:
+            save_sofa_block(control, now)
         return
 
     if not apinn_key:
@@ -1231,7 +1316,10 @@ def main():
             sheet, rows, book, apify_token, apinn_key, now,
             only_blank=False,
             allow_fixture_lookup=True,
+            allow_paid_fallback=False,
         )
+        if SOFA_DIRECT_BLOCKED:
+            save_sofa_block(control, now)
         if ok:
             control.update(
                 "L1:L2",
