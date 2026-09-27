@@ -2,8 +2,10 @@
  * SofaScore Google worker V2.
  * Safe scope:
  * - reads today's fixtures from SofaScore tournament pages
- * - writes only PINNACLE!N, SOFA CACHE!A:E, ALERT STATS!O2/P2
- * - never touches odds, turnover, alerts, results, or other columns
+ * - vote worker writes PINNACLE!N and SOFA CACHE!A:E
+ * - result worker writes only PINNACLE!P for exact cached finished events
+ * - status cells: ALERT STATS!O2/P2/Q2
+ * - never touches odds, turnover, alerts, comments, or other columns
  * - no paid APIs
  */
 
@@ -79,6 +81,23 @@ function stamp_() {
 
 function today_() {
   return Utilities.formatDate(new Date(), SOFA_CFG.tz, 'yyyy-MM-dd');
+}
+
+function dateOffset_(days) {
+  const d=new Date();
+  d.setDate(d.getDate()+Number(days||0));
+  return Utilities.formatDate(d,SOFA_CFG.tz,'yyyy-MM-dd');
+}
+
+function cacheDate_(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return Utilities.formatDate(v,SOFA_CFG.tz,'yyyy-MM-dd');
+  }
+  const s=String(v||'').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (!s) return '';
+  const d=new Date(s);
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d,SOFA_CFG.tz,'yyyy-MM-dd');
 }
 
 function control_(cell, value) {
@@ -343,8 +362,12 @@ function runSofaDaily() {
       Utilities.sleep(80);
     });
 
-    props.setProperty('SOFA_VOTES_DONE_DATE',today);
-    control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors='+errors);
+    if (errors===0) {
+      props.setProperty('SOFA_VOTES_DONE_DATE',today);
+      control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors=0');
+    } else {
+      control_('P2','PARTIAL '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors='+errors);
+    }
   } catch(e) {
     control_('P2','ERROR '+stamp_()+' | '+String(e).slice(0,120));
     throw e;
@@ -423,6 +446,154 @@ function repairTodayNumericVotes() {
 
   SpreadsheetApp.flush();
   Logger.log('REPAIR DONE | converted='+converted+' | formatted='+formatted+' | values preserved');
+}
+
+
+function finishedEvent_(e) {
+  const type=String(e&&e.status&&e.status.type||'').toLowerCase();
+  return type==='finished';
+}
+
+function scoreValue_(obj) {
+  if (obj===null || obj===undefined) return null;
+  if (typeof obj==='number' && Number.isFinite(obj)) return obj;
+  if (typeof obj==='object') {
+    const keys=['current','display','normaltime','normalTime','period2'];
+    for (let i=0;i<keys.length;i++) {
+      const n=Number(obj[keys[i]]);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  const n=Number(obj);
+  return Number.isFinite(n) ? n : null;
+}
+
+function resultTargets_(dates) {
+  const book=ss_();
+  const pin=book.getSheetByName(SOFA_CFG.pinnacleSheet);
+  const cache=book.getSheetByName(SOFA_CFG.cacheSheet);
+
+  const pinLast=pin.getLastRow();
+  const pinRows=pinLast>=3 ? pin.getRange(3,1,pinLast-2,18).getValues() : [];
+  const byApinn={};
+  pinRows.forEach((r,i)=>{
+    const apinn=String(r[17]||'').trim();
+    if (apinn) byApinn[apinn]={row:i+3,data:r};
+  });
+
+  const wanted=new Set(dates);
+  const cacheLast=cache.getLastRow();
+  const cacheRows=cacheLast>=2 ? cache.getRange(2,1,cacheLast-1,5).getValues() : [];
+  const out=[];
+  const seen={};
+
+  cacheRows.forEach(r=>{
+    const apinn=String(r[0]||'').trim();
+    const sofaId=Number(r[1]||0);
+    const d=cacheDate_(r[4]);
+    if (!apinn || !sofaId || !wanted.has(d) || seen[apinn]) return;
+    const p=byApinn[apinn];
+    if (!p) return;
+
+    const home=String(p.data[1]||'').trim();
+    const away=String(p.data[2]||'').trim();
+    const result=String(p.data[15]||'').trim();
+    if (!home || !away || result) return;
+
+    seen[apinn]=1;
+    out.push({apinn:apinn,sofaId:sofaId,date:d,row:p.row,home:home,away:away});
+  });
+
+  return {pin:pin,targets:out};
+}
+
+function runSofaResultsForDates_(dates,label) {
+  const lock=LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+
+  try {
+    control_('Q1','SOFA GOOGLE RESULTS');
+    control_('Q2','RUNNING '+stamp_()+' | '+label);
+
+    const data=resultTargets_(dates);
+    let checked=0,written=0,pending=0,errors=0,mismatch=0;
+
+    data.targets.forEach(t=>{
+      checked++;
+      const r=sofaFetchJson_('/event/'+t.sofaId);
+      if (r.code!==200 || !r.json || !r.json.event) {
+        errors++;
+        Utilities.sleep(80);
+        return;
+      }
+
+      const e=r.json.event;
+      const sofaHome=String(e.homeTeam&&e.homeTeam.name||'');
+      const sofaAway=String(e.awayTeam&&e.awayTeam.name||'');
+      const hs=score_(t.home,sofaHome), as=score_(t.away,sofaAway);
+      if (hs<0.68 || as<0.68 || ((hs+as)/2)<0.76) {
+        mismatch++;
+        Utilities.sleep(80);
+        return;
+      }
+
+      if (!finishedEvent_(e)) {
+        pending++;
+        Utilities.sleep(80);
+        return;
+      }
+
+      const h=scoreValue_(e.homeScore);
+      const a=scoreValue_(e.awayScore);
+      if (h===null || a===null) {
+        errors++;
+        Utilities.sleep(80);
+        return;
+      }
+
+      t.cell=data.pin.getRange(t.row,16);
+      if (String(t.cell.getValue()||'').trim()) {
+        Utilities.sleep(80);
+        return;
+      }
+
+      t.cell.setValue(String(h)+'-'+String(a));
+      written++;
+      Utilities.sleep(80);
+    });
+
+    SpreadsheetApp.flush();
+    const status=(errors===0 && mismatch===0) ? 'DONE' : 'PARTIAL';
+    control_('Q2',status+' '+stamp_()+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
+    Logger.log('RESULTS '+status+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
+  } catch(e) {
+    control_('Q2','ERROR '+stamp_()+' | '+label+' | '+String(e).slice(0,120));
+    throw e;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function runSofaResultsYesterday() {
+  runSofaResultsForDates_([dateOffset_(-1)],'yesterday='+dateOffset_(-1));
+}
+
+function runSofaResultsManual() {
+  runSofaResultsForDates_([dateOffset_(-1),today_()],'manual='+dateOffset_(-1)+','+today_());
+}
+
+function installSofaResults0800Trigger() {
+  ScriptApp.getProjectTriggers().forEach(t=>{
+    if (t.getHandlerFunction()==='sofaResults0800') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('sofaResults0800')
+    .timeBased()
+    .atHour(8)
+    .nearMinute(0)
+    .everyDays(1)
+    .inTimezone(SOFA_CFG.tz)
+    .create();
+  control_('Q2','INSTALLED '+stamp_()+' | target 08:00 Europe/Athens');
 }
 
 function installSofaDailyTrigger() {
