@@ -1240,20 +1240,11 @@ def main():
             print("SOFASCORE DAILY SLOT SAVED:", initial_slot)
             rows = sheet.get_all_values()
 
-    # Final SofaScore refresh around 90 minutes before EACH match.
-    # The runner executes every 10 minutes, so 80-100' guarantees one
-    # refresh close to the requested 90' point. Each match is marked DONE
-    # after a successful final refresh and will not be charged again.
-    update_votes(
-        sheet, rows, book, apify_token, apinn_key, now,
-        only_blank=False,
-        allow_fixture_lookup=True,
-        minutes_window=(80, 100),
-        mark_final=True,
-    )
+    # Automatic 90-minute SofaScore refresh disabled.
+    # Keep only the daily 12:30 snapshot and explicit manual FULL runs.
 
     # Historical repair is deliberately last so it can never delay today's
-    # 12:30 snapshot or the final 90-minute refresh.
+    # 12:30 snapshot.
     run_one_off_result_catchup(
         book, sheet, rows, apify_token, now
     )
