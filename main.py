@@ -795,6 +795,82 @@ def betting_day_start_for(kickoff):
     return anchor
 
 
+def _fixture_identity(match):
+    """Stable fixture key independent of APINN event_id."""
+    home = " ".join(str(match.get("runner_home") or "").lower().split())
+    away = " ".join(str(match.get("runner_away") or "").lower().split())
+    starts = str(match.get("starts") or "")
+    if not home or not away or not starts:
+        return None
+    try:
+        kickoff = datetime.fromisoformat(
+            starts.replace("Z", "+00:00")
+        ).astimezone(GREECE_TZ)
+    except ValueError:
+        return None
+    # APINN duplicates have been observed with different event IDs but the
+    # same teams and kickoff. Minute precision avoids harmless second offsets.
+    kickoff_key = kickoff.replace(second=0, microsecond=0).isoformat()
+    return home, away, kickoff_key
+
+
+def _fixture_quality(match):
+    """Prefer the APINN duplicate that already has a usable 1X2 market."""
+    moneyline = (match.get("odds") or {}).get("moneyline") or {}
+    odd1 = _as_float(moneyline.get("odds1"))
+    odd2 = _as_float(moneyline.get("odds2"))
+    has_moneyline = 1 if odd1 and odd2 else 0
+    event_id = match.get("event_id")
+    try:
+        event_number = int(event_id)
+    except (TypeError, ValueError):
+        event_number = 0
+    return has_moneyline, event_number
+
+
+def dedupe_apinn_fixtures(items):
+    """Collapse same home/away/kickoff records even when APINN changes event_id."""
+    chosen = {}
+    aliases = {}
+    event_to_match = {}
+
+    for match in items:
+        event_id = str(match.get("event_id") or "").strip()
+        if event_id:
+            event_to_match[event_id] = match
+
+        key = _fixture_identity(match)
+        if key is None:
+            chosen[("event", event_id)] = match
+            continue
+
+        current = chosen.get(key)
+        if current is None:
+            chosen[key] = match
+            continue
+
+        current_id = str(current.get("event_id") or "").strip()
+        if _fixture_quality(match) > _fixture_quality(current):
+            preferred, duplicate = match, current
+            chosen[key] = match
+        else:
+            preferred, duplicate = current, match
+
+        preferred_id = str(preferred.get("event_id") or "").strip()
+        duplicate_id = str(duplicate.get("event_id") or "").strip()
+        if preferred_id and duplicate_id and preferred_id != duplicate_id:
+            aliases[duplicate_id] = preferred_id
+            print(
+                "APINN FIXTURE DEDUPE:",
+                duplicate.get("runner_home"), "vs", duplicate.get("runner_away"),
+                "| duplicate:", duplicate_id,
+                "| keep:", preferred_id,
+            )
+
+    deduped = list(chosen.values())
+    return deduped, aliases, event_to_match
+
+
 NOW = datetime.now(GREECE_TZ)
 TODAY = NOW.date()
 
@@ -847,8 +923,16 @@ if response is not None:
 else:
     print("APINN ALL-LEAGUES REQUEST SKIPPED AFTER RETRIES")
 
+raw_match_count = len(matches)
+matches, event_aliases, raw_event_matches = dedupe_apinn_fixtures(matches)
+
 print("APINN CONNECTION OK")
-print("MATCHES FOUND:", len(matches))
+print(
+    "MATCHES FOUND:",
+    len(matches),
+    "| raw:", raw_match_count,
+    "| deduped:", raw_match_count - len(matches),
+)
 
 # Arbworld: one request per run for all today's 1X2 Moneyway data.
 try:
@@ -868,6 +952,48 @@ for row_number, row in enumerate(sheet_rows, start=1):
 
 next_row = max(3, len(sheet_rows) + 1)
 updates = []
+
+# If APINN replaced a fixture with another event ID, reuse the existing Sheet
+# row instead of creating a duplicate. Also correct the league label to the
+# preferred APINN record.
+for duplicate_id, preferred_id in event_aliases.items():
+    duplicate_row = event_rows.get(duplicate_id)
+    preferred_row = event_rows.get(preferred_id)
+
+    if duplicate_row and not preferred_row:
+        event_rows[preferred_id] = duplicate_row
+        preferred_match = raw_event_matches.get(preferred_id) or {}
+        preferred_league = preferred_match.get("league_name") or ""
+        if is_national_team_competition(preferred_league):
+            preferred_league = f"ΕΘΝΙΚΕΣ - {preferred_league}"
+
+        updates.append({
+            "range": f"R{duplicate_row}",
+            "values": [[preferred_id]],
+        })
+        if preferred_league:
+            updates.append({
+                "range": f"A{duplicate_row}",
+                "values": [[preferred_league]],
+            })
+
+        while len(sheet_rows[duplicate_row - 1]) < 18:
+            sheet_rows[duplicate_row - 1].append("")
+        sheet_rows[duplicate_row - 1][17] = preferred_id
+        if preferred_league:
+            sheet_rows[duplicate_row - 1][0] = preferred_league
+
+        print(
+            "APINN EVENT ID REPLACED IN EXISTING ROW:",
+            duplicate_id, "->", preferred_id,
+            "| row:", duplicate_row,
+        )
+    elif duplicate_row and preferred_row and duplicate_row != preferred_row:
+        print(
+            "APINN EXISTING DUPLICATE ROWS:",
+            duplicate_row, preferred_row,
+            "| ids:", duplicate_id, preferred_id,
+        )
 
 # Create today's/upcoming rows even when Pinnacle has not published both
 # moneyline sides yet. Odds/favorite fields are filled on later runs.
