@@ -1063,6 +1063,39 @@ def update_votes(
     return bool(updates)
 
 
+def manual_full_sofa_run():
+    """One-shot full SofaScore refresh, ignoring normal snapshot time gates."""
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+    print("SOFASCORE MANUAL FULL RUN START", flush=True)
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, _runner_timeout_handler)
+        signal.alarm(RUNNER_HARD_TIMEOUT_SECONDS)
+
+    apify_token = os.environ.get("APIFY_TOKEN", "").strip()
+    apinn_key = os.environ.get("APINN_API_KEY", "").strip()
+    if not apify_token or not apinn_key:
+        print("SOFASCORE MANUAL FULL RUN: required token missing")
+        return
+
+    now = datetime.now(GREECE_TZ)
+    creds = Credentials.from_service_account_file(GOOGLE_CREDS, scopes=SCOPES)
+    gc = gspread.authorize(creds)
+    book = gc.open_by_key(SHEET_KEY)
+    sheet = book.worksheet(SHEET_NAME)
+    rows = sheet.get_all_values()
+
+    ok = update_votes(
+        sheet, rows, book, apify_token, apinn_key, now,
+        only_blank=False,
+        allow_fixture_lookup=True,
+    )
+    print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
+
+
 def main():
     try:
         sys.stdout.reconfigure(line_buffering=True)
@@ -1156,7 +1189,10 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        if "--full" in sys.argv:
+            manual_full_sofa_run()
+        else:
+            main()
     except Exception as exc:
         print("SOFASCORE ERROR:", repr(exc), flush=True)
     finally:
