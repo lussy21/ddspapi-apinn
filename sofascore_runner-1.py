@@ -1279,22 +1279,9 @@ def main():
         )
         return
 
-    # Retry result collection across a wider window. A single transient
-    # provider failure can no longer make us wait until the next day.
-    result_window = (
-        (now.hour == 7 and now.minute < 50)
-        or (now.hour == 22 and now.minute >= 30)
-        or (now.hour == 23 and now.minute < 20)
-    )
-
-    if result_window:
-        try:
-            update_results(book, sheet, rows, apify_token, now)
-        except Exception as exc:
-            print("SOFASCORE CURRENT RESULTS ERROR:", repr(exc))
-        if SOFA_DIRECT_BLOCKED:
-            save_sofa_block(control, now)
-        return
+    # Automatic SofaScore result collection is owned by Google Apps Script.
+    # Render must never write column P automatically.
+    print("SOFASCORE AUTO RESULTS: DISABLED ON RENDER | owner=GOOGLE_APPS_SCRIPT")
 
     if not apinn_key:
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
