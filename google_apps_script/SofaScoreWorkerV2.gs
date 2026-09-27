@@ -329,9 +329,12 @@ function runSofaDaily() {
       const p=pct_(vr.json,fav);
       if (p===null) {errors++;return;}
 
-      const old=String(row[13]||'').trim();
-      const val=p+'%';
-      if (old!==val) {
+      const oldRaw=row[13];
+      const oldNum=(typeof oldRaw==='number')
+        ? oldRaw
+        : Number(String(oldRaw||'').replace('%','').replace(',','.').trim());
+      const val=p;
+      if (!Number.isFinite(oldNum) || oldNum!==val || typeof oldRaw!=='number') {
         sh.getRange(rowNo,14).setValue(val);
         written++;
       }
@@ -346,6 +349,55 @@ function runSofaDaily() {
   } finally {
     lock.releaseLock();
   }
+}
+
+
+function repairTodayNumericVotes() {
+  const book=ss_();
+  const pin=book.getSheetByName(SOFA_CFG.pinnacleSheet);
+  const cache=book.getSheetByName(SOFA_CFG.cacheSheet);
+  const day=today_();
+
+  const cacheLast=cache.getLastRow();
+  const cacheRows=cacheLast>=2 ? cache.getRange(2,1,cacheLast-1,5).getValues() : [];
+  const todayApinn={};
+  cacheRows.forEach(r=>{
+    const apinn=String(r[0]||'').trim();
+    const d=Utilities.formatDate(
+      r[4] instanceof Date ? r[4] : new Date(String(r[4]||'')),
+      SOFA_CFG.tz,
+      'yyyy-MM-dd'
+    );
+    if (apinn && d===day) todayApinn[apinn]=true;
+  });
+
+  const last=pin.getLastRow();
+  if (last<3) {
+    Logger.log('REPAIR DONE | converted=0');
+    return;
+  }
+
+  const rows=pin.getRange(3,1,last-2,18).getValues();
+  let converted=0;
+  rows.forEach((row,i)=>{
+    const apinn=String(row[17]||'').trim();
+    if (!todayApinn[apinn]) return;
+
+    const raw=row[13];
+    if (typeof raw!=='string') return;
+
+    const text=raw.trim();
+    if (!/^\\d+(?:[.,]\\d+)?%$/.test(text)) return;
+
+    const n=Number(text.replace('%','').replace(',','.'));
+    if (!Number.isFinite(n)) return;
+
+    pin.getRange(i+3,14).setValue(n);
+    converted++;
+  });
+
+  SpreadsheetApp.flush();
+  Logger.log('REPAIR DONE | converted='+converted+' | values preserved');
 }
 
 function installSofaDailyTrigger() {
