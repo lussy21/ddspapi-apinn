@@ -69,29 +69,29 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 <footer>Match Alerts · Private</footer>
 </main>
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec";
+const API_URL="https://match-alerts-api-private.onrender.com/api";
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
 
-function apiPost(params){
-  return new Promise((resolve,reject)=>{
-    const requestId="r"+Date.now()+Math.random().toString(36).slice(2);
-    const frame=document.createElement("iframe"); frame.name=requestId; frame.style.display="none";
-    const form=document.createElement("form"); form.method="POST"; form.action=API_URL; form.target=requestId; form.style.display="none";
-    const payload={...params,bridge:"1",requestId};
-    Object.entries(payload).forEach(([k,v])=>{const input=document.createElement("input");input.type="hidden";input.name=k;input.value=String(v??"");form.appendChild(input);});
-    const timer=setTimeout(()=>{cleanup();reject(new Error("TIMEOUT"));},20000);
-    function onMessage(ev){
-      // Apps Script responses may arrive from a sandboxed iframe with origin "null".
-      // Trust only the exact hidden iframe we created for this request.
-      if(ev.source!==frame.contentWindow) return;
-      const allowedOrigin=ev.origin==="null" || ev.origin==="https://script.google.com" || ev.origin.endsWith(".googleusercontent.com");
-      if(!allowedOrigin) return;
-      const data=ev.data||{}; if(data.source!=="MATCH_ALERTS_API"||data.requestId!==requestId) return;
-      cleanup(); resolve(data.payload);
-    }
-    function cleanup(){clearTimeout(timer);window.removeEventListener("message",onMessage);frame.remove();form.remove();}
-    window.addEventListener("message",onMessage); document.body.appendChild(frame); document.body.appendChild(form); form.submit();
-  });
+async function apiPost(params){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),25000);
+  try{
+    const res=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(params),
+      signal:controller.signal,
+      cache:"no-store"
+    });
+    const data=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
+    if(!res.ok && !data.error) data.error="BACKEND_UNREACHABLE";
+    return data;
+  }catch(err){
+    if(err.name==="AbortError") throw new Error("TIMEOUT");
+    throw new Error("BACKEND_UNREACHABLE");
+  }finally{
+    clearTimeout(timer);
+  }
 }
 function setMsg(el,text,type=""){el.textContent=text;el.className="msg"+(type?" "+type:"");}
 function mapError(code){
@@ -112,7 +112,10 @@ function mapError(code){
     SESSION_EXPIRED:"Η σύνδεση έληξε. Μπες ξανά.",
     INVALID_SESSION:"Χρειάζεται νέα σύνδεση.",
     ACCESS_DENIED:"Δεν υπάρχει ενεργή πρόσβαση.",
-    SHEET_READ_FAILED:"Προσωρινό πρόβλημα ανάγνωσης δεδομένων."
+    SHEET_READ_FAILED:"Προσωρινό πρόβλημα ανάγνωσης δεδομένων.",
+    BACKEND_UNREACHABLE:"Δεν υπάρχει σύνδεση με το σύστημα. Δοκίμασε ξανά σε λίγο.",
+    BACKEND_BAD_RESPONSE:"Το σύστημα επέστρεψε μη έγκυρη απάντηση.",
+    TIMEOUT:"Η σύνδεση άργησε πολύ. Δοκίμασε ξανά."
   };
   return m[code]||"Κάτι πήγε στραβά. Δοκίμασε ξανά.";
 }
@@ -207,26 +210,23 @@ verifySubmit.onclick=async()=>{
     setMsg(verifyMsg,mapError(err.message),"error");
   }
 };
-function fireAndForgetPost(params){
-  const frame=document.createElement("iframe");
-  frame.name="ff"+Date.now()+Math.random().toString(36).slice(2);
-  frame.style.display="none";
-  const form=document.createElement("form");
-  form.method="POST"; form.action=API_URL; form.target=frame.name; form.style.display="none";
-  Object.entries(params).forEach(([k,v])=>{const input=document.createElement("input");input.type="hidden";input.name=k;input.value=String(v??"");form.appendChild(input);});
-  document.body.appendChild(frame); document.body.appendChild(form); form.submit();
-  setTimeout(()=>{frame.remove();form.remove();},8000);
-}
-resendCode.onclick=()=>{
+resendCode.onclick=async()=>{
   const u=(pendingUsername||username.value.trim());
   if(!u){setMsg(verifyMsg,"Δεν βρέθηκε όνομα χρήστη.","error");return;}
   resendCode.disabled=true;
   resendCode.textContent="Αποστολή…";
   setMsg(verifyMsg,"Στέλνω νέο κωδικό…");
-  fireAndForgetPost({action:"resend",username:u});
-  setVerifyExpiry(u,15*60*1000);
-  updateVerifyTimer();
-  setTimeout(()=>{setMsg(verifyMsg,"Ζητήθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");},1200);
+  try{
+    const r=await apiPost({action:"resend",username:u});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    setVerifyExpiry(u,15*60*1000);
+    updateVerifyTimer();
+    setMsg(verifyMsg,"Στάλθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
+  }catch(err){
+    resendCode.disabled=false;
+    resendCode.textContent="Ξαναστείλε κωδικό";
+    setMsg(verifyMsg,mapError(err.message),"error");
+  }
 };
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
