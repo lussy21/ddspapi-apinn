@@ -46,6 +46,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
     <div class="field"><label class="label">Όνομα χρήστη</label><input class="input" id="username" autocomplete="username" placeholder="username"></div>
     <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
     <button class="primary" id="authSubmit">Σύνδεση</button>
+    <button class="ghost hidden" id="haveCodeBtn" style="margin-top:9px">Έχω ήδη κωδικό</button>
     <div class="msg" id="authMsg"></div>
   </div>
 
@@ -121,10 +122,17 @@ function setMode(next){
   authTitle.textContent=reg?"Δωρεάν εγγραφή":"Σύνδεση";
   authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τα ενεργά alerts.";
   authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
+  haveCodeBtn.classList.toggle("hidden",!reg);
   password.autocomplete=reg?"new-password":"current-password";
   setMsg(authMsg,"");
 }
 loginTab.onclick=()=>setMode("login"); registerTab.onclick=()=>setMode("register");
+haveCodeBtn.onclick=()=>{
+  const u=username.value.trim();
+  if(!u){setMsg(authMsg,"Γράψε πρώτα το όνομα χρήστη που έβαλες στην εγγραφή.","error");return;}
+  pendingUsername=u;
+  showVerify(u,"");
+};
 
 authSubmit.onclick=async()=>{
   setMsg(authMsg,"");
