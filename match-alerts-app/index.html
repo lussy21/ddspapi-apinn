@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070708">
-<meta name="description" content="Match Alerts V1">
+<meta name="description" content="Match Alerts">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Match Alerts</title>
 <style>
-:root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075)}
+:root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075);--danger:#ff8d98}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
 body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(760px 430px at 50% -120px,rgba(217,177,87,.12),transparent 60%),linear-gradient(180deg,#0a0a0c 0%,#050506 100%)}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.95),transparent 86%)}
@@ -18,29 +18,177 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 .logo{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;color:var(--gold2);font-size:22px;border:1px solid rgba(217,177,87,.34);background:linear-gradient(145deg,rgba(217,177,87,.14),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 26px rgba(0,0,0,.28)}
 .brand h1{margin:0;font-family:Georgia,serif;font-size:24px;font-weight:600;line-height:1}.sub{margin-top:5px;color:var(--muted);font-size:10px;letter-spacing:1.7px;text-transform:uppercase}
 .live{display:flex;align-items:center;gap:7px;color:#b0aeb4;font-size:10px;letter-spacing:1.1px;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px rgba(217,177,87,.75)}
-.summary{border:1px solid rgba(217,177,87,.18);border-radius:26px;padding:17px 18px;margin-bottom:18px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:0 18px 48px rgba(0,0,0,.34)}
-.summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.summary h2{margin:0;font-family:Georgia,serif;font-size:28px;line-height:1.05;font-weight:500}
-.summary p{margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.45}.counter{display:inline-flex;margin-top:14px;padding:8px 11px;border-radius:999px;background:rgba(217,177,87,.08);border:1px solid rgba(217,177,87,.18);color:#fff4d2;font-size:11px;font-weight:800;white-space:nowrap}
-.status-mini{color:var(--muted);font-size:11px;white-space:nowrap;padding-top:4px}
+.card{border:1px solid rgba(217,177,87,.18);border-radius:26px;padding:18px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:0 18px 48px rgba(0,0,0,.34)}
+.auth{margin-top:26px}.auth h2,.summary h2{margin:0;font-family:Georgia,serif;font-size:29px;line-height:1.05;font-weight:500}.auth p,.summary p{margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 15px}.tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#aaa7af;padding:11px;border-radius:13px;font-weight:800}.tab.active{color:#fff4d2;border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.10)}
+.field{margin:10px 0}.label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:11px;font-weight:800}.input{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:13px 14px;font:inherit;outline:none}.input:focus{border-color:rgba(217,177,87,.55)}
+.primary,.ghost{width:100%;border-radius:14px;padding:13px 14px;font-weight:900;font-size:13px}.primary{border:1px solid rgba(217,177,87,.30);background:linear-gradient(145deg,rgba(217,177,87,.20),rgba(217,177,87,.08));color:#fff4d2}.ghost{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#ddd}
+.actions{display:flex;gap:9px;margin-top:12px}.actions>*{flex:1}.msg{min-height:18px;margin-top:12px;color:#bdb9c1;font-size:12px;line-height:1.4}.msg.error{color:var(--danger)}.msg.ok{color:#dff0c7}.verify-code{letter-spacing:8px;text-align:center;font-weight:900;font-size:21px}.hidden{display:none!important}
+.summary{margin-bottom:18px}.summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.counter{display:inline-flex;margin-top:14px;padding:8px 11px;border-radius:999px;background:rgba(217,177,87,.08);border:1px solid rgba(217,177,87,.18);color:#fff4d2;font-size:11px;font-weight:800;white-space:nowrap}.status-mini{color:var(--muted);font-size:11px;white-space:nowrap;padding-top:4px}
+.userline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.userchip{font-size:11px;color:#d8d3c6}.logout{border:0;background:none;color:#8f8b95;font-size:11px;text-decoration:underline}
 .league{margin:18px 0 10px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.018));box-shadow:0 12px 32px rgba(0,0,0,.22)}
-.league-head{padding:14px 14px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.055)}.league-title{font-size:11px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase;color:var(--gold2)}.league-count{font-size:11px;color:var(--muted)}
-.row{padding:14px 14px 12px;border-bottom:1px solid rgba(255,255,255,.045)}.row:last-child{border-bottom:0}.match{font-size:15px;font-weight:800;letter-spacing:-.15px;line-height:1.25;margin-bottom:7px}
-.meta{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.left-meta{min-width:0;flex:1}.time{color:#8e8b93;font-size:12px}.right-meta{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.075);color:#fff7de;white-space:nowrap}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
-.stats{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.stat{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);font-size:10px;line-height:1}.stat-label{color:#cbc7bb;font-weight:800}.stat-value{color:#fff;font-weight:900}
-footer{text-align:center;color:#68656d;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;padding-top:28px}
-@media(max-width:470px){.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{flex-direction:column;gap:10px}.right-meta{align-items:flex-start}.stats{justify-content:flex-start}.badge{white-space:normal}}
+.league-head{padding:14px 14px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.055)}.league-title{font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold2)}.league-count{font-size:11px;color:var(--muted)}
+.row{padding:14px;border-bottom:1px solid rgba(255,255,255,.045)}.row:last-child{border-bottom:0}.match{font-size:15px;font-weight:800;letter-spacing:-.15px;line-height:1.25;margin-bottom:8px}.meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.side{color:#85828a;font-size:11px}.badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.075);color:#fff7de;white-space:normal;text-align:right}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}.badge.strong{color:#ffd9bd;background:rgba(194,71,20,.10);border-color:rgba(232,102,44,.22)}
+.empty,.loading{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}footer{text-align:center;color:#68656d;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;padding-top:28px}
+@media(max-width:470px){.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{align-items:flex-start;flex-direction:column}.badge{text-align:left}}
 </style>
 </head>
 <body>
 <main class="app">
 <div class="top"><div class="brand"><div class="logo">♛</div><div><h1>Match Alerts</h1><div class="sub">Private Access</div></div></div><div class="live"><span class="dot"></span>Live</div></div>
-<section class="summary"><div class="summary-top"><div><h2>Today's Alerts</h2><p>Καθαρή προβολή των ενεργών alerts, χωρισμένα ανά πρωτάθλημα.</p></div><div class="status-mini">Updated 12:47</div></div><div class="counter">18 ενεργά alerts</div></section>
-<div id="content"></div><footer>Version 1 · Preview build</footer></main>
-<script>
-const groups=[["Premier League",[["14:30","Arsenal – Everton","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","PL 91% (10/11)","ALL 87% (34/39)"],["17:00","Liverpool – Brighton","🔔 ΦΑΒΟΡΙ","PL 74% (17/23)","ALL 77% (61/79)"],["17:00","Chelsea – Wolves","👁️ WATCH ΦΑΒΟΡΙ","PL 58% (11/19)","ALL 55% (21/38)"],["19:30","Tottenham – Aston Villa","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","PL 86% (12/14)","ALL 88% (28/32)"]]],["La Liga",[["15:00","Villarreal – Getafe","🔔 ΦΑΒΟΡΙ","La Liga 78% (14/18)","ALL 77% (61/79)"],["17:15","Sevilla – Mallorca","👁️ WATCH ΚΟΝΤΡΑ","La Liga 31% (4/13)","ALL 30% (3/10)"],["19:30","Barcelona – Valencia","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","La Liga 100% (7/7)","ALL 87% (34/39)"]]],["Serie A",[["13:30","Bologna – Lecce","🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ","Serie A 83% (10/12)","ALL 75% (15/20)"],["16:00","Roma – Torino","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","Serie A 80% (8/10)","ALL 88% (28/32)"],["19:00","Napoli – Udinese","🔔 ΦΑΒ 75+","Serie A 84% (16/19)","ALL 80% (16/20)"],["21:45","Inter – Parma","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","Serie A 100% (4/4)","ALL 87% (34/39)"]]],["Bundesliga",[["16:30","Leverkusen – Augsburg","🔔 ΦΑΒΟΡΙ","Bundesliga 73% (8/11)","ALL 77% (61/79)"],["16:30","Dortmund – Mainz","👁️ WATCH ΦΑΒΟΡΙ","Bundesliga 50% (3/6)","ALL 55% (21/38)"],["19:30","Bayern – Freiburg","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","Bundesliga 100% (5/5)","ALL 87% (34/39)"]]],["Ligue 1",[["18:00","Monaco – Lens","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","Ligue 1 90% (9/10)","ALL 88% (28/32)"],["20:00","Lille – Nantes","🔔 ΦΑΒΟΡΙ","Ligue 1 80% (8/10)","ALL 77% (61/79)"]]],["Super League",[["18:30","PAOK – Aris","🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ","Super League 100% (3/3)","ALL 81% (13/16)"],["21:00","Panathinaikos – OFI","👁️ WATCH ΦΑΒΟΡΙ","Super League 67% (2/3)","ALL 55% (21/38)"]]]];
-const root=document.getElementById("content");
-root.innerHTML=groups.map(([league,matches])=>`<section class="league"><div class="league-head"><div class="league-title">${league}</div><div class="league-count">${matches.length} alerts</div></div>${matches.map(([time,match,alert,leagueStat,allStat])=>`<div class="row"><div class="match">${match}</div><div class="meta"><div class="left-meta"><div class="time">${time}</div></div><div class="right-meta"><div class="badge ${alert.includes("WATCH")?"watch":""}">${alert}</div><div class="stats"><div class="stat"><span class="stat-label">League</span><span class="stat-value">${leagueStat}</span></div><div class="stat"><span class="stat-label">Overall</span><span class="stat-value">${allStat}</span></div></div></div></div></div>`).join("")}</section>`).join("");
 
+<section id="authView" class="card auth">
+  <div id="authMain">
+    <h2 id="authTitle">Σύνδεση</h2>
+    <p id="authText">Μπες στον λογαριασμό σου για να δεις τα ενεργά alerts.</p>
+    <div class="tabs"><button class="tab active" id="loginTab">Σύνδεση</button><button class="tab" id="registerTab">Δωρεάν εγγραφή</button></div>
+    <div id="emailField" class="field hidden"><label class="label">Email</label><input class="input" id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
+    <div class="field"><label class="label">Όνομα χρήστη</label><input class="input" id="username" autocomplete="username" placeholder="username"></div>
+    <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="primary" id="authSubmit">Σύνδεση</button>
+    <div class="msg" id="authMsg"></div>
+  </div>
+
+  <div id="verifyView" class="hidden">
+    <h2>Επιβεβαίωση email</h2>
+    <p id="verifyText">Σου στείλαμε 6ψήφιο κωδικό.</p>
+    <div class="field"><label class="label">Κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+    <button class="primary" id="verifySubmit">Επιβεβαίωση</button>
+    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
+    <div class="msg" id="verifyMsg"></div>
+  </div>
+</section>
+
+<section id="alertsView" class="hidden">
+  <div class="userline"><div class="userchip" id="currentUser"></div><button class="logout" id="logoutBtn">Αποσύνδεση</button></div>
+  <section class="card summary"><div class="summary-top"><div><h2>Today's Alerts</h2><p>Ενεργά alerts από το σύστημα.</p></div><div class="status-mini" id="updatedAt">—</div></div><div class="counter" id="counter">0 ενεργά alerts</div></section>
+  <div id="content"><div class="loading">Φόρτωση…</div></div>
+</section>
+<footer>Match Alerts · Private</footer>
+</main>
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec";
+let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
+
+function apiPost(params){
+  return new Promise((resolve,reject)=>{
+    const requestId="r"+Date.now()+Math.random().toString(36).slice(2);
+    const frame=document.createElement("iframe"); frame.name=requestId; frame.style.display="none";
+    const form=document.createElement("form"); form.method="POST"; form.action=API_URL; form.target=requestId; form.style.display="none";
+    const payload={...params,bridge:"1",requestId};
+    Object.entries(payload).forEach(([k,v])=>{const input=document.createElement("input");input.type="hidden";input.name=k;input.value=String(v??"");form.appendChild(input);});
+    const timer=setTimeout(()=>{cleanup();reject(new Error("TIMEOUT"));},20000);
+    function onMessage(ev){
+      if(ev.origin!=="https://script.google.com" && !ev.origin.endsWith(".googleusercontent.com")) return;
+      const data=ev.data||{}; if(data.source!=="MATCH_ALERTS_API"||data.requestId!==requestId) return;
+      cleanup(); resolve(data.payload);
+    }
+    function cleanup(){clearTimeout(timer);window.removeEventListener("message",onMessage);frame.remove();form.remove();}
+    window.addEventListener("message",onMessage); document.body.appendChild(frame); document.body.appendChild(form); form.submit();
+  });
+}
+function setMsg(el,text,type=""){el.textContent=text;el.className="msg"+(type?" "+type:"");}
+function mapError(code){
+  const m={
+    BAD_USERNAME:"Το όνομα χρήστη πρέπει να έχει 3–32 χαρακτήρες: λατινικά, αριθμούς, τελεία, _ ή -.",
+    BAD_EMAIL:"Το email δεν είναι σωστό.",
+    PASSWORD_TOO_SHORT:"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",
+    USER_EXISTS:"Αυτό το όνομα χρήστη υπάρχει ήδη.",
+    EMAIL_EXISTS:"Αυτό το email είναι ήδη εγγεγραμμένο.",
+    INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",
+    EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",
+    ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",
+    REGISTRATION_FULL:"Οι δωρεάν θέσεις έχουν συμπληρωθεί.",
+    BAD_CODE:"Ο κωδικός πρέπει να είναι 6 ψηφία.",
+    INVALID_CODE:"Ο κωδικός επιβεβαίωσης είναι λάθος.",
+    CODE_EXPIRED:"Ο κωδικός έληξε. Πάτησε «Ξαναστείλε κωδικό».",
+    USER_NOT_FOUND:"Ο λογαριασμός δεν βρέθηκε.",
+    SESSION_EXPIRED:"Η σύνδεση έληξε. Μπες ξανά.",
+    INVALID_SESSION:"Χρειάζεται νέα σύνδεση.",
+    ACCESS_DENIED:"Δεν υπάρχει ενεργή πρόσβαση.",
+    SHEET_READ_FAILED:"Προσωρινό πρόβλημα ανάγνωσης δεδομένων."
+  };
+  return m[code]||"Κάτι πήγε στραβά. Δοκίμασε ξανά.";
+}
+function setMode(next){
+  mode=next; const reg=mode==="register";
+  loginTab.classList.toggle("active",!reg); registerTab.classList.toggle("active",reg);
+  emailField.classList.toggle("hidden",!reg);
+  authTitle.textContent=reg?"Δωρεάν εγγραφή":"Σύνδεση";
+  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τα ενεργά alerts.";
+  authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
+  password.autocomplete=reg?"new-password":"current-password";
+  setMsg(authMsg,"");
+}
+loginTab.onclick=()=>setMode("login"); registerTab.onclick=()=>setMode("register");
+
+authSubmit.onclick=async()=>{
+  setMsg(authMsg,"");
+  const u=username.value.trim(), p=password.value, e=email.value.trim();
+  if(!u||!p||(mode==="register"&&!e)){setMsg(authMsg,"Συμπλήρωσε όλα τα πεδία.","error");return;}
+  authSubmit.disabled=true;
+  try{
+    const r=await apiPost(mode==="register"?{action:"register",username:u,email:e,password:p}:{action:"login",username:u,password:p});
+    if(!r.ok){
+      if(r.error==="EMAIL_NOT_VERIFIED"){pendingUsername=u;showVerify(u,"");return;}
+      throw new Error(r.error||"ERROR");
+    }
+    if(mode==="register"){pendingUsername=r.username||u;showVerify(pendingUsername,r.emailMasked||e);setMsg(verifyMsg,"Ο κωδικός στάλθηκε στο email σου.","ok");}
+    else{saveSession(r);}
+  }catch(err){setMsg(authMsg,mapError(err.message),"error");}
+  finally{authSubmit.disabled=false;}
+};
+function showVerify(u,masked){
+  pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
+  verifyText.textContent=masked?"Στείλαμε 6ψήφιο κωδικό στο "+masked+".":"Βάλε τον 6ψήφιο κωδικό που έλαβες στο email.";
+  verifyCode.value=""; setMsg(verifyMsg,"");
+}
+verifySubmit.onclick=async()=>{
+  const code=verifyCode.value.trim(); setMsg(verifyMsg,"");
+  try{
+    const r=await apiPost({action:"verify",username:pendingUsername,code});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    setMsg(verifyMsg,"Το email επιβεβαιώθηκε. Μπορείς τώρα να συνδεθείς.","ok");
+    setTimeout(()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");username.value=pendingUsername;password.value="";},900);
+  }catch(err){setMsg(verifyMsg,mapError(err.message),"error");}
+};
+resendCode.onclick=async()=>{
+  try{const r=await apiPost({action:"resend",username:pendingUsername});if(!r.ok)throw new Error(r.error||"ERROR");setMsg(verifyMsg,"Στάλθηκε νέος κωδικός.","ok");}
+  catch(err){setMsg(verifyMsg,mapError(err.message),"error");}
+};
+backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
+
+function saveSession(r){
+  sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
+  authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=r.username||"";loadAlerts();
+}
+logoutBtn.onclick=async()=>{
+  try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
+  localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+  alertsView.classList.add("hidden");authView.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
+};
+function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+function renderAlerts(alerts){
+  if(!alerts.length){content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργά alerts αυτή τη στιγμή.</div>';return;}
+  const groups={}; alerts.forEach(a=>{(groups[a.league]||(groups[a.league]=[])).push(a);});
+  content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div></div></div>`).join("")}</section>`).join("");
+}
+async function loadAlerts(){
+  content.innerHTML='<div class="loading">Φόρτωση…</div>';
+  try{
+    const r=await apiPost({action:"alerts",token:sessionToken});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    currentUser.textContent=r.username||localStorage.getItem("ma_user")||"";
+    counter.textContent=(r.count||0)+" ενεργά alerts";
+    const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Updated "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
+    renderAlerts(r.alerts||[]);
+  }catch(err){
+    if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED"].includes(err.message)){localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";alertsView.classList.add("hidden");authView.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");}
+    else content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'</div>';
+  }
+}
+if(sessionToken){authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";loadAlerts();}
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}
-</script></body></html>
+</script>
+</body></html>
