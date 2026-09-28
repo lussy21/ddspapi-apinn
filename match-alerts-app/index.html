@@ -56,6 +56,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
     <div class="field"><label class="label">Κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
     <button class="primary" id="verifySubmit">Επιβεβαίωση</button>
     <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
+    <div class="msg" id="resendTimer"></div>
     <div class="msg" id="verifyMsg"></div>
   </div>
 </section>
@@ -151,6 +152,7 @@ authSubmit.onclick=async()=>{
     }
     if(isRegister){
       pendingUsername=r.username||u;
+      setVerifyExpiry(pendingUsername,15*60*1000);
       showVerify(pendingUsername,r.emailMasked||e);
       setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
     }else{
@@ -163,19 +165,47 @@ authSubmit.onclick=async()=>{
     authSubmit.textContent=idleText;
   }
 };
+let verifyTimerHandle=null;
+function verifyExpiryKey(u){return "ma_verify_exp_"+String(u||"").toLowerCase();}
+function setVerifyExpiry(u,ms){localStorage.setItem(verifyExpiryKey(u),String(Date.now()+ms));}
+function clearVerifyExpiry(u){localStorage.removeItem(verifyExpiryKey(u));}
+function updateVerifyTimer(){
+  if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
+  const tick=()=>{
+    const expiry=Number(localStorage.getItem(verifyExpiryKey(pendingUsername))||0);
+    const left=Math.max(0,expiry-Date.now());
+    if(left>0){
+      const t=Math.ceil(left/1000), mm=String(Math.floor(t/60)).padStart(2,"0"), ss=String(t%60).padStart(2,"0");
+      resendCode.disabled=true;
+      resendCode.textContent="Ξαναστείλε σε "+mm+":"+ss;
+      resendTimer.textContent="Ο κωδικός ισχύει για 15 λεπτά.";
+    }else{
+      resendCode.disabled=false;
+      resendCode.textContent="Ξαναστείλε κωδικό";
+      resendTimer.textContent="Ο κωδικός έληξε. Μπορείς να ζητήσεις νέο.";
+      if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
+    }
+  };
+  tick();
+  if(resendCode.disabled) verifyTimerHandle=setInterval(tick,1000);
+}
 function showVerify(u,masked){
   pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
   verifyText.textContent=masked?"Στείλαμε 6ψήφιο κωδικό στο "+masked+".":"Βάλε τον 6ψήφιο κωδικό που έλαβες στο email.";
-  verifyCode.value=""; setMsg(verifyMsg,"");
+  verifyCode.value=""; setMsg(verifyMsg,""); updateVerifyTimer();
 }
 verifySubmit.onclick=async()=>{
   const code=verifyCode.value.trim(); setMsg(verifyMsg,"");
   try{
     const r=await apiPost({action:"verify",username:pendingUsername,code});
     if(!r.ok) throw new Error(r.error||"ERROR");
+    clearVerifyExpiry(pendingUsername);
     setMsg(verifyMsg,"Το email επιβεβαιώθηκε. Μπορείς τώρα να συνδεθείς.","ok");
     setTimeout(()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");username.value=pendingUsername;password.value="";},900);
-  }catch(err){setMsg(verifyMsg,mapError(err.message),"error");}
+  }catch(err){
+    if(err.message==="CODE_EXPIRED"){clearVerifyExpiry(pendingUsername);updateVerifyTimer();}
+    setMsg(verifyMsg,mapError(err.message),"error");
+  }
 };
 function fireAndForgetPost(params){
   const frame=document.createElement("iframe");
@@ -191,12 +221,12 @@ resendCode.onclick=()=>{
   const u=(pendingUsername||username.value.trim());
   if(!u){setMsg(verifyMsg,"Δεν βρέθηκε όνομα χρήστη.","error");return;}
   resendCode.disabled=true;
+  resendCode.textContent="Αποστολή…";
   setMsg(verifyMsg,"Στέλνω νέο κωδικό…");
   fireAndForgetPost({action:"resend",username:u});
-  setTimeout(()=>{
-    setMsg(verifyMsg,"Ζητήθηκε νέος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
-    resendCode.disabled=false;
-  },1200);
+  setVerifyExpiry(u,15*60*1000);
+  updateVerifyTimer();
+  setTimeout(()=>{setMsg(verifyMsg,"Ζητήθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");},1200);
 };
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
