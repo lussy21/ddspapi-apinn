@@ -42,10 +42,18 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <script>
 const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
 let adminSecret="", adminFreeSlots=0;
+let backendWarmPromise=null;
+function warmBackend(){
+  if(backendWarmPromise) return backendWarmPromise;
+  const health=(location.hostname==="match-alerts-api-private.onrender.com"?"/health":"https://match-alerts-api-private.onrender.com/health");
+  backendWarmPromise=fetch(health,{cache:"no-store"}).catch(()=>null);
+  return backendWarmPromise;
+}
+warmBackend();
 async function apiPost(params){
   if(!API_URL) throw new Error("BACKEND_NOT_CONNECTED");
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),15000);
+  const timer=setTimeout(()=>controller.abort(),65000);
   try{
     const body=new URLSearchParams();
     Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
@@ -82,7 +90,33 @@ window.act=async(action,username)=>{
   if(action==="adminRestore" && adminFreeSlots<=0){msg.textContent="Δεν υπάρχει διαθέσιμη θέση. Αύξησε πρώτα το όριο.";return;}
   try{const r=await apiPost({action,adminCode:adminSecret,username});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent=action==="adminDelete"?"Ο χρήστης διαγράφηκε και η θέση ελευθερώθηκε.":"Η πρόσβαση ενημερώθηκε.";}catch(e){msg.textContent="Σφάλμα: "+e.message;}
 };
-unlock.onclick=async()=>{adminSecret=adminCode.value.trim();if(!adminSecret){lockMsg.textContent="Βάλε admin code.";return;}if(!API_URL){lockMsg.textContent="Η σελίδα είναι έτοιμη. Απομένει η σύνδεση του Apps Script URL.";return;}try{await loadAdmin();lock.classList.add("hidden");dash.classList.remove("hidden");}catch(e){lockMsg.textContent=e.message==="ADMIN_UNAUTHORIZED"?"Λάθος admin code.":"Δεν έγινε σύνδεση με το backend.";}};
+unlock.onclick=async()=>{
+  adminSecret=adminCode.value.trim();
+  if(!adminSecret){lockMsg.textContent="Βάλε admin code.";return;}
+  unlock.disabled=true;
+  unlock.textContent="Σύνδεση…";
+  lockMsg.textContent="Συνδέομαι με το σύστημα…";
+  try{
+    await warmBackend();
+    try{await loadAdmin();}
+    catch(e){
+      if(["BACKEND_UNREACHABLE","TIMEOUT","BACKEND_BAD_RESPONSE"].includes(e.message)){
+        lockMsg.textContent="Το σύστημα ξυπνάει… περίμενε λίγο.";
+        backendWarmPromise=null;
+        await warmBackend();
+        await loadAdmin();
+      }else throw e;
+    }
+    lock.classList.add("hidden");
+    dash.classList.remove("hidden");
+    lockMsg.textContent="";
+  }catch(e){
+    lockMsg.textContent=e.message==="ADMIN_UNAUTHORIZED"?"Λάθος admin code.":"Δεν έγινε σύνδεση με το backend. Δοκίμασε ξανά σε λίγο.";
+  }finally{
+    unlock.disabled=false;
+    unlock.textContent="Άνοιγμα Admin";
+  }
+};
 refresh.onclick=()=>loadAdmin().catch(e=>msg.textContent="Σφάλμα: "+e.message);
 saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
 </script>
