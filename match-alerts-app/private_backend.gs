@@ -224,16 +224,26 @@ function alerts_(p) {
   const auth = requireSession_(String(p.token || ""));
   if (!auth.ok) return auth;
 
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) return {ok:false,error:"PINNACLE_NOT_FOUND"};
+  // Google Sheets API with an explicit READ-ONLY OAuth scope.
+  // This backend cannot write to the spreadsheet at the permission level.
+  const range = encodeURIComponent(SHEET_NAME + "!A3:P");
+  const url =
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+    SPREADSHEET_ID + "/values/" + range +
+    "?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE";
 
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 3) {
-    return {ok:true,username:auth.username,count:0,updatedAt:new Date().toISOString(),alerts:[]};
+  const response = UrlFetchApp.fetch(url, {
+    method:"get",
+    headers:{Authorization:"Bearer " + ScriptApp.getOAuthToken()},
+    muteHttpExceptions:true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    return {ok:false,error:"SHEET_READ_FAILED"};
   }
 
-  const values = sheet.getRange(3,1,lastRow-2,16).getDisplayValues();
+  const sheetPayload = JSON.parse(response.getContentText());
+  const values = sheetPayload.values || [];
   const out = [];
 
   values.forEach(function(row) {
