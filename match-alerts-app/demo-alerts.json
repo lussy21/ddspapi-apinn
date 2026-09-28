@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "demo": true,
+  "source": "PINNACLE snapshot",
+  "count": 1,
+  "updatedAt": "2026-09-28T14:36:00Z",
+  "alerts": [
+    {
+      "league": "Spain - La Liga",
+      "home": "Athletic Bilbao",
+      "away": "Elche",
+      "favoriteSide": "H",
+      "alert": "🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ"
+    }
+  ]
+}
