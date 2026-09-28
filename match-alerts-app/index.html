@@ -79,7 +79,11 @@ function apiPost(params){
     Object.entries(payload).forEach(([k,v])=>{const input=document.createElement("input");input.type="hidden";input.name=k;input.value=String(v??"");form.appendChild(input);});
     const timer=setTimeout(()=>{cleanup();reject(new Error("TIMEOUT"));},20000);
     function onMessage(ev){
-      if(ev.origin!=="https://script.google.com" && !ev.origin.endsWith(".googleusercontent.com")) return;
+      // Apps Script responses may arrive from a sandboxed iframe with origin "null".
+      // Trust only the exact hidden iframe we created for this request.
+      if(ev.source!==frame.contentWindow) return;
+      const allowedOrigin=ev.origin==="null" || ev.origin==="https://script.google.com" || ev.origin.endsWith(".googleusercontent.com");
+      if(!allowedOrigin) return;
       const data=ev.data||{}; if(data.source!=="MATCH_ALERTS_API"||data.requestId!==requestId) return;
       cleanup(); resolve(data.payload);
     }
