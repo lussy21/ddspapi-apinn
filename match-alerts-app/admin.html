@@ -62,7 +62,9 @@ function apiPost(params){
     });
     const timer=setTimeout(()=>{cleanup();reject(new Error("TIMEOUT"));},15000);
     function onMessage(ev){
-      if(ev.origin!=="https://script.google.com" && !ev.origin.endsWith(".googleusercontent.com")) return;
+      if(ev.source!==frame.contentWindow) return;
+      const allowedOrigin=ev.origin==="null" || ev.origin==="https://script.google.com" || ev.origin.endsWith(".googleusercontent.com");
+      if(!allowedOrigin) return;
       const data=ev.data||{};
       if(data.source!=="MATCH_ALERTS_API"||data.requestId!==requestId) return;
       cleanup(); resolve(data.payload);
