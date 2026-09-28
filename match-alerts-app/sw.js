@@ -1,4 +1,4 @@
-const CACHE='match-alerts-v5-live';
+const CACHE='match-alerts-v6-live';
 const ASSETS=['./manifest.json','./icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
@@ -11,9 +11,14 @@ self.addEventListener('activate',e=>{
   );
 });
 self.addEventListener('fetch',e=>{
-  if(e.request.mode==='navigate'){
+  const url=new URL(e.request.url);
+  if(e.request.mode==='navigate' || url.pathname.endsWith('/demo-alerts.json')){
     e.respondWith(
-      fetch(e.request).catch(()=>caches.match('./index.html'))
+      fetch(e.request).then(r=>{
+        const copy=r.clone();
+        caches.open(CACHE).then(c=>c.put(e.request,copy));
+        return r;
+      }).catch(()=>caches.match(e.request))
     );
     return;
   }
