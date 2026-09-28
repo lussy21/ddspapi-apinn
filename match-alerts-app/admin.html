@@ -40,42 +40,29 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div>
 </div></section></div>
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec";
+const API_URL="https://match-alerts-api-private.onrender.com/api";
 let adminSecret="", adminFreeSlots=0;
-function apiPost(params){
-  if(!API_URL) return Promise.reject(new Error("BACKEND_NOT_CONNECTED"));
-  return new Promise((resolve,reject)=>{
-    const requestId="r"+Date.now()+Math.random().toString(36).slice(2);
-    const frame=document.createElement("iframe");
-    frame.name=requestId;
-    frame.style.display="none";
-    const form=document.createElement("form");
-    form.method="POST";
-    form.action=API_URL;
-    form.target=requestId;
-    form.style.display="none";
-    const payload={...params,bridge:"1",requestId};
-    Object.entries(payload).forEach(([k,v])=>{
-      const input=document.createElement("input");
-      input.type="hidden"; input.name=k; input.value=String(v??"");
-      form.appendChild(input);
+async function apiPost(params){
+  if(!API_URL) throw new Error("BACKEND_NOT_CONNECTED");
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),25000);
+  try{
+    const res=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(params),
+      signal:controller.signal,
+      cache:"no-store"
     });
-    const timer=setTimeout(()=>{cleanup();reject(new Error("TIMEOUT"));},15000);
-    function onMessage(ev){
-      if(ev.source!==frame.contentWindow) return;
-      const allowedOrigin=ev.origin==="null" || ev.origin==="https://script.google.com" || ev.origin.endsWith(".googleusercontent.com");
-      if(!allowedOrigin) return;
-      const data=ev.data||{};
-      if(data.source!=="MATCH_ALERTS_API"||data.requestId!==requestId) return;
-      cleanup(); resolve(data.payload);
-    }
-    function cleanup(){
-      clearTimeout(timer); window.removeEventListener("message",onMessage);
-      frame.remove(); form.remove();
-    }
-    window.addEventListener("message",onMessage);
-    document.body.appendChild(frame); document.body.appendChild(form); form.submit();
-  });
+    const data=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
+    if(!res.ok && !data.error) data.error="BACKEND_UNREACHABLE";
+    return data;
+  }catch(err){
+    if(err.name==="AbortError") throw new Error("TIMEOUT");
+    throw new Error("BACKEND_UNREACHABLE");
+  }finally{
+    clearTimeout(timer);
+  }
 }
 async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
