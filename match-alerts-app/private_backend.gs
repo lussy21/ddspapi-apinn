@@ -16,6 +16,8 @@ const SHEET_NAME = "PINNACLE";
 const ADMIN_CODE = "MA-ADMIN-9X7K-4P2R-8V6M";
 
 const SESSION_HOURS = 24 * 30; // 30 days
+const MAX_FREE_USERS = 2; // Change later when you open more seats / subscriptions
+const REGISTRATION_MODE = "free"; // later: "subscription"
 
 function doGet(e) {
   const p = e && e.parameter ? e.parameter : {};
@@ -65,18 +67,38 @@ function handleRegister_(data) {
     return json_({ok:false,error:"USER_EXISTS"});
   }
 
+  const currentUsers = countUsers_();
+  if (REGISTRATION_MODE === "free" && currentUsers >= MAX_FREE_USERS) {
+    return json_({
+      ok:false,
+      error:"REGISTRATION_FULL",
+      message:"Οι δωρεάν εγγραφές έχουν συμπληρωθεί."
+    });
+  }
+
   const salt = Utilities.getUuid();
   const record = {
     username: username,
     salt: salt,
     hash: hashPassword_(password, salt),
-    approved: false,
+    approved: true,
     createdAt: new Date().toISOString(),
     revoked: false
   };
 
   props.setProperty(key, JSON.stringify(record));
-  return json_({ok:true,status:"PENDING_APPROVAL"});
+  return json_({
+    ok:true,
+    status:"ACTIVE",
+    remainingFreeSlots: Math.max(0, MAX_FREE_USERS - countUsers_())
+  });
+}
+
+function countUsers_() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  return Object.keys(props).filter(function(k) {
+    return k.indexOf("USER::") === 0;
+  }).length;
 }
 
 function handleLogin_(data) {
