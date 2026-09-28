@@ -245,7 +245,7 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function renderAlerts(alerts){
   if(!alerts.length){content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργά alerts αυτή τη στιγμή.</div>';return;}
   const groups={}; alerts.forEach(a=>{(groups[a.league]||(groups[a.league]=[])).push(a);});
-  content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div>${(a.leagueRecord||a.allStatsRecord)?`<div class="history"><b>ΠΡΩΤΑΘΛΗΜΑ</b> ${esc(a.leagueRecord||"—")} · <b>ALL STATS</b> ${esc(a.allStatsRecord||"—")}</div>`:""}</div></div></div>`).join("")}</section>`).join("");
+  content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div>${(a.leagueRecord||a.allStatsRecord)?`<div class="history">${a.rating?`<b>ΕΚΤΙΜΗΣΗ</b> ${esc(a.rating)} · `:""}<b>ΠΡΩΤΑΘΛΗΜΑ</b> ${esc(a.leagueRecord||"—")} · <b>ALL STATS</b> ${esc(a.allStatsRecord||"—")}</div>`:""}</div></div></div>`).join("")}</section>`).join("");
 }
 async function loadAlerts(){
   content.innerHTML='<div class="loading">Φόρτωση…</div>';
@@ -264,7 +264,7 @@ async function loadAlerts(){
     }
     if(["SHEET_READ_FAILED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE","TIMEOUT"].includes(err.message)){
       try{
-        const demo=await fetch("./demo-alerts.json?v=20260928-1825",{cache:"no-store"}).then(r=>r.json());
+        const demo=await fetch("./demo-alerts.json?v=20260928-1840",{cache:"no-store"}).then(r=>r.json());
         counter.textContent=(demo.count||0)+" ενεργά alerts";
         updatedAt.textContent="Demo snapshot";
         renderAlerts(demo.alerts||[]);
