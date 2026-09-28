@@ -41,7 +41,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div></section></div>
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec";
-let adminSecret="";
+let adminSecret="", adminFreeSlots=0;
 function apiPost(params){
   if(!API_URL) return Promise.reject(new Error("BACKEND_NOT_CONNECTED"));
   return new Promise((resolve,reject)=>{
@@ -78,7 +78,7 @@ function apiPost(params){
 async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
-  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers;
+  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0);
   const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
   if(!list.ok) throw new Error(list.error||"ADMIN_ERROR");
   renderUsers(list.users||[]);
@@ -89,6 +89,7 @@ function renderUsers(arr){
   users.innerHTML=arr.length?arr.map(u=>`<div class="user"><div><div class="name">${esc(u.username)}</div><div class="meta">${u.verified?(u.revoked?"Κομμένη πρόσβαση":"Ενεργός"):"Email σε αναμονή"} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div></div><div class="buttons">${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div></div>`).join(""):'<div class="note">Δεν υπάρχουν χρήστες ακόμα.</div>';
 }
 window.act=async(action,username)=>{
+  if(action==="adminRestore" && adminFreeSlots<=0){msg.textContent="Δεν υπάρχει διαθέσιμη θέση. Αύξησε πρώτα το όριο.";return;}
   try{const r=await apiPost({action,adminCode:adminSecret,username});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent=action==="adminDelete"?"Ο χρήστης διαγράφηκε και η θέση ελευθερώθηκε.":"Η πρόσβαση ενημερώθηκε.";}catch(e){msg.textContent="Σφάλμα: "+e.message;}
 };
 unlock.onclick=async()=>{adminSecret=adminCode.value.trim();if(!adminSecret){lockMsg.textContent="Βάλε admin code.";return;}if(!API_URL){lockMsg.textContent="Η σελίδα είναι έτοιμη. Απομένει η σύνδεση του Apps Script URL.";return;}try{await loadAdmin();lock.classList.add("hidden");dash.classList.remove("hidden");}catch(e){lockMsg.textContent=e.message==="ADMIN_UNAUTHORIZED"?"Λάθος admin code.":"Δεν έγινε σύνδεση με το backend.";}};
