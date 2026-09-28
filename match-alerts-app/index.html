@@ -164,9 +164,26 @@ verifySubmit.onclick=async()=>{
     setTimeout(()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");username.value=pendingUsername;password.value="";},900);
   }catch(err){setMsg(verifyMsg,mapError(err.message),"error");}
 };
-resendCode.onclick=async()=>{
-  try{const r=await apiPost({action:"resend",username:pendingUsername});if(!r.ok)throw new Error(r.error||"ERROR");setMsg(verifyMsg,"Στάλθηκε νέος κωδικός.","ok");}
-  catch(err){setMsg(verifyMsg,mapError(err.message),"error");}
+function fireAndForgetPost(params){
+  const frame=document.createElement("iframe");
+  frame.name="ff"+Date.now()+Math.random().toString(36).slice(2);
+  frame.style.display="none";
+  const form=document.createElement("form");
+  form.method="POST"; form.action=API_URL; form.target=frame.name; form.style.display="none";
+  Object.entries(params).forEach(([k,v])=>{const input=document.createElement("input");input.type="hidden";input.name=k;input.value=String(v??"");form.appendChild(input);});
+  document.body.appendChild(frame); document.body.appendChild(form); form.submit();
+  setTimeout(()=>{frame.remove();form.remove();},8000);
+}
+resendCode.onclick=()=>{
+  const u=(pendingUsername||username.value.trim());
+  if(!u){setMsg(verifyMsg,"Δεν βρέθηκε όνομα χρήστη.","error");return;}
+  resendCode.disabled=true;
+  setMsg(verifyMsg,"Στέλνω νέο κωδικό…");
+  fireAndForgetPost({action:"resend",username:u});
+  setTimeout(()=>{
+    setMsg(verifyMsg,"Ζητήθηκε νέος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
+    resendCode.disabled=false;
+  },1200);
 };
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
