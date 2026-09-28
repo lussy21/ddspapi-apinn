@@ -29,17 +29,96 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 .badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.075);color:#fff7de;white-space:nowrap}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
 .stats{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.stat{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);font-size:10px;line-height:1}.stat-label{color:#cbc7bb;font-weight:800}.stat-value{color:#fff;font-weight:900}
 footer{text-align:center;color:#68656d;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;padding-top:28px}
+.admin-overlay{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.78);backdrop-filter:blur(12px);display:none;padding:18px;overflow:auto}.admin-overlay.show{display:block}
+.admin-panel{width:min(100%,560px);margin:24px auto;background:linear-gradient(150deg,#111114,#080809);border:1px solid rgba(217,177,87,.22);border-radius:26px;box-shadow:0 25px 80px rgba(0,0,0,.6);overflow:hidden}
+.admin-head{display:flex;align-items:center;justify-content:space-between;padding:18px;border-bottom:1px solid var(--line)}.admin-title{font-family:Georgia,serif;font-size:24px}.close-admin{border:0;background:rgba(255,255,255,.06);color:#fff;width:36px;height:36px;border-radius:12px;font-size:18px}
+.admin-body{padding:18px}.admin-note{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:14px}
+.admin-input,.admin-number{width:100%;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none}.admin-input:focus,.admin-number:focus{border-color:rgba(217,177,87,.55)}
+.admin-btn{border:1px solid rgba(217,177,87,.28);background:linear-gradient(145deg,rgba(217,177,87,.18),rgba(217,177,87,.08));color:#fff4d2;border-radius:14px;padding:12px 14px;font-weight:900}.admin-btn.secondary{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.09);color:#e7e5e8}.admin-btn.danger{background:rgba(180,40,50,.12);border-color:rgba(220,70,80,.25);color:#ffb8be}
+.admin-actions{display:flex;gap:9px;margin-top:10px;flex-wrap:wrap}.admin-actions>*{flex:1}
+.admin-msg{margin-top:12px;font-size:12px;color:var(--muted)}
+.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:16px 0}.admin-stat{padding:13px 10px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03);text-align:center}.admin-stat b{display:block;font-size:21px;color:#fff}.admin-stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.admin-section{margin-top:17px;padding-top:16px;border-top:1px solid var(--line)}.admin-section h3{margin:0 0 10px;font-size:13px;color:var(--gold2);letter-spacing:1px;text-transform:uppercase}
+.user-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}.user-card:last-child{border-bottom:0}.user-name{font-weight:800;font-size:14px}.user-meta{font-size:10px;color:var(--muted);margin-top:4px}.user-buttons{display:flex;gap:6px}.mini{padding:8px 9px;border-radius:10px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff}.mini.danger{border-color:rgba(220,70,80,.24);color:#ffb8be}
+.hidden{display:none!important}
 @media(max-width:470px){.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{flex-direction:column;gap:10px}.right-meta{align-items:flex-start}.stats{justify-content:flex-start}.badge{white-space:normal}}
 </style>
 </head>
 <body>
 <main class="app">
-<div class="top"><div class="brand"><div class="logo">♛</div><div><h1>Match Alerts</h1><div class="sub">Private Access</div></div></div><div class="live"><span class="dot"></span>Live</div></div>
+<div class="top"><div class="brand"><div class="logo" id="adminLogo" aria-label="Match Alerts">♛</div><div><h1>Match Alerts</h1><div class="sub">Private Access</div></div></div><div class="live"><span class="dot"></span>Live</div></div>
 <section class="summary"><div class="summary-top"><div><h2>Today's Alerts</h2><p>Καθαρή προβολή των ενεργών alerts, χωρισμένα ανά πρωτάθλημα.</p></div><div class="status-mini">Updated 12:47</div></div><div class="counter">18 ενεργά alerts</div></section>
 <div id="content"></div><footer>Version 1 · Preview build</footer></main>
+<div class="admin-overlay" id="adminOverlay"><section class="admin-panel"><div class="admin-head"><div><div class="sub">Owner only</div><div class="admin-title">Admin Panel</div></div><button class="close-admin" id="closeAdmin">×</button></div><div class="admin-body"><div id="adminLock"><div class="admin-note">Βάλε τον προσωπικό admin κωδικό σου. Δεν αποθηκεύεται μέσα στον κώδικα της εφαρμογής.</div><input class="admin-input" id="adminCode" type="password" placeholder="Admin code" autocomplete="off"><div class="admin-actions"><button class="admin-btn" id="unlockAdmin">Άνοιγμα Admin</button></div><div class="admin-msg" id="adminLockMsg"></div></div><div id="adminDashboard" class="hidden"><div class="admin-stats"><div class="admin-stat"><b id="usedUsers">0</b><span>Εγγεγραμμένοι</span></div><div class="admin-stat"><b id="maxUsers">2</b><span>Όριο</span></div><div class="admin-stat"><b id="freeSlots">2</b><span>Θέσεις</span></div></div><div class="admin-section"><h3>Όριο εγγραφών</h3><input class="admin-number" id="maxUsersInput" type="number" min="0" step="1" value="2"><div class="admin-actions"><button class="admin-btn" id="saveMaxUsers">Αποθήκευση ορίου</button><button class="admin-btn secondary" id="refreshAdmin">Ανανέωση</button></div></div><div class="admin-section"><h3>Εγγεγραμμένοι χρήστες</h3><div id="usersList"><div class="admin-note">Δεν υπάρχουν χρήστες ακόμα.</div></div></div><div class="admin-msg" id="adminMsg"></div></div></div></section></div>
 <script>
+const API_URL="";
 const groups=[["Premier League",[["14:30","Arsenal – Everton","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","PL 91% (10/11)","ALL 87% (34/39)"],["17:00","Liverpool – Brighton","🔔 ΦΑΒΟΡΙ","PL 74% (17/23)","ALL 77% (61/79)"],["17:00","Chelsea – Wolves","👁️ WATCH ΦΑΒΟΡΙ","PL 58% (11/19)","ALL 55% (21/38)"],["19:30","Tottenham – Aston Villa","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","PL 86% (12/14)","ALL 88% (28/32)"]]],["La Liga",[["15:00","Villarreal – Getafe","🔔 ΦΑΒΟΡΙ","La Liga 78% (14/18)","ALL 77% (61/79)"],["17:15","Sevilla – Mallorca","👁️ WATCH ΚΟΝΤΡΑ","La Liga 31% (4/13)","ALL 30% (3/10)"],["19:30","Barcelona – Valencia","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","La Liga 100% (7/7)","ALL 87% (34/39)"]]],["Serie A",[["13:30","Bologna – Lecce","🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ","Serie A 83% (10/12)","ALL 75% (15/20)"],["16:00","Roma – Torino","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","Serie A 80% (8/10)","ALL 88% (28/32)"],["19:00","Napoli – Udinese","🔔 ΦΑΒ 75+","Serie A 84% (16/19)","ALL 80% (16/20)"],["21:45","Inter – Parma","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","Serie A 100% (4/4)","ALL 87% (34/39)"]]],["Bundesliga",[["16:30","Leverkusen – Augsburg","🔔 ΦΑΒΟΡΙ","Bundesliga 73% (8/11)","ALL 77% (61/79)"],["16:30","Dortmund – Mainz","👁️ WATCH ΦΑΒΟΡΙ","Bundesliga 50% (3/6)","ALL 55% (21/38)"],["19:30","Bayern – Freiburg","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","Bundesliga 100% (5/5)","ALL 87% (34/39)"]]],["Ligue 1",[["18:00","Monaco – Lens","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","Ligue 1 90% (9/10)","ALL 88% (28/32)"],["20:00","Lille – Nantes","🔔 ΦΑΒΟΡΙ","Ligue 1 80% (8/10)","ALL 77% (61/79)"]]],["Super League",[["18:30","PAOK – Aris","🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ","Super League 100% (3/3)","ALL 81% (13/16)"],["21:00","Panathinaikos – OFI","👁️ WATCH ΦΑΒΟΡΙ","Super League 67% (2/3)","ALL 55% (21/38)"]]]];
 const root=document.getElementById("content");
 root.innerHTML=groups.map(([league,matches])=>`<section class="league"><div class="league-head"><div class="league-title">${league}</div><div class="league-count">${matches.length} alerts</div></div>${matches.map(([time,match,alert,leagueStat,allStat])=>`<div class="row"><div class="match">${match}</div><div class="meta"><div class="left-meta"><div class="time">${time}</div></div><div class="right-meta"><div class="badge ${alert.includes("WATCH")?"watch":""}">${alert}</div><div class="stats"><div class="stat"><span class="stat-label">League</span><span class="stat-value">${leagueStat}</span></div><div class="stat"><span class="stat-label">Overall</span><span class="stat-value">${allStat}</span></div></div></div></div></div>`).join("")}</section>`).join("");
+
+let adminTapCount=0,adminTapTimer=null,adminSecret="";
+const adminOverlay=document.getElementById("adminOverlay");
+document.getElementById("adminLogo").addEventListener("click",()=>{
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer=setTimeout(()=>adminTapCount=0,1800);
+  if(adminTapCount>=5){adminTapCount=0;adminOverlay.classList.add("show");}
+});
+document.getElementById("closeAdmin").addEventListener("click",()=>adminOverlay.classList.remove("show"));
+
+function apiGet(params){
+  if(!API_URL) return Promise.reject(new Error("BACKEND_NOT_CONNECTED"));
+  const url=new URL(API_URL);
+  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+  return fetch(url.toString(),{redirect:"follow"}).then(r=>r.json());
+}
+async function loadAdmin(){
+  const settings=await apiGet({action:"adminSettings",adminCode:adminSecret});
+  if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
+  document.getElementById("usedUsers").textContent=settings.usedUsers;
+  document.getElementById("maxUsers").textContent=settings.maxUsers;
+  document.getElementById("freeSlots").textContent=settings.freeSlots;
+  document.getElementById("maxUsersInput").value=settings.maxUsers;
+  const list=await apiGet({action:"adminPending",adminCode:adminSecret});
+  if(!list.ok) throw new Error(list.error||"ADMIN_ERROR");
+  renderUsers(list.users||[]);
+}
+function renderUsers(users){
+  const box=document.getElementById("usersList");
+  if(!users.length){box.innerHTML='<div class="admin-note">Δεν υπάρχουν χρήστες ακόμα.</div>';return;}
+  box.innerHTML=users.map(u=>`<div class="user-card"><div><div class="user-name">${escapeHtml(u.username)}</div><div class="user-meta">${u.revoked?"Κομμένη πρόσβαση":"Ενεργός"} · ${escapeHtml((u.createdAt||"").slice(0,10))}</div></div><div class="user-buttons">${u.revoked?`<button class="mini" onclick="adminUserAction('adminApprove','${jsSafe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="adminUserAction('adminRevoke','${jsSafe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="adminUserAction('adminDelete','${jsSafe(u.username)}')">Διαγραφή</button></div></div>`).join("");
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+function jsSafe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
+window.adminUserAction=async(action,username)=>{
+  try{
+    const r=await apiGet({action,adminCode:adminSecret,username});
+    if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+    await loadAdmin();
+    document.getElementById("adminMsg").textContent=action==="adminDelete"?"Ο χρήστης διαγράφηκε και η θέση ελευθερώθηκε.":"Η πρόσβαση ενημερώθηκε.";
+  }catch(e){document.getElementById("adminMsg").textContent="Σφάλμα: "+e.message;}
+};
+document.getElementById("unlockAdmin").addEventListener("click",async()=>{
+  const msg=document.getElementById("adminLockMsg");
+  adminSecret=document.getElementById("adminCode").value.trim();
+  if(!adminSecret){msg.textContent="Βάλε admin code.";return;}
+  if(!API_URL){msg.textContent="Το Admin είναι έτοιμο. Απομένει μόνο να συνδέσουμε το Apps Script URL.";return;}
+  try{
+    await loadAdmin();
+    document.getElementById("adminLock").classList.add("hidden");
+    document.getElementById("adminDashboard").classList.remove("hidden");
+  }catch(e){msg.textContent=e.message==="ADMIN_UNAUTHORIZED"?"Λάθος admin code.":"Δεν έγινε σύνδεση με το backend.";}
+});
+document.getElementById("refreshAdmin").addEventListener("click",()=>loadAdmin().catch(e=>document.getElementById("adminMsg").textContent="Σφάλμα: "+e.message));
+document.getElementById("saveMaxUsers").addEventListener("click",async()=>{
+  const n=Math.max(0,parseInt(document.getElementById("maxUsersInput").value||"0",10));
+  try{
+    const r=await apiGet({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});
+    if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+    await loadAdmin();
+    document.getElementById("adminMsg").textContent="Το όριο άλλαξε σε "+n+".";
+  }catch(e){document.getElementById("adminMsg").textContent="Σφάλμα: "+e.message;}
+});
+
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}
 </script></body></html>
