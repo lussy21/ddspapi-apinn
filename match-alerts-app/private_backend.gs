@@ -278,7 +278,9 @@ function alerts_(p) {
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
     const favoriteSide = String(row[3] || "").trim();
-    const currentAlert = normalizeAlertName_(row[14]);
+    const rawAlert = String(row[14] || "").trim();
+    const currentAlert = normalizeAlertName_(rawAlert);
+    const rating = alertRating_(rawAlert);
 
     if (!league || !home || !away || !currentAlert) return;
     if (String(row[15] || "").trim()) return;
@@ -294,6 +296,7 @@ function alerts_(p) {
       away: away,
       favoriteSide: favoriteSide,
       alert: currentAlert,
+      rating: rating,
       leagueRecord: statsCache[statsKey].leagueRecord,
       allStatsRecord: statsCache[statsKey].allStatsRecord
     });
@@ -317,6 +320,12 @@ function normalizeAlertName_(value) {
     if (parts.length > 1 && parts[1].indexOf("/10") >= 0) return parts[0].trim();
   }
   return text;
+}
+
+function alertRating_(value) {
+  const text = String(value || "").trim();
+  const m = text.match(/·\s*([0-9]+(?:[.,][0-9]+)?\/10)\s*$/);
+  return m ? m[1] : "";
 }
 
 function resultScore_(value) {
