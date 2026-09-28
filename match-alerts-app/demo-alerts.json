@@ -3,7 +3,7 @@
   "demo": true,
   "source": "ALERT LOG snapshot 28/09/2026",
   "count": 5,
-  "updatedAt": "2026-09-28T14:55:00Z",
+  "updatedAt": "2026-09-28T15:24:00Z",
   "alerts": [
     {
       "league": "Greece - Super League 2",
@@ -11,8 +11,8 @@
       "away": "Panthrakikos",
       "favoriteSide": "",
       "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
-      "success": "—",
-      "sample": "0/0"
+      "leagueRecord": "0/0",
+      "allStatsRecord": "31/37"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - UEFA - Nations League B",
@@ -20,8 +20,8 @@
       "away": "Poland",
       "favoriteSide": "",
       "alert": "🔔 ΚΟΝΤΡΑ",
-      "success": "0,0%",
-      "sample": "0/1"
+      "leagueRecord": "0/0",
+      "allStatsRecord": "8/13"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CONCACAF - Nations League B",
@@ -29,8 +29,8 @@
       "away": "Barbados",
       "favoriteSide": "",
       "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
-      "success": "60,0%",
-      "sample": "3/5"
+      "leagueRecord": "0/0",
+      "allStatsRecord": "31/37"
     },
     {
       "league": "Greece - Super League 2",
@@ -38,8 +38,8 @@
       "away": "Asteras Tripolis II",
       "favoriteSide": "",
       "alert": "🔔 ΦΑΒ 75+",
-      "success": "0,0%",
-      "sample": "0/2"
+      "leagueRecord": "0/0",
+      "allStatsRecord": "14/17"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CAF - Africa Cup of Nations Qualifiers",
@@ -47,8 +47,8 @@
       "away": "DR Congo",
       "favoriteSide": "",
       "alert": "👀 WATCH ΦΑΒΟΡΙ",
-      "success": "85,7%",
-      "sample": "6/7"
+      "leagueRecord": "0/0",
+      "allStatsRecord": "21/36"
     }
   ]
 }
