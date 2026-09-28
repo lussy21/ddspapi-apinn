@@ -16,7 +16,7 @@ const SHEET_NAME = "PINNACLE";
 const ADMIN_CODE = "MA-ADMIN-9X7K-4P2R-8V6M";
 
 const SESSION_HOURS = 24 * 30; // 30 days
-const MAX_FREE_USERS = 2; // Change later when you open more seats / subscriptions
+const DEFAULT_MAX_FREE_USERS = 2;
 const REGISTRATION_MODE = "free"; // later: "subscription"
 
 function doGet(e) {
@@ -29,6 +29,8 @@ function doGet(e) {
     if (action === "adminPending") return handleAdminPending_(p);
     if (action === "adminApprove") return handleAdminApprove_(p);
     if (action === "adminRevoke") return handleAdminRevoke_(p);
+    if (action === "adminSettings") return handleAdminSettings_(p);
+    if (action === "adminSetMaxUsers") return handleAdminSetMaxUsers_(p);
     return json_({ok:false,error:"UNKNOWN_ACTION"});
   } catch (err) {
     return json_({ok:false,error:"SERVER_ERROR",message:String(err && err.message || err)});
@@ -68,7 +70,8 @@ function handleRegister_(data) {
   }
 
   const currentUsers = countUsers_();
-  if (REGISTRATION_MODE === "free" && currentUsers >= MAX_FREE_USERS) {
+  const maxFreeUsers = getMaxFreeUsers_();
+  if (REGISTRATION_MODE === "free" && currentUsers >= maxFreeUsers) {
     return json_({
       ok:false,
       error:"REGISTRATION_FULL",
@@ -90,7 +93,48 @@ function handleRegister_(data) {
   return json_({
     ok:true,
     status:"ACTIVE",
-    remainingFreeSlots: Math.max(0, MAX_FREE_USERS - countUsers_())
+    remainingFreeSlots: Math.max(0, getMaxFreeUsers_() - countUsers_())
+  });
+}
+
+function getMaxFreeUsers_() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty("CONFIG::MAX_FREE_USERS");
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : DEFAULT_MAX_FREE_USERS;
+}
+
+function handleAdminSettings_(p) {
+  if (!isAdmin_(p.adminCode)) return json_({ok:false,error:"ADMIN_UNAUTHORIZED"});
+  const used = countUsers_();
+  const max = getMaxFreeUsers_();
+  return json_({
+    ok:true,
+    registrationMode:REGISTRATION_MODE,
+    usedUsers:used,
+    maxUsers:max,
+    freeSlots:Math.max(0,max-used)
+  });
+}
+
+function handleAdminSetMaxUsers_(p) {
+  if (!isAdmin_(p.adminCode)) return json_({ok:false,error:"ADMIN_UNAUTHORIZED"});
+
+  const n = Number(p.maxUsers);
+  if (!Number.isFinite(n) || n < 0 || n > 10000) {
+    return json_({ok:false,error:"BAD_MAX_USERS"});
+  }
+
+  const maxUsers = Math.floor(n);
+  PropertiesService.getScriptProperties()
+    .setProperty("CONFIG::MAX_FREE_USERS", String(maxUsers));
+
+  const used = countUsers_();
+  return json_({
+    ok:true,
+    usedUsers:used,
+    maxUsers:maxUsers,
+    freeSlots:Math.max(0,maxUsers-used)
   });
 }
 
