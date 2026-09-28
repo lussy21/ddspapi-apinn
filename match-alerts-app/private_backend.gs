@@ -228,53 +228,144 @@ function alerts_(p) {
   const auth = requireSession_(String(p.token || ""));
   if (!auth.ok) return auth;
 
-  // Google Sheets API with an explicit READ-ONLY OAuth scope.
-  // This backend cannot write to the spreadsheet at the permission level.
-  const range = encodeURIComponent(SHEET_NAME + "!A3:P");
-  const url =
-    "https://sheets.googleapis.com/v4/spreadsheets/" +
-    SPREADSHEET_ID + "/values/" + range +
-    "?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE";
+  // READ ONLY: direct Apps Script spreadsheet access.
+  // No write operation is used anywhere in this function.
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  const log = ss.getSheetByName("ALERT LOG");
+  if (!pin || !log) return {ok:false,error:"SHEET_READ_FAILED"};
 
-  const response = UrlFetchApp.fetch(url, {
-    method:"get",
-    headers:{Authorization:"Bearer " + ScriptApp.getOAuthToken()},
-    muteHttpExceptions:true
-  });
+  const tz = "Europe/Athens";
+  const today = Utilities.formatDate(new Date(), tz, "dd/MM/yyyy");
 
-  if (response.getResponseCode() !== 200) {
-    return {ok:false,error:"SHEET_READ_FAILED"};
+  const pinLast = Math.max(3, pin.getLastRow());
+  const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+
+  // Build today's latest alert state per event key from ALERT LOG.
+  const latest = {};
+  const logLast = log.getLastRow();
+  if (logLast >= 2) {
+    const logRows = log.getRange(2, 1, logLast - 1, 7).getDisplayValues();
+    logRows.forEach(function(r) {
+      const time = String(r[0] || "").trim();
+      if (time.indexOf(today) !== 0) return;
+
+      const key = String(r[1] || "").trim();
+      if (!key) return;
+
+      latest[key] = {
+        row: Number(r[2] || 0),
+        league: String(r[3] || "").trim(),
+        match: String(r[4] || "").trim(),
+        event: String(r[5] || "").trim(),
+        alert: normalizeAlertName_(r[6])
+      };
+    });
   }
 
-  const sheetPayload = JSON.parse(response.getContentText());
-  const values = sheetPayload.values || [];
+  const statsCache = {};
   const out = [];
 
-  values.forEach(function(row) {
-    const league = String(row[0] || "").trim();
+  Object.keys(latest).forEach(function(key) {
+    const item = latest[key];
+    if (!item.alert || item.event === "ΕΦΥΓΕ") return;
+
+    const idx = item.row >= 3 ? item.row - 3 : -1;
+    const row = (idx >= 0 && idx < pinRows.length) ? pinRows[idx] : null;
+    if (!row) return;
+
+    const league = String(row[0] || item.league || "").trim();
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
     const favoriteSide = String(row[3] || "").trim();
-    const alert = String(row[14] || "").trim();
-    const result = String(row[15] || "").trim();
+    const currentAlert = normalizeAlertName_(row[14]) || item.alert;
 
-    if (!league || !home || !away || !alert || result) return;
+    if (!league || !home || !away || !currentAlert) return;
+
+    const statsKey = league + "||" + currentAlert;
+    if (!statsCache[statsKey]) {
+      statsCache[statsKey] = alertRecords_(pinRows, league, currentAlert);
+    }
 
     out.push({
-      league:league,
-      home:home,
-      away:away,
-      favoriteSide:favoriteSide,
-      alert:alert
+      league: league,
+      home: home,
+      away: away,
+      favoriteSide: favoriteSide,
+      alert: currentAlert,
+      leagueRecord: statsCache[statsKey].leagueRecord,
+      allStatsRecord: statsCache[statsKey].allStatsRecord
     });
   });
 
   return {
     ok:true,
+    live:true,
     username:auth.username,
     count:out.length,
     updatedAt:new Date().toISOString(),
     alerts:out
+  };
+}
+
+function normalizeAlertName_(value) {
+  const text = String(value || "").trim();
+  const marker = " · ";
+  if (text.indexOf(marker) >= 0) {
+    const parts = text.split(marker);
+    if (parts.length > 1 && parts[1].indexOf("/10") >= 0) return parts[0].trim();
+  }
+  return text;
+}
+
+function resultScore_(value) {
+  const m = String(value || "").trim().match(/^(\\d+)\\s*-\\s*(\\d+)/);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2])];
+}
+
+function alertSuccess_(row, alertName) {
+  const side = String(row[3] || "").trim().toUpperCase();
+  const score = resultScore_(row[15]);
+  if (!score || (side !== "H" && side !== "A")) return null;
+
+  const favoriteWon = side === "H" ? score[0] > score[1] : score[1] > score[0];
+  const alert = String(alertName || "").toUpperCase();
+
+  if (alert.indexOf("ΚΟΝΤΡΑ") >= 0) return !favoriteWon;
+  if (
+    alert.indexOf("ΦΑΒ") >= 0 ||
+    alert.indexOf("ΤΖΙΡΟΣ") >= 0
+  ) return favoriteWon;
+
+  return null;
+}
+
+function alertRecords_(rows, league, alertName) {
+  let leagueWins = 0;
+  let leagueTotal = 0;
+  let allWins = 0;
+  let allTotal = 0;
+
+  rows.forEach(function(row) {
+    const rowAlert = normalizeAlertName_(row[14]);
+    if (rowAlert !== alertName) return;
+
+    const success = alertSuccess_(row, alertName);
+    if (success === null) return;
+
+    allTotal++;
+    if (success) allWins++;
+
+    if (String(row[0] || "").trim() === league) {
+      leagueTotal++;
+      if (success) leagueWins++;
+    }
+  });
+
+  return {
+    leagueRecord:String(leagueWins) + "/" + String(leagueTotal),
+    allStatsRecord:String(allWins) + "/" + String(allTotal)
   };
 }
 
