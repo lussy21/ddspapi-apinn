@@ -40,7 +40,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div>
 </div></section></div>
 <script>
-const API_URL="https://match-alerts-api-private.onrender.com/api";
+const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
 let adminSecret="", adminFreeSlots=0;
 async function apiPost(params){
   if(!API_URL) throw new Error("BACKEND_NOT_CONNECTED");
