@@ -83,6 +83,10 @@ function register_(p) {
     return {ok:false,error:"EMAIL_EXISTS"};
   }
 
+  if (countActiveUsers_() >= getMaxFreeUsers_()) {
+    return {ok:false,error:"REGISTRATION_FULL"};
+  }
+
   // We do not consume a seat until email verification succeeds.
   const salt = Utilities.getUuid();
   const code = verificationCode_();
