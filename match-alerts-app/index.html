@@ -257,8 +257,26 @@ async function loadAlerts(){
     const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Updated "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
     renderAlerts(r.alerts||[]);
   }catch(err){
-    if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED"].includes(err.message)){localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";alertsView.classList.add("hidden");authView.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");}
-    else content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'</div>';
+    if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED"].includes(err.message)){
+      localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+      alertsView.classList.add("hidden");authView.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
+      return;
+    }
+    if(["SHEET_READ_FAILED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE","TIMEOUT"].includes(err.message)){
+      try{
+        const demo=await fetch("./demo-alerts.json",{cache:"no-store"}).then(r=>r.json());
+        counter.textContent=(demo.count||0)+" ενεργά alerts";
+        updatedAt.textContent="Demo snapshot";
+        renderAlerts(demo.alerts||[]);
+        const note=document.createElement("div");
+        note.className="empty";
+        note.style.paddingTop="10px";
+        note.textContent="Προσωρινό snapshot από το PINNACLE · όχι ακόμα live σύνδεση";
+        content.appendChild(note);
+        return;
+      }catch(_){}
+    }
+    content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'</div>';
   }
 }
 if(sessionToken){authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";loadAlerts();}
