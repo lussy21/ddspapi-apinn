@@ -51,7 +51,7 @@ def api():
         upstream = requests.post(
             APPS_SCRIPT_URL,
             data={k: "" if v is None else str(v) for k, v in payload.items()},
-            timeout=25,
+            timeout=(4, 10),
             allow_redirects=True,
         )
     except requests.RequestException:
