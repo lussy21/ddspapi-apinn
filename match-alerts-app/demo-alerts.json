@@ -1,16 +1,44 @@
 {
   "ok": true,
   "demo": true,
-  "source": "PINNACLE snapshot",
-  "count": 1,
-  "updatedAt": "2026-09-28T14:36:00Z",
+  "source": "ALERT LOG snapshot 28/09/2026",
+  "count": 5,
+  "updatedAt": "2026-09-28T14:01:42Z",
   "alerts": [
     {
-      "league": "Spain - La Liga",
-      "home": "Athletic Bilbao",
-      "away": "Elche",
-      "favoriteSide": "H",
-      "alert": "🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ"
+      "league": "Greece - Super League 2",
+      "home": "Marko",
+      "away": "Panthrakikos",
+      "favoriteSide": "",
+      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+    },
+    {
+      "league": "ΕΘΝΙΚΕΣ - UEFA - Nations League B",
+      "home": "Sweden",
+      "away": "Poland",
+      "favoriteSide": "",
+      "alert": "🔔 ΚΟΝΤΡΑ"
+    },
+    {
+      "league": "ΕΘΝΙΚΕΣ - CONCACAF - Nations League B",
+      "home": "Guadeloupe",
+      "away": "Barbados",
+      "favoriteSide": "",
+      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+    },
+    {
+      "league": "Greece - Super League 2",
+      "home": "Kallithea",
+      "away": "Asteras Tripolis II",
+      "favoriteSide": "",
+      "alert": "🔔 ΦΑΒ 75+"
+    },
+    {
+      "league": "ΕΘΝΙΚΕΣ - CAF - Africa Cup of Nations Qualifiers",
+      "home": "Zimbabwe",
+      "away": "DR Congo",
+      "favoriteSide": "",
+      "alert": "👀 WATCH ΦΑΒΟΡΙ"
     }
   ]
 }
