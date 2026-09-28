@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, send_from_directory
 
 app = Flask(__name__)
 
@@ -9,6 +9,7 @@ APPS_SCRIPT_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec",
 )
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
+APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def cors(resp):
@@ -30,13 +31,19 @@ def health():
     return jsonify(ok=True, service="match-alerts-api")
 
 
+@app.get("/admin")
+def admin_page():
+    return send_from_directory(APP_DIR, "admin.html")
+
+
 @app.route("/api", methods=["POST", "OPTIONS"])
 def api():
     if request.method == "OPTIONS":
         return make_response("", 204)
 
     origin = request.headers.get("Origin", "")
-    if origin and origin != APP_ORIGIN:
+    same_origin = request.host_url.rstrip("/")
+    if origin and origin not in {APP_ORIGIN, same_origin}:
         return jsonify(ok=False, error="ORIGIN_DENIED"), 403
 
     payload = request.get_json(silent=True)
