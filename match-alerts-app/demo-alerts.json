@@ -3,7 +3,7 @@
   "demo": true,
   "source": "ALERT LOG snapshot 28/09/2026",
   "count": 5,
-  "updatedAt": "2026-09-28T15:24:00Z",
+  "updatedAt": "2026-09-28T15:40:00Z",
   "alerts": [
     {
       "league": "Greece - Super League 2",
@@ -12,7 +12,8 @@
       "favoriteSide": "",
       "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
       "leagueRecord": "0/0",
-      "allStatsRecord": "31/37"
+      "allStatsRecord": "31/37",
+      "rating": "7,0/10"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - UEFA - Nations League B",
@@ -21,7 +22,8 @@
       "favoriteSide": "",
       "alert": "🔔 ΚΟΝΤΡΑ",
       "leagueRecord": "0/0",
-      "allStatsRecord": "8/13"
+      "allStatsRecord": "8/13",
+      "rating": "6,1/10"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CONCACAF - Nations League B",
@@ -30,7 +32,8 @@
       "favoriteSide": "",
       "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
       "leagueRecord": "0/0",
-      "allStatsRecord": "31/37"
+      "allStatsRecord": "31/37",
+      "rating": "8,0/10"
     },
     {
       "league": "Greece - Super League 2",
@@ -39,7 +42,8 @@
       "favoriteSide": "",
       "alert": "🔔 ΦΑΒ 75+",
       "leagueRecord": "0/0",
-      "allStatsRecord": "14/17"
+      "allStatsRecord": "14/17",
+      "rating": "6,9/10"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CAF - Africa Cup of Nations Qualifiers",
@@ -48,7 +52,8 @@
       "favoriteSide": "",
       "alert": "👀 WATCH ΦΑΒΟΡΙ",
       "leagueRecord": "0/0",
-      "allStatsRecord": "21/36"
+      "allStatsRecord": "21/36",
+      "rating": "6,1/10"
     }
   ]
 }
