@@ -3,42 +3,52 @@
   "demo": true,
   "source": "ALERT LOG snapshot 28/09/2026",
   "count": 5,
-  "updatedAt": "2026-09-28T14:01:42Z",
+  "updatedAt": "2026-09-28T14:55:00Z",
   "alerts": [
     {
       "league": "Greece - Super League 2",
       "home": "Marko",
       "away": "Panthrakikos",
       "favoriteSide": "",
-      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
+      "success": "—",
+      "sample": "0/0"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - UEFA - Nations League B",
       "home": "Sweden",
       "away": "Poland",
       "favoriteSide": "",
-      "alert": "🔔 ΚΟΝΤΡΑ"
+      "alert": "🔔 ΚΟΝΤΡΑ",
+      "success": "0,0%",
+      "sample": "0/1"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CONCACAF - Nations League B",
       "home": "Guadeloupe",
       "away": "Barbados",
       "favoriteSide": "",
-      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+      "alert": "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",
+      "success": "60,0%",
+      "sample": "3/5"
     },
     {
       "league": "Greece - Super League 2",
       "home": "Kallithea",
       "away": "Asteras Tripolis II",
       "favoriteSide": "",
-      "alert": "🔔 ΦΑΒ 75+"
+      "alert": "🔔 ΦΑΒ 75+",
+      "success": "0,0%",
+      "sample": "0/2"
     },
     {
       "league": "ΕΘΝΙΚΕΣ - CAF - Africa Cup of Nations Qualifiers",
       "home": "Zimbabwe",
       "away": "DR Congo",
       "favoriteSide": "",
-      "alert": "👀 WATCH ΦΑΒΟΡΙ"
+      "alert": "👀 WATCH ΦΑΒΟΡΙ",
+      "success": "85,7%",
+      "sample": "6/7"
     }
   ]
 }
