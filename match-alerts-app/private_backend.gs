@@ -278,9 +278,9 @@ function alerts_(p) {
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
     const favoriteSide = String(row[3] || "").trim();
-    const currentAlert = normalizeAlertName_(row[14]) || item.alert;
+    const currentAlert = normalizeAlertName_(row[14]);
 
-    if (!league || !home || !away || !currentAlert) return;
+    if (!league || !home || !away || !currentAlert) return;\n    if (String(row[15] || "").trim()) return;
 
     const statsKey = league + "||" + currentAlert;
     if (!statsCache[statsKey]) {
