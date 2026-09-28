@@ -28,9 +28,9 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 .userline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.userchip{font-size:11px;color:#d8d3c6}.logout{border:0;background:none;color:#8f8b95;font-size:11px;text-decoration:underline}
 .league{margin:18px 0 10px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.018));box-shadow:0 12px 32px rgba(0,0,0,.22)}
 .league-head{padding:14px 14px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.055)}.league-title{font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold2)}.league-count{font-size:11px;color:var(--muted)}
-.row{padding:14px;border-bottom:1px solid rgba(255,255,255,.045)}.row:last-child{border-bottom:0}.match{font-size:15px;font-weight:800;letter-spacing:-.15px;line-height:1.25;margin-bottom:8px}.meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.side{color:#85828a;font-size:11px}.badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.075);color:#fff7de;white-space:normal;text-align:right}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}.badge.strong{color:#ffd9bd;background:rgba(194,71,20,.10);border-color:rgba(232,102,44,.22)}
+.row{padding:14px;border-bottom:1px solid rgba(255,255,255,.045)}.row:last-child{border-bottom:0}.match{font-size:15px;font-weight:800;letter-spacing:-.15px;line-height:1.25;margin-bottom:8px}.meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.side{color:#85828a;font-size:11px}.badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.075);color:#fff7de;white-space:normal;text-align:right}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}.badge.strong{color:#ffd9bd;background:rgba(194,71,20,.10);border-color:rgba(232,102,44,.22)}.alert-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.history{font-size:10px;color:#b9b5bc;text-align:right;white-space:nowrap}.history b{color:#f1d78e;font-weight:900}
 .empty,.loading{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}footer{text-align:center;color:#68656d;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;padding-top:28px}
-@media(max-width:470px){.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{align-items:flex-start;flex-direction:column}.badge{text-align:left}}
+@media(max-width:470px){.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{align-items:flex-start;flex-direction:column}.badge{text-align:left}.alert-right{align-items:flex-start}.history{text-align:left;white-space:normal}}
 </style>
 </head>
 <body>
@@ -245,7 +245,7 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function renderAlerts(alerts){
   if(!alerts.length){content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργά alerts αυτή τη στιγμή.</div>';return;}
   const groups={}; alerts.forEach(a=>{(groups[a.league]||(groups[a.league]=[])).push(a);});
-  content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div></div></div>`).join("")}</section>`).join("");
+  content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div>${(a.leagueRecord||a.allStatsRecord)?`<div class="history"><b>ΠΡΩΤΑΘΛΗΜΑ</b> ${esc(a.leagueRecord||"—")} · <b>ALL STATS</b> ${esc(a.allStatsRecord||"—")}</div>`:""}</div></div></div>`).join("")}</section>`).join("");
 }
 async function loadAlerts(){
   content.innerHTML='<div class="loading">Φόρτωση…</div>';
@@ -264,7 +264,7 @@ async function loadAlerts(){
     }
     if(["SHEET_READ_FAILED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE","TIMEOUT"].includes(err.message)){
       try{
-        const demo=await fetch("./demo-alerts.json?v=20260928-1748",{cache:"no-store"}).then(r=>r.json());
+        const demo=await fetch("./demo-alerts.json?v=20260928-1825",{cache:"no-store"}).then(r=>r.json());
         counter.textContent=(demo.count||0)+" ενεργά alerts";
         updatedAt.textContent="Demo snapshot";
         renderAlerts(demo.alerts||[]);
