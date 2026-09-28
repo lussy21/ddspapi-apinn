@@ -264,14 +264,14 @@ async function loadAlerts(){
     }
     if(["SHEET_READ_FAILED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE","TIMEOUT"].includes(err.message)){
       try{
-        const demo=await fetch("./demo-alerts.json",{cache:"no-store"}).then(r=>r.json());
+        const demo=await fetch("./demo-alerts.json?v=20260928-1748",{cache:"no-store"}).then(r=>r.json());
         counter.textContent=(demo.count||0)+" ενεργά alerts";
         updatedAt.textContent="Demo snapshot";
         renderAlerts(demo.alerts||[]);
         const note=document.createElement("div");
         note.className="empty";
         note.style.paddingTop="10px";
-        note.textContent="Προσωρινό snapshot από το PINNACLE · όχι ακόμα live σύνδεση";
+        note.textContent="Προσωρινό snapshot από το ALERT LOG · όχι ακόμα live σύνδεση";
         content.appendChild(note);
         return;
       }catch(_){}
