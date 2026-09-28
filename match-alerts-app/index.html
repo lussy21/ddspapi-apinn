@@ -22,7 +22,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 .auth{margin-top:26px}.auth h2,.summary h2{margin:0;font-family:Georgia,serif;font-size:29px;line-height:1.05;font-weight:500}.auth p,.summary p{margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 15px}.tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#aaa7af;padding:11px;border-radius:13px;font-weight:800}.tab.active{color:#fff4d2;border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.10)}
 .field{margin:10px 0}.label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:11px;font-weight:800}.input{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:13px 14px;font:inherit;outline:none}.input:focus{border-color:rgba(217,177,87,.55)}
-.primary,.ghost{width:100%;border-radius:14px;padding:13px 14px;font-weight:900;font-size:13px}.primary{border:1px solid rgba(217,177,87,.30);background:linear-gradient(145deg,rgba(217,177,87,.20),rgba(217,177,87,.08));color:#fff4d2}.ghost{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#ddd}
+.primary,.ghost{width:100%;border-radius:14px;padding:13px 14px;font-weight:900;font-size:13px}.primary{border:1px solid rgba(217,177,87,.30);background:linear-gradient(145deg,rgba(217,177,87,.20),rgba(217,177,87,.08));color:#fff4d2}.primary:disabled{opacity:.65;cursor:wait}.ghost{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#ddd}
 .actions{display:flex;gap:9px;margin-top:12px}.actions>*{flex:1}.msg{min-height:18px;margin-top:12px;color:#bdb9c1;font-size:12px;line-height:1.4}.msg.error{color:var(--danger)}.msg.ok{color:#dff0c7}.verify-code{letter-spacing:8px;text-align:center;font-weight:900;font-size:21px}.hidden{display:none!important}
 .summary{margin-bottom:18px}.summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.counter{display:inline-flex;margin-top:14px;padding:8px 11px;border-radius:999px;background:rgba(217,177,87,.08);border:1px solid rgba(217,177,87,.18);color:#fff4d2;font-size:11px;font-weight:800;white-space:nowrap}.status-mini{color:var(--muted);font-size:11px;white-space:nowrap;padding-top:4px}
 .userline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.userchip{font-size:11px;color:#d8d3c6}.logout{border:0;background:none;color:#8f8b95;font-size:11px;text-decoration:underline}
@@ -138,17 +138,30 @@ authSubmit.onclick=async()=>{
   setMsg(authMsg,"");
   const u=username.value.trim(), p=password.value, e=email.value.trim();
   if(!u||!p||(mode==="register"&&!e)){setMsg(authMsg,"Συμπλήρωσε όλα τα πεδία.","error");return;}
+  const isRegister=mode==="register";
+  const idleText=isRegister?"Δημιουργία λογαριασμού":"Σύνδεση";
   authSubmit.disabled=true;
+  authSubmit.textContent=isRegister?"Δημιουργία…":"Σύνδεση…";
+  setMsg(authMsg,isRegister?"Δημιουργούμε τον λογαριασμό σου…":"Γίνεται σύνδεση…");
   try{
-    const r=await apiPost(mode==="register"?{action:"register",username:u,email:e,password:p}:{action:"login",username:u,password:p});
+    const r=await apiPost(isRegister?{action:"register",username:u,email:e,password:p}:{action:"login",username:u,password:p});
     if(!r.ok){
       if(r.error==="EMAIL_NOT_VERIFIED"){pendingUsername=u;showVerify(u,"");return;}
       throw new Error(r.error||"ERROR");
     }
-    if(mode==="register"){pendingUsername=r.username||u;showVerify(pendingUsername,r.emailMasked||e);setMsg(verifyMsg,"Ο κωδικός στάλθηκε στο email σου.","ok");}
-    else{saveSession(r);}
-  }catch(err){setMsg(authMsg,mapError(err.message),"error");}
-  finally{authSubmit.disabled=false;}
+    if(isRegister){
+      pendingUsername=r.username||u;
+      showVerify(pendingUsername,r.emailMasked||e);
+      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
+    }else{
+      saveSession(r);
+    }
+  }catch(err){
+    setMsg(authMsg,mapError(err.message),"error");
+  }finally{
+    authSubmit.disabled=false;
+    authSubmit.textContent=idleText;
+  }
 };
 function showVerify(u,masked){
   pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
