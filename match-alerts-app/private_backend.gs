@@ -280,7 +280,8 @@ function alerts_(p) {
     const favoriteSide = String(row[3] || "").trim();
     const currentAlert = normalizeAlertName_(row[14]);
 
-    if (!league || !home || !away || !currentAlert) return;\n    if (String(row[15] || "").trim()) return;
+    if (!league || !home || !away || !currentAlert) return;
+    if (String(row[15] || "").trim()) return;
 
     const statsKey = league + "||" + currentAlert;
     if (!statsCache[statsKey]) {
@@ -319,7 +320,7 @@ function normalizeAlertName_(value) {
 }
 
 function resultScore_(value) {
-  const m = String(value || "").trim().match(/^(\\d+)\\s*-\\s*(\\d+)/);
+  const m = String(value || "").trim().match(/^(\d+)\s*-\s*(\d+)/);
   if (!m) return null;
   return [Number(m[1]), Number(m[2])];
 }
