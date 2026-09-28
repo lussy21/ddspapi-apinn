@@ -13,7 +13,9 @@ const SPREADSHEET_ID = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM";
 const SHEET_NAME = "PINNACLE";
 
 // Change this later if you want. Do NOT give it to normal users.
-const ADMIN_CODE = "MA-ADMIN-9X7K-4P2R-8V6M";
+// IMPORTANT: replace this ONLY inside your private Apps Script before deploying.
+// Never commit your real admin code to GitHub.
+const ADMIN_CODE = "CHANGE_THIS_IN_APPS_SCRIPT";
 
 const SESSION_HOURS = 24 * 30; // 30 days
 const DEFAULT_MAX_FREE_USERS = 2;
@@ -29,6 +31,7 @@ function doGet(e) {
     if (action === "adminPending") return handleAdminPending_(p);
     if (action === "adminApprove") return handleAdminApprove_(p);
     if (action === "adminRevoke") return handleAdminRevoke_(p);
+    if (action === "adminDelete") return handleAdminDelete_(p);
     if (action === "adminSettings") return handleAdminSettings_(p);
     if (action === "adminSetMaxUsers") return handleAdminSetMaxUsers_(p);
     return json_({ok:false,error:"UNKNOWN_ACTION"});
@@ -248,6 +251,31 @@ function handleAdminApprove_(p) {
 function handleAdminRevoke_(p) {
   if (!isAdmin_(p.adminCode)) return json_({ok:false,error:"ADMIN_UNAUTHORIZED"});
   return setUserAccess_(p.username, false, true);
+}
+
+function handleAdminDelete_(p) {
+  if (!isAdmin_(p.adminCode)) return json_({ok:false,error:"ADMIN_UNAUTHORIZED"});
+
+  const username = normalizeUsername_(p.username);
+  const props = PropertiesService.getScriptProperties();
+  const key = userKey_(username);
+
+  if (!props.getProperty(key)) return json_({ok:false,error:"USER_NOT_FOUND"});
+
+  invalidateSessionsForUser_(username);
+  props.deleteProperty(key);
+
+  const used = countUsers_();
+  const max = getMaxFreeUsers_();
+
+  return json_({
+    ok:true,
+    username:username,
+    deleted:true,
+    usedUsers:used,
+    maxUsers:max,
+    freeSlots:Math.max(0,max-used)
+  });
 }
 
 function setUserAccess_(usernameRaw, approved, revoked) {
