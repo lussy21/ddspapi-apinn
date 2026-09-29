@@ -716,7 +716,8 @@ def is_target_league_name(league_name):
         # England must stay Premier League only. These names can otherwise
         # be caught by the broad "england" + "premier league" fallback.
         "championship", "league one", "league two", "national league",
-        "northern premier", "southern league", "isthmian",
+        "northern premier", "southern league", "southern premier", "isthmian",
+        "reserve", "reserves",
     )
     if any(term in name for term in target_exclusions):
         return False
@@ -775,6 +776,8 @@ NATIONAL_COMPETITION_EXCLUSIONS = (
     "african cup of nations",
     "afcon",
     "concacaf nations",
+    "concacaf",
+    "caf - africa cup",
     "friendly",
     "friendlies",
     "women",
