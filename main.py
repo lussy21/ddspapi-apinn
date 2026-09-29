@@ -713,6 +713,10 @@ def is_target_league_name(league_name):
         "women", "woman", "ladies", "female", "feminin",
         "damallsvenskan", "wsl", "u17", "u18", "u19", "u20",
         "u21", "u22", "u23", "youth",
+        # England must stay Premier League only. These names can otherwise
+        # be caught by the broad "england" + "premier league" fallback.
+        "championship", "league one", "league two", "national league",
+        "northern premier", "southern league", "isthmian",
     )
     if any(term in name for term in target_exclusions):
         return False
@@ -765,6 +769,12 @@ NATIONAL_COMPETITION_TERMS = (
 
 NATIONAL_COMPETITION_EXCLUSIONS = (
     "club world cup",
+    # User scope: keep European national-team competitions, but do not
+    # import AFCON / Africa Cup of Nations or CONCACAF Nations League.
+    "africa cup of nations",
+    "african cup of nations",
+    "afcon",
+    "concacaf nations",
     "friendly",
     "friendlies",
     "women",
