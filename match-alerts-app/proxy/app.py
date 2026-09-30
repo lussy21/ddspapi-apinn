@@ -14,6 +14,22 @@ APPS_SCRIPT_URL = os.environ.get(
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ADMIN_DIR = os.path.join(APP_DIR, "admin")
+
+try:
+    _probe = requests.post(
+        APPS_SCRIPT_URL,
+        data={"action": "adminSettings", "adminCode": "__probe__"},
+        timeout=(4, 12),
+        allow_redirects=True,
+    )
+    try:
+        _probe_json = _probe.json()
+        print("ADMIN_PROBE", _probe.status_code, _probe_json.get("error", "NO_ERROR"), flush=True)
+    except Exception:
+        print("ADMIN_PROBE", _probe.status_code, "BAD_JSON", flush=True)
+except Exception as _probe_exc:
+    print("ADMIN_PROBE", "REQUEST_FAILED", type(_probe_exc).__name__, flush=True)
+
 VAPID_PRIVATE_KEY_B64 = os.environ.get("VAPID_PRIVATE_KEY_B64", "")
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@dreamteamtips.gr")
 
