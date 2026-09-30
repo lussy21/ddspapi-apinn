@@ -48,6 +48,8 @@ function doPost(e) {
     else if (action === "login") payload = login_(p);
     else if (action === "logout") payload = logout_(p);
     else if (action === "alerts") payload = alerts_(p);
+    else if (action === "playedAdd") payload = playedAdd_(p);
+    else if (action === "playedHistory") payload = playedHistory_(p);
     else if (action === "supportSend") payload = supportSend_(p);
     else if (action === "adminSupport") payload = adminSupport_(p);
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
@@ -276,6 +278,8 @@ function alerts_(p) {
     if (!league || !home || !away || !currentAlert || result) return;
 
     const records = alertRecords_(pinRows, league, currentAlert);
+    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    const selectionId = selectionId_(league, home, away, currentAlert, kickoff);
     out.push({
       league:league,
       home:home,
@@ -285,7 +289,9 @@ function alerts_(p) {
       rating:alertRating_(rawAlert),
       leagueRecord:records.leagueRecord,
       allStatsRecord:records.allStatsRecord,
-      kickoff:String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim()
+      kickoff:kickoff,
+      selectionId:selectionId,
+      played:!!PropertiesService.getScriptProperties().getProperty(playedKey_(auth.username, selectionId))
     });
   });
 
@@ -297,6 +303,158 @@ function alerts_(p) {
     username:auth.username,
     updatedAt:new Date().toISOString()
   };
+}
+
+
+function selectionId_(league, home, away, alertName, kickoff) {
+  const raw = [
+    String(league || "").trim(),
+    String(home || "").trim(),
+    String(away || "").trim(),
+    String(alertName || "").trim(),
+    String(kickoff || "").trim()
+  ].join("|");
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    raw,
+    Utilities.Charset.UTF_8
+  );
+  return Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, "").slice(0, 22);
+}
+
+function playedKey_(username, selectionId) {
+  return "PLAYED::" + normalizeUsername_(username) + "::" + String(selectionId || "");
+}
+
+function playedAdd_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const wantedId = String(p.selectionId || "").trim();
+  if (!wantedId) return {ok:false,error:"BAD_SELECTION"};
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+  const pinLast = pin.getLastRow();
+  if (pinLast < 3) return {ok:false,error:"SELECTION_NOT_ACTIVE"};
+
+  const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+  let selected = null;
+
+  for (let idx = 0; idx < pinRows.length; idx++) {
+    const row = pinRows[idx];
+    const league = String(row[0] || "").trim();
+    const home = String(row[1] || "").trim();
+    const away = String(row[2] || "").trim();
+    const favoriteSide = String(row[3] || "").trim();
+    const currentAlert = normalizeAlertName_(row[14]);
+    const result = String(row[15] || "").trim();
+    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+
+    if (!league || !home || !away || !currentAlert || result) continue;
+    const id = selectionId_(league, home, away, currentAlert, kickoff);
+    if (id !== wantedId) continue;
+
+    selected = {
+      id:id,
+      username:auth.username,
+      league:league,
+      home:home,
+      away:away,
+      favoriteSide:favoriteSide,
+      alert:currentAlert,
+      kickoff:kickoff,
+      createdAt:new Date().toISOString()
+    };
+    break;
+  }
+
+  if (!selected) return {ok:false,error:"SELECTION_NOT_ACTIVE"};
+
+  const props = PropertiesService.getScriptProperties();
+  const key = playedKey_(auth.username, selected.id);
+  if (!props.getProperty(key)) props.setProperty(key, JSON.stringify(selected));
+
+  return {ok:true,id:selected.id};
+}
+
+function playedHistory_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const props = PropertiesService.getScriptProperties();
+  const prefix = "PLAYED::" + normalizeUsername_(auth.username) + "::";
+  const allProps = props.getProperties();
+  const saved = [];
+
+  Object.keys(allProps).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    try {
+      const item = JSON.parse(allProps[key]);
+      if (item && item.id) saved.push(item);
+    } catch (_) {}
+  });
+
+  if (!saved.length) {
+    return {ok:true,items:[],count:0,username:auth.username};
+  }
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+  const pinLast = pin.getLastRow();
+  const pinRows = pinLast >= 3 ? pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues() : [];
+  const kickoffRows = pinLast >= 3 ? pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues() : [];
+
+  const rowById = {};
+  pinRows.forEach(function(row, idx) {
+    const league = String(row[0] || "").trim();
+    const home = String(row[1] || "").trim();
+    const away = String(row[2] || "").trim();
+    const currentAlert = normalizeAlertName_(row[14]);
+    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    if (!league || !home || !away || !currentAlert) return;
+    rowById[selectionId_(league, home, away, currentAlert, kickoff)] = row;
+  });
+
+  const items = saved.map(function(item) {
+    const row = rowById[item.id] || null;
+    let score = "";
+    let status = "pending";
+
+    if (row) {
+      const parsed = resultScore_(row[15]);
+      const won = alertSuccess_(row, item.alert);
+      if (parsed) score = parsed[0] + "-" + parsed[1];
+      if (won === true) status = "win";
+      else if (won === false) status = "loss";
+    }
+
+    return {
+      id:item.id,
+      league:item.league,
+      home:item.home,
+      away:item.away,
+      favoriteSide:item.favoriteSide,
+      alert:item.alert,
+      kickoff:item.kickoff,
+      createdAt:item.createdAt,
+      score:score,
+      status:status
+    };
+  });
+
+  items.sort(function(a,b) {
+    const ta = Date.parse(a.kickoff || a.createdAt || "") || 0;
+    const tb = Date.parse(b.kickoff || b.createdAt || "") || 0;
+    return tb - ta;
+  });
+
+  return {ok:true,items:items.slice(0,250),count:items.length,username:auth.username};
 }
 
 function normalizeAlertName_(value) {
