@@ -51,6 +51,9 @@ function doPost(e) {
     else if (action === "playedAdd") payload = playedAdd_(p);
     else if (action === "playedHistory") payload = playedHistory_(p);
     else if (action === "pushSubscribe") payload = pushSubscribe_(p);
+    else if (action === "memberMessages") payload = memberMessages_(p);
+    else if (action === "memberMessageRead") payload = memberMessageRead_(p);
+    else if (action === "adminMessageCreate") payload = adminMessageCreate_(p);
     else if (action === "adminPushTargets") payload = adminPushTargets_(p);
     else if (action === "adminPushDelete") payload = adminPushDelete_(p);
     else if (action === "supportSend") payload = supportSend_(p);
@@ -527,6 +530,129 @@ function alertRecords_(rows, league, alertName) {
   };
 }
 
+
+
+function messageKey_(id) {
+  return "MESSAGE::" + String(id || "");
+}
+
+function messageReadKey_(username, id) {
+  return "MESSAGE_READ::" + normalizeUsername_(username) + "::" + String(id || "");
+}
+
+function adminMessageCreate_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const title = String(p.title || "").trim();
+  const body = String(p.body || "").trim();
+  if (!title || !body || title.length > 80 || body.length > 220) {
+    return {ok:false,error:"BAD_MESSAGE"};
+  }
+
+  const now = new Date();
+  const id = String(now.getTime()) + "-" + Utilities.getUuid().replace(/-/g,"").slice(0,10);
+  const item = {
+    id:id,
+    title:title,
+    body:body,
+    createdAt:now.toISOString()
+  };
+
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty(messageKey_(id), JSON.stringify(item));
+  cleanupMessages_();
+
+  return {ok:true,message:item};
+}
+
+function memberMessages_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const items = [];
+
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf("MESSAGE::") !== 0) return;
+    try {
+      const item = JSON.parse(all[key]);
+      if (item && item.id && item.title && item.body) items.push(item);
+    } catch (_) {}
+  });
+
+  items.sort(function(a,b) {
+    return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+  });
+
+  const latest = items.slice(0,10).map(function(item) {
+    return {
+      id:item.id,
+      title:item.title,
+      body:item.body,
+      createdAt:item.createdAt,
+      read:!!props.getProperty(messageReadKey_(auth.username, item.id))
+    };
+  });
+
+  let unreadCount = 0;
+  latest.forEach(function(item){ if (!item.read) unreadCount++; });
+
+  return {
+    ok:true,
+    messages:latest,
+    count:latest.length,
+    unreadCount:unreadCount
+  };
+}
+
+function memberMessageRead_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const id = String(p.id || "").trim();
+  if (!id) return {ok:false,error:"BAD_MESSAGE"};
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty(messageKey_(id))) return {ok:false,error:"MESSAGE_NOT_FOUND"};
+
+  props.setProperty(messageReadKey_(auth.username, id), new Date().toISOString());
+  return {ok:true,id:id};
+}
+
+function cleanupMessages_() {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const items = [];
+
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf("MESSAGE::") !== 0) return;
+    try {
+      const item = JSON.parse(all[key]);
+      if (item && item.id) items.push({key:key,id:item.id,createdAt:String(item.createdAt || "")});
+      else props.deleteProperty(key);
+    } catch (_) {
+      props.deleteProperty(key);
+    }
+  });
+
+  items.sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+  const removed = items.slice(10);
+  if (!removed.length) return;
+
+  const removedIds = {};
+  removed.forEach(function(item) {
+    removedIds[item.id] = true;
+    props.deleteProperty(item.key);
+  });
+
+  const after = props.getProperties();
+  Object.keys(after).forEach(function(key) {
+    if (key.indexOf("MESSAGE_READ::") !== 0) return;
+    const parts = key.split("::");
+    const id = parts.length >= 3 ? parts[parts.length - 1] : "";
+    if (removedIds[id]) props.deleteProperty(key);
+  });
+}
 
 function pushKey_(username, endpoint) {
   const digest = Utilities.computeDigest(
