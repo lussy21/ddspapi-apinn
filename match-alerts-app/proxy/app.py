@@ -28,7 +28,11 @@ def add_headers(resp):
 
 @app.get("/health")
 def health():
-    return jsonify(ok=True, service="match-alerts-api")
+    return jsonify(
+        ok=True,
+        service="match-alerts-api",
+        google_credentials=os.path.exists("/etc/secrets/google-credentials.json"),
+    )
 
 
 @app.get("/admin")
