@@ -38,11 +38,11 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
 <div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
 <div class="section">
-  <h3>Push ειδοποίηση</h3>
+  <h3>Μήνυμα προς όλους</h3>
   <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
-  <textarea class="push-textarea" id="pushBody" maxlength="220" placeholder="Σύντομο μήνυμα που θα εμφανιστεί στο κινητό"></textarea>
-  <div class="actions"><button class="btn" id="sendPush">Αποστολή ειδοποίησης</button></div>
-  <div class="push-hint">Η ειδοποίηση στέλνεται μόνο σε μέλη που έχουν ενεργοποιήσει push ειδοποιήσεις στη συσκευή τους.</div>
+  <textarea class="push-textarea" id="pushBody" maxlength="220" placeholder="Το μήνυμα που θα δουν στην εφαρμογή και στο κινητό"></textarea>
+  <div class="actions"><button class="btn" id="sendPush">Αποστολή σε όλους</button></div>
+  <div class="push-hint">Το μήνυμα αποθηκεύεται σε όλους μέσα στην εφαρμογή. Push λαμβάνουν όσοι έχουν ενεργοποιήσει ειδοποιήσεις.</div>
 </div>
 <div class="section"><h3>Μηνύματα υποστήριξης <span class="support-count" id="supportNew">0</span></h3><div id="supportInbox"><div class="note">Δεν υπάρχουν μηνύματα υποστήριξης.</div></div></div>
 <div class="section"><h3>Εγγεγραμμένοι χρήστες</h3><div id="users"><div class="note">Δεν υπάρχουν χρήστες ακόμα.</div></div></div>
@@ -163,13 +163,13 @@ sendPush.onclick=async()=>{
   try{
     const r=await apiPost({action:"adminPushSend",adminCode:adminSecret,title,body});
     if(!r.ok) throw new Error(r.error||"PUSH_ERROR");
-    msg.textContent="Εστάλη σε "+Number(r.sent||0)+" συσκευή/ές"+(r.failed?(" · απέτυχαν "+r.failed):"")+".";
-    if(Number(r.sent||0)>0){pushTitle.value="";pushBody.value="";}
+    msg.textContent="Το μήνυμα αποθηκεύτηκε στην εφαρμογή. Push στάλθηκε σε "+Number(r.sent||0)+" συσκευή/ές"+(r.failed?(" · απέτυχαν "+r.failed):"")+".";
+    pushTitle.value="";pushBody.value="";
   }catch(e){
     msg.textContent=e.message==="PUSH_NOT_CONFIGURED"?"Οι push ειδοποιήσεις δεν έχουν ολοκληρωθεί ακόμα στο backend.":"Σφάλμα αποστολής: "+e.message;
   }finally{
     sendPush.disabled=false;
-    sendPush.textContent="Αποστολή ειδοποίησης";
+    sendPush.textContent="Αποστολή σε όλους";
   }
 };
 refresh.onclick=()=>loadAdmin().catch(e=>msg.textContent="Σφάλμα: "+e.message);
