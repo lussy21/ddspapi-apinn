@@ -1074,7 +1074,7 @@ for match in matches:
         "", "", "",
         "", "", "",
         "", "", "", "",
-        "", "", "",
+        "", "", kickoff.isoformat(),
         event_id_text,
     ]
 
@@ -1186,7 +1186,7 @@ for match in matches:
             "", "", "",
             "", "", "",
             "", "", "", "",
-            "", "", "",
+            "", "", kickoff.isoformat(),
             event_id_text,
         ]
 
@@ -1206,6 +1206,15 @@ for match in matches:
         print("SHEET ROW CREATED:", row_number, home, "vs", away)
 
     current_row = sheet_rows[row_number - 1] if row_number <= len(sheet_rows) else []
+    # Internal app metadata: keep kickoff in Q (Greek local ISO time).
+    # Q was previously unused; R remains the APINN event id.
+    updates.append({
+        "range": f"Q{row_number}",
+        "values": [[kickoff.isoformat()]],
+    })
+    while len(sheet_rows[row_number - 1]) < 17:
+        sheet_rows[row_number - 1].append("")
+    sheet_rows[row_number - 1][16] = kickoff.isoformat()
 
     # Placeholder rows created before odds are available get their favorite
     # side as soon as both Pinnacle moneyline prices appear.
