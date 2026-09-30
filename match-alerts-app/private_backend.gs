@@ -48,6 +48,9 @@ function doPost(e) {
     else if (action === "login") payload = login_(p);
     else if (action === "logout") payload = logout_(p);
     else if (action === "alerts") payload = alerts_(p);
+    else if (action === "supportSend") payload = supportSend_(p);
+    else if (action === "adminSupport") payload = adminSupport_(p);
+    else if (action === "adminSupportClose") payload = adminSupportClose_(p);
     else if (action === "adminSettings") payload = adminSettings_(p);
     else if (action === "adminUsers") payload = adminUsers_(p);
     else if (action === "adminSetMaxUsers") payload = adminSetMaxUsers_(p);
@@ -56,7 +59,17 @@ function doPost(e) {
     else if (action === "adminDelete") payload = adminDelete_(p);
     else payload = {ok:false,error:"UNKNOWN_ACTION"};
   } catch (err) {
-    payload = {ok:false,error:"SERVER_ERROR"};
+    if (action === "alerts") {
+      const message = String(err && err.message ? err.message : err || "");
+      let stage = "ALERTS_UNKNOWN";
+      if (/openById|Spreadsheet|permission|access/i.test(message)) stage = "ALERTS_SHEET_OPEN";
+      else if (/getSheetByName/i.test(message)) stage = "ALERTS_SHEET_LOOKUP";
+      else if (/getRange|getDisplayValues|range/i.test(message)) stage = "ALERTS_SHEET_READ";
+      else if (/normalizeAlertName|alertRating/i.test(message)) stage = "ALERTS_PROCESSING";
+      payload = {ok:false,error:stage};
+    } else {
+      payload = {ok:false,error:"SERVER_ERROR"};
+    }
   }
 
   if (String(p.bridge || "") === "1") return bridge_(payload, p.requestId);
@@ -228,87 +241,61 @@ function alerts_(p) {
   const auth = requireSession_(String(p.token || ""));
   if (!auth.ok) return auth;
 
-  // READ ONLY: direct Apps Script spreadsheet access.
-  // No write operation is used anywhere in this function.
+  // READ ONLY. For the first live bridge we return only what the app needs:
+  // active alerts from PINNACLE column O. No historical/statistical rescans here.
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const pin = ss.getSheetByName(SHEET_NAME);
-  const log = ss.getSheetByName("ALERT LOG");
-  if (!pin || !log) return {ok:false,error:"SHEET_READ_FAILED"};
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
 
-  const tz = "Europe/Athens";
-  const today = Utilities.formatDate(new Date(), tz, "dd/MM/yyyy");
-
-  const pinLast = Math.max(3, pin.getLastRow());
-  const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
-
-  // Build today's latest alert state per event key from ALERT LOG.
-  const latest = {};
-  const logLast = log.getLastRow();
-  if (logLast >= 2) {
-    const logRows = log.getRange(2, 1, logLast - 1, 7).getDisplayValues();
-    logRows.forEach(function(r) {
-      const time = String(r[0] || "").trim();
-      if (time.indexOf(today) !== 0) return;
-
-      const key = String(r[1] || "").trim();
-      if (!key) return;
-
-      latest[key] = {
-        row: Number(r[2] || 0),
-        league: String(r[3] || "").trim(),
-        match: String(r[4] || "").trim(),
-        event: String(r[5] || "").trim(),
-        alert: normalizeAlertName_(r[6])
-      };
-    });
+  const pinLast = pin.getLastRow();
+  if (pinLast < 3) {
+    return {
+      ok:true,
+      live:true,
+      count:0,
+      alerts:[],
+      username:auth.username,
+      updatedAt:new Date().toISOString()
+    };
   }
 
-  const statsCache = {};
+  const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  // BY is a hidden, app-only kickoff field written by the core in Greece time.
+  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
   const out = [];
 
-  Object.keys(latest).forEach(function(key) {
-    const item = latest[key];
-    if (!item.alert || item.event === "ΕΦΥΓΕ") return;
-
-    const idx = item.row >= 3 ? item.row - 3 : -1;
-    const row = (idx >= 0 && idx < pinRows.length) ? pinRows[idx] : null;
-    if (!row) return;
-
-    const league = String(row[0] || item.league || "").trim();
+  pinRows.forEach(function(row, idx) {
+    const league = String(row[0] || "").trim();
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
     const favoriteSide = String(row[3] || "").trim();
     const rawAlert = String(row[14] || "").trim();
     const currentAlert = normalizeAlertName_(rawAlert);
-    const rating = alertRating_(rawAlert);
+    const result = String(row[15] || "").trim();
 
-    if (!league || !home || !away || !currentAlert) return;
-    if (String(row[15] || "").trim()) return;
+    if (!league || !home || !away || !currentAlert || result) return;
 
-    const statsKey = league + "||" + currentAlert;
-    if (!statsCache[statsKey]) {
-      statsCache[statsKey] = alertRecords_(pinRows, league, currentAlert);
-    }
-
+    const records = alertRecords_(pinRows, league, currentAlert);
     out.push({
-      league: league,
-      home: home,
-      away: away,
-      favoriteSide: favoriteSide,
-      alert: currentAlert,
-      rating: rating,
-      leagueRecord: statsCache[statsKey].leagueRecord,
-      allStatsRecord: statsCache[statsKey].allStatsRecord
+      league:league,
+      home:home,
+      away:away,
+      favoriteSide:favoriteSide,
+      alert:currentAlert,
+      rating:alertRating_(rawAlert),
+      leagueRecord:records.leagueRecord,
+      allStatsRecord:records.allStatsRecord,
+      kickoff:String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim()
     });
   });
 
   return {
     ok:true,
     live:true,
-    username:auth.username,
     count:out.length,
-    updatedAt:new Date().toISOString(),
-    alerts:out
+    alerts:out,
+    username:auth.username,
+    updatedAt:new Date().toISOString()
   };
 }
 
@@ -377,6 +364,121 @@ function alertRecords_(rows, league, alertName) {
     leagueRecord:String(leagueWins) + "/" + String(leagueTotal),
     allStatsRecord:String(allWins) + "/" + String(allTotal)
   };
+}
+
+function supportSend_(p) {
+  const auth = requireSession_(p.token);
+  if (!auth.ok) return auth;
+
+  const topic = String(p.topic || "Άλλο").trim().slice(0, 80);
+  const message = String(p.message || "").trim();
+  if (message.length < 10 || message.length > 1200) {
+    return {ok:false,error:"BAD_SUPPORT_MESSAGE"};
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const now = Date.now();
+  const lastKey = "SUPPORT_LAST::" + auth.username;
+  const lastAt = Number(props.getProperty(lastKey) || "0");
+  if (lastAt && now - lastAt < 60 * 1000) {
+    return {ok:false,error:"SUPPORT_RATE_LIMIT"};
+  }
+
+  const userRaw = props.getProperty(userKey_(auth.username));
+  const user = userRaw ? JSON.parse(userRaw) : {};
+  const id = Utilities.getUuid();
+  const record = {
+    id:id,
+    username:auth.username,
+    email:String(user.email || ""),
+    topic:topic || "Άλλο",
+    message:message,
+    status:"new",
+    createdAt:new Date(now).toISOString()
+  };
+
+  props.setProperty("SUPPORT::" + String(now) + "::" + id, JSON.stringify(record));
+  props.setProperty(lastKey, String(now));
+  cleanupSupport_();
+
+  return {ok:true,ticketId:id};
+}
+
+function adminSupport_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const messages = [];
+
+  Object.keys(props).forEach(function(k) {
+    if (k.indexOf("SUPPORT::") !== 0) return;
+    try {
+      const item = JSON.parse(props[k]);
+      messages.push({
+        id:item.id || "",
+        username:item.username || "",
+        email:item.email || "",
+        topic:item.topic || "Άλλο",
+        message:item.message || "",
+        status:item.status || "new",
+        createdAt:item.createdAt || ""
+      });
+    } catch (_) {}
+  });
+
+  messages.sort(function(a,b){
+    return String(b.createdAt).localeCompare(String(a.createdAt));
+  });
+
+  return {
+    ok:true,
+    newCount:messages.filter(function(x){return x.status !== "closed";}).length,
+    messages:messages
+  };
+}
+
+function adminSupportClose_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const id = String(p.id || "").trim();
+  if (!id) return {ok:false,error:"BAD_SUPPORT_ID"};
+
+  const propsService = PropertiesService.getScriptProperties();
+  const props = propsService.getProperties();
+  let foundKey = "";
+
+  Object.keys(props).some(function(k) {
+    if (k.indexOf("SUPPORT::") !== 0) return false;
+    try {
+      const item = JSON.parse(props[k]);
+      if (String(item.id || "") === id) {
+        foundKey = k;
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  });
+
+  if (!foundKey) return {ok:false,error:"SUPPORT_NOT_FOUND"};
+
+  const item = JSON.parse(props[foundKey]);
+  item.status = "closed";
+  item.closedAt = new Date().toISOString();
+  propsService.setProperty(foundKey, JSON.stringify(item));
+
+  return {ok:true,id:id,status:"closed"};
+}
+
+function cleanupSupport_() {
+  const propsService = PropertiesService.getScriptProperties();
+  const props = propsService.getProperties();
+  const keys = Object.keys(props)
+    .filter(function(k){return k.indexOf("SUPPORT::") === 0;})
+    .sort();
+
+  while (keys.length > 250) {
+    propsService.deleteProperty(keys.shift());
+  }
 }
 
 function adminSettings_(p) {
