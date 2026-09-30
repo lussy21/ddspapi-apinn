@@ -1,0 +1,18 @@
+{
+  "name": "DreamTeamTips Admin",
+  "short_name": "DTT Admin",
+  "id": "/admin/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070708",
+  "theme_color": "#070708",
+  "icons": [
+    {
+      "src": "admin-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
