@@ -96,13 +96,28 @@ async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0);
-  const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
-  if(!list.ok) throw new Error(list.error||"ADMIN_ERROR");
-  renderUsers(list.users||[]);
-  const support=await apiPost({action:"adminSupport",adminCode:adminSecret});
-  if(!support.ok) throw new Error(support.error||"ADMIN_ERROR");
-  supportNew.textContent=String(support.newCount||0);
-  renderSupport(support.messages||[]);
+
+  try{
+    const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
+    if(list.ok) renderUsers(list.users||[]);
+    else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
+  }catch(_){
+    users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
+  }
+
+  try{
+    const support=await apiPost({action:"adminSupport",adminCode:adminSecret});
+    if(support.ok){
+      supportNew.textContent=String(support.newCount||0);
+      renderSupport(support.messages||[]);
+    }else{
+      supportNew.textContent="0";
+      supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
+    }
+  }catch(_){
+    supportNew.textContent="0";
+    supportInbox.innerHTML='<div class="note">Η υποστήριξη δεν είναι διαθέσιμη προσωρινά.</div>';
+  }
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
