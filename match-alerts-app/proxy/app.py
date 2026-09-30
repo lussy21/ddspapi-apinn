@@ -10,7 +10,6 @@ APPS_SCRIPT_URL = os.environ.get(
 )
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-print("SUPPORT_GOOGLE_CREDENTIALS_AVAILABLE=", os.path.exists("/etc/secrets/google-credentials.json"), flush=True)
 
 
 def cors(resp):
@@ -29,11 +28,7 @@ def add_headers(resp):
 
 @app.get("/health")
 def health():
-    return jsonify(
-        ok=True,
-        service="match-alerts-api",
-        google_credentials=os.path.exists("/etc/secrets/google-credentials.json"),
-    )
+    return jsonify(ok=True, service="match-alerts-api")
 
 
 @app.get("/admin")
