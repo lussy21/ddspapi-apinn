@@ -80,6 +80,18 @@ def api():
             return jsonify(ok=False, error="PUSH_NOT_CONFIGURED"), 500
 
         try:
+            message_data = upstream_post(
+                {
+                    "action": "adminMessageCreate",
+                    "adminCode": admin_code,
+                    "title": title,
+                    "body": body,
+                },
+                timeout=(4, 15),
+            )
+            if not message_data.get("ok"):
+                return jsonify(message_data), 200
+
             target_data = upstream_post(
                 {"action": "adminPushTargets", "adminCode": admin_code},
                 timeout=(4, 15),
@@ -142,6 +154,8 @@ def api():
 
         return jsonify(
             ok=True,
+            messageSaved=True,
+            messageId=(message_data.get("message") or {}).get("id", ""),
             sent=sent,
             failed=failed,
             removed=removed,
