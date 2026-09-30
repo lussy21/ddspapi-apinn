@@ -13,6 +13,7 @@ APPS_SCRIPT_URL = os.environ.get(
 )
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ADMIN_DIR = os.path.join(APP_DIR, "admin")
 VAPID_PRIVATE_KEY_B64 = os.environ.get("VAPID_PRIVATE_KEY_B64", "")
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@dreamteamtips.gr")
 
@@ -37,8 +38,14 @@ def health():
 
 
 @app.get("/admin")
+@app.get("/admin/")
 def admin_page():
-    return send_from_directory(APP_DIR, "admin.html")
+    return send_from_directory(ADMIN_DIR, "index.html")
+
+
+@app.get("/admin/<path:filename>")
+def admin_asset(filename):
+    return send_from_directory(ADMIN_DIR, filename)
 
 
 @app.route("/api", methods=["POST", "OPTIONS"])
