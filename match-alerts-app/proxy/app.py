@@ -10,6 +10,7 @@ APPS_SCRIPT_URL = os.environ.get(
 )
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+print("SUPPORT_GOOGLE_CREDENTIALS_AVAILABLE=", os.path.exists("/etc/secrets/google-credentials.json"), flush=True)
 
 
 def cors(resp):
