@@ -15,6 +15,23 @@ APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ADMIN_DIR = os.path.join(APP_DIR, "admin")
 
+for _action in ("adminSettings","adminUsers","adminSupport"):
+    try:
+        _r = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action": _action, "adminCode": "__probe__"},
+            timeout=(4, 12),
+            allow_redirects=True,
+        )
+        try:
+            _j = _r.json()
+            print("ADMIN_ACTION_PROBE", _action, _r.status_code, _j.get("error", "NO_ERROR"), flush=True)
+        except Exception:
+            print("ADMIN_ACTION_PROBE", _action, _r.status_code, "BAD_JSON", flush=True)
+    except Exception as _e:
+        print("ADMIN_ACTION_PROBE", _action, "REQUEST_FAILED", type(_e).__name__, flush=True)
+
+
 
 def cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = APP_ORIGIN
