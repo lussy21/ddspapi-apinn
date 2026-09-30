@@ -21,6 +21,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 .section{margin-top:17px;padding-top:16px;border-top:1px solid var(--line)}.section h3{margin:0 0 10px;font-size:13px;color:var(--gold2);letter-spacing:1px;text-transform:uppercase}
 .user{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}.user:last-child{border-bottom:0}.name{font-weight:800;font-size:14px}.meta{font-size:10px;color:var(--muted);margin-top:4px}.buttons{display:flex;gap:6px}.mini{padding:8px 9px;border-radius:10px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff}.mini.danger{border-color:rgba(220,70,80,.24);color:#ffb8be}.hidden{display:none!important}
 .support-card{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.055)}.support-card:last-child{border-bottom:0}.support-card.closed{opacity:.58}.support-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.support-topic{font-size:13px;font-weight:900;color:#f1e7cf}.support-who{font-size:10px;color:#8f8a93;margin-top:4px}.support-text{margin-top:9px;color:#d8d4d9;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}.support-new{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;border:1px solid rgba(217,177,87,.25);color:#ffe7a4;background:rgba(217,177,87,.07);font-size:9px}.support-count{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:rgba(217,177,87,.12);color:#ffe7a4;font-size:10px}
+.push-textarea{width:100%;min-height:96px;resize:vertical;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none;margin-top:8px}.push-textarea:focus{border-color:rgba(217,177,87,.55)}.push-hint{margin-top:7px;color:#77727f;font-size:10px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -36,6 +37,13 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div id="dash" class="hidden">
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
 <div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
+<div class="section">
+  <h3>Push ειδοποίηση</h3>
+  <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
+  <textarea class="push-textarea" id="pushBody" maxlength="220" placeholder="Σύντομο μήνυμα που θα εμφανιστεί στο κινητό"></textarea>
+  <div class="actions"><button class="btn" id="sendPush">Αποστολή ειδοποίησης</button></div>
+  <div class="push-hint">Η ειδοποίηση στέλνεται μόνο σε μέλη που έχουν ενεργοποιήσει push ειδοποιήσεις στη συσκευή τους.</div>
+</div>
 <div class="section"><h3>Μηνύματα υποστήριξης <span class="support-count" id="supportNew">0</span></h3><div id="supportInbox"><div class="note">Δεν υπάρχουν μηνύματα υποστήριξης.</div></div></div>
 <div class="section"><h3>Εγγεγραμμένοι χρήστες</h3><div id="users"><div class="note">Δεν υπάρχουν χρήστες ακόμα.</div></div></div>
 <div class="msg" id="msg"></div>
@@ -144,6 +152,24 @@ unlock.onclick=async()=>{
   }finally{
     unlock.disabled=false;
     unlock.textContent="Άνοιγμα Admin";
+  }
+};
+sendPush.onclick=async()=>{
+  const title=pushTitle.value.trim(), body=pushBody.value.trim();
+  if(!title||!body){msg.textContent="Γράψε τίτλο και μήνυμα ειδοποίησης.";return;}
+  sendPush.disabled=true;
+  sendPush.textContent="Αποστολή…";
+  msg.textContent="Στέλνω την ειδοποίηση…";
+  try{
+    const r=await apiPost({action:"adminPushSend",adminCode:adminSecret,title,body});
+    if(!r.ok) throw new Error(r.error||"PUSH_ERROR");
+    msg.textContent="Εστάλη σε "+Number(r.sent||0)+" συσκευή/ές"+(r.failed?(" · απέτυχαν "+r.failed):"")+".";
+    if(Number(r.sent||0)>0){pushTitle.value="";pushBody.value="";}
+  }catch(e){
+    msg.textContent=e.message==="PUSH_NOT_CONFIGURED"?"Οι push ειδοποιήσεις δεν έχουν ολοκληρωθεί ακόμα στο backend.":"Σφάλμα αποστολής: "+e.message;
+  }finally{
+    sendPush.disabled=false;
+    sendPush.textContent="Αποστολή ειδοποίησης";
   }
 };
 refresh.onclick=()=>loadAdmin().catch(e=>msg.textContent="Σφάλμα: "+e.message);
