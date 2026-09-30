@@ -50,6 +50,9 @@ function doPost(e) {
     else if (action === "alerts") payload = alerts_(p);
     else if (action === "playedAdd") payload = playedAdd_(p);
     else if (action === "playedHistory") payload = playedHistory_(p);
+    else if (action === "pushSubscribe") payload = pushSubscribe_(p);
+    else if (action === "adminPushTargets") payload = adminPushTargets_(p);
+    else if (action === "adminPushDelete") payload = adminPushDelete_(p);
     else if (action === "supportSend") payload = supportSend_(p);
     else if (action === "adminSupport") payload = adminSupport_(p);
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
@@ -522,6 +525,99 @@ function alertRecords_(rows, league, alertName) {
     leagueRecord:String(leagueWins) + "/" + String(leagueTotal),
     allStatsRecord:String(allWins) + "/" + String(allTotal)
   };
+}
+
+
+function pushKey_(username, endpoint) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(endpoint || ""),
+    Utilities.Charset.UTF_8
+  );
+  const id = Utilities.base64EncodeWebSafe(digest).replace(/=+$/g,"").slice(0,24);
+  return "PUSH::" + normalizeUsername_(username) + "::" + id;
+}
+
+function pushSubscribe_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const endpoint = String(p.endpoint || "").trim();
+  const p256dh = String(p.p256dh || "").trim();
+  const authKey = String(p.auth || "").trim();
+
+  if (!/^https:\/\//i.test(endpoint) || endpoint.length > 1800) return {ok:false,error:"BAD_PUSH_SUBSCRIPTION"};
+  if (!p256dh || !authKey || p256dh.length > 400 || authKey.length > 200) return {ok:false,error:"BAD_PUSH_SUBSCRIPTION"};
+
+  const props = PropertiesService.getScriptProperties();
+  const key = pushKey_(auth.username, endpoint);
+  const previous = props.getProperty(key);
+  let createdAt = new Date().toISOString();
+  if (previous) {
+    try {
+      const old = JSON.parse(previous);
+      if (old && old.createdAt) createdAt = old.createdAt;
+    } catch (_) {}
+  }
+
+  props.setProperty(key, JSON.stringify({
+    username:auth.username,
+    endpoint:endpoint,
+    keys:{p256dh:p256dh,auth:authKey},
+    createdAt:createdAt,
+    updatedAt:new Date().toISOString()
+  }));
+
+  cleanupPush_();
+  return {ok:true};
+}
+
+function adminPushTargets_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const targets = [];
+
+  Object.keys(props).forEach(function(key) {
+    if (key.indexOf("PUSH::") !== 0) return;
+    try {
+      const item = JSON.parse(props[key]);
+      if (item && item.endpoint && item.keys && item.keys.p256dh && item.keys.auth) {
+        targets.push({
+          key:key,
+          username:item.username || "",
+          endpoint:item.endpoint,
+          keys:{p256dh:item.keys.p256dh,auth:item.keys.auth}
+        });
+      }
+    } catch (_) {}
+  });
+
+  return {ok:true,count:targets.length,targets:targets};
+}
+
+function adminPushDelete_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const key = String(p.key || "");
+  if (key.indexOf("PUSH::") !== 0) return {ok:false,error:"BAD_PUSH_KEY"};
+  PropertiesService.getScriptProperties().deleteProperty(key);
+  return {ok:true};
+}
+
+function cleanupPush_() {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const rows = [];
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf("PUSH::") !== 0) return;
+    try {
+      const item = JSON.parse(all[key]);
+      rows.push({key:key,updatedAt:String(item.updatedAt || item.createdAt || "")});
+    } catch (_) {
+      props.deleteProperty(key);
+    }
+  });
+  rows.sort(function(a,b){return String(b.updatedAt).localeCompare(String(a.updatedAt));});
+  rows.slice(500).forEach(function(x){props.deleteProperty(x.key);});
 }
 
 function supportSend_(p) {
