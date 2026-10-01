@@ -391,6 +391,10 @@ function playedAdd_(p) {
 
   if (!selected) return {ok:false,error:"SELECTION_NOT_ACTIVE"};
 
+  const startMs = kickoffTimeMs_(selected.kickoff);
+  if (!Number.isFinite(startMs)) return {ok:false,error:"KICKOFF_UNKNOWN"};
+  if (Date.now() >= startMs) return {ok:false,error:"SELECTION_LOCKED"};
+
   const props = PropertiesService.getScriptProperties();
   const key = playedKey_(auth.username, selected.id);
   if (!props.getProperty(key)) props.setProperty(key, JSON.stringify(selected));
