@@ -21,14 +21,53 @@ VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:support@dreamteamtips.com").strip()
 
 
+def _normalize_vapid_key(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+
+    # py_vapid.from_string expects a base64/base64url encoded RAW or DER key.
+    # If Render stores a PEM string, remove the PEM wrapper and pass only the
+    # encoded key body. This avoids ValueError during VAPID parsing.
+    if "-----BEGIN" in raw:
+        lines = [
+            line.strip()
+            for line in raw.splitlines()
+            if line.strip() and not line.startswith("-----")
+        ]
+        return "".join(lines)
+
+    return raw.replace("\n", "").replace("\r", "").strip()
+
+
 def get_vapid_private_key():
     if VAPID_PRIVATE_KEY:
-        return VAPID_PRIVATE_KEY
+        return _normalize_vapid_key(VAPID_PRIVATE_KEY)
+
     if VAPID_PRIVATE_KEY_B64:
+        # This variable is intentionally allowed to contain either:
+        # 1) base64(PKCS8 PEM), or 2) a directly encoded RAW/DER VAPID key.
+        # Support both so existing Render secrets remain valid.
         try:
-            return base64.b64decode(VAPID_PRIVATE_KEY_B64).decode("utf-8")
+            decoded = base64.b64decode(VAPID_PRIVATE_KEY_B64)
         except Exception:
-            return ""
+            return _normalize_vapid_key(VAPID_PRIVATE_KEY_B64)
+
+        try:
+            text_value = decoded.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            return base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=")
+
+        if "-----BEGIN" in text_value:
+            return _normalize_vapid_key(text_value)
+
+        # If the decoded value is itself a plausible encoded key, use it.
+        compact = _normalize_vapid_key(text_value)
+        if compact:
+            return compact
+
+        return base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=")
+
     return ""
 
 
