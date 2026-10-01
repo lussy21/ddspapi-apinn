@@ -64,6 +64,7 @@ function doPost(e) {
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
     else if (action === "adminSettings") payload = adminSettings_(p);
     else if (action === "adminUsers") payload = adminUsers_(p);
+    else if (action === "adminSignals") payload = adminSignals_(p);
     else if (action === "adminSetMaxUsers") payload = adminSetMaxUsers_(p);
     else if (action === "adminAddDays") payload = adminAddDays_(p);
     else if (action === "adminAddDaysAll") payload = adminAddDaysAll_(p);
@@ -948,7 +949,74 @@ function adminSettings_(p) {
     maxUsers:max,
     freeSlots:Math.max(0,max-used),
     subscriptionDays:true,
-    autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET")
+    autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET"),
+    internalSignals:true
+  };
+}
+
+function adminSignals_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+  const pinLast = pin.getLastRow();
+  if (pinLast < 3) {
+    return {ok:true,count:0,signals:[],updatedAt:new Date().toISOString()};
+  }
+
+  const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+  const signals = [];
+
+  rows.forEach(function(row, idx) {
+    const league = String(row[0] || "").trim();
+    const home = String(row[1] || "").trim();
+    const away = String(row[2] || "").trim();
+    const favoriteSide = String(row[3] || "").trim().toUpperCase();
+    const rawAlert = String(row[14] || "").trim();
+    const alert = normalizeAlertName_(rawAlert);
+    const result = String(row[15] || "").trim();
+
+    if (!league || !home || !away || !alert || result) return;
+    if (favoriteSide !== "H" && favoriteSide !== "A") return;
+
+    const isContra = /ΚΟΝΤΡΑ|CONTRA/i.test(alert);
+    const pickSide = isContra
+      ? (favoriteSide === "H" ? "A" : "H")
+      : favoriteSide;
+
+    const customerPick = isContra
+      ? (pickSide === "H" ? "1X" : "2X")
+      : (pickSide === "H" ? "1" : "2");
+
+    signals.push({
+      league:league,
+      home:home,
+      away:away,
+      favoriteSide:favoriteSide,
+      favoriteTeam:favoriteSide === "H" ? home : away,
+      internalAlert:alert,
+      rawAlert:rawAlert,
+      rating:alertRating_(rawAlert),
+      customerPick:customerPick,
+      customerTeam:pickSide === "H" ? home : away,
+      kickoff:String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim()
+    });
+  });
+
+  signals.sort(function(a,b) {
+    const ta = Date.parse(a.kickoff || "") || 0;
+    const tb = Date.parse(b.kickoff || "") || 0;
+    return ta - tb;
+  });
+
+  return {
+    ok:true,
+    count:signals.length,
+    signals:signals,
+    updatedAt:new Date().toISOString()
   };
 }
 
