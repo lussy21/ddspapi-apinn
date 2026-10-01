@@ -31,6 +31,15 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 .user{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}.user:last-child{border-bottom:0}.name{font-weight:800;font-size:14px}.meta{font-size:10px;color:var(--muted);margin-top:4px}.buttons{display:flex;gap:6px}.mini{padding:8px 9px;border-radius:10px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff}.mini.danger{border-color:rgba(220,70,80,.24);color:#ffb8be}.hidden{display:none!important}
 .support-card{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.055)}.support-card:last-child{border-bottom:0}.support-card.closed{opacity:.58}.support-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.support-topic{font-size:13px;font-weight:900;color:#f1e7cf}.support-who{font-size:10px;color:#8f8a93;margin-top:4px}.support-text{margin-top:9px;color:#d8d4d9;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}.support-new{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;border:1px solid rgba(217,177,87,.25);color:#ffe7a4;background:rgba(217,177,87,.07);font-size:9px}.support-count{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:rgba(217,177,87,.12);color:#ffe7a4;font-size:10px}
 .push-textarea{width:100%;min-height:96px;resize:vertical;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none;margin-top:8px}.push-textarea:focus{border-color:rgba(217,177,87,.55)}.push-hint{margin-top:7px;color:#77727f;font-size:10px;line-height:1.4}.user{align-items:flex-start;flex-wrap:wrap}.user-main{flex:1;min-width:180px}.expiry{margin-top:5px;font-size:10px;color:#c8b987}.extend-line{width:100%;display:flex;align-items:center;gap:7px;margin-top:9px}.extend-line .number{width:88px;margin:0}.bulk-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bulk-line .number{width:100px;margin:0}.signals-grid{display:grid;gap:9px}.signal-card{padding:13px 14px;border:1px solid rgba(217,177,87,.16);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.015))}.signal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.signal-match{font-size:13px;font-weight:900;color:#f2eadc}.signal-league{margin-top:4px;color:#7f7a83;font-size:9px}.signal-pick{flex:0 0 auto;padding:6px 9px;border-radius:999px;border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.07);color:#ffe39a;font-size:11px;font-weight:900}.signal-lines{display:grid;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.045)}.signal-line{font-size:10px;color:#98939b}.signal-line b{color:#e8e3d9}.signal-internal{color:#ffcf8a!important;font-weight:900}.signals-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.signals-count{font-size:10px;color:#cdbd89}
+.member-profile-btn{border-color:rgba(217,177,87,.24);color:#ffe6a1}
+.profile-overlay{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);padding:18px;overflow:auto}
+.profile-modal{width:min(100%,560px);margin:18px auto;background:linear-gradient(150deg,#111114,#080809);border:1px solid rgba(217,177,87,.26);border-radius:24px;box-shadow:0 25px 90px rgba(0,0,0,.7);overflow:hidden}
+.profile-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line)}.profile-head b{font:500 23px/1.1 Georgia,serif}.profile-close{width:36px;height:36px;border-radius:12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:#fff;font-size:20px}
+.profile-body{padding:18px}.profile-identity{padding:14px;border:1px solid rgba(217,177,87,.15);border-radius:16px;background:rgba(217,177,87,.035)}.profile-name{font-size:17px;font-weight:900}.profile-email{margin-top:4px;font-size:10px;color:var(--muted)}.profile-sub{margin-top:10px;color:#d8c88f;font-size:11px;line-height:1.5}
+.profile-add-days{display:flex;gap:8px;align-items:center;margin-top:12px}.profile-add-days .number{width:94px}.profile-add-days .mini{padding:11px 12px}
+.profile-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}.profile-summary .stat{padding:10px 5px}.profile-summary .stat b{font-size:18px}.profile-summary .stat span{font-size:8px}
+.profile-history{display:grid;gap:9px;margin-top:14px}.member-pick{padding:13px 14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.025)}.member-pick.win{border-color:rgba(125,205,139,.28)}.member-pick.loss{border-color:rgba(255,119,130,.25)}.member-pick-top{display:flex;justify-content:space-between;gap:10px}.member-pick-match{font-size:13px;font-weight:900}.member-pick-league{margin-top:3px;color:#858089;font-size:9px}.member-pick-status{font-size:9px;font-weight:900;white-space:nowrap}.member-pick.win .member-pick-status{color:#bfe9c7}.member-pick.loss .member-pick-status{color:#ffb7bd}.member-pick.pending .member-pick-status{color:#d9c68e}.member-pick-lines{margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.045);display:grid;gap:4px;font-size:10px;color:#98939b}.member-pick-lines b{color:#ece6d8}.member-pick-internal{color:#ffcf8a!important}
+@media(max-width:460px){.profile-summary{grid-template-columns:repeat(2,1fr)}.profile-add-days{align-items:stretch}.profile-add-days .number{width:100px}}
 </style>
 </head>
 <body>
@@ -63,9 +72,20 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div class="msg" id="msg"></div>
 </div>
 </div></section></div>
+
+<div id="memberProfile" class="profile-overlay hidden">
+  <div class="profile-modal">
+    <div class="profile-head"><b>Προφίλ μέλους</b><button class="profile-close" id="profileClose" aria-label="Κλείσιμο">×</button></div>
+    <div class="profile-body">
+      <div id="profileIdentity" class="profile-identity"><div class="note">Φόρτωση…</div></div>
+      <div id="profileSummary" class="profile-summary"></div>
+      <div id="profileHistory" class="profile-history"></div>
+    </div>
+  </div>
+</div>
 <script>
 const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
-let adminSecret="", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false;
+let adminSecret="", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, profileCurrentUsername="";
 let backendWarmPromise=null;
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
@@ -102,6 +122,7 @@ async function loadAdmin(){
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
   internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive);
+  memberHistoryLive=settings.memberHistory===true;
   if(subscriptionFeatureLive && !settings.autoPushConfigured){try{await apiPost({action:"adminAutomationSetup",adminCode:adminSecret});}catch(_){}}
 
   if(internalSignalsLive){
@@ -151,9 +172,64 @@ function renderUsers(arr){
   users.innerHTML=arr.length?arr.map(u=>{
     const status=!u.verified?"Email σε αναμονή":(u.revoked?"Κομμένη πρόσβαση":(u.subscriptionExpired?"Έληξε":"Ενεργός"));
     const expiry=u.subscriptionEndsAt?new Date(u.subscriptionEndsAt).toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"}):"Χωρίς ημερομηνία λήξης";
-    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)}</div></div><div class="buttons">${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified&&subscriptionFeatureLive?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
+    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)}</div></div><div class="buttons">${memberHistoryLive?`<button class="mini member-profile-btn" onclick="openMemberProfile('${safe(u.username)}')">Προφίλ</button>`:""}${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified&&subscriptionFeatureLive?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
   }).join(""):'<div class="note">Δεν υπάρχουν χρήστες ακόμα.</div>';
 }
+function profileDate(value,withTime){
+  const d=new Date(value||"");
+  if(isNaN(d)) return "—";
+  return withTime?d.toLocaleString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+function renderMemberProfile(data){
+  const u=data.user||{}, s=data.summary||{}, items=Array.isArray(data.items)?data.items:[];
+  const status=!u.verified?"Email σε αναμονή":u.revoked?"Κομμένη πρόσβαση":u.subscriptionExpired?"Έληξε":"Ενεργός";
+  const days=(u.remainingDays===null||u.remainingDays===undefined)?"Χωρίς ημερομηνία λήξης":(Number(u.remainingDays)+" "+(Number(u.remainingDays)===1?"ημέρα":"ημέρες")+" ακόμη");
+  profileIdentity.innerHTML='<div class="profile-name">'+esc(u.username||profileCurrentUsername)+'</div><div class="profile-email">'+esc(u.email||"")+' · '+esc(status)+'</div><div class="profile-sub"><b>'+esc(days)+'</b><br>Λήξη: '+esc(u.subscriptionEndsAt?profileDate(u.subscriptionEndsAt,false):"—")+'</div>'+(u.verified&&subscriptionFeatureLive?'<div class="profile-add-days"><input id="profileDays" class="number" type="number" min="1" max="3650" value="7"><button id="profileAddDays" class="mini">+ Προσθήκη ημερών</button></div>':"");
+  profileSummary.innerHTML='<div class="stat"><b>'+Number(s.total||0)+'</b><span>Επιλογές</span></div><div class="stat"><b>'+Number(s.wins||0)+'</b><span>Κερδισμένες</span></div><div class="stat"><b>'+Number(s.losses||0)+'</b><span>Χαμένες</span></div><div class="stat"><b>'+Number(s.pending||0)+'</b><span>Εκκρεμούν</span></div>';
+  profileHistory.innerHTML=items.length?items.map(a=>{
+    const st=a.status==="win"?"win":a.status==="loss"?"loss":"pending";
+    const stText=st==="win"?"✓ ΚΕΡΔΙΣΕ":st==="loss"?"✕ ΧΑΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
+    const score=a.score?(" · "+esc(a.score)):"";
+    return '<div class="member-pick '+st+'"><div class="member-pick-top"><div><div class="member-pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="member-pick-league">'+esc(a.league||"")+'</div></div><div class="member-pick-status">'+stText+score+'</div></div><div class="member-pick-lines"><div>Πρόταση: <b>'+esc(a.customerPick||"—")+' · '+esc(a.customerTeam||"—")+'</b></div><div class="member-pick-internal">Εσωτερικό σήμα: <b>'+esc(a.internalAlert||"—")+(a.rating?(" · "+esc(a.rating)):"")+'</b></div><div>Προστέθηκε: '+esc(profileDate(a.addedAt,true))+' · Αγώνας: '+esc(profileDate(a.kickoff,true))+'</div></div></div>';
+  }).join(""):'<div class="note">Το μέλος δεν έχει προσθέσει ακόμη κάποια επιλογή.</div>';
+
+  const addBtn=document.getElementById("profileAddDays");
+  if(addBtn) addBtn.onclick=async()=>{
+    const input=document.getElementById("profileDays");
+    const days=parseInt(input.value||"0",10);
+    if(!Number.isInteger(days)||days<1||days>3650){msg.textContent="Βάλε έγκυρο αριθμό ημερών.";return;}
+    addBtn.disabled=true;
+    try{
+      const r=await apiPost({action:"adminAddDays",adminCode:adminSecret,username:profileCurrentUsername,days});
+      if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+      await loadAdmin();
+      await openMemberProfile(profileCurrentUsername);
+      msg.textContent="Προστέθηκαν "+days+" μέρες στον "+profileCurrentUsername+".";
+    }catch(e){
+      msg.textContent="Σφάλμα: "+e.message;
+      addBtn.disabled=false;
+    }
+  };
+}
+window.openMemberProfile=async(username)=>{
+  if(!memberHistoryLive) return;
+  profileCurrentUsername=username;
+  memberProfile.classList.remove("hidden");
+  profileIdentity.innerHTML='<div class="note">Φόρτωση προφίλ…</div>';
+  profileSummary.innerHTML="";
+  profileHistory.innerHTML="";
+  try{
+    const r=await apiPost({action:"adminPlayedHistory",adminCode:adminSecret,username});
+    if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+    renderMemberProfile(r);
+  }catch(e){
+    profileIdentity.innerHTML='<div class="note">Δεν έγινε φόρτωση του προφίλ.</div>';
+    profileHistory.innerHTML='<div class="note">Σφάλμα: '+esc(e.message)+'</div>';
+  }
+};
+profileClose.onclick=()=>memberProfile.classList.add("hidden");
+memberProfile.addEventListener("click",e=>{if(e.target===memberProfile) memberProfile.classList.add("hidden");});
+
 function renderSupport(arr){
   supportInbox.innerHTML=arr.length?arr.map(s=>{
     const closed=s.status==="closed";
