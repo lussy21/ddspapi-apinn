@@ -254,6 +254,7 @@ def api():
         sent = 0
         failed = 0
         removed = 0
+        failure_codes = {}
         message = json.dumps(
             {"title": title, "body": body, "url": "./", "tag": "dreamteamtips-admin"},
             ensure_ascii=False,
@@ -278,6 +279,9 @@ def api():
             except WebPushException as exc:
                 failed += 1
                 status = getattr(getattr(exc, "response", None), "status_code", None)
+                code = "webpush_" + str(status or "unknown")
+                failure_codes[code] = failure_codes.get(code, 0) + 1
+                app.logger.warning("manual_push_failure code=%s", code)
                 if status in (404, 410) and target.get("key"):
                     try:
                         cleanup = upstream_post(
@@ -291,8 +295,11 @@ def api():
                             removed += 1
                     except Exception:
                         pass
-            except Exception:
+            except Exception as exc:
                 failed += 1
+                code = "client_" + exc.__class__.__name__
+                failure_codes[code] = failure_codes.get(code, 0) + 1
+                app.logger.warning("manual_push_failure code=%s", code)
 
         total = int(target_data.get("count") or 0)
         app.logger.info(
@@ -310,6 +317,7 @@ def api():
             failed=failed,
             removed=removed,
             total=total,
+            failureCodes=failure_codes,
         ), 200
 
     try:
