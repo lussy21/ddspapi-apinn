@@ -4,8 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070708">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<title>Match Alerts Admin</title>
+<script>
+if(location.hostname!=="match-alerts-api-private.onrender.com"){
+  location.replace("https://match-alerts-api-private.onrender.com/admin/");
+}
+</script>
+<link rel="icon" href="./admin-icon.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.json">
+<meta name="application-name" content="DreamTeamTips Admin">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DTT Admin">
+<title>DreamTeamTips Admin</title>
 <style>
 :root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075)}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
@@ -21,12 +30,12 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 .section{margin-top:17px;padding-top:16px;border-top:1px solid var(--line)}.section h3{margin:0 0 10px;font-size:13px;color:var(--gold2);letter-spacing:1px;text-transform:uppercase}
 .user{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}.user:last-child{border-bottom:0}.name{font-weight:800;font-size:14px}.meta{font-size:10px;color:var(--muted);margin-top:4px}.buttons{display:flex;gap:6px}.mini{padding:8px 9px;border-radius:10px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff}.mini.danger{border-color:rgba(220,70,80,.24);color:#ffb8be}.hidden{display:none!important}
 .support-card{padding:13px 0;border-bottom:1px solid rgba(255,255,255,.055)}.support-card:last-child{border-bottom:0}.support-card.closed{opacity:.58}.support-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.support-topic{font-size:13px;font-weight:900;color:#f1e7cf}.support-who{font-size:10px;color:#8f8a93;margin-top:4px}.support-text{margin-top:9px;color:#d8d4d9;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}.support-new{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;border:1px solid rgba(217,177,87,.25);color:#ffe7a4;background:rgba(217,177,87,.07);font-size:9px}.support-count{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:rgba(217,177,87,.12);color:#ffe7a4;font-size:10px}
-.push-textarea{width:100%;min-height:96px;resize:vertical;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none;margin-top:8px}.push-textarea:focus{border-color:rgba(217,177,87,.55)}.push-hint{margin-top:7px;color:#77727f;font-size:10px;line-height:1.4}.user{align-items:flex-start;flex-wrap:wrap}.user-main{flex:1;min-width:180px}.expiry{margin-top:5px;font-size:10px;color:#c8b987}.extend-line{width:100%;display:flex;align-items:center;gap:7px;margin-top:9px}.extend-line .number{width:88px;margin:0}.bulk-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bulk-line .number{width:100px;margin:0}
+.push-textarea{width:100%;min-height:96px;resize:vertical;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none;margin-top:8px}.push-textarea:focus{border-color:rgba(217,177,87,.55)}.push-hint{margin-top:7px;color:#77727f;font-size:10px;line-height:1.4}.user{align-items:flex-start;flex-wrap:wrap}.user-main{flex:1;min-width:180px}.expiry{margin-top:5px;font-size:10px;color:#c8b987}.extend-line{width:100%;display:flex;align-items:center;gap:7px;margin-top:9px}.extend-line .number{width:88px;margin:0}.bulk-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bulk-line .number{width:100px;margin:0}.signals-grid{display:grid;gap:9px}.signal-card{padding:13px 14px;border:1px solid rgba(217,177,87,.16);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.015))}.signal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.signal-match{font-size:13px;font-weight:900;color:#f2eadc}.signal-league{margin-top:4px;color:#7f7a83;font-size:9px}.signal-pick{flex:0 0 auto;padding:6px 9px;border-radius:999px;border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.07);color:#ffe39a;font-size:11px;font-weight:900}.signal-lines{display:grid;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.045)}.signal-line{font-size:10px;color:#98939b}.signal-line b{color:#e8e3d9}.signal-internal{color:#ffcf8a!important;font-weight:900}.signals-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.signals-count{font-size:10px;color:#cdbd89}
 </style>
 </head>
 <body>
 <div class="wrap"><section class="panel">
-<div class="head"><div class="sub">Owner only</div><div class="title">Admin Panel</div></div>
+<div class="head"><div class="sub">DreamTeamTips · Owner only</div><div class="title">Admin Panel</div></div>
 <div class="body">
 <div id="lock">
 <div class="note">Βάλε τον προσωπικό admin κωδικό σου.</div>
@@ -35,8 +44,13 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div class="msg" id="lockMsg"></div>
 </div>
 <div id="dash" class="hidden">
-<div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
-<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div><div class="section hidden" id="subscriptionBulk"><h3>Μαζική παράταση συνδρομών</h3><div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div><div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div></div>
+<div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div><div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
+<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
+<div class="section hidden" id="subscriptionBulk">
+  <h3>Μαζική παράταση συνδρομών</h3>
+  <div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div>
+  <div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div>
+</div>
 <div class="section">
   <h3>Μήνυμα προς όλους</h3>
   <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
@@ -51,7 +65,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div></section></div>
 <script>
 const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
-let adminSecret="", adminFreeSlots=0, subscriptionFeatureLive=false;
+let adminSecret="", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false;
 let backendWarmPromise=null;
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
@@ -87,7 +101,18 @@ async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
+  internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive);
   if(subscriptionFeatureLive && !settings.autoPushConfigured){try{await apiPost({action:"adminAutomationSetup",adminCode:adminSecret});}catch(_){}}
+
+  if(internalSignalsLive){
+    try{
+      const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
+      if(sig.ok) renderSignals(sig.signals||[]);
+      else signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
+    }catch(_){
+      signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
+    }
+  }
 
   try{
     const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
@@ -113,6 +138,15 @@ async function loadAdmin(){
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
+function renderSignals(arr){
+  const list=Array.isArray(arr)?arr:[];
+  signalsCount.textContent=list.length+" "+(list.length===1?"ενεργό":"ενεργά");
+  signals.innerHTML=list.length?'<div class="signals-grid">'+list.map(s=>{
+    const side=s.favoriteSide==="H"?"Home":s.favoriteSide==="A"?"Away":"—";
+    const rating=s.rating?(" · "+esc(s.rating)):"";
+    return '<div class="signal-card"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div></div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div><div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b> · '+esc(side)+'</div><div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+'</b></div></div></div>';
+  }).join("")+'</div>':'<div class="note">Δεν υπάρχουν ενεργά σήματα αυτή τη στιγμή.</div>';
+}
 function renderUsers(arr){
   users.innerHTML=arr.length?arr.map(u=>{
     const status=!u.verified?"Email σε αναμονή":(u.revoked?"Κομμένη πρόσβαση":(u.subscriptionExpired?"Έληξε":"Ενεργός"));
@@ -153,7 +187,10 @@ window.addDays=async(username,btn)=>{
     if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
     await loadAdmin();
     msg.textContent="Προστέθηκαν "+days+" μέρες στον "+username+".";
-  }catch(e){msg.textContent="Σφάλμα: "+e.message;btn.disabled=false;}
+  }catch(e){
+    msg.textContent="Σφάλμα: "+e.message;
+    btn.disabled=false;
+  }
 };
 window.act=async(action,username)=>{
   if(action==="adminRestore" && adminFreeSlots<=0){msg.textContent="Δεν υπάρχει διαθέσιμη θέση. Αύξησε πρώτα το όριο.";return;}
@@ -215,9 +252,15 @@ addDaysAll.onclick=async()=>{
     if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
     await loadAdmin();
     msg.textContent="Παράταση "+days+" ημερών σε "+Number(r.updated||0)+" λογαριασμό/ούς"+(r.skippedExpired?(" · "+r.skippedExpired+" ληγμένοι δεν άλλαξαν"):"")+(r.skippedNoExpiry?(" · "+r.skippedNoExpiry+" χωρίς ημερομηνία λήξης δεν άλλαξαν"):"")+".";
-  }catch(e){msg.textContent="Σφάλμα: "+e.message;}
-  finally{addDaysAll.disabled=false;}
+  }catch(e){
+    msg.textContent="Σφάλμα: "+e.message;
+  }finally{
+    addDaysAll.disabled=false;
+  }
 };
 saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{}));
+}
 </script>
 </body></html>
