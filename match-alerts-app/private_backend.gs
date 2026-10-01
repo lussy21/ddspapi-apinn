@@ -64,6 +64,7 @@ function doPost(e) {
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
     else if (action === "adminSettings") payload = adminSettings_(p);
     else if (action === "adminUsers") payload = adminUsers_(p);
+    else if (action === "adminPlayedHistory") payload = adminPlayedHistory_(p);
     else if (action === "adminSignals") payload = adminSignals_(p);
     else if (action === "adminSetMaxUsers") payload = adminSetMaxUsers_(p);
     else if (action === "adminAddDays") payload = adminAddDays_(p);
@@ -950,7 +951,8 @@ function adminSettings_(p) {
     freeSlots:Math.max(0,max-used),
     subscriptionDays:true,
     autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET"),
-    internalSignals:true
+    internalSignals:true,
+    memberHistory:true
   };
 }
 
@@ -1017,6 +1019,133 @@ function adminSignals_(p) {
     count:signals.length,
     signals:signals,
     updatedAt:new Date().toISOString()
+  };
+}
+
+function adminPlayedHistory_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const username = normalizeUsername_(p.username);
+  if (!validUsername_(username)) return {ok:false,error:"BAD_USERNAME"};
+
+  const propsService = PropertiesService.getScriptProperties();
+  const userRaw = propsService.getProperty(userKey_(username));
+  if (!userRaw) return {ok:false,error:"USER_NOT_FOUND"};
+
+  const u = JSON.parse(userRaw);
+  const allProps = propsService.getProperties();
+  const prefix = "PLAYED::" + username + "::";
+  const saved = [];
+
+  Object.keys(allProps).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    try {
+      const item = JSON.parse(allProps[key]);
+      if (item && item.id) saved.push(item);
+    } catch (_) {}
+  });
+
+  let rowById = {};
+  if (saved.length) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const pin = ss.getSheetByName(SHEET_NAME);
+    if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+    const pinLast = pin.getLastRow();
+    const pinRows = pinLast >= 3 ? pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues() : [];
+    const kickoffRows = pinLast >= 3 ? pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues() : [];
+
+    pinRows.forEach(function(row, idx) {
+      const league = String(row[0] || "").trim();
+      const home = String(row[1] || "").trim();
+      const away = String(row[2] || "").trim();
+      const currentAlert = normalizeAlertName_(row[14]);
+      const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+      if (!league || !home || !away || !currentAlert) return;
+      rowById[selectionId_(league, home, away, currentAlert, kickoff)] = row;
+    });
+  }
+
+  let wins = 0;
+  let losses = 0;
+  let pending = 0;
+
+  const items = saved.map(function(item) {
+    const row = rowById[item.id] || null;
+    const alert = String(item.alert || "").trim();
+    const favoriteSide = String(item.favoriteSide || (row ? row[3] : "") || "").trim().toUpperCase();
+    const rawAlert = row ? String(row[14] || "").trim() : alert;
+    const isContra = /ΚΟΝΤΡΑ|CONTRA/i.test(alert);
+    const pickSide = isContra
+      ? (favoriteSide === "H" ? "A" : favoriteSide === "A" ? "H" : "")
+      : favoriteSide;
+    const customerPick = isContra
+      ? (pickSide === "H" ? "1X" : pickSide === "A" ? "2X" : "")
+      : (pickSide === "H" ? "1" : pickSide === "A" ? "2" : "");
+    const customerTeam = pickSide === "H" ? item.home : pickSide === "A" ? item.away : "";
+
+    let score = "";
+    let status = "pending";
+    if (row) {
+      const parsed = resultScore_(row[15]);
+      const won = alertSuccess_(row, alert);
+      if (parsed) score = parsed[0] + "-" + parsed[1];
+      if (won === true) status = "win";
+      else if (won === false) status = "loss";
+    }
+
+    if (status === "win") wins++;
+    else if (status === "loss") losses++;
+    else pending++;
+
+    return {
+      id:item.id,
+      league:item.league,
+      home:item.home,
+      away:item.away,
+      favoriteSide:favoriteSide,
+      internalAlert:alert,
+      rating:alertRating_(rawAlert),
+      customerPick:customerPick,
+      customerTeam:customerTeam,
+      kickoff:item.kickoff,
+      addedAt:item.createdAt,
+      score:score,
+      status:status
+    };
+  });
+
+  items.sort(function(a,b) {
+    const ta = Date.parse(a.addedAt || a.kickoff || "") || 0;
+    const tb = Date.parse(b.addedAt || b.kickoff || "") || 0;
+    return tb - ta;
+  });
+
+  const expiryMs = Date.parse(String(u.subscriptionEndsAt || ""));
+  const remainingDays = Number.isFinite(expiryMs)
+    ? Math.max(0, Math.ceil((expiryMs - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
+
+  return {
+    ok:true,
+    user:{
+      username:u.username,
+      email:u.email || "",
+      verified:!!u.verified,
+      revoked:!!u.revoked,
+      createdAt:u.createdAt || "",
+      verifiedAt:u.verifiedAt || "",
+      subscriptionEndsAt:u.subscriptionEndsAt || "",
+      subscriptionExpired:subscriptionExpired_(u),
+      remainingDays:remainingDays
+    },
+    summary:{
+      total:items.length,
+      wins:wins,
+      losses:losses,
+      pending:pending
+    },
+    items:items.slice(0,250)
   };
 }
 
