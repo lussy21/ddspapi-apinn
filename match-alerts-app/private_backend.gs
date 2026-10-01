@@ -62,6 +62,8 @@ function doPost(e) {
     else if (action === "adminSettings") payload = adminSettings_(p);
     else if (action === "adminUsers") payload = adminUsers_(p);
     else if (action === "adminSetMaxUsers") payload = adminSetMaxUsers_(p);
+    else if (action === "adminAddDays") payload = adminAddDays_(p);
+    else if (action === "adminAddDaysAll") payload = adminAddDaysAll_(p);
     else if (action === "adminRevoke") payload = adminRevoke_(p);
     else if (action === "adminRestore") payload = adminRestore_(p);
     else if (action === "adminDelete") payload = adminDelete_(p);
@@ -218,6 +220,7 @@ function login_(p) {
   const u = JSON.parse(raw);
   if (!u.verified) return {ok:false,error:"EMAIL_NOT_VERIFIED"};
   if (u.revoked) return {ok:false,error:"ACCESS_REVOKED"};
+  if (subscriptionExpired_(u)) return {ok:false,error:"SUBSCRIPTION_EXPIRED"};
 
   if (hashPassword_(password, u.salt) !== u.hash) {
     return {ok:false,error:"INVALID_LOGIN"};
@@ -235,7 +238,8 @@ function login_(p) {
     ok:true,
     token:token,
     username:username,
-    expiresAt:new Date(expiresAt).toISOString()
+    expiresAt:new Date(expiresAt).toISOString(),
+    subscriptionEndsAt:u.subscriptionEndsAt || ""
   };
 }
 
@@ -893,7 +897,9 @@ function adminUsers_(p) {
         verified:!!u.verified,
         revoked:!!u.revoked,
         createdAt:u.createdAt || "",
-        verifiedAt:u.verifiedAt || ""
+        verifiedAt:u.verifiedAt || "",
+        subscriptionEndsAt:u.subscriptionEndsAt || "",
+        subscriptionExpired:subscriptionExpired_(u)
       });
     } catch (_) {}
   });
@@ -918,6 +924,79 @@ function adminSetMaxUsers_(p) {
     .setProperty("CONFIG::MAX_FREE_USERS", String(maxUsers));
 
   return adminSettings_(p);
+}
+
+function adminAddDays_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  return addSubscriptionDays_(p.username, p.days);
+}
+
+function adminAddDaysAll_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const days = Number(p.days);
+  if (!Number.isFinite(days) || days < 1 || days > 3650 || Math.floor(days) !== days) {
+    return {ok:false,error:"BAD_DAYS"};
+  }
+
+  const propsService = PropertiesService.getScriptProperties();
+  const props = propsService.getProperties();
+  const now = Date.now();
+  let updated = 0;
+  let skippedNoExpiry = 0;
+
+  Object.keys(props).forEach(function(k) {
+    if (k.indexOf("USER::") !== 0) return;
+    try {
+      const u = JSON.parse(props[k]);
+      if (!u.verified || u.revoked) return;
+
+      const current = Date.parse(String(u.subscriptionEndsAt || ""));
+      if (!Number.isFinite(current)) {
+        skippedNoExpiry++;
+        return;
+      }
+
+      const base = current > now ? current : now;
+      u.subscriptionEndsAt = new Date(base + days * 24 * 60 * 60 * 1000).toISOString();
+      u.updatedAt = new Date().toISOString();
+      propsService.setProperty(k, JSON.stringify(u));
+      updated++;
+    } catch (_) {}
+  });
+
+  return {ok:true,days:days,updated:updated,skippedNoExpiry:skippedNoExpiry};
+}
+
+function addSubscriptionDays_(usernameRaw, daysRaw) {
+  const username = normalizeUsername_(usernameRaw);
+  const days = Number(daysRaw);
+  if (!validUsername_(username)) return {ok:false,error:"BAD_USERNAME"};
+  if (!Number.isFinite(days) || days < 1 || days > 3650 || Math.floor(days) !== days) {
+    return {ok:false,error:"BAD_DAYS"};
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const key = userKey_(username);
+  const raw = props.getProperty(key);
+  if (!raw) return {ok:false,error:"USER_NOT_FOUND"};
+
+  const u = JSON.parse(raw);
+  if (!u.verified) return {ok:false,error:"USER_NOT_VERIFIED"};
+
+  const now = Date.now();
+  const current = Date.parse(String(u.subscriptionEndsAt || ""));
+  const base = Number.isFinite(current) && current > now ? current : now;
+  u.subscriptionEndsAt = new Date(base + days * 24 * 60 * 60 * 1000).toISOString();
+  u.updatedAt = new Date().toISOString();
+  props.setProperty(key, JSON.stringify(u));
+
+  return {
+    ok:true,
+    username:username,
+    daysAdded:days,
+    subscriptionEndsAt:u.subscriptionEndsAt
+  };
 }
 
 function adminRevoke_(p) {
@@ -988,8 +1067,12 @@ function requireSession_(token) {
 
   const u = JSON.parse(userRaw);
   if (!u.verified || u.revoked) return {ok:false,error:"ACCESS_DENIED"};
+  if (subscriptionExpired_(u)) {
+    props.deleteProperty(sessionKey_(token));
+    return {ok:false,error:"SUBSCRIPTION_EXPIRED"};
+  }
 
-  return {ok:true,username:s.username};
+  return {ok:true,username:s.username,subscriptionEndsAt:u.subscriptionEndsAt || ""};
 }
 
 function countActiveUsers_() {
@@ -999,10 +1082,17 @@ function countActiveUsers_() {
     if (k.indexOf("USER::") !== 0) return;
     try {
       const u = JSON.parse(props[k]);
-      if (u.verified && !u.revoked) n++;
+      if (u.verified && !u.revoked && !subscriptionExpired_(u)) n++;
     } catch (_) {}
   });
   return n;
+}
+
+function subscriptionExpired_(u) {
+  const raw = String((u && u.subscriptionEndsAt) || "").trim();
+  if (!raw) return false;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) && Date.now() >= t;
 }
 
 function countPendingUsers_() {
