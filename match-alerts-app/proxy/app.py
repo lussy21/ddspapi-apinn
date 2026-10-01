@@ -294,6 +294,14 @@ def api():
             except Exception:
                 failed += 1
 
+        total = int(target_data.get("count") or 0)
+        app.logger.info(
+            "manual_push_result total=%s sent=%s failed=%s removed=%s",
+            total,
+            sent,
+            failed,
+            removed,
+        )
         return jsonify(
             ok=True,
             messageSaved=True,
@@ -301,7 +309,7 @@ def api():
             sent=sent,
             failed=failed,
             removed=removed,
-            total=int(target_data.get("count") or 0),
+            total=total,
         ), 200
 
     try:
