@@ -1,0 +1,21 @@
+name: Load Test 50
+
+on:
+  push:
+    branches: [loadtest-50]
+    paths:
+      - "loadtest_50.py"
+      - ".github/workflows/loadtest-50.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Run 50 concurrent users
+        run: python loadtest_50.py
