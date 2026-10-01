@@ -34,3 +34,5 @@ print(f"P95={sorted(times)[max(0,int(0.95*len(times))-1)]:.3f}s")
 print(f"MAX={max(times):.3f}s")
 if errors:
     print("ERROR_DETAILS=", errors[:10])
+
+# trigger workflow after workflow file exists
