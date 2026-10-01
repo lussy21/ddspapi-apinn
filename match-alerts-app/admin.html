@@ -159,13 +159,20 @@ async function loadAdmin(){
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
+function signalRecordLabel(v){
+  const m=String(v||"").match(/^(\d+)\/(\d+)$/);
+  if(!m||!Number(m[2])) return String(v||"—");
+  return Math.round((Number(m[1])/Number(m[2]))*100)+"% ("+m[1]+"/"+m[2]+")";
+}
 function renderSignals(arr){
   const list=Array.isArray(arr)?arr:[];
   signalsCount.textContent=list.length+" "+(list.length===1?"ενεργό":"ενεργά");
   signals.innerHTML=list.length?'<div class="signals-grid">'+list.map(s=>{
-    const side=s.favoriteSide==="H"?"Home":s.favoriteSide==="A"?"Away":"—";
     const rating=s.rating?(" · "+esc(s.rating)):"";
-    return '<div class="signal-card"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div></div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div><div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b> · '+esc(side)+'</div><div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+'</b></div></div></div>';
+    const stats=(s.leagueRecord||s.allStatsRecord)
+      ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
+      : '';
+    return '<div class="signal-card"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div></div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div><div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+'</b></div></div></div>';
   }).join("")+'</div>':'<div class="note">Δεν υπάρχουν ενεργά σήματα αυτή τη στιγμή.</div>';
 }
 function renderUsers(arr){
