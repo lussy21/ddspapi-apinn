@@ -315,7 +315,12 @@ sendPush.onclick=async()=>{
   try{
     const r=await apiPost({action:"adminPushSend",adminCode:adminSecret,title,body});
     if(!r.ok) throw new Error(r.error||"PUSH_ERROR");
-    msg.textContent="Το μήνυμα αποθηκεύτηκε στην εφαρμογή. Push στάλθηκε σε "+Number(r.sent||0)+" συσκευή/ές"+(r.failed?(" · απέτυχαν "+r.failed):"")+".";
+    const sent=Number(r.sent||0), total=Number(r.total||0), failed=Number(r.failed||0);
+    msg.textContent=total===0
+      ?"Το μήνυμα αποθηκεύτηκε, αλλά δεν υπάρχει καμία συσκευή δηλωμένη για push."
+      :sent===0
+        ?"Το μήνυμα αποθηκεύτηκε, αλλά το push απέτυχε σε όλες τις δηλωμένες συσκευές ("+failed+"/"+total+")."
+        :"Το μήνυμα αποθηκεύτηκε. Push: "+sent+"/"+total+(failed?(" · απέτυχαν "+failed):"")+".";
     pushTitle.value="";pushBody.value="";
   }catch(e){
     msg.textContent=e.message==="PUSH_NOT_CONFIGURED"?"Οι push ειδοποιήσεις δεν έχουν ολοκληρωθεί ακόμα στο backend.":"Σφάλμα αποστολής: "+e.message;
