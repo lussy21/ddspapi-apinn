@@ -831,6 +831,7 @@ def main():
                     ensure_ascii=False,
                 ),
                 formula,
+                "PENDING",
             ])
 
             baselines[key] = {
