@@ -879,7 +879,8 @@ function adminSettings_(p) {
     usedUsers:used,
     pendingUsers:pending,
     maxUsers:max,
-    freeSlots:Math.max(0,max-used)
+    freeSlots:Math.max(0,max-used),
+    subscriptionDays:true
   };
 }
 
