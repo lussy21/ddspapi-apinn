@@ -56,6 +56,9 @@ function doPost(e) {
     else if (action === "adminMessageCreate") payload = adminMessageCreate_(p);
     else if (action === "adminPushTargets") payload = adminPushTargets_(p);
     else if (action === "adminPushDelete") payload = adminPushDelete_(p);
+    else if (action === "adminAutomationSetup") payload = adminAutomationSetup_(p);
+    else if (action === "automationPushTargets") payload = automationPushTargets_(p);
+    else if (action === "automationPushDelete") payload = automationPushDelete_(p);
     else if (action === "supportSend") payload = supportSend_(p);
     else if (action === "adminSupport") payload = adminSupport_(p);
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
@@ -735,6 +738,70 @@ function adminPushDelete_(p) {
   return {ok:true};
 }
 
+function adminAutomationSetup_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const secret = String(p.secret || "").trim();
+  if (secret.length < 32 || secret.length > 256) {
+    return {ok:false,error:"BAD_AUTOMATION_SECRET"};
+  }
+
+  PropertiesService.getScriptProperties()
+    .setProperty("CONFIG::AUTO_PUSH_SECRET", secret);
+
+  return {ok:true,configured:true};
+}
+
+function automationAuthorized_(secretRaw) {
+  const wanted = PropertiesService.getScriptProperties()
+    .getProperty("CONFIG::AUTO_PUSH_SECRET");
+  const got = String(secretRaw || "").trim();
+  return !!wanted && wanted === got;
+}
+
+function automationPushTargets_(p) {
+  if (!automationAuthorized_(p.secret)) {
+    return {ok:false,error:"AUTOMATION_UNAUTHORIZED"};
+  }
+
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const targets = [];
+
+  Object.keys(props).forEach(function(key) {
+    if (key.indexOf("PUSH::") !== 0) return;
+    try {
+      const item = JSON.parse(props[key]);
+      if (!item || !item.endpoint || !item.keys || !item.keys.p256dh || !item.keys.auth) return;
+
+      const username = normalizeUsername_(item.username || "");
+      const userRaw = props[userKey_(username)];
+      if (!userRaw) return;
+
+      const u = JSON.parse(userRaw);
+      if (!u.verified || u.revoked || subscriptionExpired_(u)) return;
+
+      targets.push({
+        key:key,
+        username:username,
+        endpoint:item.endpoint,
+        keys:{p256dh:item.keys.p256dh,auth:item.keys.auth}
+      });
+    } catch (_) {}
+  });
+
+  return {ok:true,count:targets.length,targets:targets};
+}
+
+function automationPushDelete_(p) {
+  if (!automationAuthorized_(p.secret)) {
+    return {ok:false,error:"AUTOMATION_UNAUTHORIZED"};
+  }
+  const key = String(p.key || "");
+  if (key.indexOf("PUSH::") !== 0) return {ok:false,error:"BAD_PUSH_KEY"};
+  PropertiesService.getScriptProperties().deleteProperty(key);
+  return {ok:true};
+}
+
 function cleanupPush_() {
   const props = PropertiesService.getScriptProperties();
   const all = props.getProperties();
@@ -880,7 +947,8 @@ function adminSettings_(p) {
     pendingUsers:pending,
     maxUsers:max,
     freeSlots:Math.max(0,max-used),
-    subscriptionDays:true
+    subscriptionDays:true,
+    autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET")
   };
 }
 
