@@ -1,4 +1,4 @@
-const CACHE='match-alerts-v6-live';
+const CACHE='match-alerts-v7-push';
 const ASSETS=['./manifest.json','./icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
@@ -29,4 +29,33 @@ self.addEventListener('fetch',e=>{
       return r;
     }))
   );
+});
+
+self.addEventListener('push',e=>{
+  let data={};
+  try{data=e.data?e.data.json():{};}catch(_){data={body:e.data?e.data.text():""};}
+  const title=data.title||'DreamTeamTips';
+  const options={
+    body:data.body||'Νέα ενημέρωση είναι διαθέσιμη.',
+    icon:'./icon.svg',
+    badge:'./icon.svg',
+    tag:data.tag||'dreamteamtips-update',
+    renotify:true,
+    data:{url:data.url||'./'}
+  };
+  e.waitUntil(self.registration.showNotification(title,options));
+});
+
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  const target=(e.notification.data&&e.notification.data.url)||'./';
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const client of list){
+      if('focus' in client){
+        if('navigate' in client) client.navigate(target);
+        return client.focus();
+      }
+    }
+    return clients.openWindow?clients.openWindow(target):null;
+  }));
 });
