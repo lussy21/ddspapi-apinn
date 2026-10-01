@@ -1060,6 +1060,10 @@ def main():
             value_input_option="RAW",
         )
 
+    # Στέλνουμε ένα ομαδοποιημένο push για όλα τα νέα alerts.
+    # Αν υπάρξει προσωρινό πρόβλημα, μένουν PENDING και ξαναδοκιμάζονται.
+    send_pending_pushes(log_ws)
+
 
     print(
         "alert_history OK | "
