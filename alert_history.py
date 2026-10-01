@@ -454,11 +454,11 @@ def get_log_sheet(spreadsheet):
         ws = spreadsheet.add_worksheet(
             title=LOG_SHEET_NAME,
             rows=3000,
-            cols=10,
+            cols=11,
         )
 
         ws.update(
-    range_name="A1:J1",
+    range_name="A1:K1",
     values=[[
         "TIME",
         "KEY",
@@ -470,8 +470,14 @@ def get_log_sheet(spreadsheet):
         "DETAILS",
         "SNAPSHOT_JSON",
         "FORMULA",
+        "PUSH_STATUS",
     ]],
 )
+
+    if ws.col_count < 11:
+        ws.add_cols(11 - ws.col_count)
+
+    ws.update(range_name="K1", values=[["PUSH_STATUS"]])
 
     return ws
 
