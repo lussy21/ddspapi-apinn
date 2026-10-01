@@ -482,6 +482,54 @@ def get_log_sheet(spreadsheet):
     return ws
 
 
+def _parse_log_time(value):
+    try:
+        parsed = datetime.strptime(
+            str(value or "").strip(),
+            "%d/%m/%Y %H:%M:%S",
+        )
+        return parsed.replace(tzinfo=ZoneInfo("Europe/Athens"))
+    except Exception:
+        return None
+
+
+def load_pending_pushes(log_ws):
+    rows = log_ws.get_all_values()
+    now = datetime.now(ZoneInfo("Europe/Athens"))
+    pending = []
+    stale_updates = []
+
+    for sheet_row, row in enumerate(rows[1:], start=2):
+        row = row + [""] * (11 - len(row))
+        if str(row[5]).strip() != "ΑΝΟΙΞΕ":
+            continue
+        if str(row[10]).strip().upper() != "PENDING":
+            continue
+
+        opened_at = _parse_log_time(row[0])
+        if opened_at is not None:
+            age_minutes = (now - opened_at).total_seconds() / 60
+            if age_minutes > AUTO_PUSH_MAX_AGE_MINUTES:
+                stale_updates.append({
+                    "range": f"K{sheet_row}",
+                    "values": [["EXPIRED"]],
+                })
+                continue
+
+        pending.append({
+            "row": sheet_row,
+            "key": str(row[1]).strip(),
+            "league": str(row[3]).strip(),
+            "match": str(row[4]).strip(),
+            "alert": str(row[6]).strip(),
+        })
+
+    if stale_updates:
+        log_ws.batch_update(stale_updates, raw=True)
+
+    return pending
+
+
 def load_baselines(log_ws):
 
     rows = log_ws.get_all_values()
