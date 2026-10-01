@@ -195,6 +195,24 @@ def api():
         except ValueError:
             raise RuntimeError("BACKEND_BAD_RESPONSE")
 
+    if payload.get("action") == "adminAutomationSetup":
+        if not AUTO_PUSH_SECRET:
+            return jsonify(ok=False, error="AUTOMATION_NOT_CONFIGURED"), 500
+        try:
+            data = upstream_post(
+                {
+                    "action": "adminAutomationSetup",
+                    "adminCode": str(payload.get("adminCode") or ""),
+                    "secret": AUTO_PUSH_SECRET,
+                },
+                timeout=(4, 15),
+            )
+        except requests.RequestException:
+            return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+        except RuntimeError:
+            return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+        return jsonify(data), 200
+
     if payload.get("action") == "adminPushSend":
         title = str(payload.get("title") or "").strip()[:80]
         body = str(payload.get("body") or "").strip()[:220]
