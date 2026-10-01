@@ -267,6 +267,7 @@ function alerts_(p) {
       count:0,
       alerts:[],
       username:auth.username,
+      subscriptionEndsAt:auth.subscriptionEndsAt || "",
       updatedAt:new Date().toISOString()
     };
   }
@@ -311,6 +312,7 @@ function alerts_(p) {
     count:out.length,
     alerts:out,
     username:auth.username,
+    subscriptionEndsAt:auth.subscriptionEndsAt || "",
     updatedAt:new Date().toISOString()
   };
 }
