@@ -8,12 +8,16 @@ from zoneinfo import ZoneInfo
 
 import gspread
 import google.auth
+import requests
 from google.oauth2.service_account import Credentials
 
 
 SPREADSHEET_ID = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM"
 SHEET_NAME = "PINNACLE"
 LOG_SHEET_NAME = "ALERT LOG"
+AUTO_PUSH_URL = os.getenv("AUTO_PUSH_URL", "https://match-alerts-api-private.onrender.com/internal/alerts-push")
+AUTO_PUSH_SECRET = os.getenv("AUTO_PUSH_SECRET", "").strip()
+AUTO_PUSH_MAX_AGE_MINUTES = 120
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
