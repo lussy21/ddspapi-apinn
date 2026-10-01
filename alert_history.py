@@ -530,6 +530,74 @@ def load_pending_pushes(log_ws):
     return pending
 
 
+def send_pending_pushes(log_ws):
+    pending = load_pending_pushes(log_ws)
+    if not pending:
+        return
+
+    if not AUTO_PUSH_SECRET:
+        print(f"AUTO PUSH WAIT | pending={len(pending)} | secret_missing")
+        return
+
+    try:
+        response = requests.post(
+            AUTO_PUSH_URL,
+            json={
+                "alerts": [
+                    {
+                        "key": item["key"],
+                        "league": item["league"],
+                        "match": item["match"],
+                        "alert": item["alert"],
+                    }
+                    for item in pending
+                ]
+            },
+            headers={"X-Auto-Push-Secret": AUTO_PUSH_SECRET},
+            timeout=25,
+        )
+
+        try:
+            data = response.json()
+        except Exception:
+            data = {}
+
+        if not response.ok or not data.get("ok"):
+            print(
+                "AUTO PUSH RETRY | "
+                f"pending={len(pending)} | "
+                f"http={response.status_code} | "
+                f"error={data.get('error', 'BAD_RESPONSE')}"
+            )
+            return
+
+        stamp = now_athens()
+        log_ws.batch_update(
+            [
+                {
+                    "range": f"K{item['row']}",
+                    "values": [[f"SENT {stamp}"]],
+                }
+                for item in pending
+            ],
+            raw=True,
+        )
+
+        print(
+            "AUTO PUSH OK | "
+            f"alerts={len(pending)} | "
+            f"devices={int(data.get('sent') or 0)} | "
+            f"failed={int(data.get('failed') or 0)}"
+        )
+
+    except requests.RequestException as exc:
+        print(
+            "AUTO PUSH RETRY | "
+            f"pending={len(pending)} | "
+            f"{type(exc).__name__}: {exc}"
+        )
+
+
 def load_baselines(log_ws):
 
     rows = log_ws.get_all_values()
