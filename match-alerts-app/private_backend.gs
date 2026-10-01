@@ -946,6 +946,7 @@ function adminAddDaysAll_(p) {
   const now = Date.now();
   let updated = 0;
   let skippedNoExpiry = 0;
+  let skippedExpired = 0;
 
   Object.keys(props).forEach(function(k) {
     if (k.indexOf("USER::") !== 0) return;
@@ -958,16 +959,19 @@ function adminAddDaysAll_(p) {
         skippedNoExpiry++;
         return;
       }
+      if (current <= now) {
+        skippedExpired++;
+        return;
+      }
 
-      const base = current > now ? current : now;
-      u.subscriptionEndsAt = new Date(base + days * 24 * 60 * 60 * 1000).toISOString();
+      u.subscriptionEndsAt = new Date(current + days * 24 * 60 * 60 * 1000).toISOString();
       u.updatedAt = new Date().toISOString();
       propsService.setProperty(k, JSON.stringify(u));
       updated++;
     } catch (_) {}
   });
 
-  return {ok:true,days:days,updated:updated,skippedNoExpiry:skippedNoExpiry};
+  return {ok:true,days:days,updated:updated,skippedNoExpiry:skippedNoExpiry,skippedExpired:skippedExpired};
 }
 
 function addSubscriptionDays_(usernameRaw, daysRaw) {
