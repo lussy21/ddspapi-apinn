@@ -36,7 +36,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div>
 <div id="dash" class="hidden">
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
-<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div><div class="section"><h3>Μαζική παράταση συνδρομών</h3><div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div><div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div></div>
+<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div><div class="section hidden" id="subscriptionBulk"><h3>Μαζική παράταση συνδρομών</h3><div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div><div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div></div>
 <div class="section">
   <h3>Μήνυμα προς όλους</h3>
   <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
@@ -51,7 +51,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div></section></div>
 <script>
 const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
-let adminSecret="", adminFreeSlots=0;
+let adminSecret="", adminFreeSlots=0, subscriptionFeatureLive=false;
 let backendWarmPromise=null;
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
@@ -86,7 +86,7 @@ async function apiPost(params){
 async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
-  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0);
+  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
 
   try{
     const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
@@ -116,7 +116,7 @@ function renderUsers(arr){
   users.innerHTML=arr.length?arr.map(u=>{
     const status=!u.verified?"Email σε αναμονή":(u.revoked?"Κομμένη πρόσβαση":(u.subscriptionExpired?"Έληξε":"Ενεργός"));
     const expiry=u.subscriptionEndsAt?new Date(u.subscriptionEndsAt).toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"}):"Χωρίς ημερομηνία λήξης";
-    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)}</div></div><div class="buttons">${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
+    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)}</div></div><div class="buttons">${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified&&subscriptionFeatureLive?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
   }).join(""):'<div class="note">Δεν υπάρχουν χρήστες ακόμα.</div>';
 }
 function renderSupport(arr){
