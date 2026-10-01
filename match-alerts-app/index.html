@@ -69,8 +69,16 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 <footer>Match Alerts · Private</footer>
 </main>
 <script>
-const API_URL="https://match-alerts-api-private.onrender.com/api";
+const API_ROOT="https://match-alerts-api-private.onrender.com";
+const API_URL=API_ROOT+"/api";
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
+
+// Start waking the free backend as soon as the app shell opens.
+// This does not touch alerts; it only reduces the wait before login/actions.
+function warmBackend(){
+  fetch(API_ROOT+"/health",{cache:"no-store"}).catch(()=>{});
+}
+warmBackend();
 
 async function apiPost(params){
   const controller=new AbortController();
@@ -231,12 +239,50 @@ resendCode.onclick=async()=>{
 };
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
+function alertsCacheKey(){
+  const u=String(localStorage.getItem("ma_user")||"").trim().toLowerCase();
+  return u?"ma_alerts_cache_v1::"+u:"";
+}
+function saveAlertsCache(r){
+  const key=alertsCacheKey();
+  if(!key||!r||!r.ok)return;
+  try{
+    localStorage.setItem(key,JSON.stringify({
+      count:Number(r.count||0),
+      alerts:Array.isArray(r.alerts)?r.alerts:[],
+      updatedAt:r.updatedAt||new Date().toISOString(),
+      savedAt:Date.now()
+    }));
+  }catch(_){}
+}
+function showCachedAlerts(){
+  const key=alertsCacheKey();
+  if(!key)return false;
+  try{
+    const cached=JSON.parse(localStorage.getItem(key)||"null");
+    if(!cached||!Array.isArray(cached.alerts))return false;
+    counter.textContent=Number(cached.count||0)+" ενεργά alerts";
+    const d=new Date(cached.updatedAt||cached.savedAt||Date.now());
+    updatedAt.textContent=(isNaN(d)?"Τελευταία εικόνα":"Τελευταία "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}))+" · ενημέρωση…";
+    renderAlerts(cached.alerts);
+    return true;
+  }catch(_){
+    return false;
+  }
+}
+function clearCurrentAlertsCache(){
+  const key=alertsCacheKey();
+  if(key)localStorage.removeItem(key);
+}
 function saveSession(r){
   sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
-  authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=r.username||"";loadAlerts();
+  authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=r.username||"";
+  const hadCache=showCachedAlerts();
+  loadAlerts({preserveContent:hadCache});
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
+  clearCurrentAlertsCache();
   localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");authView.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
@@ -247,8 +293,9 @@ function renderAlerts(alerts){
   const groups={}; alerts.forEach(a=>{(groups[a.league]||(groups[a.league]=[])).push(a);});
   content.innerHTML=Object.entries(groups).map(([league,rows])=>`<section class="league"><div class="league-head"><div class="league-title">${esc(league)}</div><div class="league-count">${rows.length} alerts</div></div>${rows.map(a=>`<div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${a.favoriteSide==="H"?"Favorite: Home":a.favoriteSide==="A"?"Favorite: Away":""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${esc(a.alert)}</div>${(a.leagueRecord||a.allStatsRecord)?`<div class="history"><b>ΠΡΩΤΑΘΛΗΜΑ</b> ${esc(a.leagueRecord||"—")} · <b>ALL STATS</b> ${esc(a.allStatsRecord||"—")}${a.rating?` · <b>POWER</b> ${esc(a.rating)}`:""}</div>`:""}</div></div></div>`).join("")}</section>`).join("");
 }
-async function loadAlerts(){
-  content.innerHTML='<div class="loading">Φόρτωση…</div>';
+async function loadAlerts(opts={}){
+  const preserveContent=!!opts.preserveContent;
+  if(!preserveContent)content.innerHTML='<div class="loading">Φόρτωση…</div>';
   try{
     const r=await apiPost({action:"alerts",token:sessionToken});
     if(!r.ok) throw new Error(r.error||"ERROR");
@@ -256,6 +303,7 @@ async function loadAlerts(){
     counter.textContent=(r.count||0)+" ενεργά alerts";
     const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Updated "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
     renderAlerts(r.alerts||[]);
+    saveAlertsCache(r);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED"].includes(err.message)){
       localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
@@ -263,6 +311,10 @@ async function loadAlerts(){
       return;
     }
     if(["SHEET_READ_FAILED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE","TIMEOUT"].includes(err.message)){
+      if(preserveContent){
+        updatedAt.textContent="Τελευταία εικόνα · ανανέωση απέτυχε";
+        return;
+      }
       try{
         const demo=await fetch("./demo-alerts.json?v=20260928-1840",{cache:"no-store"}).then(r=>r.json());
         counter.textContent=(demo.count||0)+" ενεργά alerts";
@@ -279,7 +331,13 @@ async function loadAlerts(){
     content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'</div>';
   }
 }
-if(sessionToken){authView.classList.add("hidden");alertsView.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";loadAlerts();}
+if(sessionToken){
+  authView.classList.add("hidden");
+  alertsView.classList.remove("hidden");
+  currentUser.textContent=localStorage.getItem("ma_user")||"";
+  const hadCache=showCachedAlerts();
+  loadAlerts({preserveContent:hadCache});
+}
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}
 </script>
 </body></html>
