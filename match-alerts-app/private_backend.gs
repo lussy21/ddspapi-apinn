@@ -993,6 +993,8 @@ function adminSignals_(p) {
       ? (pickSide === "H" ? "1X" : "2X")
       : (pickSide === "H" ? "1" : "2");
 
+    const records = alertRecords_(rows, league, alert);
+
     signals.push({
       league:league,
       home:home,
@@ -1002,6 +1004,8 @@ function adminSignals_(p) {
       internalAlert:alert,
       rawAlert:rawAlert,
       rating:alertRating_(rawAlert),
+      leagueRecord:records.leagueRecord,
+      allStatsRecord:records.allStatsRecord,
       customerPick:customerPick,
       customerTeam:pickSide === "H" ? home : away,
       kickoff:String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim()
