@@ -101,6 +101,7 @@ async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
+  if(subscriptionFeatureLive && !settings.autoPushConfigured){try{await apiPost({action:"adminAutomationSetup",adminCode:adminSecret});}catch(_){}}
 
   try{
     const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
