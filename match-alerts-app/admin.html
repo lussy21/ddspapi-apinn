@@ -212,7 +212,14 @@ window.signalToggle=async(action,controlId,btn)=>{
     const r=await apiPost({action,adminCode:adminSecret,controlId});
     if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
     await reloadSignals();
-    msg.textContent=action==="adminSignalWithdraw"?"Η επιλογή αποσύρθηκε από τους πελάτες.":"Η επιλογή δημοσιεύτηκε ξανά στους πελάτες.";
+    if(action==="adminSignalWithdraw"){
+      const sent=Number(r.pushSent||0), total=Number(r.pushTotal||0), failed=Number(r.pushFailed||0);
+      msg.textContent=total>0
+        ? "Η επιλογή αποσύρθηκε. Ειδοποίηση push: "+sent+"/"+total+(failed?(" · απέτυχαν "+failed):"")+"."
+        : "Η επιλογή αποσύρθηκε. Δεν υπήρχε χρήστης με ενεργό push που να την είχε αποθηκεύσει.";
+    }else{
+      msg.textContent="Η επιλογή δημοσιεύτηκε ξανά στους πελάτες.";
+    }
   }catch(e){
     btn.disabled=false;btn.textContent=old;
     msg.textContent=e.message==="SELECTION_LOCKED"?"Ο αγώνας έχει ξεκινήσει και η επιλογή έχει κλειδώσει.":"Σφάλμα: "+e.message;
