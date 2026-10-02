@@ -123,28 +123,28 @@ async function loadAdmin(){
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
   internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive);
   memberHistoryLive=settings.memberHistory===true;
-  if(subscriptionFeatureLive && !settings.autoPushConfigured){try{await apiPost({action:"adminAutomationSetup",adminCode:adminSecret});}catch(_){}}
+  if(subscriptionFeatureLive && !settings.autoPushConfigured){
+    apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
+  }
 
+  const jobs=[];
   if(internalSignalsLive){
-    try{
-      const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
+    jobs.push(apiPost({action:"adminSignals",adminCode:adminSecret}).then(sig=>{
       if(sig.ok) renderSignals(sig.signals||[]);
       else signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
-    }catch(_){
+    }).catch(()=>{
       signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
-    }
+    }));
   }
 
-  try{
-    const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
+  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret}).then(list=>{
     if(list.ok) renderUsers(list.users||[]);
     else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }catch(_){
+  }).catch(()=>{
     users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }
+  }));
 
-  try{
-    const support=await apiPost({action:"adminSupport",adminCode:adminSecret});
+  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret}).then(support=>{
     if(support.ok){
       supportNew.textContent=String(support.newCount||0);
       renderSupport(support.messages||[]);
@@ -152,10 +152,12 @@ async function loadAdmin(){
       supportNew.textContent="0";
       supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
     }
-  }catch(_){
+  }).catch(()=>{
     supportNew.textContent="0";
     supportInbox.innerHTML='<div class="note">Η υποστήριξη δεν είναι διαθέσιμη προσωρινά.</div>';
-  }
+  }));
+
+  await Promise.all(jobs);
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
