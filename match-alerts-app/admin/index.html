@@ -247,7 +247,7 @@ function renderUsers(arr){
   users.innerHTML=arr.length?arr.map(u=>{
     const status=!u.verified?"Email σε αναμονή":(u.revoked?"Κομμένη πρόσβαση":(u.subscriptionExpired?"Έληξε":"Ενεργός"));
     const expiry=u.subscriptionEndsAt?new Date(u.subscriptionEndsAt).toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"}):"Χωρίς ημερομηνία λήξης";
-    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)}</div></div><div class="buttons">${memberHistoryLive?`<button class="mini member-profile-btn" onclick="openMemberProfile('${safe(u.username)}')">Προφίλ</button>`:""}${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified&&subscriptionFeatureLive?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
+    return `<div class="user"><div class="user-main"><div class="name">${esc(u.username)}</div><div class="meta">${status} · ${esc(u.email||"")} · ${esc((u.createdAt||"").slice(0,10))}</div><div class="expiry">Λήξη: ${esc(expiry)} · Συσκευή: ${u.deviceBound?"δεμένη":"όχι ακόμη"}</div></div><div class="buttons">${memberHistoryLive?`<button class="mini member-profile-btn" onclick="openMemberProfile('${safe(u.username)}')">Προφίλ</button>`:""}${u.deviceBound?`<button class="mini" onclick="act('adminResetDevice','${safe(u.username)}')">Αλλαγή συσκευής</button>`:""}${u.revoked?`<button class="mini" onclick="act('adminRestore','${safe(u.username)}')">Ενεργοποίηση</button>`:`<button class="mini" onclick="act('adminRevoke','${safe(u.username)}')">Κόψιμο</button>`}<button class="mini danger" onclick="act('adminDelete','${safe(u.username)}')">Διαγραφή</button></div>${u.verified&&subscriptionFeatureLive?`<div class="extend-line"><input class="number user-days" type="number" min="1" max="3650" step="1" value="7"><button class="mini" onclick="addDays('${safe(u.username)}',this)">+ Ημέρες</button></div>`:""}</div>`;
   }).join(""):'<div class="note">Δεν υπάρχουν χρήστες ακόμα.</div>';
 }
 function profileDate(value,withTime){
@@ -345,7 +345,17 @@ window.addDays=async(username,btn)=>{
 };
 window.act=async(action,username)=>{
   if(action==="adminRestore" && adminFreeSlots<=0){msg.textContent="Δεν υπάρχει διαθέσιμη θέση. Αύξησε πρώτα το όριο.";return;}
-  try{const r=await apiPost({action,adminCode:adminSecret,username});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent=action==="adminDelete"?"Ο χρήστης διαγράφηκε και η θέση ελευθερώθηκε.":"Η πρόσβαση ενημερώθηκε.";}catch(e){msg.textContent="Σφάλμα: "+e.message;}
+  if(action==="adminResetDevice" && !confirm("Να επιτραπεί στον "+username+" να συνδέσει καινούρια συσκευή; Η τωρινή σύνδεση θα κλείσει.")) return;
+  try{
+    const r=await apiPost({action,adminCode:adminSecret,username});
+    if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+    await loadAdmin();
+    msg.textContent=action==="adminDelete"
+      ?"Ο χρήστης διαγράφηκε και η θέση ελευθερώθηκε."
+      :action==="adminResetDevice"
+        ?"Η συσκευή του "+username+" αποδεσμεύτηκε. Η επόμενη επιτυχής σύνδεση θα γίνει η νέα μοναδική συσκευή."
+        :"Η πρόσβαση ενημερώθηκε.";
+  }catch(e){msg.textContent="Σφάλμα: "+e.message;}
 };
 unlock.onclick=async()=>{
   adminSecret=adminCode.value.trim();
