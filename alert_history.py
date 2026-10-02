@@ -796,10 +796,15 @@ def main():
 
 
         # =========================================
-        # 1. ΝΕΟ ALERT
+        # ALERT STATE MACHINE (event-id based)
         # =========================================
+        # The hidden BB:BE fields belong to a physical row and can survive
+        # when that row is reused for a different match. Therefore they are
+        # display/cache fields only. The ALERT LOG baseline keyed by event ID
+        # is the source of truth for whether this match already had an alert.
 
-        if alert and not old_active:
+        # 1. ΝΕΟ ALERT — this event ID had no active baseline before.
+        if alert and baseline is None:
 
             open_text = compact_open_text(
                 snapshot
@@ -842,23 +847,27 @@ def main():
             continue
 
 
-        # =========================================
         # 2. ALERT ΑΛΛΑΞΕ ΤΥΠΟ
-        # π.χ ΚΟΝΤΡΑ -> ΔΥΝΑΤΟ ΚΟΝΤΡΑ
-        # =========================================
-
+        # π.χ ΚΟΝΤΡΑ -> ΔΥΝΑΤΟ ΚΟΝΤΡΑ.
         if (
             alert
-            and old_active
-            and old_alert != alert
+            and baseline is not None
+            and baseline.get("alert", "") != alert
         ):
+
+            old_baseline_alert = str(
+                baseline.get(
+                    "alert",
+                    "",
+                )
+            ).strip()
 
             open_text = compact_open_text(
                 snapshot
             )
 
             detail = (
-                f"{old_alert} → {alert}"
+                f"{old_baseline_alert} → {alert}"
             )
 
             sheet_updates.append({
@@ -898,43 +907,32 @@ def main():
             continue
 
 
-        # =========================================
-        # 3. ALERT ΠΑΡΑΜΕΝΕΙ ΙΔΙΟ
-        # ΑΛΛΑ ΕΜΕΙΣ ΑΛΛΑΞΑΜΕ ΤΗ ΦΟΡΜΟΥΛΑ
-        # =========================================
-
+        # 3. ALERT ΠΑΡΑΜΕΝΕΙ ΙΔΙΟ.
         if (
             alert
-            and old_active
-            and old_alert == alert
+            and baseline is not None
+            and baseline.get("alert", "") == alert
         ):
 
-            # Αν είναι η πρώτη φορά που
-            # τρέχει το history
-            if baseline is None:
+            # Keep the row-local display/cache fields aligned with the
+            # event-id baseline in case this physical row was reused.
+            if (not old_active) or old_alert != alert:
 
-                log_rows.append([
-                    now_athens(),
-                    key,
-                    sheet_row,
-                    league,
-                    f"{home} - {away}",
-                    "ΣΥΓΧΡΟΝΙΣΜΟΣ",
-                    alert,
-                    "Το history ξεκίνησε ενώ το alert ήταν ήδη ενεργό.",
-                    json.dumps(
-                        snapshot,
-                        ensure_ascii=False,
+                open_text = compact_open_text(
+                    snapshot
+                )
+
+                sheet_updates.append({
+                    "range": (
+                        f"BB{sheet_row}:BE{sheet_row}"
                     ),
-                    formula,
-                ])
-
-                baselines[key] = {
-                    "alert": alert,
-                    "snapshot": snapshot,
-                }
-
-                continue
+                    "values": [[
+                        "ΕΝΕΡΓΟ",
+                        alert,
+                        open_text,
+                        "",
+                    ]],
+                })
 
             old_formula = (
                 baseline[
@@ -976,31 +974,27 @@ def main():
             continue
 
 
-        # =========================================
-        # 4. ALERT ΕΦΥΓΕ
-        # =========================================
-
+        # 4. ALERT ΕΦΥΓΕ — only when this exact event ID had an active
+        # baseline. Stale row-local BB:BE values alone must never create
+        # a fake removal for a newly reused row.
         if (
             not alert
-            and old_active
+            and baseline is not None
         ):
 
-            if baseline:
+            reason = compare_snapshots(
+                baseline[
+                    "snapshot"
+                ],
+                snapshot,
+            )
 
-                reason = compare_snapshots(
-                    baseline[
-                        "snapshot"
-                    ],
-                    snapshot,
+            old_baseline_alert = str(
+                baseline.get(
+                    "alert",
+                    old_alert,
                 )
-
-            else:
-
-                reason = (
-                    "Το alert έφυγε. "
-                    "Δεν υπήρχε παλιό machine snapshot "
-                    "για σύγκριση."
-                )
+            ).strip()
 
             sheet_updates.append({
                 "range": (
@@ -1008,7 +1002,7 @@ def main():
                 ),
                 "values": [[
                     "ΕΦΥΓΕ",
-                    old_alert,
+                    old_baseline_alert,
                     old_open_text,
                     reason,
                 ]],
@@ -1021,7 +1015,7 @@ def main():
                 league,
                 f"{home} - {away}",
                 "ΕΦΥΓΕ",
-                old_alert,
+                old_baseline_alert,
                 reason,
                 json.dumps(
                     snapshot,
@@ -1034,6 +1028,29 @@ def main():
                 key,
                 None,
             )
+
+            continue
+
+
+        # If this physical row was recycled for another match, clear stale
+        # local history flags. This is not an alert event and must not be logged.
+        if (
+            not alert
+            and baseline is None
+            and (old_active or old_alert or old_open_text)
+        ):
+
+            sheet_updates.append({
+                "range": (
+                    f"BB{sheet_row}:BE{sheet_row}"
+                ),
+                "values": [[
+                    "",
+                    "",
+                    "",
+                    "",
+                ]],
+            })
 
             continue
 
