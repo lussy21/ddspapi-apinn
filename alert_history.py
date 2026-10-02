@@ -501,7 +501,7 @@ def load_pending_pushes(log_ws):
 
     for sheet_row, row in enumerate(rows[1:], start=2):
         row = row + [""] * (11 - len(row))
-        if str(row[5]).strip() not in ("ΑΝΟΙΞΕ", "ΑΛΛΑΞΕ ALERT"):
+        if str(row[5]).strip() not in ("ΑΝΟΙΞΕ", "ΑΛΛΑΞΕ ALERT", "ΕΦΥΓΕ"):
             continue
         if str(row[10]).strip().upper() != "PENDING":
             continue
@@ -521,6 +521,7 @@ def load_pending_pushes(log_ws):
             "key": str(row[1]).strip(),
             "league": str(row[3]).strip(),
             "match": str(row[4]).strip(),
+            "event": str(row[5]).strip(),
             "alert": str(row[6]).strip(),
         })
 
@@ -548,6 +549,7 @@ def send_pending_pushes(log_ws):
                         "key": item["key"],
                         "league": item["league"],
                         "match": item["match"],
+                        "event": item["event"],
                         "alert": item["alert"],
                     }
                     for item in pending
@@ -1022,6 +1024,7 @@ def main():
                     ensure_ascii=False,
                 ),
                 formula,
+                "PENDING",
             ])
 
             baselines.pop(
