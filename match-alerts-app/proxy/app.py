@@ -127,8 +127,58 @@ def internal_alerts_push():
         return jsonify(ok=True, sent=0, failed=0, removed=0, total=0), 200
 
     count = len(alerts)
-    title = "DreamTeamTips"
-    body = "Νέα επιλογή διαθέσιμη" if count == 1 else f"{count} νέες επιλογές διαθέσιμες"
+
+    def clean_match(value):
+        text_value = str(value or "").strip()
+        return text_value.replace(" - ", " – ")
+
+    def alert_action(item):
+        event = str(item.get("event") or "").strip()
+        if event == "ΕΦΥΓΕ":
+            return "removed"
+        if event == "ΑΛΛΑΞΕ ALERT":
+            return "changed"
+        return "new"
+
+    if count == 1:
+        item = alerts[0] if isinstance(alerts[0], dict) else {}
+        action = alert_action(item)
+        match_name = clean_match(item.get("match"))
+        if action == "removed":
+            title = "Επιλογή αποσύρθηκε"
+        elif action == "changed":
+            title = "Επιλογή ενημερώθηκε"
+        else:
+            title = "Νέα επιλογή"
+        body = match_name or "DreamTeamTips"
+        target_url = "./?match=" + requests.utils.quote(str(item.get("match") or "").strip())
+        tag = "dreamteamtips-" + action + "-" + str(item.get("key") or "update")
+    else:
+        groups = {"new": [], "changed": [], "removed": []}
+        for raw_item in alerts:
+            item = raw_item if isinstance(raw_item, dict) else {}
+            name = clean_match(item.get("match"))
+            if name:
+                groups[alert_action(item)].append(name)
+
+        parts = []
+        labels = (("new", "Νέα"), ("changed", "Άλλαξαν"), ("removed", "Αποσύρθηκαν"))
+        for key_name, label in labels:
+            names = groups[key_name]
+            if not names:
+                continue
+            shown = names[:3]
+            piece = label + ": " + ", ".join(shown)
+            if len(names) > len(shown):
+                piece += f" +{len(names) - len(shown)}"
+            parts.append(piece)
+
+        title = f"{count} ενημερώσεις επιλογών"
+        body = " · ".join(parts) if parts else f"{count} ενημερώσεις στις επιλογές"
+        if len(body) > 220:
+            body = body[:217].rstrip() + "…"
+        target_url = "./"
+        tag = "dreamteamtips-picks-update"
 
     vapid_private_key = get_vapid_private_key()
     if not vapid_private_key:
@@ -154,8 +204,8 @@ def internal_alerts_push():
         {
             "title": title,
             "body": body,
-            "url": "./",
-            "tag": "dreamteamtips-new-picks",
+            "url": target_url,
+            "tag": tag,
         },
         ensure_ascii=False,
     )
