@@ -501,7 +501,7 @@ def load_pending_pushes(log_ws):
 
     for sheet_row, row in enumerate(rows[1:], start=2):
         row = row + [""] * (11 - len(row))
-        if str(row[5]).strip() != "ΑΝΟΙΞΕ":
+        if str(row[5]).strip() not in ("ΑΝΟΙΞΕ", "ΑΛΛΑΞΕ ALERT"):
             continue
         if str(row[10]).strip().upper() != "PENDING":
             continue
@@ -887,6 +887,7 @@ def main():
                     ensure_ascii=False,
                 ),
                 formula,
+                "PENDING",
             ])
 
             baselines[key] = {
