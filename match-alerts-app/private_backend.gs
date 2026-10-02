@@ -235,21 +235,31 @@ function login_(p) {
     return {ok:false,error:"INVALID_LOGIN"};
   }
 
-  const token = makeToken_();
-  const expiresAt = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
+  // One active login per account. A new successful login immediately
+  // invalidates every older session for this username.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    invalidateSessionsForUser_(username);
 
-  props.setProperty(sessionKey_(token), JSON.stringify({
-    username:username,
-    expiresAt:expiresAt
-  }));
+    const token = makeToken_();
+    const expiresAt = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
 
-  return {
-    ok:true,
-    token:token,
-    username:username,
-    expiresAt:new Date(expiresAt).toISOString(),
-    subscriptionEndsAt:u.subscriptionEndsAt || ""
-  };
+    props.setProperty(sessionKey_(token), JSON.stringify({
+      username:username,
+      expiresAt:expiresAt
+    }));
+
+    return {
+      ok:true,
+      token:token,
+      username:username,
+      expiresAt:new Date(expiresAt).toISOString(),
+      subscriptionEndsAt:u.subscriptionEndsAt || ""
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function logout_(p) {
