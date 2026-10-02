@@ -1312,6 +1312,7 @@ function adminPlayedHistory_(p) {
   let wins = 0;
   let losses = 0;
   let pending = 0;
+  let withdrawn = 0;
 
   const items = saved.map(function(item) {
     const row = rowById[item.id] || null;
@@ -1342,6 +1343,7 @@ function adminPlayedHistory_(p) {
     if (status === "win") wins++;
     else if (status === "loss") losses++;
     else if (status === "pending") pending++;
+    else if (status === "withdrawn") withdrawn++;
 
     return {
       id:item.id,
@@ -1388,7 +1390,8 @@ function adminPlayedHistory_(p) {
       total:items.length,
       wins:wins,
       losses:losses,
-      pending:pending
+      pending:pending,
+      withdrawn:withdrawn
     },
     items:items.slice(0,250)
   };
