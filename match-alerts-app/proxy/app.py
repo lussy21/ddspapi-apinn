@@ -252,6 +252,120 @@ def api():
             return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
         return jsonify(data), 200
 
+    if payload.get("action") == "adminSignalWithdraw":
+        admin_code = str(payload.get("adminCode") or "")
+        control_id = str(payload.get("controlId") or "").strip()
+
+        try:
+            data = upstream_post(
+                {
+                    "action": "adminSignalWithdraw",
+                    "adminCode": admin_code,
+                    "controlId": control_id,
+                },
+                timeout=(4, 15),
+            )
+        except requests.RequestException:
+            return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+        except RuntimeError:
+            return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+
+        if not data.get("ok"):
+            return jsonify(data), 200
+
+        affected_users = {
+            str(username or "").strip().lower()
+            for username in (data.get("savedBy") or [])
+            if str(username or "").strip()
+        }
+        sent = 0
+        failed = 0
+        removed = 0
+        total = 0
+        failure_codes = {}
+
+        if affected_users and get_vapid_private_key():
+            try:
+                target_data = upstream_post(
+                    {"action": "adminPushTargets", "adminCode": admin_code},
+                    timeout=(4, 15),
+                )
+            except (requests.RequestException, RuntimeError):
+                target_data = {"ok": False, "targets": []}
+
+            if target_data.get("ok"):
+                targets = [
+                    target
+                    for target in target_data.get("targets", [])
+                    if str(target.get("username") or "").strip().lower() in affected_users
+                ]
+                total = len(targets)
+                title = "Επιλογή αποσύρθηκε"
+                match_name = (str(data.get("home") or "").strip() + " – " + str(data.get("away") or "").strip()).strip(" –")
+                pick = str(data.get("pick") or "").strip()
+                body = match_name + ((" · " + pick) if pick else "")
+                if not body:
+                    body = "Μία επιλογή του DreamTeamTips αποσύρθηκε."
+                message = json.dumps(
+                    {
+                        "title": title,
+                        "body": body,
+                        "url": "./",
+                        "tag": "dreamteamtips-withdraw-" + control_id,
+                    },
+                    ensure_ascii=False,
+                )
+                vapid_private_key = get_vapid_private_key()
+
+                for target in targets:
+                    subscription = {
+                        "endpoint": target.get("endpoint", ""),
+                        "keys": target.get("keys") or {},
+                    }
+                    if not subscription["endpoint"]:
+                        continue
+                    try:
+                        webpush(
+                            subscription_info=subscription,
+                            data=message,
+                            vapid_private_key=vapid_private_key,
+                            vapid_claims={"sub": VAPID_SUBJECT},
+                            ttl=900,
+                        )
+                        sent += 1
+                    except WebPushException as exc:
+                        failed += 1
+                        status = getattr(getattr(exc, "response", None), "status_code", None)
+                        code = "webpush_" + str(status or "unknown")
+                        failure_codes[code] = failure_codes.get(code, 0) + 1
+                        app.logger.warning("withdraw_push_failure code=%s", code)
+                        if status in (404, 410) and target.get("key"):
+                            try:
+                                cleanup = upstream_post(
+                                    {
+                                        "action": "adminPushDelete",
+                                        "adminCode": admin_code,
+                                        "key": target.get("key", ""),
+                                    }
+                                )
+                                if cleanup.get("ok"):
+                                    removed += 1
+                            except Exception:
+                                pass
+                    except Exception as exc:
+                        failed += 1
+                        code = "client_" + exc.__class__.__name__
+                        failure_codes[code] = failure_codes.get(code, 0) + 1
+                        app.logger.warning("withdraw_push_failure code=%s", code)
+
+        data.pop("savedBy", None)
+        data["pushSent"] = sent
+        data["pushFailed"] = failed
+        data["pushRemoved"] = removed
+        data["pushTotal"] = total
+        data["pushFailureCodes"] = failure_codes
+        return jsonify(data), 200
+
     if payload.get("action") == "adminPushSend":
         title = str(payload.get("title") or "").strip()[:80]
         body = str(payload.get("body") or "").strip()[:220]
