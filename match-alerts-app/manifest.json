@@ -1,13 +1,14 @@
 {
-  "name": "Match Alerts",
-  "short_name": "Alerts",
+  "name": "DreamTeamTips",
+  "short_name": "DreamTeamTips",
+  "id": "./",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#070708",
   "theme_color": "#070708",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "dreamteamtips-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
