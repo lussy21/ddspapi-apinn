@@ -524,7 +524,8 @@ def api():
         ), 200
 
     try:
-        timeout = (4, 35) if payload.get("action") == "alerts" else (4, 10)
+        slow_actions = {"alerts", "adminSignals", "officialHistory", "adminPlayedHistory"}
+        timeout = (4, 35) if payload.get("action") in slow_actions else (4, 10)
         data = upstream_post(payload, timeout=timeout)
     except requests.RequestException:
         return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
