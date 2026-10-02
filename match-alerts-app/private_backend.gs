@@ -488,8 +488,36 @@ function adminSignalPublish_(p) {
 function adminSignalWithdraw_(p) {
   const guard = signalActionGuard_(p);
   if (!guard.ok) return guard;
+
   const control = writeSignalControl_(guard.signal.controlId, {status:"withdrawn"}, "withdraw");
-  return {ok:true,controlId:guard.signal.controlId,status:"withdrawn",pick:String(control.pick || "")};
+  const customer = effectiveCustomerPick_(guard.signal.favoriteSide, guard.signal.alert, control);
+
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const savedByMap = {};
+  Object.keys(props).forEach(function(key) {
+    if (key.indexOf("PLAYED::") !== 0) return;
+    try {
+      const item = JSON.parse(props[key]);
+      if (!item || !item.username) return;
+      const itemControlId = String(
+        item.controlId ||
+        signalMatchId_(item.league, item.home, item.away, item.kickoff)
+      );
+      if (itemControlId === guard.signal.controlId) {
+        savedByMap[normalizeUsername_(item.username)] = true;
+      }
+    } catch (_) {}
+  });
+
+  return {
+    ok:true,
+    controlId:guard.signal.controlId,
+    status:"withdrawn",
+    pick:customer.pick,
+    home:guard.signal.home,
+    away:guard.signal.away,
+    savedBy:Object.keys(savedByMap)
+  };
 }
 
 function adminSignalEdit_(p) {
