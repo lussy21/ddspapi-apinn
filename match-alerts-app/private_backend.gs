@@ -49,6 +49,7 @@ function doPost(e) {
     else if (action === "logout") payload = logout_(p);
     else if (action === "alerts") payload = alerts_(p);
     else if (action === "playedAdd") payload = playedAdd_(p);
+    else if (action === "playedRemove") payload = playedRemove_(p);
     else if (action === "playedHistory") payload = playedHistory_(p);
     else if (action === "pushSubscribe") payload = pushSubscribe_(p);
     else if (action === "memberMessages") payload = memberMessages_(p);
@@ -66,6 +67,9 @@ function doPost(e) {
     else if (action === "adminUsers") payload = adminUsers_(p);
     else if (action === "adminPlayedHistory") payload = adminPlayedHistory_(p);
     else if (action === "adminSignals") payload = adminSignals_(p);
+    else if (action === "adminSignalPublish") payload = adminSignalPublish_(p);
+    else if (action === "adminSignalWithdraw") payload = adminSignalWithdraw_(p);
+    else if (action === "adminSignalEdit") payload = adminSignalEdit_(p);
     else if (action === "adminSetMaxUsers") payload = adminSetMaxUsers_(p);
     else if (action === "adminAddDays") payload = adminAddDays_(p);
     else if (action === "adminAddDaysAll") payload = adminAddDaysAll_(p);
@@ -296,6 +300,10 @@ function alerts_(p) {
     const records = alertRecords_(pinRows, league, currentAlert);
     const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
     const selectionId = selectionId_(league, home, away, currentAlert, kickoff);
+    const controlId = signalMatchId_(league, home, away, kickoff);
+    const control = readSignalControl_(controlId);
+    if (String(control.status || "") === "withdrawn") return;
+    const customer = effectiveCustomerPick_(favoriteSide, currentAlert, control);
     out.push({
       league:league,
       home:home,
@@ -307,6 +315,8 @@ function alerts_(p) {
       allStatsRecord:records.allStatsRecord,
       kickoff:kickoff,
       selectionId:selectionId,
+      customerPick:customer.pick,
+      customerSide:customer.side,
       played:!!PropertiesService.getScriptProperties().getProperty(playedKey_(auth.username, selectionId))
     });
   });
@@ -343,6 +353,154 @@ function playedKey_(username, selectionId) {
   return "PLAYED::" + normalizeUsername_(username) + "::" + String(selectionId || "");
 }
 
+function signalMatchId_(league, home, away, kickoff) {
+  const raw = [
+    String(league || "").trim(),
+    String(home || "").trim(),
+    String(away || "").trim(),
+    String(kickoff || "").trim()
+  ].join("|");
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    raw,
+    Utilities.Charset.UTF_8
+  );
+  return Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, "").slice(0, 22);
+}
+
+function signalControlKey_(controlId) {
+  return "SIGNAL_CONTROL::" + String(controlId || "").trim();
+}
+
+function readSignalControl_(controlId) {
+  const raw = PropertiesService.getScriptProperties().getProperty(signalControlKey_(controlId));
+  if (!raw) return {};
+  try {
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === "object" ? obj : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function baseCustomerPick_(favoriteSide, alert) {
+  const fav = String(favoriteSide || "").trim().toUpperCase();
+  if (fav !== "H" && fav !== "A") return {pick:"",side:""};
+  const isContra = /ΚΟΝΤΡΑ|CONTRA/i.test(String(alert || ""));
+  const side = isContra ? (fav === "H" ? "A" : "H") : fav;
+  const pick = isContra
+    ? (side === "H" ? "1X" : "2X")
+    : (side === "H" ? "1" : "2");
+  return {pick:pick,side:side};
+}
+
+function effectiveCustomerPick_(favoriteSide, alert, control) {
+  const base = baseCustomerPick_(favoriteSide, alert);
+  const custom = String(control && control.pick || "").trim().toUpperCase();
+  if (!/^(1|2|1X|2X)$/.test(custom)) return base;
+  return {
+    pick:custom,
+    side:(custom === "1" || custom === "1X") ? "H" : "A"
+  };
+}
+
+function customerPickSuccess_(row, pick) {
+  const parsed = resultScore_(row && row[15]);
+  if (!parsed) return null;
+  const h = Number(parsed[0]), a = Number(parsed[1]);
+  const p = String(pick || "").trim().toUpperCase();
+  if (p === "1") return h > a;
+  if (p === "2") return a > h;
+  if (p === "1X") return h >= a;
+  if (p === "2X") return a >= h;
+  return null;
+}
+
+function writeSignalControl_(controlId, patch, actionName) {
+  const props = PropertiesService.getScriptProperties();
+  const key = signalControlKey_(controlId);
+  const current = readSignalControl_(controlId);
+  const next = Object.assign({}, current, patch || {});
+  next.updatedAt = new Date().toISOString();
+  const history = Array.isArray(current.history) ? current.history.slice(-19) : [];
+  history.push({action:String(actionName || "update"),at:next.updatedAt});
+  next.history = history;
+  props.setProperty(key, JSON.stringify(next));
+  return next;
+}
+
+function findCurrentSignalByControlId_(wantedId) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {error:"SHEET_READ_FAILED"};
+
+  const pinLast = pin.getLastRow();
+  if (pinLast < 3) return null;
+  const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+
+  for (let idx = 0; idx < rows.length; idx++) {
+    const row = rows[idx];
+    const league = String(row[0] || "").trim();
+    const home = String(row[1] || "").trim();
+    const away = String(row[2] || "").trim();
+    const favoriteSide = String(row[3] || "").trim().toUpperCase();
+    const alert = normalizeAlertName_(row[14]);
+    const result = String(row[15] || "").trim();
+    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    if (!league || !home || !away || !alert || result) continue;
+    const controlId = signalMatchId_(league, home, away, kickoff);
+    if (controlId !== wantedId) continue;
+    return {
+      controlId:controlId,
+      selectionId:selectionId_(league, home, away, alert, kickoff),
+      league:league,
+      home:home,
+      away:away,
+      favoriteSide:favoriteSide,
+      alert:alert,
+      kickoff:kickoff
+    };
+  }
+  return null;
+}
+
+function signalActionGuard_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const controlId = String(p.controlId || "").trim();
+  if (!controlId) return {ok:false,error:"BAD_SELECTION"};
+  const signal = findCurrentSignalByControlId_(controlId);
+  if (signal && signal.error) return {ok:false,error:signal.error};
+  if (!signal) return {ok:false,error:"SELECTION_NOT_ACTIVE"};
+  const startMs = kickoffTimeMs_(signal.kickoff);
+  if (!Number.isFinite(startMs)) return {ok:false,error:"KICKOFF_UNKNOWN"};
+  if (Date.now() >= startMs) return {ok:false,error:"SELECTION_LOCKED"};
+  return {ok:true,signal:signal};
+}
+
+function adminSignalPublish_(p) {
+  const guard = signalActionGuard_(p);
+  if (!guard.ok) return guard;
+  const control = writeSignalControl_(guard.signal.controlId, {status:"published"}, "publish");
+  return {ok:true,controlId:guard.signal.controlId,status:"published",pick:String(control.pick || "")};
+}
+
+function adminSignalWithdraw_(p) {
+  const guard = signalActionGuard_(p);
+  if (!guard.ok) return guard;
+  const control = writeSignalControl_(guard.signal.controlId, {status:"withdrawn"}, "withdraw");
+  return {ok:true,controlId:guard.signal.controlId,status:"withdrawn",pick:String(control.pick || "")};
+}
+
+function adminSignalEdit_(p) {
+  const guard = signalActionGuard_(p);
+  if (!guard.ok) return guard;
+  const pick = String(p.pick || "").trim().toUpperCase();
+  if (!/^(1|2|1X|2X)$/.test(pick)) return {ok:false,error:"BAD_CUSTOMER_PICK"};
+  const control = writeSignalControl_(guard.signal.controlId, {pick:pick}, "edit:" + pick);
+  return {ok:true,controlId:guard.signal.controlId,status:String(control.status || "auto"),pick:pick};
+}
+
 function playedAdd_(p) {
   const auth = requireSession_(String(p.token || ""));
   if (!auth.ok) return auth;
@@ -375,14 +533,22 @@ function playedAdd_(p) {
     const id = selectionId_(league, home, away, currentAlert, kickoff);
     if (id !== wantedId) continue;
 
+    const controlId = signalMatchId_(league, home, away, kickoff);
+    const control = readSignalControl_(controlId);
+    if (String(control.status || "") === "withdrawn") return {ok:false,error:"SELECTION_NOT_ACTIVE"};
+    const customer = effectiveCustomerPick_(favoriteSide, currentAlert, control);
+
     selected = {
       id:id,
+      controlId:controlId,
       username:auth.username,
       league:league,
       home:home,
       away:away,
       favoriteSide:favoriteSide,
       alert:currentAlert,
+      customerPick:customer.pick,
+      customerSide:customer.side,
       kickoff:kickoff,
       createdAt:new Date().toISOString()
     };
@@ -400,6 +566,57 @@ function playedAdd_(p) {
   if (!props.getProperty(key)) props.setProperty(key, JSON.stringify(selected));
 
   return {ok:true,id:selected.id};
+}
+
+function kickoffTimeMs_(value) {
+  const text = String(value || "").trim();
+  if (!text) return NaN;
+
+  const direct = Date.parse(text);
+  if (Number.isFinite(direct)) return direct;
+
+  const formats = [
+    "dd/MM/yyyy HH:mm",
+    "d/M/yyyy H:mm",
+    "dd/MM/yy HH:mm",
+    "yyyy-MM-dd HH:mm",
+    "yyyy-MM-dd'T'HH:mm:ss"
+  ];
+  for (let i = 0; i < formats.length; i++) {
+    try {
+      const parsed = Utilities.parseDate(text, "Europe/Athens", formats[i]);
+      const ms = parsed && parsed.getTime ? parsed.getTime() : NaN;
+      if (Number.isFinite(ms)) return ms;
+    } catch (_) {}
+  }
+  return NaN;
+}
+
+function playedRemove_(p) {
+  const auth = requireSession_(String(p.token || ""));
+  if (!auth.ok) return auth;
+
+  const wantedId = String(p.selectionId || "").trim();
+  if (!wantedId) return {ok:false,error:"BAD_SELECTION"};
+
+  const props = PropertiesService.getScriptProperties();
+  const key = playedKey_(auth.username, wantedId);
+  const raw = props.getProperty(key);
+  if (!raw) return {ok:true,removed:false,id:wantedId};
+
+  let item;
+  try {
+    item = JSON.parse(raw);
+  } catch (_) {
+    return {ok:false,error:"BAD_SELECTION"};
+  }
+
+  const startMs = kickoffTimeMs_(item && item.kickoff);
+  if (!Number.isFinite(startMs)) return {ok:false,error:"KICKOFF_UNKNOWN"};
+  if (Date.now() >= startMs) return {ok:false,error:"SELECTION_LOCKED"};
+
+  props.deleteProperty(key);
+  return {ok:true,removed:true,id:wantedId};
 }
 
 function playedHistory_(p) {
@@ -449,12 +666,20 @@ function playedHistory_(p) {
 
     if (row) {
       const parsed = resultScore_(row[15]);
-      const won = alertSuccess_(row, item.alert);
+      const won = item.customerPick
+        ? customerPickSuccess_(row, item.customerPick)
+        : alertSuccess_(row, item.alert);
       if (parsed) score = parsed[0] + "-" + parsed[1];
       if (won === true) status = "win";
       else if (won === false) status = "loss";
     }
 
+    const controlId = String(item.controlId || signalMatchId_(item.league, item.home, item.away, item.kickoff));
+    const control = readSignalControl_(controlId);
+    const withdrawn = status === "pending" && String(control.status || "") === "withdrawn";
+    if (withdrawn) status = "withdrawn";
+
+    const startMs = kickoffTimeMs_(item.kickoff);
     return {
       id:item.id,
       league:item.league,
@@ -462,10 +687,13 @@ function playedHistory_(p) {
       away:item.away,
       favoriteSide:item.favoriteSide,
       alert:item.alert,
+      customerPick:item.customerPick || "",
+      customerSide:item.customerSide || "",
       kickoff:item.kickoff,
       createdAt:item.createdAt,
       score:score,
-      status:status
+      status:status,
+      canRemove:(status === "pending" || status === "withdrawn") && Number.isFinite(startMs) && Date.now() < startMs
     };
   });
 
@@ -956,7 +1184,8 @@ function adminSettings_(p) {
     subscriptionDays:true,
     autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET"),
     internalSignals:true,
-    memberHistory:true
+    memberHistory:true,
+    publicationControls:true
   };
 }
 
@@ -988,18 +1217,19 @@ function adminSignals_(p) {
     if (!league || !home || !away || !alert || result) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
-    const isContra = /ΚΟΝΤΡΑ|CONTRA/i.test(alert);
-    const pickSide = isContra
-      ? (favoriteSide === "H" ? "A" : "H")
-      : favoriteSide;
-
-    const customerPick = isContra
-      ? (pickSide === "H" ? "1X" : "2X")
-      : (pickSide === "H" ? "1" : "2");
-
+    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    const controlId = signalMatchId_(league, home, away, kickoff);
+    const selectionId = selectionId_(league, home, away, alert, kickoff);
+    const control = readSignalControl_(controlId);
+    const customer = effectiveCustomerPick_(favoriteSide, alert, control);
     const records = alertRecords_(rows, league, alert);
+    const startMs = kickoffTimeMs_(kickoff);
+    const canEdit = Number.isFinite(startMs) && Date.now() < startMs;
+    const history = Array.isArray(control.history) ? control.history.slice(-5).reverse() : [];
 
     signals.push({
+      controlId:controlId,
+      selectionId:selectionId,
       league:league,
       home:home,
       away:away,
@@ -1010,9 +1240,14 @@ function adminSignals_(p) {
       rating:alertRating_(rawAlert),
       leagueRecord:records.leagueRecord,
       allStatsRecord:records.allStatsRecord,
-      customerPick:customerPick,
-      customerTeam:pickSide === "H" ? home : away,
-      kickoff:String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim()
+      customerPick:customer.pick,
+      customerTeam:customer.side === "H" ? home : away,
+      kickoff:kickoff,
+      published:String(control.status || "") !== "withdrawn",
+      publicationStatus:String(control.status || "auto"),
+      customPick:!!String(control.pick || ""),
+      canEdit:canEdit,
+      controlHistory:history
     });
   });
 
@@ -1083,28 +1318,30 @@ function adminPlayedHistory_(p) {
     const alert = String(item.alert || "").trim();
     const favoriteSide = String(item.favoriteSide || (row ? row[3] : "") || "").trim().toUpperCase();
     const rawAlert = row ? String(row[14] || "").trim() : alert;
-    const isContra = /ΚΟΝΤΡΑ|CONTRA/i.test(alert);
-    const pickSide = isContra
-      ? (favoriteSide === "H" ? "A" : favoriteSide === "A" ? "H" : "")
-      : favoriteSide;
-    const customerPick = isContra
-      ? (pickSide === "H" ? "1X" : pickSide === "A" ? "2X" : "")
-      : (pickSide === "H" ? "1" : pickSide === "A" ? "2" : "");
+    const base = baseCustomerPick_(favoriteSide, alert);
+    const customerPick = String(item.customerPick || base.pick || "");
+    const pickSide = String(item.customerSide || ((customerPick === "1" || customerPick === "1X") ? "H" : (customerPick === "2" || customerPick === "2X") ? "A" : base.side));
     const customerTeam = pickSide === "H" ? item.home : pickSide === "A" ? item.away : "";
 
     let score = "";
     let status = "pending";
     if (row) {
       const parsed = resultScore_(row[15]);
-      const won = alertSuccess_(row, alert);
+      const won = item.customerPick
+        ? customerPickSuccess_(row, customerPick)
+        : alertSuccess_(row, alert);
       if (parsed) score = parsed[0] + "-" + parsed[1];
       if (won === true) status = "win";
       else if (won === false) status = "loss";
     }
 
+    const controlId = String(item.controlId || signalMatchId_(item.league, item.home, item.away, item.kickoff));
+    const control = readSignalControl_(controlId);
+    if (status === "pending" && String(control.status || "") === "withdrawn") status = "withdrawn";
+
     if (status === "win") wins++;
     else if (status === "loss") losses++;
-    else pending++;
+    else if (status === "pending") pending++;
 
     return {
       id:item.id,
