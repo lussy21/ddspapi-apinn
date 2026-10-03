@@ -9,6 +9,7 @@
 <link rel="icon" href="dreamteamtips-icon.svg" type="image/svg+xml">
 <style>
 *{box-sizing:border-box}
+html.modal-open,body.modal-open{overflow:hidden;height:100dvh;overscroll-behavior:none;touch-action:none}
 html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
 body{display:flex;justify-content:center;overflow-x:hidden}
 .hero{position:relative;width:min(100vw,520px);background:#000}
@@ -53,8 +54,40 @@ const layer=document.getElementById("loginLayer"),openBtn=document.getElementByI
 const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
 const DEVICE_STORAGE_KEY="dtt_device_id_v1";const APP_URL="https://match-alerts-private.onrender.com/";const API_URL="https://match-alerts-api-private.onrender.com/api";
 function deviceId(){let x=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,x);return x}
-function openLogin(){if(localStorage.getItem("ma_token")){location.href=APP_URL;return}layer.classList.add("open");layer.setAttribute("aria-hidden","false");setTimeout(()=>user.focus(),80)}
-function closeLogin(){layer.classList.remove("open");layer.setAttribute("aria-hidden","true");msg.textContent=""}
+let lockedScrollY=0;
+function lockBackground(){
+  lockedScrollY=window.scrollY||window.pageYOffset||0;
+  document.documentElement.classList.add("modal-open");
+  document.body.classList.add("modal-open");
+  document.body.style.position="fixed";
+  document.body.style.top=`-${lockedScrollY}px`;
+  document.body.style.left="0";
+  document.body.style.right="0";
+  document.body.style.width="100%";
+}
+function unlockBackground(){
+  document.documentElement.classList.remove("modal-open");
+  document.body.classList.remove("modal-open");
+  document.body.style.position="";
+  document.body.style.top="";
+  document.body.style.left="";
+  document.body.style.right="";
+  document.body.style.width="";
+  window.scrollTo(0,lockedScrollY);
+}
+function openLogin(){
+  if(localStorage.getItem("ma_token")){location.href=APP_URL;return}
+  lockBackground();
+  layer.classList.add("open");
+  layer.setAttribute("aria-hidden","false");
+  setTimeout(()=>user.focus(),80)
+}
+function closeLogin(){
+  layer.classList.remove("open");
+  layer.setAttribute("aria-hidden","true");
+  msg.textContent="";
+  unlockBackground()
+}
 openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});signupLink.onclick=()=>{msg.textContent="Η δημιουργία λογαριασμού θα ενεργοποιηθεί στο επόμενο βήμα.";};
 async function apiPost(params){const c=new AbortController(),t=setTimeout(()=>c.abort(),16000);try{const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch(API_URL,{method:"POST",body:b,signal:c.signal,cache:"no-store"});return await r.json()}finally{clearTimeout(t)}}
 const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει."};
