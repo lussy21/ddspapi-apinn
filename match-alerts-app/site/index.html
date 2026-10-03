@@ -3,130 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#050505">
-<link rel="icon" href="../dreamteamtips-icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="DreamTeamTips · Private Members Area">
 <title>DreamTeamTips · Private Members Area</title>
+<link rel="icon" href="../dreamteamtips-icon.svg" type="image/svg+xml">
 <style>
-:root{--gold:#d7a441;--gold2:#f8d77c;--cream:#fff1bf;--muted:#b6afb1}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#050505;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-body{overflow-x:hidden}
-.hero{position:relative;min-height:100svh;overflow:hidden;isolation:isolate;background:#050505}
-.hero-bg{position:absolute;inset:0;z-index:-5;background:
-linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.44) 38%,rgba(0,0,0,.30) 60%,rgba(0,0,0,.78) 100%),
-linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,.16) 42%,rgba(0,0,0,.72) 100%),
-url("https://images.unsplash.com/photo-1715106729264-0238728f4060?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=88&w=2400") center/cover no-repeat}
-.hero:after{content:"";position:absolute;inset:0;z-index:-4;background:
-radial-gradient(900px 420px at 43% 43%,rgba(212,151,36,.15),transparent 67%),
-linear-gradient(180deg,rgba(5,5,5,0) 58%,#050505 100%)}
-.light-arc{position:absolute;z-index:-2;width:120%;height:500px;left:-8%;top:4%;border-top:2px solid rgba(255,188,59,.48);border-radius:50%;transform:rotate(-7deg);filter:drop-shadow(0 0 12px rgba(255,183,52,.55));opacity:.75}
-.nav{height:70px;width:min(1180px,calc(100% - 34px));margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.055)}
-.brand{display:flex;align-items:center;gap:9px}.brand img{width:42px;height:42px;border-radius:12px}.brand-name{font:600 22px Georgia,serif}.brand-name span{color:var(--gold2)}
-.nav-private{padding:9px 13px;border:1px solid rgba(224,172,66,.54);border-radius:11px;color:#e3ba62;background:rgba(0,0,0,.30);font-size:8px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
-.stage{width:min(1240px,calc(100% - 34px));min-height:calc(100svh - 70px);margin:auto;display:grid;grid-template-columns:1.18fr .82fr;align-items:center;gap:24px;padding:44px 0 100px;position:relative}
-.main{text-align:center;max-width:790px}
-.crown{font-size:45px;color:#e2ad42;text-shadow:0 0 26px rgba(226,173,66,.32);margin-bottom:5px}
-.private-line{display:flex;align-items:center;justify-content:center;gap:14px;color:#dcb057;font-size:9px;font-weight:900;letter-spacing:4.8px;text-transform:uppercase}
-.private-line:before,.private-line:after{content:"";width:70px;height:1px;background:linear-gradient(90deg,transparent,#dcb057)}
-.private-line:after{transform:scaleX(-1)}
-h1{margin:16px 0 8px;font:600 clamp(58px,7.8vw,108px)/.9 Georgia,serif;letter-spacing:-5px;background:linear-gradient(92deg,#efb647 0%,#ffe7a6 38%,#fff 65%,#cfcfd3 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 12px 46px rgba(0,0,0,.5)}
-.slogan{font:500 clamp(26px,3vw,40px)/1.14 Georgia,serif;color:#ddd0bd}.slogan strong{color:#e2ad4c;font-weight:500}
-.rule{width:min(520px,76%);height:1px;margin:18px auto 23px;background:linear-gradient(90deg,transparent,#b87d1e,#ffe38d,#b87d1e,transparent);box-shadow:0 0 10px rgba(255,194,66,.55)}
-.desc{max-width:660px;margin:auto;color:#d3cdd0;font:400 15px/1.6 Georgia,serif;text-shadow:0 2px 10px #000}
-.enter{margin-top:28px;min-width:300px;padding:16px 24px;border:1px solid #f0c45d;border-radius:13px;background:linear-gradient(135deg,#b97c1d 0%,#e7b54d 45%,#ffe39a 100%);color:#090909;font-size:13px;font-weight:1000;letter-spacing:.7px;box-shadow:0 14px 38px rgba(205,143,30,.22),inset 0 1px rgba(255,255,255,.52);cursor:pointer}
-.note{margin-top:11px;color:#817a7d;font-size:8px;letter-spacing:.5px}
-.phone-wrap{display:flex;justify-content:center;perspective:1200px}
-.phone{width:min(320px,86%);padding:9px;border-radius:34px;background:linear-gradient(145deg,#1b1b1c,#050505);border:1px solid rgba(222,172,68,.34);transform:rotateY(-8deg) rotateZ(2deg);box-shadow:0 34px 80px rgba(0,0,0,.62),0 0 45px rgba(216,166,58,.07)}
-.phone-screen{min-height:505px;border-radius:26px;padding:26px 14px 16px;background:linear-gradient(180deg,#0c0c0d,#070708);border:1px solid rgba(255,255,255,.055)}
-.phone-head{display:flex;align-items:center;gap:8px;padding-bottom:13px;border-bottom:1px solid rgba(255,255,255,.05)}.phone-head img{width:32px;height:32px;border-radius:9px}.phone-head b{font:600 17px Georgia,serif;color:#efc96d}.phone-head span{color:#eee}
-.phone-tabs{display:flex;gap:16px;margin:13px 1px;color:#6d686e;font-size:7px;font-weight:900}.phone-tabs span:first-child{color:#e7b750;border-bottom:1px solid #e7b750;padding-bottom:6px}
-.phone-title{margin:18px 0 9px;color:#d2c8b4;font-size:8px;font-weight:900;letter-spacing:.4px}
-.pick{margin-top:8px;padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(255,255,255,.017)}.pick-top{display:flex;justify-content:space-between;gap:10px}.pick b{font-size:10px}.pick small{display:block;margin-top:4px;color:#746f75;font-size:7px}.odd{padding:6px 8px;border-radius:8px;background:rgba(217,169,64,.11);color:#f1c766;font-size:10px;font-weight:900}
-.ball{position:absolute;left:-90px;bottom:24px;width:265px;height:265px;border-radius:50%;z-index:-1;background:
-radial-gradient(circle at 34% 28%,rgba(255,236,172,.38),transparent 7%),
-conic-gradient(from 10deg,#050505,#9c6a20 8%,#090909 18%,#d5a43c 28%,#050505 39%,#b57c22 51%,#050505 63%,#dbaf45 73%,#070707 84%,#80551b 94%,#050505);
-border:2px solid rgba(232,184,75,.46);box-shadow:inset -35px -40px 62px #000,inset 17px 14px 33px rgba(255,205,91,.16),0 24px 54px rgba(0,0,0,.75)}
-.ball:after{content:"♛";position:absolute;inset:0;display:grid;place-items:center;color:#dca842;font-size:76px;text-shadow:0 0 22px rgba(220,168,66,.3)}
-.features{position:absolute;left:0;right:0;bottom:0;border-top:1px solid rgba(217,177,87,.14);background:rgba(4,4,5,.82);backdrop-filter:blur(12px)}
-.feature-inner{width:min(1180px,calc(100% - 34px));margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}
-.feature{display:flex;align-items:center;gap:10px;padding:17px 20px;border-right:1px solid rgba(217,177,87,.13)}.feature:last-child{border-right:0}.feature i{font-style:normal;color:#dda943;font-size:21px}.feature b{font-size:8px;letter-spacing:.3px}.feature small{display:block;margin-top:3px;color:#716b70;font-size:7px}
-.login{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.84);backdrop-filter:blur(12px)}
-.login.open{display:flex}
-.login-card{position:relative;width:min(420px,100%);padding:28px;border:1px solid rgba(221,171,65,.34);border-radius:24px;background:radial-gradient(300px 170px at 50% 0,rgba(217,169,64,.10),transparent 72%),#0b0b0c;box-shadow:0 28px 90px rgba(0,0,0,.72)}
-.close{position:absolute;right:13px;top:13px;width:35px;height:35px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);color:#aaa;font-size:18px}
-.login-brand{text-align:center}.login-brand img{width:58px;height:58px;border-radius:17px;border:1px solid rgba(217,177,87,.36)}.login-brand h2{margin:11px 0 4px;font:600 28px Georgia,serif}.login-brand h2 span{color:var(--gold2)}.login-brand p{margin:0;color:#807a80;font-size:8px;letter-spacing:1.6px;text-transform:uppercase}
-.login-title{text-align:center;margin:24px 0 15px;font:500 23px Georgia,serif}
-.field{margin-top:10px}.field label{display:block;margin:0 0 6px 2px;color:#b7b0b4;font-size:9px;font-weight:900}.field input{width:100%;height:47px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#080809;color:#fff;padding:0 13px;font:inherit;outline:none}.field input:focus{border-color:rgba(217,169,64,.48)}
-.login-btn{width:100%;height:48px;margin-top:15px;border:1px solid #e6b853;border-radius:12px;background:linear-gradient(135deg,#b97818,#efc257,#ffe297);color:#080808;font-weight:1000}.login-msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb4bc;font-size:10px}
-@media(max-width:820px){
- .nav-private{display:none}.nav{height:66px}.brand img{width:40px;height:40px}.brand-name{font-size:20px}
- .stage{min-height:calc(100svh - 66px);grid-template-columns:1fr;padding:34px 0 82px;align-content:start}
- .phone-wrap{display:none}.main{padding-top:20px}.crown{font-size:40px}.private-line{font-size:7px;letter-spacing:3px;gap:9px}.private-line:before,.private-line:after{width:35px}
- h1{font-size:clamp(49px,15vw,72px);letter-spacing:-3px;margin-top:17px}.slogan{font-size:26px}.desc{font-size:12px;max-width:520px}.enter{width:min(330px,100%);min-width:0}
- .ball{left:50%;transform:translateX(-50%);width:215px;height:215px;bottom:32px;opacity:.72}.ball:after{font-size:60px}.features{display:none}
-}
-@media(max-width:430px){.stage,.nav{width:min(100% - 28px,1240px)}.stage{padding-top:22px}.crown{font-size:36px}h1{font-size:46px;letter-spacing:-2.4px}.slogan{font-size:23px}.rule{margin:16px auto 19px}.desc{font-size:11.5px}.ball{width:185px;height:185px;bottom:22px}}
+html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:flex;justify-content:center;overflow-x:hidden}
+.hero{position:relative;width:min(100vw,520px);background:#000}
+.hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}
+.login-hotspot:active{background:rgba(255,255,255,.06)}
+.login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.88);backdrop-filter:blur(14px)}
+.login-layer.open{display:flex}
+.login-card{position:relative;width:min(420px,100%);padding:28px 24px 24px;border:1px solid rgba(224,176,69,.38);border-radius:25px;background:radial-gradient(280px 160px at 50% 0,rgba(217,169,64,.12),transparent 72%),linear-gradient(180deg,#101011,#080809);box-shadow:0 30px 90px rgba(0,0,0,.75),0 0 40px rgba(217,169,64,.06)}
+.close{position:absolute;right:13px;top:13px;width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#aaa;font-size:19px}
+.login-brand{text-align:center}
+.login-brand img{width:62px;height:62px;border-radius:18px;border:1px solid rgba(217,177,87,.42)}
+.login-brand h2{margin:12px 0 4px;font:600 29px Georgia,serif;color:#f4d071}
+.login-brand h2 span{color:#f3f0eb}
+.login-brand p{margin:0;color:#8c8274;font-size:8px;letter-spacing:2px;text-transform:uppercase}
+.login-title{text-align:center;margin:24px 0 17px;font:500 24px Georgia,serif;color:#f1eadb}
+.field{margin-top:11px}.field label{display:block;margin:0 0 6px 2px;color:#b9b1b3;font-size:9px;font-weight:900}
+.field input{width:100%;height:48px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:#070708;color:#fff;padding:0 13px;font:inherit;outline:none}
+.field input:focus{border-color:rgba(217,169,64,.52)}
+.submit{width:100%;height:50px;margin-top:17px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
+.submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
+.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
+@media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
 <body>
-<section class="hero">
-  <div class="hero-bg"></div><div class="light-arc"></div>
-  <header class="nav">
-    <div class="brand"><img src="../dreamteamtips-icon.svg" alt=""><div class="brand-name">DreamTeam<span>Tips</span></div></div>
-    <div class="nav-private">🔒 Private Members Area</div>
-  </header>
+<main class="hero">
+  <img src="approved-hero.webp" alt="DreamTeamTips Private Members Area">
+  <button id="openLogin" class="login-hotspot" aria-label="Είσοδος Μελών"></button>
+</main>
 
-  <div class="stage">
-    <div class="main">
-      <div class="crown">♛</div>
-      <div class="private-line">Private Members Area</div>
-      <h1>DreamTeamTips</h1>
-      <div class="slogan">Ποιότητα <strong>πάνω από την ποσότητα</strong></div>
-      <div class="rule"></div>
-      <div class="desc">Ιδιωτική πρόσβαση σε επιλεγμένες ποδοσφαιρικές επιλογές και ενημερώσεις την κατάλληλη στιγμή.</div>
-      <button class="enter" id="openLogin">🔒 &nbsp; ΕΙΣΟΔΟΣ ΜΕΛΩΝ &nbsp; ›</button>
-      <div class="note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+<div id="loginLayer" class="login-layer" aria-hidden="true">
+  <section class="login-card">
+    <button id="closeLogin" class="close" aria-label="Κλείσιμο">×</button>
+    <div class="login-brand">
+      <img src="../dreamteamtips-icon.svg" alt="">
+      <h2>DreamTeam<span>Tips</span></h2>
+      <p>Private Members Area</p>
     </div>
-
-    <div class="phone-wrap">
-      <div class="phone"><div class="phone-screen">
-        <div class="phone-head"><img src="../dreamteamtips-icon.svg" alt=""><b>DreamTeam<span>Tips</span></b></div>
-        <div class="phone-tabs"><span>ΣΗΜΕΡΑ</span><span>ΑΥΡΙΟ</span><span>ΙΣΤΟΡΙΚΟ</span></div>
-        <div class="phone-title">ΕΠΙΛΕΓΜΕΝΕΣ ΠΡΟΤΑΣΕΙΣ</div>
-        <div class="pick"><div class="pick-top"><div><b>Private Selection</b><small>Μόνο για μέλη</small></div><div class="odd">VIP</div></div></div>
-        <div class="pick"><div class="pick-top"><div><b>DreamTeam Pick</b><small>Ενημέρωση στην κατάλληλη στιγμή</small></div><div class="odd">LIVE</div></div></div>
-        <div class="pick"><div class="pick-top"><div><b>Member Update</b><small>Άμεση ενημέρωση επιλογής</small></div><div class="odd">NEW</div></div></div>
-      </div></div>
-    </div>
-    <div class="ball"></div>
-  </div>
-
-  <div class="features"><div class="feature-inner">
-    <div class="feature"><i>◎</i><div><b>ΕΠΙΛΕΓΜΕΝΕΣ ΠΡΟΤΑΣΕΙΣ</b><small>Ποιότητα, όχι ποσότητα</small></div></div>
-    <div class="feature"><i>▥</i><div><b>ΒΑΣΙΣΜΕΝΕΣ ΣΕ ΑΝΑΛΥΣΗ</b><small>Συνεχής παρακολούθηση</small></div></div>
-    <div class="feature"><i>◇</i><div><b>ΕΝΗΜΕΡΩΣΗ ΣΤΗ ΣΩΣΤΗ ΣΤΙΓΜΗ</b><small>Όταν υπάρχει λόγος</small></div></div>
-    <div class="feature"><i>♛</i><div><b>PRIVATE MEMBERS CLUB</b><small>Ιδιωτική πρόσβαση</small></div></div>
-  </div></div>
-</section>
-
-<div class="login" id="login">
-  <div class="login-card">
-    <button class="close" id="close">×</button>
-    <div class="login-brand"><img src="../dreamteamtips-icon.svg" alt=""><h2>DreamTeam<span>Tips</span></h2><p>Private Members Area</p></div>
     <div class="login-title">Είσοδος μελών</div>
-    <div class="field"><label>Όνομα χρήστη</label><input id="u" autocomplete="username" placeholder="username"></div>
-    <div class="field"><label>Κωδικός</label><input id="p" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-    <button class="login-btn" id="submit">ΕΙΣΟΔΟΣ</button>
-    <div class="login-msg" id="msg"></div>
-  </div>
+    <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
+    <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button id="loginSubmit" class="submit">ΕΙΣΟΔΟΣ</button>
+    <div id="loginMsg" class="msg"></div>
+    <div class="private-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+  </section>
 </div>
+
 <script>
-const login=document.getElementById("login"),openLogin=document.getElementById("openLogin"),close=document.getElementById("close");
-const u=document.getElementById("u"),p=document.getElementById("p"),submit=document.getElementById("submit"),msg=document.getElementById("msg");
-const DK="dtt_device_id_v1";function did(){let x=localStorage.getItem(DK)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DK,x);return x}const deviceId=did();
-openLogin.onclick=()=>{if(localStorage.getItem("ma_token")){location.href="../";return}login.classList.add("open");setTimeout(()=>u.focus(),80)};close.onclick=()=>login.classList.remove("open");login.onclick=e=>{if(e.target===login)login.classList.remove("open")};
-async function api(params){const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch("/api",{method:"POST",body:b,cache:"no-store"});return await r.json()}
-async function go(){if(!u.value.trim()||!p.value){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await api({action:"login",username:u.value.trim(),password:p.value,deviceId});if(!r.ok)throw new Error(r.error||"ERROR");if(r.token)localStorage.setItem("ma_token",r.token);location.href="../"}catch(e){const m={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει."};msg.textContent=m[e.message]||"Δεν ολοκληρώθηκε η σύνδεση."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
-submit.onclick=go;p.onkeydown=e=>{if(e.key==="Enter")go()};if(localStorage.getItem("ma_token"))openLogin.textContent="♛  ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ  ›";
+const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
+const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg");
+const DEVICE_STORAGE_KEY="dtt_device_id_v1";
+function deviceId(){let x=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,x);return x}
+function openLogin(){if(localStorage.getItem("ma_token")){location.href="../";return}layer.classList.add("open");layer.setAttribute("aria-hidden","false");setTimeout(()=>user.focus(),80)}
+function closeLogin(){layer.classList.remove("open");layer.setAttribute("aria-hidden","true");msg.textContent=""}
+openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});
+async function apiPost(params){const c=new AbortController(),t=setTimeout(()=>c.abort(),16000);try{const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch("/api",{method:"POST",body:b,signal:c.signal,cache:"no-store"});return await r.json()}finally{clearTimeout(t)}}
+const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει."};
+async function doLogin(){const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await apiPost({action:"login",username:u,password:p,deviceId:deviceId()});if(!r.ok)throw new Error(r.error||"ERROR");if(r.token)localStorage.setItem("ma_token",r.token);location.href="../"}catch(e){msg.textContent=errors[e.message]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
+submit.onclick=doLogin;pass.onkeydown=e=>{if(e.key==="Enter")doLogin()};
 </script>
-</body></html>
+</body>
+</html>
