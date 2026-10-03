@@ -206,8 +206,10 @@ function renderSignals(arr){
     const stats=(s.leagueRecord||s.allStatsRecord)
       ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
       : '';
-    const state=s.published!==false;
-    const stateTag=publicationControlsLive?'<div class="signal-state '+(state?'':'off')+'">'+(state?'ΔΗΜΟΣΙΕΥΜΕΝΗ':'ΑΠΟΣΥΡΘΗΚΕ')+'</div>':'';
+    const publicationStatus=String(s.publicationStatus||"waiting");
+    const state=publicationStatus==="published";
+    const stateText=state?"ΔΗΜΟΣΙΕΥΜΕΝΗ":publicationStatus==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ";
+    const stateTag=publicationControlsLive?'<div class="signal-state '+(state?'':'off')+'">'+stateText+'</div>':'';
     const options=["1","2","1X","2X"].map(v=>'<option value="'+v+'" '+(String(s.customerPick||"")===v?'selected':'')+'>'+v+'</option>').join("");
     const inSlip=slipDraftIds.includes(String(s.controlId||""));
     const slipBtn=slipBuilderLive?'<button class="mini signal-control-btn slip-add-btn '+(inSlip?'active':'')+'" '+(s.canEdit?'':'disabled')+' onclick="toggleSlipLeg(\''+safe(s.controlId||"")+'\')">'+(inSlip?'✓ Στο δελτίο':'＋ Στο δελτίο')+'</button>':'';
