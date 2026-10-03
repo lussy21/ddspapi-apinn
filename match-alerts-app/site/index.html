@@ -15,22 +15,17 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}.hero-club-label{position:absolute;left:13%;right:13%;top:32.15%;height:3.65%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(2,3,4,.98) 0%,rgba(2,3,4,.96) 56%,rgba(2,3,4,.72) 76%,rgba(2,3,4,0) 100%);color:#e9d9b9;font-size:clamp(8px,2.45vw,13px);font-weight:500;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;text-shadow:0 0 12px rgba(222,176,73,.24);pointer-events:none}.hero-club-label:before,.hero-club-label:after{content:"";height:1px;flex:1;max-width:58px;background:linear-gradient(90deg,transparent,#c28d2e)}.hero-club-label:after{background:linear-gradient(90deg,#c28d2e,transparent)}.hero-club-label span{padding:0 10px;white-space:nowrap}
 .login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}
 .login-hotspot:active{background:rgba(255,255,255,.06)}
-.login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);backdrop-filter:blur(4px) brightness(.72)}
+.login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:0 18px 24px;background:rgba(0,0,0,.12)}
 .login-layer.open{display:flex}
-.login-card{position:relative;width:min(420px,100%);padding:24px 24px 24px;border:1px solid rgba(224,176,69,.48);border-radius:25px;background:radial-gradient(280px 160px at 50% 0,rgba(217,169,64,.14),transparent 72%),rgba(5,5,6,.86);box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 45px rgba(217,169,64,.08);backdrop-filter:blur(10px)}
-.close{position:absolute;right:13px;top:13px;width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#aaa;font-size:19px}
-.login-brand{text-align:center}
-.crown-mark{display:block;width:72px;height:auto;margin:0 auto 4px;filter:drop-shadow(0 0 10px rgba(227,177,62,.22))}
-.login-brand h2{margin:12px 0 4px;font:600 29px Georgia,serif;color:#f4d071}
-.login-brand h2 span{color:#f3f0eb}
-.login-brand p{margin:0;color:#8c8274;font-size:8px;letter-spacing:2px;text-transform:uppercase}
-.login-title{text-align:center;margin:24px 0 17px;font:500 24px Georgia,serif;color:#f1eadb}
-.field{margin-top:11px}.field label{display:block;margin:0 0 6px 2px;color:#b9b1b3;font-size:9px;font-weight:900}
-.field input{width:100%;height:48px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:#070708;color:#fff;padding:0 13px;font:inherit;outline:none}
+.login-card{position:relative;width:min(420px,88vw);margin-top:46vh;padding:18px 20px 19px;border:1px solid rgba(224,176,69,.46);border-radius:22px;background:linear-gradient(180deg,rgba(7,7,8,.90),rgba(4,4,5,.94));box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 28px rgba(217,169,64,.06);backdrop-filter:blur(6px)}
+.close{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#b8b0a4;font-size:18px}
+.login-brand{display:none}.login-title{text-align:center;margin:3px 0 14px;font:500 22px Georgia,serif;color:#f1eadb}
+.field{margin-top:10px}.field label{display:block;margin:0 0 6px 2px;color:#c6beb3;font-size:9px;font-weight:900}
+.field input{width:100%;height:46px;border:1px solid rgba(225,180,73,.27);border-radius:13px;background:rgba(5,5,6,.82);color:#fff;padding:0 13px;font:inherit;outline:none}
 .field input:focus{border-color:rgba(217,169,64,.52)}
-.submit{width:100%;height:50px;margin-top:17px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
+.submit{width:100%;height:48px;margin-top:14px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
 .submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
-.signup-line{text-align:center;margin-top:13px;color:#8f8881;font-size:11px}.signup-line button{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
+.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
 @media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
@@ -43,11 +38,6 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 <div id="loginLayer" class="login-layer" aria-hidden="true">
   <section class="login-card">
     <button id="closeLogin" class="close" aria-label="Κλείσιμο">×</button>
-    <div class="login-brand">
-      <img class="crown-mark" src="hero-crown.png" alt="">
-      <h2>DreamTeam<span>Tips</span></h2>
-      <p>Private Members Club</p>
-    </div>
     <div class="login-title">Είσοδος μελών</div>
     <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
     <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
