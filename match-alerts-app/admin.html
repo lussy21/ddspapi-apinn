@@ -54,7 +54,9 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div class="msg" id="lockMsg"></div>
 </div>
 <div id="dash" class="hidden">
-<div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div><div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
+<div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
+<div class="section hidden" id="dailySelectionsSection"><div class="signals-head"><h3>⭐ Επιλογές της ημέρας</h3><span class="signals-count" id="dailySelectionsCount">0 προς δημοσίευση</span></div><div class="push-hint" style="margin:0 0 10px">Εδώ εμφανίζονται οι νέες επιλογές που περιμένουν τη δική σου έγκριση πριν τις δουν οι πελάτες.</div><div id="dailySelections"><div class="note">Φόρτωση επιλογών…</div></div></div>
+<div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
 <div class="section hidden" id="slipBuilderSection">
   <div class="signals-head"><h3>Builder δελτίου</h3><span class="signals-count" id="slipDraftCount">0 επιλογές</span></div>
   <div class="slip-builder">
@@ -133,7 +135,7 @@ async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
-  internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive);
+  internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive);
   memberHistoryLive=settings.memberHistory===true;
   publicationControlsLive=settings.publicationControls===true;
   slipBuilderLive=settings.slipBuilder===true;
@@ -197,6 +199,40 @@ function signalHistoryText(items){
     return label+(when?(" · "+when):"");
   }).join(" · ");
 }
+function signalCardHtml(s){
+  const rating=s.rating?(" · "+esc(s.rating)):"";
+  const stats=(s.leagueRecord||s.allStatsRecord)
+    ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
+    : '';
+  const publicationStatus=String(s.publicationStatus||"waiting");
+  const state=publicationStatus==="published";
+  const stateText=state?"ΔΗΜΟΣΙΕΥΜΕΝΗ":publicationStatus==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ";
+  const stateTag=publicationControlsLive?'<div class="signal-state '+(state?'':'off')+'">'+stateText+'</div>':'';
+  const options=["1","2","1X","2X"].map(v=>'<option value="'+v+'" '+(String(s.customerPick||"")===v?'selected':'')+'>'+v+'</option>').join("");
+  const modelWarning=!!(state&&(s.modelActive===false||s.modelChanged));
+  const keepAt=String(s.modelKeepAt||"");
+  let warningHtml="";
+  if(modelWarning){
+    if(s.modelActive===false){
+      warningHtml='<div class="model-warning-banner '+(keepAt?'kept':'')+'">'+(keepAt?'✓ ΔΙΑΤΗΡΗΘΗΚΕ ΑΠΟ ADMIN · ':'⚠️ ')+'ΤΟ ALERT ΕΦΥΓΕ ΑΠΟ ΤΟ ΜΟΝΤΕΛΟ<br><span style="font-weight:700">Η επιλογή παραμένει δημοσιευμένη μέχρι να την αποσύρεις εσύ.</span></div>';
+    }else{
+      const from=String(s.publishedAlert||"").trim();
+      const to=String(s.internalAlert||"").trim();
+      warningHtml='<div class="model-warning-banner '+(keepAt?'kept':'')+'">'+(keepAt?'✓ ΔΙΑΤΗΡΗΘΗΚΕ ΑΠΟ ADMIN · ':'⚠️ ')+'ΤΟ ALERT ΑΛΛΑΞΕ'+(from&&to?('<br><span style="font-weight:700">'+esc(from)+' → '+esc(to)+'</span>'):'')+'</div>';
+    }
+  }
+  const inSlip=slipDraftIds.includes(String(s.controlId||""));
+  const allowSlip=slipBuilderLive&&s.modelActive!==false&&!modelWarning;
+  const slipBtn=allowSlip?'<button class="mini signal-control-btn slip-add-btn '+(inSlip?'active':'')+'" '+(s.canEdit?'':'disabled')+' onclick="toggleSlipLeg(\''+safe(s.controlId||"")+'\')">'+(inSlip?'✓ Στο δελτίο':'＋ Στο δελτίο')+'</button>':'';
+  const keepBtn=modelWarning?'<button class="mini signal-control-btn signal-keep-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalKeep\',\''+safe(s.controlId||"")+'\',this)">✓ Διατήρηση</button>':'';
+  const controls=publicationControlsLive
+    ? '<div class="signal-controls"><select class="signal-select" data-signal-pick="'+esc(s.controlId||"")+'" '+(s.canEdit?'':'disabled')+'>'+options+'</select><button class="mini signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalEdit(\''+safe(s.controlId||"")+'\',this)">Διόρθωση</button>'+(state?keepBtn+'<button class="mini danger signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalWithdraw\',\''+safe(s.controlId||"")+'\',this)">Απόσυρση</button>':'<button class="mini signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalPublish\',\''+safe(s.controlId||"")+'\',this)">＋ Δημοσίευση</button>')+slipBtn+'</div>'
+    : (slipBtn?'<div class="signal-controls">'+slipBtn+'</div>':'');
+  const history=publicationControlsLive&&s.controlHistory&&s.controlHistory.length?'<div class="signal-history">'+esc(signalHistoryText(s.controlHistory))+'</div>':'';
+  const lockedNote=s.canEdit?'':'<div class="signal-locked">🔒 Κλειδωμένο — ο αγώνας έχει ξεκινήσει. Δεν επιτρέπεται αλλαγή ή απόσυρση.</div>';
+  const odds=s.customerOdds?(' · @ '+Number(s.customerOdds).toFixed(2).replace('.',',')):'';
+  return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
+}
 function renderSignals(arr){
   const source=Array.isArray(arr)?arr:[];
   const list=[...source].sort((a,b)=>{
@@ -206,42 +242,23 @@ function renderSignals(arr){
     return (Date.parse(a.kickoff||"")||0)-(Date.parse(b.kickoff||"")||0);
   });
   adminSignalsCache=list;
-  const attention=list.filter(s=>s&&s.published&&(s.modelActive===false||s.modelChanged)).length;
-  signalsCount.textContent=list.length+" "+(list.length===1?"σήμα":"σήματα")+(attention?(" · ⚠️ "+attention+" για έλεγχο"):"");
-  signals.innerHTML=list.length?'<div class="signals-grid">'+list.map(s=>{
-    const rating=s.rating?(" · "+esc(s.rating)):"";
-    const stats=(s.leagueRecord||s.allStatsRecord)
-      ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
-      : '';
-    const publicationStatus=String(s.publicationStatus||"waiting");
-    const state=publicationStatus==="published";
-    const stateText=state?"ΔΗΜΟΣΙΕΥΜΕΝΗ":publicationStatus==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ";
-    const stateTag=publicationControlsLive?'<div class="signal-state '+(state?'':'off')+'">'+stateText+'</div>':'';
-    const options=["1","2","1X","2X"].map(v=>'<option value="'+v+'" '+(String(s.customerPick||"")===v?'selected':'')+'>'+v+'</option>').join("");
-    const modelWarning=!!(state&&(s.modelActive===false||s.modelChanged));
-    const keepAt=String(s.modelKeepAt||"");
-    let warningHtml="";
-    if(modelWarning){
-      if(s.modelActive===false){
-        warningHtml='<div class="model-warning-banner '+(keepAt?'kept':'')+'">'+(keepAt?'✓ ΔΙΑΤΗΡΗΘΗΚΕ ΑΠΟ ADMIN · ':'⚠️ ')+'ΤΟ ALERT ΕΦΥΓΕ ΑΠΟ ΤΟ ΜΟΝΤΕΛΟ<br><span style="font-weight:700">Η επιλογή παραμένει δημοσιευμένη μέχρι να την αποσύρεις εσύ.</span></div>';
-      }else{
-        const from=String(s.publishedAlert||"").trim();
-        const to=String(s.internalAlert||"").trim();
-        warningHtml='<div class="model-warning-banner '+(keepAt?'kept':'')+'">'+(keepAt?'✓ ΔΙΑΤΗΡΗΘΗΚΕ ΑΠΟ ADMIN · ':'⚠️ ')+'ΤΟ ALERT ΑΛΛΑΞΕ'+(from&&to?('<br><span style="font-weight:700">'+esc(from)+' → '+esc(to)+'</span>'):'')+'</div>';
-      }
-    }
-    const inSlip=slipDraftIds.includes(String(s.controlId||""));
-    const allowSlip=slipBuilderLive&&s.modelActive!==false&&!modelWarning;
-    const slipBtn=allowSlip?'<button class="mini signal-control-btn slip-add-btn '+(inSlip?'active':'')+'" '+(s.canEdit?'':'disabled')+' onclick="toggleSlipLeg(\''+safe(s.controlId||"")+'\')">'+(inSlip?'✓ Στο δελτίο':'＋ Στο δελτίο')+'</button>':'';
-    const keepBtn=modelWarning?'<button class="mini signal-control-btn signal-keep-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalKeep\',\''+safe(s.controlId||"")+'\',this)">✓ Διατήρηση</button>':'';
-    const controls=publicationControlsLive
-      ? '<div class="signal-controls"><select class="signal-select" data-signal-pick="'+esc(s.controlId||"")+'" '+(s.canEdit?'':'disabled')+'>'+options+'</select><button class="mini signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalEdit(\''+safe(s.controlId||"")+'\',this)">Διόρθωση</button>'+(state?keepBtn+'<button class="mini danger signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalWithdraw\',\''+safe(s.controlId||"")+'\',this)">Απόσυρση</button>':'<button class="mini signal-control-btn" '+(s.canEdit?'':'disabled')+' onclick="signalToggle(\'adminSignalPublish\',\''+safe(s.controlId||"")+'\',this)">＋ Δημοσίευση</button>')+slipBtn+'</div>'
-      : (slipBtn?'<div class="signal-controls">'+slipBtn+'</div>':'');
-    const history=publicationControlsLive&&s.controlHistory&&s.controlHistory.length?'<div class="signal-history">'+esc(signalHistoryText(s.controlHistory))+'</div>':'';
-    const lockedNote=s.canEdit?'':'<div class="signal-locked">🔒 Κλειδωμένο — ο αγώνας έχει ξεκινήσει. Δεν επιτρέπεται αλλαγή ή απόσυρση.</div>';
-    const odds=s.customerOdds?(' · @ '+Number(s.customerOdds).toFixed(2).replace('.',',')):'';
-    return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
-  }).join("")+'</div>':'<div class="note">Δεν υπάρχουν ενεργά σήματα αυτή τη στιγμή.</div>';
+
+  const pending=list.filter(s=>{
+    const status=String(s.publicationStatus||"waiting");
+    return status==="waiting"&&s.modelActive!==false;
+  });
+  const rest=list.filter(s=>!pending.includes(s));
+
+  dailySelectionsCount.textContent=pending.length+" "+(pending.length===1?"προς δημοσίευση":"προς δημοσίευση");
+  dailySelections.innerHTML=pending.length
+    ? '<div class="signals-grid">'+pending.map(signalCardHtml).join("")+'</div>'
+    : '<div class="note">Δεν υπάρχουν νέες επιλογές που περιμένουν δημοσίευση.</div>';
+
+  const attention=rest.filter(s=>s&&s.published&&(s.modelActive===false||s.modelChanged)).length;
+  signalsCount.textContent=rest.length+" "+(rest.length===1?"σήμα":"σήματα")+(attention?(" · ⚠️ "+attention+" για έλεγχο"):"");
+  signals.innerHTML=rest.length
+    ? '<div class="signals-grid">'+rest.map(signalCardHtml).join("")+'</div>'
+    : '<div class="note">Δεν υπάρχουν άλλες δημοσιευμένες ή μεταβαλλόμενες επιλογές αυτή τη στιγμή.</div>';
 }
 
 function slipLabelClient(n){
