@@ -962,11 +962,14 @@ function officialDateLabel(value){
   return String(value||"");
 }
 function renderOfficialHistory(items,summary){
-  const list=Array.isArray(items)?items:[];
-  const s=summary||{};
+  const raw=Array.isArray(items)?items:[];
+  const list=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
+  const wins=list.filter(a=>a.status==="win").length;
+  const losses=list.filter(a=>a.status==="loss").length;
+  const withdrawn=list.filter(a=>a.status==="withdrawn").length;
   const sum=document.getElementById("officialHistorySummary");
   if(sum){
-    sum.innerHTML='<div class="stat"><b>'+Number(s.total||0)+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+Number(s.wins||0)+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.losses||0)+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.withdrawn||0)+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
+    sum.innerHTML='<div class="stat"><b>'+list.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
   }
   const box=document.getElementById("officialHistoryContent");
   if(!box) return;
