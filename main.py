@@ -1062,12 +1062,23 @@ except Exception as exc:
 
 sheet_rows = SHEET.get_all_values()
 event_rows = {}
+last_real_match_row = 2
 
 for row_number, row in enumerate(sheet_rows, start=1):
     if len(row) >= 18 and row[17]:
         event_rows[str(row[17])] = row_number
+    # Helper/formula leftovers in hidden columns must not push new matches
+    # dozens of rows lower. Only the real match identity columns decide where
+    # the table actually ends.
+    real_identity = False
+    for idx in (0, 1, 2, 17):  # league, home, away, event id
+        if len(row) > idx and str(row[idx]).strip():
+            real_identity = True
+            break
+    if real_identity:
+        last_real_match_row = row_number
 
-next_row = max(3, len(sheet_rows) + 1)
+next_row = max(3, last_real_match_row + 1)
 updates = []
 
 # If APINN replaced a fixture with another event ID, reuse the existing Sheet
