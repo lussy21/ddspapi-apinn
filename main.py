@@ -1128,20 +1128,13 @@ for match in matches:
     match_day_start = betting_day_start_for(kickoff)
     if NOW >= kickoff:
         continue
-
-    league_name = match.get("league_name") or ""
-    national_match = is_national_team_competition(league_name)
-
-    # Permanent national-team fix: cache the fixture row as soon as APINN shows
-    # it (up to 7 days ahead), instead of waiting until 11:00 on match day.
-    # That way a later APINN board omission cannot make the match disappear.
     if kickoff.date() != TODAY and NOW < match_day_start:
-        if not national_match or kickoff - NOW > timedelta(days=7):
-            continue
+        continue
 
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
+    league_name = match.get("league_name") or ""
     if not home or not away or event_id is None:
         continue
 
