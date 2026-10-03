@@ -156,11 +156,13 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
   </div>
 
   <div id="verifyView" class="hidden">
-    <h2>Επιβεβαίωση email</h2>
-    <p id="verifyText">Σου στείλαμε 6ψήφιο κωδικό.</p>
-    <div class="field"><label class="label">Κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
-    <button class="primary" id="verifySubmit">Επιβεβαίωση</button>
-    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
+    <h2>Έλεγξε το email σου</h2>
+    <p id="verifyText">Σου στείλαμε email επιβεβαίωσης. Πάτησε το κουμπί μέσα στο email για να ολοκληρωθεί η εγγραφή.</p>
+    <div id="legacyCodeWrap" class="hidden">
+      <div class="field"><label class="label">Παλιός κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+      <button class="primary" id="verifySubmit">Επιβεβαίωση παλιού κωδικού</button>
+    </div>
+    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε email</button><button class="ghost" id="legacyCodeBtn">Έχω παλιό κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
     <div class="msg" id="resendTimer"></div>
     <div class="msg" id="verifyMsg"></div>
   </div>
@@ -485,9 +487,9 @@ function setMode(next){
   loginTab.classList.toggle("active",!reg); registerTab.classList.toggle("active",reg);
   emailField.classList.toggle("hidden",!reg);
   authTitle.textContent=reg?"Δωρεάν εγγραφή":"Σύνδεση";
-  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
+  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου από το link που θα σου στείλουμε.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
   authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
-  haveCodeBtn.classList.toggle("hidden",!reg);
+  haveCodeBtn.classList.add("hidden");
   password.autocomplete=reg?"new-password":"current-password";
   setMsg(authMsg,"");
 }
@@ -518,7 +520,7 @@ authSubmit.onclick=async()=>{
       pendingUsername=r.username||u;
       setVerifyExpiry(pendingUsername,15*60*1000);
       showVerify(pendingUsername,r.emailMasked||e);
-      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
+      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε email επιβεβαίωσης.","ok");
     }else{
       saveSession(r);
     }
@@ -542,11 +544,11 @@ function updateVerifyTimer(){
       const t=Math.ceil(left/1000), mm=String(Math.floor(t/60)).padStart(2,"0"), ss=String(t%60).padStart(2,"0");
       resendCode.disabled=true;
       resendCode.textContent="Ξαναστείλε σε "+mm+":"+ss;
-      resendTimer.textContent="Ο κωδικός ισχύει για 15 λεπτά.";
+      resendTimer.textContent="Ο σύνδεσμος επιβεβαίωσης ισχύει για 15 λεπτά.";
     }else{
       resendCode.disabled=false;
-      resendCode.textContent="Ξαναστείλε κωδικό";
-      resendTimer.textContent="Ο κωδικός έληξε. Μπορείς να ζητήσεις νέο.";
+      resendCode.textContent="Ξαναστείλε email";
+      resendTimer.textContent="Ο σύνδεσμος έληξε. Μπορείς να ζητήσεις νέο email.";
       if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
     }
   };
@@ -555,7 +557,7 @@ function updateVerifyTimer(){
 }
 function showVerify(u,masked){
   pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
-  verifyText.textContent=masked?"Στείλαμε 6ψήφιο κωδικό στο "+masked+".":"Βάλε τον 6ψήφιο κωδικό που έλαβες στο email.";
+  verifyText.textContent=masked?"Στείλαμε email επιβεβαίωσης στο "+masked+". Πάτησε το κουμπί μέσα στο email.":"Έλεγξε το email σου και πάτησε το κουμπί επιβεβαίωσης.";
   verifyCode.value=""; setMsg(verifyMsg,""); updateVerifyTimer();
 }
 verifySubmit.onclick=async()=>{
@@ -582,13 +584,16 @@ resendCode.onclick=async()=>{
     if(!r.ok) throw new Error(r.error||"ERROR");
     setVerifyExpiry(u,15*60*1000);
     updateVerifyTimer();
-    setMsg(verifyMsg,"Στάλθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
+    setMsg(verifyMsg,"Στάλθηκε νέο email επιβεβαίωσης. Έλεγξε και τα Ανεπιθύμητα.","ok");
   }catch(err){
     resendCode.disabled=false;
-    resendCode.textContent="Ξαναστείλε κωδικό";
+    resendCode.textContent="Ξαναστείλε email";
     setMsg(verifyMsg,mapError(err.message),"error");
   }
 };
+const legacyCodeWrap=document.getElementById("legacyCodeWrap");
+const legacyCodeBtn=document.getElementById("legacyCodeBtn");
+legacyCodeBtn.onclick=()=>{legacyCodeWrap.classList.toggle("hidden");legacyCodeBtn.classList.toggle("hidden");if(!legacyCodeWrap.classList.contains("hidden"))setTimeout(()=>verifyCode.focus(),50);};
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
 function setHistoryMode(mode){
