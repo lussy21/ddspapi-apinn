@@ -792,6 +792,27 @@ NATIONAL_COMPETITION_EXCLUSIONS = (
     "olympic",
 )
 
+# One-time recovery from APINN fixtures that were seen in logs before their
+# betting day but later disappeared from the generic board. Keeping these
+# event IDs here is harmless after kickoff because the normal time guards skip
+# finished matches. The permanent fix below now stores future national fixtures
+# as soon as they are first seen, so this bootstrap should not be needed again.
+RECOVERY_NATIONAL_FIXTURES = [
+    {"event_id": 1637397477, "league_name": "UEFA - Nations League C", "runner_home": "Finland", "runner_away": "Albania", "starts": "2026-10-03T13:00:00Z"},
+    {"event_id": 1636866914, "league_name": "UEFA - Nations League A", "runner_home": "Croatia", "runner_away": "England", "starts": "2026-10-03T16:00:00Z"},
+    {"event_id": 1637406505, "league_name": "UEFA - Nations League C", "runner_home": "Estonia", "runner_away": "Luxembourg", "starts": "2026-10-03T16:00:00Z"},
+    {"event_id": 1637553996, "league_name": "UEFA - Nations League C", "runner_home": "Belarus", "runner_away": "San Marino", "starts": "2026-10-03T16:00:00Z"},
+    {"event_id": 1637553998, "league_name": "UEFA - Nations League C", "runner_home": "Iceland", "runner_away": "Bulgaria", "starts": "2026-10-03T16:00:00Z"},
+    {"event_id": 1636867951, "league_name": "UEFA - Nations League A", "runner_home": "Spain", "runner_away": "Czechia", "starts": "2026-10-03T18:45:00Z"},
+    {"event_id": 1637406573, "league_name": "UEFA - Nations League B", "runner_home": "North Macedonia", "runner_away": "Scotland", "starts": "2026-10-03T18:45:00Z"},
+    {"event_id": 1637406782, "league_name": "UEFA - Nations League B", "runner_home": "Switzerland", "runner_away": "Slovenia", "starts": "2026-10-03T18:45:00Z"},
+    {"event_id": 1637436579, "league_name": "UEFA - Nations League B", "runner_home": "Ireland", "runner_away": "Israel", "starts": "2026-10-04T18:45:00Z"},
+    {"event_id": 1637436580, "league_name": "UEFA - Nations League A", "runner_home": "Netherlands", "runner_away": "Serbia", "starts": "2026-10-04T18:45:00Z"},
+    {"event_id": 1637437042, "league_name": "UEFA - Nations League A", "runner_home": "Greece", "runner_away": "Germany", "starts": "2026-10-04T18:45:00Z"},
+    {"event_id": 1637448314, "league_name": "UEFA - Nations League A", "runner_home": "Portugal", "runner_away": "Norway", "starts": "2026-10-04T18:45:00Z"},
+    {"event_id": 1637448385, "league_name": "UEFA - Nations League A", "runner_home": "Wales", "runner_away": "Denmark", "starts": "2026-10-04T18:45:00Z"},
+]
+
 def is_national_team_competition(league_name):
     name = str(league_name or "").strip().lower()
     if not name:
@@ -799,6 +820,24 @@ def is_national_team_competition(league_name):
     if any(term in name for term in NATIONAL_COMPETITION_EXCLUSIONS):
         return False
     return any(term in name for term in NATIONAL_COMPETITION_TERMS)
+
+
+def moneyline_from_event_odds(event_odds):
+    """Extract full-game 1X2/home-away moneyline from APINN event odds."""
+    if not isinstance(event_odds, list):
+        return {}
+    for item in event_odds:
+        if str(item.get("market") or "").lower() != "moneyline":
+            continue
+        period = item.get("period")
+        if period not in (None, 0, "0"):
+            continue
+        odd1 = item.get("odds1")
+        odd2 = item.get("odds2")
+        if odd1 and odd2:
+            return {"odds1": odd1, "odds2": odd2}
+    return {}
+
 
 def betting_day_start_for(kickoff):
     """Our daily OPEN anchor: 11:00 Greece time before the match's betting day."""
@@ -955,6 +994,52 @@ if response is not None:
 else:
     print("APINN ALL-LEAGUES REQUEST SKIPPED AFTER RETRIES")
 
+# Bootstrap national fixtures that APINN exposed earlier but no longer returns
+# in the generic board. event_id de-duplication prevents duplicates when they
+# are present normally.
+for fixture in RECOVERY_NATIONAL_FIXTURES:
+    event_id = fixture.get("event_id")
+    if event_id and event_id not in seen_events:
+        try:
+            kickoff = datetime.fromisoformat(
+                str(fixture.get("starts") or "").replace("Z", "+00:00")
+            ).astimezone(GREECE_TZ)
+        except ValueError:
+            continue
+        if kickoff > NOW:
+            seen_events.add(event_id)
+            matches.append(dict(fixture))
+            print(
+                "APINN NATIONAL RECOVERY ADDED:",
+                fixture.get("runner_home"), "vs", fixture.get("runner_away"),
+                "| event:", event_id,
+            )
+
+# If a recovered/upcoming national fixture is missing embedded board prices,
+# query its event directly. This lets the normal pipeline fill Pinnacle odds,
+# favorite/contra and all downstream statistics even when the generic board
+# temporarily drops the fixture.
+for match in matches:
+    league_name = match.get("league_name") or ""
+    if not is_national_team_competition(league_name):
+        continue
+    moneyline = (match.get("odds") or {}).get("moneyline") or {}
+    if moneyline.get("odds1") and moneyline.get("odds2"):
+        continue
+    event_id = match.get("event_id")
+    if not event_id:
+        continue
+    odds_response = apinn_get(ODDS_URL, {"event_id": event_id})
+    event_odds = odds_response.json() if odds_response is not None else []
+    recovered_moneyline = moneyline_from_event_odds(event_odds)
+    if recovered_moneyline:
+        match.setdefault("odds", {})["moneyline"] = recovered_moneyline
+        print(
+            "APINN NATIONAL ODDS RECOVERED:",
+            match.get("runner_home"), "vs", match.get("runner_away"),
+            "| event:", event_id,
+        )
+
 raw_match_count = len(matches)
 matches, event_aliases, raw_event_matches = dedupe_apinn_fixtures(matches)
 
@@ -1043,13 +1128,20 @@ for match in matches:
     match_day_start = betting_day_start_for(kickoff)
     if NOW >= kickoff:
         continue
+
+    league_name = match.get("league_name") or ""
+    national_match = is_national_team_competition(league_name)
+
+    # Permanent national-team fix: cache the fixture row as soon as APINN shows
+    # it (up to 7 days ahead), instead of waiting until 11:00 on match day.
+    # That way a later APINN board omission cannot make the match disappear.
     if kickoff.date() != TODAY and NOW < match_day_start:
-        continue
+        if not national_match or kickoff - NOW > timedelta(days=7):
+            continue
 
     home = match.get("runner_home")
     away = match.get("runner_away")
     event_id = match.get("event_id")
-    league_name = match.get("league_name") or ""
     if not home or not away or event_id is None:
         continue
 
@@ -1085,6 +1177,10 @@ for match in matches:
     updates.append({
         "range": f"P{row_number}:R{row_number}",
         "values": [new_row[15:18]],
+    })
+    updates.append({
+        "range": f"BY{row_number}",
+        "values": [[kickoff.isoformat()]],
     })
 
     while len(sheet_rows) < row_number:
