@@ -14,7 +14,7 @@ html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:Inter,
 body{display:flex;justify-content:center;overflow-x:hidden}
 .hero{position:relative;width:min(100vw,520px);background:#000}
 .hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}.hero-club-label{position:absolute;left:13%;right:13%;top:32.15%;height:3.65%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(2,3,4,.98) 0%,rgba(2,3,4,.96) 56%,rgba(2,3,4,.72) 76%,rgba(2,3,4,0) 100%);color:#e9d9b9;font-size:clamp(8px,2.45vw,13px);font-weight:500;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;text-shadow:0 0 12px rgba(222,176,73,.24);pointer-events:none}.hero-club-label:before,.hero-club-label:after{content:"";height:1px;flex:1;max-width:58px;background:linear-gradient(90deg,transparent,#c28d2e)}.hero-club-label:after{background:linear-gradient(90deg,#c28d2e,transparent)}.hero-club-label span{padding:0 10px;white-space:nowrap}
-.login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}
+.login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}.menu-hotspot{position:absolute;right:4.2%;top:2.2%;width:12%;height:5.7%;border:0;background:transparent;cursor:pointer;border-radius:12px;-webkit-tap-highlight-color:transparent}.menu-hotspot:active{background:rgba(255,255,255,.05)}
 .login-hotspot:active{background:rgba(255,255,255,.06)}
 .login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:0 18px 24px;background:rgba(0,0,0,.12)}
 .login-layer.open{display:flex}
@@ -26,15 +26,35 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .field input:focus{border-color:rgba(217,169,64,.52)}
 .submit{width:100%;height:48px;margin-top:14px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
 .submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
-.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button,.text-link{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}.view-hidden{display:none!important}.verify-code{letter-spacing:.38em;text-align:center;font-weight:900;font-size:20px}.form-note{text-align:center;margin:0 12px 12px;color:#9d968c;font-size:10px;line-height:1.45}.success-box{text-align:center;padding:5px 2px}.success-box h3{margin:0 0 8px;font:500 22px Georgia,serif;color:#f1d281}.success-box p{margin:0 5px 14px;color:#aaa39b;font-size:11px;line-height:1.5}.secondary{width:100%;height:43px;margin-top:9px;border:1px solid rgba(230,187,87,.34);border-radius:12px;background:rgba(255,255,255,.025);color:#e3c573;font-weight:800}
+.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button,.text-link{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}.view-hidden{display:none!important}.verify-code{letter-spacing:.38em;text-align:center;font-weight:900;font-size:20px}.form-note{text-align:center;margin:0 12px 12px;color:#9d968c;font-size:10px;line-height:1.45}.success-box{text-align:center;padding:5px 2px}.success-box h3{margin:0 0 8px;font:500 22px Georgia,serif;color:#f1d281}.success-box p{margin:0 5px 14px;color:#aaa39b;font-size:11px;line-height:1.5}.secondary{width:100%;height:43px;margin-top:9px;border:1px solid rgba(230,187,87,.34);border-radius:12px;background:rgba(255,255,255,.025);color:#e3c573;font-weight:800}.menu-layer{position:fixed;inset:0;z-index:60;display:none;background:rgba(0,0,0,.42);backdrop-filter:blur(3px)}.menu-layer.open{display:block}.menu-panel{position:absolute;top:0;right:0;width:min(86vw,380px);height:100%;padding:26px 22px 24px;background:linear-gradient(180deg,rgba(11,11,12,.98),rgba(3,3,4,.99));border-left:1px solid rgba(221,174,63,.32);box-shadow:-24px 0 70px rgba(0,0,0,.62)}.menu-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid rgba(221,174,63,.16)}.menu-brand{font:600 23px Georgia,serif;color:#e8bb55}.menu-brand span{color:#f4f0e8}.menu-close{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025);color:#bbb2a4;font-size:20px}.menu-kicker{margin:18px 0 14px;color:#8f816b;font-size:9px;letter-spacing:2px;text-transform:uppercase}.menu-list{display:grid;gap:8px}.menu-item{width:100%;height:52px;padding:0 14px;border:1px solid rgba(255,255,255,.06);border-radius:13px;background:rgba(255,255,255,.018);color:#e8e2d9;text-align:left;font:600 14px Inter,system-ui,sans-serif}.menu-item:active{border-color:rgba(230,185,79,.36);background:rgba(230,185,79,.05)}.menu-login{margin-top:18px}.menu-note{margin-top:16px;text-align:center;color:#625d56;font-size:9px;line-height:1.5}
 @media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
 <body>
 <main class="hero">
   <img src="approved-hero.webp" alt="DreamTeamTips Private Members Club"><div class="hero-club-label"><span>PRIVATE MEMBERS CLUB</span></div>
+  <button id="openMenu" class="menu-hotspot" aria-label="Μενού"></button>
   <button id="openLogin" class="login-hotspot" aria-label="Είσοδος Μελών"></button>
 </main>
+
+<div id="menuLayer" class="menu-layer" aria-hidden="true">
+  <aside class="menu-panel" aria-label="Μενού DreamTeamTips">
+    <div class="menu-top">
+      <div class="menu-brand">DreamTeam<span>Tips</span></div>
+      <button id="closeMenu" class="menu-close" aria-label="Κλείσιμο">×</button>
+    </div>
+    <div class="menu-kicker">Private Members Club</div>
+    <div class="menu-list">
+      <button class="menu-item" data-public-section="about">Σχετικά με εμάς</button>
+      <button class="menu-item" data-public-section="how">Πώς δουλεύουμε</button>
+      <button class="menu-item" data-public-section="plans">Πακέτα / Συνδρομές</button>
+      <button class="menu-item" data-public-section="faq">FAQ</button>
+      <button class="menu-item" data-public-section="contact">Επικοινωνία</button>
+    </div>
+    <button id="menuLogin" class="submit menu-login">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+    <div class="menu-note">Οι δημόσιες ενότητες θα χτιστούν μία-μία πάνω σε αυτή τη δομή.</div>
+  </aside>
+</div>
 
 <div id="loginLayer" class="login-layer" aria-hidden="true">
   <section class="login-card">
@@ -83,6 +103,7 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 
 <script>
 const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
+const menuLayer=document.getElementById("menuLayer"),openMenu=document.getElementById("openMenu"),closeMenu=document.getElementById("closeMenu"),menuLogin=document.getElementById("menuLogin");
 const card=document.querySelector(".login-card");
 const loginView=document.getElementById("loginView"),registerView=document.getElementById("registerView"),verifyView=document.getElementById("verifyView"),accountReadyView=document.getElementById("accountReadyView");
 const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
@@ -114,7 +135,8 @@ function unlockBackground(){
 }
 function openLogin(){
   if(localStorage.getItem("ma_token")){location.href=APP_URL;return}
-  lockBackground();
+  if(menuLayer.classList.contains("open"))closePublicMenu(false);
+  if(!document.body.classList.contains("modal-open"))lockBackground();
   layer.classList.add("open");
   layer.setAttribute("aria-hidden","false");
   setTimeout(()=>user.focus(),80)
@@ -125,6 +147,16 @@ function closeLogin(){
   msg.textContent="";
   unlockBackground()
 }
+function openPublicMenu(){
+  if(!document.body.classList.contains("modal-open"))lockBackground();
+  menuLayer.classList.add("open");
+  menuLayer.setAttribute("aria-hidden","false")
+}
+function closePublicMenu(unlock=true){
+  menuLayer.classList.remove("open");
+  menuLayer.setAttribute("aria-hidden","true");
+  if(unlock)unlockBackground()
+}
 function showStage(stage){
   [loginView,registerView,verifyView,accountReadyView].forEach(v=>v.classList.add("view-hidden"));
   card.classList.remove("register-mode","verify-mode");
@@ -133,7 +165,11 @@ function showStage(stage){
   if(stage==="ready"){accountReadyView.classList.remove("view-hidden");card.classList.add("verify-mode");return}
   loginView.classList.remove("view-hidden");setTimeout(()=>user.focus(),80)
 }
-openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});
+openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};
+openMenu.onclick=openPublicMenu;closeMenu.onclick=()=>closePublicMenu(true);menuLayer.onclick=e=>{if(e.target===menuLayer)closePublicMenu(true)};
+menuLogin.onclick=()=>{closePublicMenu(false);openLogin()};
+document.querySelectorAll("[data-public-section]").forEach(btn=>btn.onclick=()=>{btn.blur()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(menuLayer.classList.contains("open"))closePublicMenu(true);else if(layer.classList.contains("open"))closeLogin()}});
 signupLink.onclick=()=>{msg.textContent="";showStage("register")};
 backToLogin.onclick=()=>{registerMsg.textContent="";showStage("login")};
 verifyBack.onclick=()=>{verifyMsg.textContent="";showStage("register")};
