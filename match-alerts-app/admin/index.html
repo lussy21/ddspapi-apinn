@@ -142,6 +142,35 @@ let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, s
 let adminSignalsCache=[], slipDraftIds=[];
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
+let signalsLoadPromise=null;
+function setSignalsLoading(){
+  if(typeof dailySelectionsCount!=="undefined") dailySelectionsCount.textContent="φόρτωση…";
+  if(typeof dailySelectionsLaunchCount!=="undefined") dailySelectionsLaunchCount.textContent="…";
+}
+async function loadSignalsFresh(){
+  if(!internalSignalsLive) return null;
+  if(signalsLoadPromise) return signalsLoadPromise;
+  setSignalsLoading();
+  signalsLoadPromise=(async()=>{
+    let lastErr=null;
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
+        if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
+        renderSignals(sig.signals||[]);
+        return sig;
+      }catch(e){
+        lastErr=e;
+        if(attempt===0) await new Promise(r=>setTimeout(r,1200));
+      }
+    }
+    signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά. Πάτησε Ανανέωση.</div>';
+    dailySelections.innerHTML='<div class="note">Δεν ολοκληρώθηκε η φόρτωση των επιλογών. Δοκίμασε ξανά.</div>';
+    dailySelectionsCount.textContent="—";
+    throw lastErr||new Error("ADMIN_ERROR");
+  })().finally(()=>{signalsLoadPromise=null;});
+  return signalsLoadPromise;
+}
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
   const health=(location.hostname==="match-alerts-api-private.onrender.com"?"/health":"https://match-alerts-api-private.onrender.com/health");
@@ -187,12 +216,7 @@ async function loadAdmin(){
 
   const jobs=[];
   if(internalSignalsLive){
-    jobs.push(apiPost({action:"adminSignals",adminCode:adminSecret}).then(sig=>{
-      if(sig.ok) renderSignals(sig.signals||[]);
-      else signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
-    }).catch(()=>{
-      signals.innerHTML='<div class="note">Τα σήματα δεν είναι διαθέσιμα προσωρινά.</div>';
-    }));
+    jobs.push(loadSignalsFresh().catch(()=>{}));
   }
   if(slipBuilderLive){
     jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
@@ -411,9 +435,7 @@ window.withdrawSlip=async function(id,btn){
 
 async function reloadSignals(){
   if(!internalSignalsLive) return;
-  const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
-  if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
-  renderSignals(sig.signals||[]);
+  return loadSignalsFresh();
 }
 window.signalToggle=async(action,controlId,btn)=>{
   if(!publicationControlsLive||!controlId) return;
