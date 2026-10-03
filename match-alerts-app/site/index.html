@@ -27,6 +27,32 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .submit{width:100%;height:48px;margin-top:14px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
 .submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
 .signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button,.text-link{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}.view-hidden{display:none!important}.verify-code{letter-spacing:.38em;text-align:center;font-weight:900;font-size:20px}.form-note{text-align:center;margin:0 12px 12px;color:#9d968c;font-size:10px;line-height:1.45}.success-box{text-align:center;padding:5px 2px}.success-box h3{margin:0 0 8px;font:500 22px Georgia,serif;color:#f1d281}.success-box p{margin:0 5px 14px;color:#aaa39b;font-size:11px;line-height:1.5}.secondary{width:100%;height:43px;margin-top:9px;border:1px solid rgba(230,187,87,.34);border-radius:12px;background:rgba(255,255,255,.025);color:#e3c573;font-weight:800}.menu-layer{position:fixed;inset:0;z-index:60;display:none;background:rgba(0,0,0,.42);backdrop-filter:blur(3px)}.menu-layer.open{display:block}.menu-panel{position:absolute;top:0;right:0;width:min(86vw,380px);height:100%;padding:26px 22px 24px;background:linear-gradient(180deg,rgba(11,11,12,.98),rgba(3,3,4,.99));border-left:1px solid rgba(221,174,63,.32);box-shadow:-24px 0 70px rgba(0,0,0,.62)}.menu-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid rgba(221,174,63,.16)}.menu-brand{font:600 23px Georgia,serif;color:#e8bb55}.menu-brand span{color:#f4f0e8}.menu-close{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025);color:#bbb2a4;font-size:20px}.menu-kicker{margin:18px 0 14px;color:#8f816b;font-size:9px;letter-spacing:2px;text-transform:uppercase}.menu-list{display:grid;gap:8px}.menu-item{width:100%;height:52px;padding:0 14px;border:1px solid rgba(255,255,255,.06);border-radius:13px;background:rgba(255,255,255,.018);color:#e8e2d9;text-align:left;font:600 14px Inter,system-ui,sans-serif}.menu-item:active{border-color:rgba(230,185,79,.36);background:rgba(230,185,79,.05)}.menu-login{margin-top:18px}.menu-note{margin-top:16px;text-align:center;color:#625d56;font-size:9px;line-height:1.5}
+.public-page{position:fixed;inset:0;z-index:70;display:none;overflow-y:auto;background:
+radial-gradient(620px 300px at 50% -70px,rgba(217,177,87,.16),transparent 65%),
+linear-gradient(180deg,#080809 0%,#020203 100%);color:#fff}
+.public-page.open{display:block}
+.public-shell{width:min(100%,520px);min-height:100%;margin:0 auto;padding:22px 18px 42px}
+.public-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:17px;border-bottom:1px solid rgba(224,176,69,.18)}
+.public-brand{font:600 22px Georgia,serif;color:#e8bb55}.public-brand span{color:#f4f0e8}
+.public-close{width:36px;height:36px;border:1px solid rgba(255,255,255,.10);border-radius:11px;background:rgba(255,255,255,.025);color:#c5bcad;font-size:20px}
+.public-kicker{text-align:center;margin-top:28px;color:#9e8a67;font-size:9px;letter-spacing:2.4px;text-transform:uppercase}
+.public-title{text-align:center;margin:8px 0 8px;font:600 31px Georgia,serif;color:#f3eadc}
+.public-copy{max-width:390px;margin:0 auto 22px;text-align:center;color:#a7a097;font-size:12px;line-height:1.65}
+.plan-grid{display:grid;gap:13px}
+.plan-card{position:relative;padding:20px 18px;border:1px solid rgba(224,176,69,.24);border-radius:20px;background:
+radial-gradient(260px 120px at 50% 0,rgba(215,164,57,.08),transparent 72%),
+rgba(255,255,255,.018);box-shadow:0 14px 38px rgba(0,0,0,.28)}
+.plan-card.featured{border-color:rgba(237,190,84,.56);box-shadow:0 18px 48px rgba(0,0,0,.34),0 0 32px rgba(213,165,61,.06)}
+.plan-badge{position:absolute;right:14px;top:13px;padding:5px 8px;border-radius:999px;background:rgba(217,177,87,.12);border:1px solid rgba(217,177,87,.25);color:#e6c875;font-size:8px;font-weight:800;letter-spacing:.8px}
+.plan-name{font:600 22px Georgia,serif;color:#f2eadf}
+.plan-duration{margin-top:3px;color:#9a9289;font-size:11px}
+.plan-price{margin:16px 0 13px;font:600 27px Georgia,serif;color:#e7bd5b}
+.plan-price small{display:block;margin-top:4px;font:500 9px Inter,system-ui,sans-serif;color:#766f67;letter-spacing:.3px}
+.plan-features{display:grid;gap:8px;margin:0 0 16px;padding:0;list-style:none}
+.plan-features li{position:relative;padding-left:18px;color:#bdb5aa;font-size:11px;line-height:1.45}
+.plan-features li:before{content:"◆";position:absolute;left:0;top:0;color:#cfa544;font-size:8px}
+.plan-select{width:100%;height:45px;border:1px solid rgba(237,189,79,.66);border-radius:12px;background:linear-gradient(135deg,#8f5d12,#dba53b,#f3d47c);color:#090909;font-weight:900;letter-spacing:.35px}
+.plan-footnote{text-align:center;margin-top:17px;color:#706961;font-size:9px;line-height:1.55}
 @media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
@@ -53,6 +79,58 @@ body{display:flex;justify-content:center;overflow-x:hidden}
     </div>
     <button id="menuLogin" class="submit menu-login">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
   </aside>
+</div>
+
+<div id="plansPage" class="public-page" aria-hidden="true">
+  <div class="public-shell">
+    <div class="public-head">
+      <div class="public-brand">DreamTeam<span>Tips</span></div>
+      <button id="closePlans" class="public-close" aria-label="Κλείσιμο">×</button>
+    </div>
+    <div class="public-kicker">Private Members Club</div>
+    <h1 class="public-title">Πακέτα Συνδρομής</h1>
+    <p class="public-copy">Η πρόσβαση είναι ίδια σε όλα τα πακέτα. Αλλάζει μόνο η διάρκεια της συνδρομής. Τις τελικές τιμές θα τις ορίσουμε πριν ενεργοποιηθούν οι πληρωμές.</p>
+
+    <div class="plan-grid">
+      <section class="plan-card">
+        <div class="plan-name">1 Μήνας</div>
+        <div class="plan-duration">Μηνιαία πρόσβαση</div>
+        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+        <ul class="plan-features">
+          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
+          <li>Ιστορικό και προσωπικές επιλογές</li>
+        </ul>
+        <button class="plan-select" data-plan="monthly">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+      </section>
+
+      <section class="plan-card featured">
+        <div class="plan-badge">3 ΜΗΝΕΣ</div>
+        <div class="plan-name">3 Μήνες</div>
+        <div class="plan-duration">Τριμηνιαία πρόσβαση</div>
+        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+        <ul class="plan-features">
+          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
+          <li>Ιστορικό και προσωπικές επιλογές</li>
+        </ul>
+        <button class="plan-select" data-plan="quarterly">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+      </section>
+
+      <section class="plan-card">
+        <div class="plan-name">12 Μήνες</div>
+        <div class="plan-duration">Ετήσια πρόσβαση</div>
+        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+        <ul class="plan-features">
+          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
+          <li>Ιστορικό και προσωπικές επιλογές</li>
+        </ul>
+        <button class="plan-select" data-plan="annual">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+      </section>
+    </div>
+    <div class="plan-footnote">Η αγορά και η αυτόματη ενεργοποίηση συνδρομής θα προστεθούν όταν κλειδώσουμε τις τελικές τιμές και τον τρόπο πληρωμής.</div>
+  </div>
 </div>
 
 <div id="loginLayer" class="login-layer" aria-hidden="true">
@@ -103,6 +181,7 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 <script>
 const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
 const menuLayer=document.getElementById("menuLayer"),openMenu=document.getElementById("openMenu"),closeMenu=document.getElementById("closeMenu"),menuLogin=document.getElementById("menuLogin");
+const plansPage=document.getElementById("plansPage"),closePlans=document.getElementById("closePlans");
 const card=document.querySelector(".login-card");
 const loginView=document.getElementById("loginView"),registerView=document.getElementById("registerView"),verifyView=document.getElementById("verifyView"),accountReadyView=document.getElementById("accountReadyView");
 const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
@@ -167,8 +246,34 @@ function showStage(stage){
 openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};
 openMenu.onclick=openPublicMenu;closeMenu.onclick=()=>closePublicMenu(true);menuLayer.onclick=e=>{if(e.target===menuLayer)closePublicMenu(true)};
 menuLogin.onclick=()=>{closePublicMenu(false);openLogin()};
-document.querySelectorAll("[data-public-section]").forEach(btn=>btn.onclick=()=>{btn.blur()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(menuLayer.classList.contains("open"))closePublicMenu(true);else if(layer.classList.contains("open"))closeLogin()}});
+document.querySelectorAll("[data-public-section]").forEach(btn=>btn.onclick=()=>{
+  const section=btn.dataset.publicSection;
+  btn.blur();
+  if(section==="plans"){
+    closePublicMenu(false);
+    plansPage.classList.add("open");
+    plansPage.setAttribute("aria-hidden","false");
+    return;
+  }
+});
+closePlans.onclick=()=>{
+  plansPage.classList.remove("open");
+  plansPage.setAttribute("aria-hidden","true");
+  unlockBackground()
+};
+document.querySelectorAll(".plan-select").forEach(btn=>btn.onclick=()=>{
+  localStorage.setItem("dtt_selected_plan_v1",btn.dataset.plan||"");
+  plansPage.classList.remove("open");
+  plansPage.setAttribute("aria-hidden","true");
+  layer.classList.add("open");
+  layer.setAttribute("aria-hidden","false");
+  showStage("register");
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){
+  if(plansPage.classList.contains("open")){plansPage.classList.remove("open");plansPage.setAttribute("aria-hidden","true");unlockBackground()}
+  else if(menuLayer.classList.contains("open"))closePublicMenu(true);
+  else if(layer.classList.contains("open"))closeLogin()
+}});
 signupLink.onclick=()=>{msg.textContent="";showStage("register")};
 backToLogin.onclick=()=>{registerMsg.textContent="";showStage("login")};
 verifyBack.onclick=()=>{verifyMsg.textContent="";showStage("register")};
