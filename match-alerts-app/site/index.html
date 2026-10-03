@@ -18,7 +18,7 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .login-hotspot:active{background:rgba(255,255,255,.06)}
 .login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:0 18px 24px;background:rgba(0,0,0,.12)}
 .login-layer.open{display:flex}
-.login-card{position:relative;width:min(420px,88vw);margin-top:46vh;padding:18px 20px 19px;border:1px solid rgba(224,176,69,.46);border-radius:22px;background:linear-gradient(180deg,rgba(7,7,8,.90),rgba(4,4,5,.94));box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 28px rgba(217,169,64,.06);backdrop-filter:blur(6px)}
+.login-card{position:relative;width:min(420px,88vw);margin-top:46vh;padding:18px 20px 19px;border:1px solid rgba(224,176,69,.46);border-radius:22px;background:linear-gradient(180deg,rgba(7,7,8,.90),rgba(4,4,5,.94));box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 28px rgba(217,169,64,.06);backdrop-filter:blur(6px);max-height:61vh;overflow-y:auto;scrollbar-width:none}.login-card::-webkit-scrollbar{display:none}.login-card.register-mode{margin-top:31vh}.login-card.verify-mode{margin-top:39vh}
 .close{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#b8b0a4;font-size:18px}
 .login-brand{display:none}.login-title{text-align:center;margin:3px 0 14px;font:500 22px Georgia,serif;color:#f1eadb}
 .field{margin-top:10px}.field label{display:block;margin:0 0 6px 2px;color:#c6beb3;font-size:9px;font-weight:900}
@@ -26,7 +26,7 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .field input:focus{border-color:rgba(217,169,64,.52)}
 .submit{width:100%;height:48px;margin-top:14px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
 .submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
-.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
+.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button,.text-link{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}.view-hidden{display:none!important}.verify-code{letter-spacing:.38em;text-align:center;font-weight:900;font-size:20px}.form-note{text-align:center;margin:0 12px 12px;color:#9d968c;font-size:10px;line-height:1.45}.success-box{text-align:center;padding:5px 2px}.success-box h3{margin:0 0 8px;font:500 22px Georgia,serif;color:#f1d281}.success-box p{margin:0 5px 14px;color:#aaa39b;font-size:11px;line-height:1.5}.secondary{width:100%;height:43px;margin-top:9px;border:1px solid rgba(230,187,87,.34);border-radius:12px;background:rgba(255,255,255,.025);color:#e3c573;font-weight:800}
 @media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
@@ -39,19 +39,54 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 <div id="loginLayer" class="login-layer" aria-hidden="true">
   <section class="login-card">
     <button id="closeLogin" class="close" aria-label="Κλείσιμο">×</button>
-    <div class="login-title">Είσοδος μελών</div>
-    <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
-    <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-    <button id="loginSubmit" class="submit">ΕΙΣΟΔΟΣ</button>
-    <div id="loginMsg" class="msg"></div>
-    <div class="signup-line">Δεν έχεις λογαριασμό;<button id="signupLink" type="button">Δημιουργία λογαριασμού</button></div>
-    <div class="private-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+    <div id="loginView">
+      <div class="login-title">Είσοδος μελών</div>
+      <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
+      <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+      <button id="loginSubmit" class="submit">ΕΙΣΟΔΟΣ</button>
+      <div id="loginMsg" class="msg"></div>
+      <div class="signup-line">Δεν έχεις λογαριασμό;<button id="signupLink" type="button">Δημιουργία λογαριασμού</button></div>
+      <div class="private-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+    </div>
+
+    <div id="registerView" class="view-hidden">
+      <div class="login-title">Δημιουργία λογαριασμού</div>
+      <div class="form-note">Δημιούργησε πρώτα τον λογαριασμό σου. Η συνδρομή επιλέγεται ξεχωριστά.</div>
+      <div class="field"><label for="regUser">Όνομα χρήστη</label><input id="regUser" autocomplete="username" placeholder="username"></div>
+      <div class="field"><label for="regEmail">Email</label><input id="regEmail" type="email" autocomplete="email" placeholder="name@email.com"></div>
+      <div class="field"><label for="regPass">Κωδικός</label><input id="regPass" type="password" autocomplete="new-password" placeholder="Τουλάχιστον 8 χαρακτήρες"></div>
+      <div class="field"><label for="regPass2">Επιβεβαίωση κωδικού</label><input id="regPass2" type="password" autocomplete="new-password" placeholder="Ξανά ο κωδικός"></div>
+      <button id="registerSubmit" class="submit">ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ</button>
+      <div id="registerMsg" class="msg"></div>
+      <div class="signup-line">Έχεις ήδη λογαριασμό;<button id="backToLogin" type="button">Είσοδος</button></div>
+    </div>
+
+    <div id="verifyView" class="view-hidden">
+      <div class="login-title">Επιβεβαίωση email</div>
+      <div id="verifyText" class="form-note">Σου στείλαμε έναν 6ψήφιο κωδικό στο email σου.</div>
+      <div class="field"><label for="verifyCode">Κωδικός επιβεβαίωσης</label><input id="verifyCode" class="verify-code" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+      <button id="verifySubmit" class="submit">ΕΠΙΒΕΒΑΙΩΣΗ</button>
+      <button id="resendCode" class="secondary" type="button">ΞΑΝΑΣΤΕΙΛΕ ΚΩΔΙΚΟ</button>
+      <div id="verifyMsg" class="msg"></div>
+      <div class="signup-line"><button id="verifyBack" type="button">Πίσω</button></div>
+    </div>
+
+    <div id="accountReadyView" class="view-hidden success-box">
+      <h3>Ο λογαριασμός είναι έτοιμος</h3>
+      <p>Το email επιβεβαιώθηκε. Η πρόσβαση στο περιεχόμενο ενεργοποιείται με ενεργή συνδρομή.</p>
+      <button id="readyClose" class="submit" type="button">ΕΠΙΣΤΡΟΦΗ</button>
+    </div>
   </section>
 </div>
 
 <script>
 const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
+const card=document.querySelector(".login-card");
+const loginView=document.getElementById("loginView"),registerView=document.getElementById("registerView"),verifyView=document.getElementById("verifyView"),accountReadyView=document.getElementById("accountReadyView");
 const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
+const regUser=document.getElementById("regUser"),regEmail=document.getElementById("regEmail"),regPass=document.getElementById("regPass"),regPass2=document.getElementById("regPass2"),registerSubmit=document.getElementById("registerSubmit"),registerMsg=document.getElementById("registerMsg"),backToLogin=document.getElementById("backToLogin");
+const verifyCode=document.getElementById("verifyCode"),verifySubmit=document.getElementById("verifySubmit"),resendCode=document.getElementById("resendCode"),verifyMsg=document.getElementById("verifyMsg"),verifyText=document.getElementById("verifyText"),verifyBack=document.getElementById("verifyBack"),readyClose=document.getElementById("readyClose");
+let pendingUsername="",pendingMaskedEmail="";
 const DEVICE_STORAGE_KEY="dtt_device_id_v1";const APP_URL="https://match-alerts-private.onrender.com/";const API_URL="https://match-alerts-api-private.onrender.com/api";
 function deviceId(){let x=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,x);return x}
 let lockedScrollY=0;
@@ -88,11 +123,64 @@ function closeLogin(){
   msg.textContent="";
   unlockBackground()
 }
-openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});signupLink.onclick=()=>{msg.textContent="Η δημιουργία λογαριασμού θα ενεργοποιηθεί στο επόμενο βήμα.";};
+function showStage(stage){
+  [loginView,registerView,verifyView,accountReadyView].forEach(v=>v.classList.add("view-hidden"));
+  card.classList.remove("register-mode","verify-mode");
+  if(stage==="register"){registerView.classList.remove("view-hidden");card.classList.add("register-mode");setTimeout(()=>regUser.focus(),80);return}
+  if(stage==="verify"){verifyView.classList.remove("view-hidden");card.classList.add("verify-mode");setTimeout(()=>verifyCode.focus(),80);return}
+  if(stage==="ready"){accountReadyView.classList.remove("view-hidden");card.classList.add("verify-mode");return}
+  loginView.classList.remove("view-hidden");setTimeout(()=>user.focus(),80)
+}
+openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});
+signupLink.onclick=()=>{msg.textContent="";showStage("register")};
+backToLogin.onclick=()=>{registerMsg.textContent="";showStage("login")};
+verifyBack.onclick=()=>{verifyMsg.textContent="";showStage("register")};
+readyClose.onclick=()=>{closeLogin();showStage("login")};
 async function apiPost(params){const c=new AbortController(),t=setTimeout(()=>c.abort(),16000);try{const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch(API_URL,{method:"POST",body:b,signal:c.signal,cache:"no-store"});return await r.json()}finally{clearTimeout(t)}}
-const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει."};
-async function doLogin(){const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await apiPost({action:"login",username:u,password:p,deviceId:deviceId()});if(!r.ok)throw new Error(r.error||"ERROR");if(r.token)localStorage.setItem("ma_token",r.token);location.href=APP_URL}catch(e){msg.textContent=errors[e.message]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
+const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει.",BAD_USERNAME:"Το όνομα χρήστη θέλει 3–32 λατινικούς χαρακτήρες, αριθμούς, τελεία, _ ή -.",BAD_EMAIL:"Το email δεν είναι σωστό.",PASSWORD_TOO_SHORT:"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",USER_EXISTS:"Αυτό το όνομα χρήστη υπάρχει ήδη.",EMAIL_EXISTS:"Αυτό το email υπάρχει ήδη.",REGISTRATION_FULL:"Οι διαθέσιμες εγγραφές έχουν συμπληρωθεί.",BAD_CODE:"Ο κωδικός πρέπει να είναι 6 ψηφία.",INVALID_CODE:"Ο κωδικός επιβεβαίωσης είναι λάθος.",CODE_EXPIRED:"Ο κωδικός έληξε. Ζήτησε νέο.",USER_NOT_FOUND:"Ο λογαριασμός δεν βρέθηκε.",ALREADY_VERIFIED:"Το email έχει ήδη επιβεβαιωθεί."};
+async function doLogin(){const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await apiPost({action:"login",username:u,password:p,deviceId:deviceId()});if(!r.ok){if(r.error==="EMAIL_NOT_VERIFIED"){pendingUsername=u;pendingMaskedEmail="";verifyText.textContent="Βάλε τον 6ψήφιο κωδικό που έλαβες στο email σου.";showStage("verify");return}throw new Error(r.error||"ERROR")}if(r.token)localStorage.setItem("ma_token",r.token);location.href=APP_URL}catch(e){msg.textContent=errors[e.message]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
+async function doRegister(){
+  const u=regUser.value.trim(),e=regEmail.value.trim(),p=regPass.value,p2=regPass2.value;
+  registerMsg.textContent="";
+  if(!u||!e||!p||!p2){registerMsg.textContent="Συμπλήρωσε όλα τα πεδία.";return}
+  if(p!==p2){registerMsg.textContent="Οι δύο κωδικοί δεν είναι ίδιοι.";return}
+  registerSubmit.disabled=true;registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ…";
+  try{
+    const r=await apiPost({action:"register",username:u,email:e,password:p});
+    if(!r.ok)throw new Error(r.error||"ERROR");
+    pendingUsername=r.username||u;pendingMaskedEmail=r.emailMasked||e;
+    verifyText.textContent="Στείλαμε 6ψήφιο κωδικό στο "+pendingMaskedEmail+".";
+    verifyCode.value="";showStage("verify")
+  }catch(err){registerMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η εγγραφή. Δοκίμασε ξανά."}
+  finally{registerSubmit.disabled=false;registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ"}
+}
+async function doVerify(){
+  const code=verifyCode.value.trim();verifyMsg.textContent="";
+  if(!/^\d{6}$/.test(code)){verifyMsg.textContent=errors.BAD_CODE;return}
+  verifySubmit.disabled=true;verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ…";
+  try{
+    const r=await apiPost({action:"verify",username:pendingUsername,code});
+    if(!r.ok)throw new Error(r.error||"ERROR");
+    showStage("ready")
+  }catch(err){verifyMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η επιβεβαίωση."}
+  finally{verifySubmit.disabled=false;verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ"}
+}
+async function doResend(){
+  if(!pendingUsername){verifyMsg.textContent="Δεν βρέθηκε λογαριασμός.";return}
+  resendCode.disabled=true;resendCode.textContent="ΑΠΟΣΤΟΛΗ…";verifyMsg.textContent="";
+  try{
+    const r=await apiPost({action:"resend",username:pendingUsername});
+    if(!r.ok)throw new Error(r.error||"ERROR");
+    pendingMaskedEmail=r.emailMasked||pendingMaskedEmail;
+    verifyText.textContent="Στείλαμε νέο 6ψήφιο κωδικό στο "+pendingMaskedEmail+".";
+    verifyMsg.textContent="Στάλθηκε νέος κωδικός."
+  }catch(err){verifyMsg.textContent=errors[err.message]||"Δεν στάλθηκε νέος κωδικός."}
+  finally{resendCode.disabled=false;resendCode.textContent="ΞΑΝΑΣΤΕΙΛΕ ΚΩΔΙΚΟ"}
+}
 submit.onclick=doLogin;pass.onkeydown=e=>{if(e.key==="Enter")doLogin()};
+registerSubmit.onclick=doRegister;regPass2.onkeydown=e=>{if(e.key==="Enter")doRegister()};
+verifySubmit.onclick=doVerify;verifyCode.onkeydown=e=>{if(e.key==="Enter")doVerify()};
+resendCode.onclick=doResend;
 </script>
 </body>
 </html>
