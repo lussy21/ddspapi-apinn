@@ -30,7 +30,7 @@ body{display:flex;justify-content:center;overflow-x:hidden}
 .field input:focus{border-color:rgba(217,169,64,.52)}
 .submit{width:100%;height:50px;margin-top:17px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
 .submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
-.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
+.signup-line{text-align:center;margin-top:13px;color:#8f8881;font-size:11px}.signup-line button{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}
 @media(min-width:700px){.hero{box-shadow:0 0 80px rgba(0,0,0,.9)}}
 </style>
 </head>
@@ -53,18 +53,19 @@ body{display:flex;justify-content:center;overflow-x:hidden}
     <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
     <button id="loginSubmit" class="submit">ΕΙΣΟΔΟΣ</button>
     <div id="loginMsg" class="msg"></div>
+    <div class="signup-line">Δεν έχεις λογαριασμό;<button id="signupLink" type="button">Δημιουργία λογαριασμού</button></div>
     <div class="private-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
   </section>
 </div>
 
 <script>
 const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
-const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg");
+const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
 const DEVICE_STORAGE_KEY="dtt_device_id_v1";
 function deviceId(){let x=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,x);return x}
 function openLogin(){if(localStorage.getItem("ma_token")){location.href="../";return}layer.classList.add("open");layer.setAttribute("aria-hidden","false");setTimeout(()=>user.focus(),80)}
 function closeLogin(){layer.classList.remove("open");layer.setAttribute("aria-hidden","true");msg.textContent=""}
-openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});
+openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLogin()});signupLink.onclick=()=>{msg.textContent="Η δημιουργία λογαριασμού θα ενεργοποιηθεί στο επόμενο βήμα.";};
 async function apiPost(params){const c=new AbortController(),t=setTimeout(()=>c.abort(),16000);try{const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch("/api",{method:"POST",body:b,signal:c.signal,cache:"no-store"});return await r.json()}finally{clearTimeout(t)}}
 const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει."};
 async function doLogin(){const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await apiPost({action:"login",username:u,password:p,deviceId:deviceId()});if(!r.ok)throw new Error(r.error||"ERROR");if(r.token)localStorage.setItem("ma_token",r.token);location.href="../"}catch(e){msg.textContent=errors[e.message]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
