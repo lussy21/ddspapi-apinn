@@ -13,6 +13,8 @@ APPS_SCRIPT_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbwRUaBGKeUQm-L2P2mar42FXVdHAB1mNGkxCscnMMDAk_BDZXq2ADZyXo7YZI7NH89Z/exec",
 )
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "https://match-alerts-private.onrender.com")
+SITE_ORIGIN = os.environ.get("SITE_ORIGIN", "https://dreamteamtips-site.onrender.com")
+ALLOWED_ORIGINS = {APP_ORIGIN, SITE_ORIGIN}
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ADMIN_DIR = os.path.join(APP_DIR, "admin")
 AUTO_PUSH_SECRET = os.environ.get("AUTO_PUSH_SECRET", "").strip()
@@ -164,7 +166,8 @@ def push_to_all_active_users(admin_code, title, body, tag):
 
 
 def cors(resp):
-    resp.headers["Access-Control-Allow-Origin"] = APP_ORIGIN
+    origin = request.headers.get("Origin", "")
+    resp.headers["Access-Control-Allow-Origin"] = origin if origin in ALLOWED_ORIGINS else APP_ORIGIN
     resp.headers["Vary"] = "Origin"
     resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS, GET"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -351,7 +354,7 @@ def api():
 
     origin = request.headers.get("Origin", "")
     same_origin = request.host_url.rstrip("/")
-    if origin and origin not in {APP_ORIGIN, same_origin}:
+    if origin and origin not in (ALLOWED_ORIGINS | {same_origin}):
         return jsonify(ok=False, error="ORIGIN_DENIED"), 403
 
     payload = request.get_json(silent=True)
