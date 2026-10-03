@@ -3,181 +3,185 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#070708">
-<meta name="description" content="DreamTeamTips — επιλεγμένες ποδοσφαιρικές προτάσεις, ιδιωτική πρόσβαση και ενημερώσεις στην κατάλληλη στιγμή.">
+<meta name="theme-color" content="#050506">
+<meta name="description" content="DreamTeamTips — Private Members Area">
 <link rel="icon" href="../dreamteamtips-icon.svg" type="image/svg+xml">
-<title>DreamTeamTips</title>
+<title>DreamTeamTips · Private Members Area</title>
 <style>
-:root{
-  --bg:#060607;--panel:#0d0d0f;--panel2:#111013;--text:#f7f3e8;--muted:#9a969e;
-  --gold:#d9b157;--gold2:#f2d98f;--gold3:#fff0b4;--line:rgba(217,177,87,.18);
-  --soft:rgba(255,255,255,.055);--good:#bfe9c7
-}
+:root{--bg:#050506;--gold:#d9a940;--gold2:#ffe29a;--gold3:#fff0bd;--text:#f7f2e8;--muted:#aaa4ab;--line:rgba(222,176,73,.28)}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;background:var(--bg)}
-body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:
- radial-gradient(900px 520px at 50% -160px,rgba(217,177,87,.14),transparent 62%),
- linear-gradient(180deg,#0a0a0c 0,#050506 58%,#070708 100%);min-height:100vh}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:
- linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
- linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
- background-size:30px 30px;mask-image:linear-gradient(to bottom,#000,transparent 86%)}
-a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 34px));margin:auto;position:relative;z-index:1}
-header{position:sticky;top:0;z-index:50;background:rgba(6,6,7,.78);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.045)}
-.nav{height:76px;display:flex;align-items:center;justify-content:space-between;gap:22px}
-.brand{display:flex;align-items:center;gap:11px;min-width:0}.brand img{width:46px;height:46px;border-radius:14px;border:1px solid rgba(217,177,87,.34);box-shadow:0 10px 28px rgba(0,0,0,.35)}
-.brand-name{font:600 23px/1 Georgia,serif;white-space:nowrap}.brand-name span{color:var(--gold2)}
-.brand-sub{margin-top:5px;color:#827d84;font-size:8px;letter-spacing:1.75px;text-transform:uppercase}
-.links{display:flex;align-items:center;gap:22px;color:#aaa6ad;font-size:12px;font-weight:800}.links a:hover{color:var(--gold3)}
-.nav-cta{padding:10px 14px;border-radius:12px;border:1px solid rgba(217,177,87,.30);background:rgba(217,177,87,.08);color:#ffe7a5!important}
-.menu{display:none;border:1px solid var(--line);background:rgba(217,177,87,.06);color:var(--gold2);border-radius:11px;width:40px;height:40px;font-size:20px}
-.hero{padding:96px 0 72px}.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center}
-.kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(217,177,87,.22);border-radius:999px;background:rgba(217,177,87,.055);color:#dbc98d;font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase}
-.kicker:before{content:"◆";font-size:7px;color:var(--gold2)}
-h1{font:500 clamp(44px,7vw,78px)/.98 Georgia,serif;letter-spacing:-2.7px;margin:18px 0 20px;max-width:780px}
-h1 em{font-style:normal;color:var(--gold2)}
-.hero-copy{max-width:690px;color:#aaa6ad;font-size:16px;line-height:1.72;margin:0}
-.hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin-top:28px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 18px;border-radius:14px;font-weight:900;font-size:12px;border:1px solid rgba(255,255,255,.08)}
-.btn.primary{border-color:rgba(217,177,87,.32);background:linear-gradient(145deg,rgba(217,177,87,.19),rgba(217,177,87,.07));color:#fff0bc;box-shadow:0 14px 34px rgba(0,0,0,.26)}
-.btn.secondary{background:rgba(255,255,255,.025);color:#d6d2d7}.btn.disabled{opacity:.48;cursor:default}
-.hero-note{margin-top:15px;color:#716d74;font-size:10px}.phone{position:relative;margin:auto;width:min(100%,365px);padding:12px;border-radius:36px;border:1px solid rgba(217,177,87,.28);background:linear-gradient(145deg,#131216,#070708);box-shadow:0 34px 90px rgba(0,0,0,.5),0 0 70px rgba(217,177,87,.05)}
-.phone:before{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:82px;height:20px;border-radius:999px;background:#030304;border:1px solid rgba(255,255,255,.035)}
-.screen{min-height:570px;border-radius:27px;padding:44px 16px 17px;border:1px solid rgba(255,255,255,.055);background:radial-gradient(300px 180px at 100% 0,rgba(217,177,87,.10),transparent 72%),#09090b}
-.screen-brand{display:flex;align-items:center;gap:10px}.screen-brand img{width:45px;height:45px;border-radius:13px}.screen-brand b{font:600 20px Georgia,serif}.screen-brand b span{color:var(--gold2)}.screen-sub{font-size:7px;color:#77727a;letter-spacing:1.4px;text-transform:uppercase;margin-top:4px}
-.mini-card{margin-top:20px;padding:16px;border-radius:20px;border:1px solid rgba(217,177,87,.19);background:linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.015))}
-.mini-label{font-size:8px;font-weight:900;letter-spacing:1.35px;text-transform:uppercase;color:#c7ae68}.mini-title{font:500 21px/1.1 Georgia,serif;margin:7px 0;color:#f2ead8}.mini-copy{color:#858089;font-size:9px;line-height:1.5}
-.pick{margin-top:10px;padding:13px;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.018)}.pick-top{display:flex;justify-content:space-between;gap:10px}.pick b{font-size:11px}.pick span{color:#77727c;font-size:8px}.symbol{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);font-size:14px}
-.pick-line{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-top:13px;padding-top:10px;border-top:1px solid rgba(255,255,255,.04)}.pick-line strong{color:#ffe2a0;font-size:13px}.pick-line small{display:block;color:#6f6a72;font-size:7px;margin-bottom:3px}
-.trust{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}.trust div{padding:10px 8px;border-radius:13px;text-align:center;border:1px solid rgba(217,177,87,.10);background:rgba(217,177,87,.025)}.trust b{display:block;font-size:12px;color:#f4df9f}.trust span{display:block;color:#6f6a72;font-size:7px;margin-top:3px}
-section.block{padding:76px 0;border-top:1px solid rgba(255,255,255,.045)}.section-kicker{color:#c5ad68;font-size:9px;font-weight:900;letter-spacing:1.55px;text-transform:uppercase}.section-title{font:500 clamp(31px,5vw,49px)/1.05 Georgia,serif;margin:10px 0 12px}.section-copy{max-width:740px;color:#97939b;font-size:14px;line-height:1.72}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}.card{padding:21px;border-radius:21px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012));box-shadow:inset 0 1px rgba(255,255,255,.018)}.card-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.055);font-size:17px}.card h3{margin:15px 0 7px;font:600 20px Georgia,serif}.card p{margin:0;color:#858089;font-size:11px;line-height:1.6}
-.process{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:26px}.step{position:relative;padding:20px;border-radius:20px;border:1px solid rgba(255,255,255,.055);background:rgba(255,255,255,.017)}.step-no{font:600 22px Georgia,serif;color:var(--gold2)}.step b{display:block;margin-top:12px;font-size:12px}.step span{display:block;margin-top:5px;color:#7c7880;font-size:10px;line-height:1.5}
-.download{display:grid;grid-template-columns:1fr .8fr;gap:28px;align-items:center;padding:32px;border-radius:28px;border:1px solid rgba(217,177,87,.25);background:radial-gradient(420px 240px at 100% 0,rgba(217,177,87,.12),transparent 72%),linear-gradient(145deg,rgba(217,177,87,.06),rgba(255,255,255,.012))}
-.download h2{font:500 clamp(30px,5vw,46px)/1.05 Georgia,serif;margin:8px 0 12px}.download p{color:#97939b;font-size:13px;line-height:1.7;margin:0}.download-box{padding:22px;border-radius:21px;border:1px solid rgba(217,177,87,.18);background:#09090b;text-align:center}.download-icon{width:72px;height:72px;margin:auto;border-radius:21px;border:1px solid rgba(217,177,87,.28);padding:8px;background:rgba(217,177,87,.04)}.download-icon img{width:100%;height:100%;border-radius:14px}.download-box b{display:block;margin-top:13px;font-size:13px}.download-box span{display:block;margin:5px 0 14px;color:#79747c;font-size:9px}
-.faq{display:grid;gap:8px;margin-top:24px}.faq details{border:1px solid rgba(255,255,255,.06);border-radius:16px;background:rgba(255,255,255,.016);padding:0 16px}.faq summary{cursor:pointer;padding:16px 0;font-size:12px;font-weight:900;list-style:none}.faq summary::-webkit-details-marker{display:none}.faq p{margin:0;padding:0 0 16px;color:#87838b;font-size:11px;line-height:1.6}
-.notice{margin-top:22px;padding:15px 17px;border-radius:16px;border:1px solid rgba(217,177,87,.12);background:rgba(217,177,87,.025);color:#8d8991;font-size:10px;line-height:1.6}
-footer{padding:34px 0 44px;border-top:1px solid rgba(255,255,255,.045)}.foot{display:flex;justify-content:space-between;gap:20px;align-items:center}.foot-brand{color:#706b72;font-size:10px;line-height:1.5}.foot-right{color:#5f5b62;font-size:9px;text-align:right}
-@media(max-width:850px){.hero-grid,.download{grid-template-columns:1fr}.hero{padding-top:62px}.hero-grid{gap:38px}.phone{width:min(92%,365px)}.cards{grid-template-columns:1fr}.process{grid-template-columns:1fr 1fr}.links{display:none}.menu{display:block}.links.open{position:absolute;display:grid;top:70px;right:17px;width:220px;padding:13px;border:1px solid rgba(217,177,87,.18);border-radius:16px;background:#0d0d0f;box-shadow:0 20px 50px rgba(0,0,0,.45)}.links.open a{padding:8px 10px}.nav-cta{margin-top:3px}}
-@media(max-width:520px){.wrap{width:min(100% - 28px,1120px)}.nav{height:68px}.brand img{width:42px;height:42px}.brand-name{font-size:20px}.hero{padding:48px 0 58px}h1{font-size:43px;letter-spacing:-1.8px}.hero-copy{font-size:14px}.hero-actions{display:grid}.btn{width:100%}.phone{width:100%}.screen{min-height:530px}.process{grid-template-columns:1fr}.download{padding:22px}.foot{align-items:flex-start;flex-direction:column}.foot-right{text-align:left}}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+.hero{position:relative;min-height:100svh;overflow:hidden;isolation:isolate;background:#050506}
+.hero:before{content:"";position:absolute;inset:0;z-index:-4;background:
+linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.36) 40%,rgba(0,0,0,.28) 60%,rgba(0,0,0,.82) 100%),
+linear-gradient(180deg,rgba(0,0,0,.42) 0%,rgba(0,0,0,.18) 44%,rgba(0,0,0,.72) 100%),
+url("https://images.unsplash.com/photo-1780766382547-a0ffa16bd32d?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=82&w=2200") center/cover no-repeat}
+.hero:after{content:"";position:absolute;inset:0;z-index:-3;background:
+radial-gradient(700px 330px at 50% 34%,rgba(218,161,44,.12),transparent 72%),
+linear-gradient(180deg,#05050600 0%,#05050600 62%,#050506 100%)}
+.gold-arc{position:absolute;z-index:-2;width:110%;height:360px;left:-5%;top:8%;border-top:2px solid rgba(255,199,77,.48);border-radius:50%;transform:rotate(-7deg);filter:drop-shadow(0 0 10px rgba(255,190,63,.45));opacity:.65}
+.topbar{position:relative;z-index:5;width:min(1180px,calc(100% - 34px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.065)}
+.brand{display:flex;align-items:center;gap:11px}.brand img{width:47px;height:47px;border-radius:14px;border:1px solid rgba(217,177,87,.42);box-shadow:0 0 22px rgba(217,177,87,.08)}
+.brand-name{font:600 24px/1 Georgia,serif}.brand-name span{color:var(--gold2)}
+.brand-sub{margin-top:5px;color:#8f8778;font-size:7px;letter-spacing:1.7px;text-transform:uppercase}
+.private-chip{display:flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid rgba(217,169,64,.55);border-radius:12px;background:rgba(0,0,0,.34);color:#e6bf65;font-size:9px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase}
+.stage{position:relative;z-index:2;width:min(1180px,calc(100% - 34px));margin:auto;min-height:calc(100svh - 76px);display:grid;grid-template-columns:1.14fr .86fr;align-items:center;gap:28px;padding:50px 0 112px}
+.copy{text-align:center;max-width:760px;margin:auto}
+.crown{font-size:52px;line-height:1;color:#e7b64e;text-shadow:0 0 28px rgba(231,182,78,.28);margin-bottom:6px}
+.members-line{display:flex;align-items:center;justify-content:center;gap:14px;color:#d9af55;font-size:10px;font-weight:900;letter-spacing:5px;text-transform:uppercase}
+.members-line:before,.members-line:after{content:"";width:65px;height:1px;background:linear-gradient(90deg,transparent,#d8aa48)}
+.members-line:after{transform:scaleX(-1)}
+h1{margin:20px 0 10px;font:600 clamp(54px,7.3vw,104px)/.9 Georgia,serif;letter-spacing:-4px;background:linear-gradient(95deg,#f7c356 0%,#ffe5a3 35%,#fff 64%,#d9d9dd 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 44px rgba(0,0,0,.5)}
+.slogan{font:500 clamp(28px,3vw,42px)/1.15 Georgia,serif;color:#e6d7bc;margin:22px 0 0}.slogan strong{color:#e8b95c;font-weight:500}
+.rule{width:min(460px,72%);height:1px;margin:22px auto;background:linear-gradient(90deg,transparent,#cf9a32,#ffe58e,#cf9a32,transparent);box-shadow:0 0 10px rgba(255,198,74,.5)}
+.desc{max-width:660px;margin:0 auto;color:#c4bec0;font:400 15px/1.65 Georgia,serif}
+.actions{margin-top:30px;display:flex;justify-content:center}
+.enter{min-width:290px;border:1px solid #f0c45d;border-radius:15px;padding:16px 24px;background:linear-gradient(135deg,#b97818 0%,#f2c761 48%,#ffe69f 100%);color:#090909;font-size:13px;font-weight:1000;letter-spacing:.8px;box-shadow:0 14px 38px rgba(211,153,42,.22),inset 0 1px rgba(255,255,255,.55);cursor:pointer}
+.enter:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.access-note{margin-top:12px;color:#7e787c;font-size:9px;letter-spacing:.5px}
+.phone-wrap{display:flex;justify-content:center;align-items:center;perspective:1200px}
+.phone{width:min(315px,86%);padding:10px;border-radius:34px;background:linear-gradient(145deg,#17171a,#050506);border:1px solid rgba(231,183,78,.36);transform:rotateY(-8deg) rotateZ(2deg);box-shadow:0 32px 75px rgba(0,0,0,.58),0 0 50px rgba(218,166,57,.08)}
+.phone-screen{min-height:520px;border-radius:26px;padding:28px 14px 16px;background:linear-gradient(180deg,#0b0c0d,#080809);border:1px solid rgba(255,255,255,.06)}
+.phone-head{display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.055);padding-bottom:14px}.phone-head img{width:34px;height:34px;border-radius:10px}.phone-head b{font:600 17px Georgia,serif;color:#f4d278}.phone-head b span{color:#eee}
+.tabs{display:flex;gap:18px;margin:14px 2px;color:#6e6970;font-size:8px;font-weight:900}.tabs span:first-child{color:#e8bb59;border-bottom:1px solid #e8bb59;padding-bottom:7px}
+.phone-kicker{margin:18px 2px 9px;color:#d4c7ac;font-size:8px;font-weight:900;letter-spacing:.5px}
+.pick{padding:12px;margin-top:8px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(255,255,255,.018)}.pick-top{display:flex;justify-content:space-between;gap:10px}.pick b{font-size:10px}.pick small{display:block;margin-top:4px;color:#77727b;font-size:7px}.odd{padding:6px 8px;border-radius:8px;background:rgba(217,169,64,.10);color:#f4cc70;font-size:10px;font-weight:900}
+.phone-foot{margin-top:13px;padding:11px;border:1px solid rgba(217,169,64,.16);border-radius:12px;color:#8b858a;font-size:8px;line-height:1.45}
+.ball{position:absolute;z-index:-1;left:-72px;bottom:32px;width:250px;height:250px;border-radius:50%;background:
+radial-gradient(circle at 37% 28%,rgba(255,230,153,.38),transparent 7%),
+radial-gradient(circle at 60% 64%,#080808 0 13%,transparent 14%),
+conic-gradient(from 12deg,#060606,#9a691e 8%,#080808 17%,#d7a842 25%,#090909 34%,#b37c24 44%,#050505 54%,#e1b951 66%,#080808 75%,#8e601c 86%,#050505);
+border:2px solid rgba(232,184,75,.45);box-shadow:inset -30px -35px 55px #000,inset 16px 14px 32px rgba(255,205,91,.18),0 22px 50px rgba(0,0,0,.7);opacity:.92}
+.ball:after{content:"♛";position:absolute;inset:0;display:grid;place-items:center;color:#e0ad43;font-size:72px;text-shadow:0 0 20px rgba(224,173,67,.25)}
+.features{position:absolute;left:0;right:0;bottom:0;z-index:4;border-top:1px solid rgba(217,177,87,.16);background:rgba(5,5,6,.78);backdrop-filter:blur(14px)}
+.feature-inner{width:min(1180px,calc(100% - 34px));margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.feature{display:flex;align-items:center;gap:11px;padding:18px 22px;border-right:1px solid rgba(217,177,87,.15)}.feature:last-child{border-right:0}.fi{font-size:22px;color:#e2b351}.feature b{display:block;font-size:9px;line-height:1.35;letter-spacing:.4px}.feature span{display:block;margin-top:3px;color:#726d72;font-size:7px}
+.login-layer{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.82);backdrop-filter:blur(12px)}
+.login-layer.open{display:flex}
+.login-card{position:relative;width:min(430px,100%);padding:28px;border:1px solid rgba(224,176,69,.34);border-radius:26px;background:radial-gradient(300px 180px at 50% 0,rgba(217,169,64,.11),transparent 72%),#0b0b0d;box-shadow:0 28px 90px rgba(0,0,0,.7)}
+.close{position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);color:#aaa;font-size:18px}
+.login-brand{text-align:center}.login-brand img{width:62px;height:62px;border-radius:18px;border:1px solid rgba(217,177,87,.38)}.login-brand h2{margin:12px 0 4px;font:600 29px Georgia,serif}.login-brand h2 span{color:var(--gold2)}.login-brand p{margin:0;color:#857f85;font-size:9px;letter-spacing:1.7px;text-transform:uppercase}
+.login-title{margin:26px 0 7px;font:500 25px Georgia,serif;text-align:center}.login-copy{text-align:center;color:#8f8990;font-size:10px;line-height:1.5;margin-bottom:20px}
+.field{margin-top:11px}.field label{display:block;margin:0 0 6px 2px;color:#b9b2b5;font-size:9px;font-weight:900}.field input{width:100%;height:48px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:#080809;color:#fff;padding:0 13px;font:inherit;outline:none}.field input:focus{border-color:rgba(217,169,64,.48)}
+.login-btn{width:100%;height:49px;margin-top:16px;border:1px solid #e7ba57;border-radius:13px;background:linear-gradient(135deg,#b97818,#f1c55c,#ffe59c);color:#0b0b0b;font-weight:1000}.login-btn:disabled{opacity:.65}
+.login-msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb4bc;font-size:10px;line-height:1.4}.login-msg.ok{color:#c8efcf}
+.code-note{text-align:center;color:#666167;font-size:8px;margin-top:12px}
+@media(max-width:820px){
+ .private-chip{display:none}.topbar{height:68px}.brand img{width:42px;height:42px}.brand-name{font-size:20px}
+ .hero:before{background:
+ linear-gradient(180deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.28) 43%,rgba(0,0,0,.74) 100%),
+ linear-gradient(90deg,rgba(0,0,0,.52),rgba(0,0,0,.18),rgba(0,0,0,.52)),
+ url("https://images.unsplash.com/photo-1780766382547-a0ffa16bd32d?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=82&w=1200") center/cover no-repeat}
+ .stage{min-height:calc(100svh - 68px);grid-template-columns:1fr;padding:38px 0 128px;align-content:start}
+ .phone-wrap{display:none}.copy{padding-top:18px}.crown{font-size:47px}.members-line{font-size:8px;letter-spacing:3.4px;gap:9px}.members-line:before,.members-line:after{width:35px}
+ h1{font-size:clamp(48px,15vw,72px);letter-spacing:-3px;margin-top:18px}.slogan{font-size:27px;margin-top:22px}.desc{font-size:13px;max-width:520px}
+ .ball{width:220px;height:220px;left:50%;transform:translateX(-50%);bottom:76px;opacity:.68}.ball:after{font-size:60px}
+ .features{display:none}.actions{margin-top:28px}.enter{width:min(330px,100%);min-width:0}
+}
+@media(max-width:430px){
+ .stage{width:min(100% - 28px,1180px);padding-top:24px}.brand-sub{display:none}.crown{font-size:40px}.members-line{font-size:7px}
+ h1{font-size:47px;letter-spacing:-2.4px}.slogan{font-size:24px}.rule{margin:18px auto}.desc{font-size:12px;line-height:1.6}.topbar{width:min(100% - 28px,1180px)}
+ .ball{width:190px;height:190px;bottom:62px}
+}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap nav">
-    <a class="brand" href="#top">
+<section class="hero">
+  <div class="gold-arc"></div>
+  <header class="topbar">
+    <div class="brand">
       <img src="../dreamteamtips-icon.svg" alt="DreamTeamTips">
-      <div><div class="brand-name">DreamTeam<span>Tips</span></div><div class="brand-sub">Football Data • Smart Picks</div></div>
-    </a>
-    <button class="menu" id="menuBtn" aria-label="Μενού">☰</button>
-    <nav class="links" id="navLinks">
-      <a class="nav-cta" href="../">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</a>
-    </nav>
+      <div><div class="brand-name">DreamTeam<span>Tips</span></div><div class="brand-sub">Football Data • Private Picks</div></div>
+    </div>
+    <div class="private-chip">🔒 Private Members Area</div>
+  </header>
+
+  <div class="stage">
+    <div class="copy">
+      <div class="crown">♛</div>
+      <div class="members-line">Private Members Area</div>
+      <h1>DreamTeamTips</h1>
+      <div class="slogan">Ποιότητα <strong>πάνω από την ποσότητα.</strong></div>
+      <div class="rule"></div>
+      <p class="desc">Ιδιωτική πρόσβαση σε επιλεγμένες ποδοσφαιρικές επιλογές και ενημερώσεις την κατάλληλη στιγμή.</p>
+      <div class="actions"><button class="enter" id="openLogin">🔒 &nbsp; ΕΙΣΟΔΟΣ ΜΕΛΩΝ &nbsp; ›</button></div>
+      <div class="access-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-head"><img src="../dreamteamtips-icon.svg" alt=""><b>DreamTeam<span>Tips</span></b></div>
+          <div class="tabs"><span>ΣΗΜΕΡΑ</span><span>ΙΣΤΟΡΙΚΟ</span><span>ΠΡΟΦΙΛ</span></div>
+          <div class="phone-kicker">ΕΠΙΛΕΓΜΕΝΕΣ ΠΡΟΤΑΣΕΙΣ</div>
+          <div class="pick"><div class="pick-top"><div><b>Private Selection</b><small>Διαθέσιμη μόνο στα μέλη</small></div><div class="odd">LIVE</div></div></div>
+          <div class="pick"><div class="pick-top"><div><b>DreamTeam Pick</b><small>Ενημέρωση στην κατάλληλη στιγμή</small></div><div class="odd">VIP</div></div></div>
+          <div class="pick"><div class="pick-top"><div><b>Member Update</b><small>Άμεση ενημέρωση επιλογής</small></div><div class="odd">NEW</div></div></div>
+          <div class="phone-foot">◆ Private Members Experience<br>Ποιότητα πάνω από την ποσότητα.</div>
+        </div>
+      </div>
+    </div>
+    <div class="ball"></div>
   </div>
-</header>
 
-<main id="top">
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <div class="kicker">Private Members Area</div>
-        <h1>DreamTeam<em>Tips</em></h1>
-        <p class="hero-copy" style="font-family:Georgia,serif;font-size:22px;color:#f2e8cf">Ποιότητα πάνω από την ποσότητα.</p>
-        <p class="hero-copy" style="margin-top:16px">Ιδιωτική πρόσβαση σε επιλεγμένες ποδοσφαιρικές επιλογές και ενημερώσεις την κατάλληλη στιγμή.</p>
-        <div class="hero-actions" style="margin-top:34px">
-          <a class="btn primary" href="../">🔒 ΕΙΣΟΔΟΣ ΜΕΛΩΝ</a>
-        </div>
-        <div class="hero-note">Πρόσβαση μόνο με προσωπικό κωδικό</div>
-      </div>
-      <div class="phone" aria-label="Προεπισκόπηση εφαρμογής">
-        <div class="screen">
-          <div class="screen-brand"><img src="../dreamteamtips-icon.svg" alt=""><div><b>DreamTeam<span>Tips</span></b><div class="screen-sub">Members Area</div></div></div>
-          <div class="mini-card">
-            <div class="mini-label">Today's selections</div>
-            <div class="mini-title">Οι επιλογές που ξεχωρίζουμε.</div>
-            <div class="mini-copy">Παρακολούθηση μέσα στην ημέρα και ενημέρωση μόνο όταν υπάρχει λόγος.</div>
-            <div class="pick">
-              <div class="pick-top"><div><b>Match Preview</b><br><span>Ιδιωτική επιλογή μελών</span></div><div class="symbol">💎</div></div>
-              <div class="pick-line"><div><small>ΕΠΙΛΟΓΗ</small><strong>Διαθέσιμη στην εφαρμογή</strong></div><span>›</span></div>
-            </div>
-            <div class="pick">
-              <div class="pick-top"><div><b>Live monitoring</b><br><span>Νέα δεδομένα μέχρι την οριστικοποίηση</span></div><div class="symbol">⚡</div></div>
-              <div class="pick-line"><div><small>ΚΑΤΑΣΤΑΣΗ</small><strong>Παρακολούθηση</strong></div><span>›</span></div>
-            </div>
-          </div>
-          <div class="trust"><div><b>1–2</b><span>επιλεγμένες προτάσεις</span></div><div><b>LIVE</b><span>ενημερώσεις</span></div><div><b>VIP</b><span>ιδιωτική πρόσβαση</span></div></div>
-        </div>
-      </div>
+  <div class="features">
+    <div class="feature-inner">
+      <div class="feature"><div class="fi">◎</div><div><b>ΕΠΙΛΕΓΜΕΝΕΣ ΠΡΟΤΑΣΕΙΣ</b><span>Όχι ποσότητα για την ποσότητα</span></div></div>
+      <div class="feature"><div class="fi">▥</div><div><b>ΒΑΣΙΣΜΕΝΕΣ ΣΕ ΑΝΑΛΥΣΗ</b><span>Με συνεχή παρακολούθηση</span></div></div>
+      <div class="feature"><div class="fi">◇</div><div><b>ΕΝΗΜΕΡΩΣΗ ΣΤΗ ΣΩΣΤΗ ΣΤΙΓΜΗ</b><span>Όταν υπάρχει ουσιαστικός λόγος</span></div></div>
+      <div class="feature"><div class="fi">♛</div><div><b>PRIVATE MEMBERS CLUB</b><span>Ιδιωτική πρόσβαση</span></div></div>
     </div>
-  </section>
-
-  <section class="block" id="about">
-    <div class="wrap">
-      <div class="section-kicker">Πώς δουλεύουμε</div>
-      <h2 class="section-title">Δεν βιαζόμαστε να δώσουμε επιλογή.</h2>
-      <p class="section-copy">Κατά τη διάρκεια της ημέρας ξεχωρίζουμε τα παιχνίδια που αξίζουν προσοχή, παρακολουθούμε συνεχώς τις τελευταίες εξελίξεις και δεν βιαζόμαστε να οριστικοποιήσουμε επιλογές από νωρίς. Μια επιλογή μπορεί να αλλάξει ή να αποσυρθεί αν προκύψουν νέα δεδομένα, ώστε η τελική απόφαση να βασίζεται στην πιο ενημερωμένη εικόνα όσο πλησιάζει ο αγώνας.</p>
-      <div class="cards">
-        <article class="card"><div class="card-icon">◉</div><h3>Παρακολούθηση</h3><p>Τα παιχνίδια παραμένουν υπό παρακολούθηση μέσα στην ημέρα. Δεν θεωρούμε ότι μια πρώτη εικόνα είναι απαραίτητα και η τελική.</p></article>
-        <article class="card"><div class="card-icon">◆</div><h3>Επιλογή</h3><p>Στόχος δεν είναι να γεμίζουμε την εφαρμογή με προτάσεις. Κρατάμε εκείνες που θεωρούμε ότι αξίζουν πραγματική προσοχή.</p></article>
-        <article class="card"><div class="card-icon">↻</div><h3>Ενημέρωση</h3><p>Αν αλλάξει κάτι σημαντικό πριν τον αγώνα, η επιλογή μπορεί να ενημερωθεί ή να αποσυρθεί και ο χρήστης ενημερώνεται αντίστοιχα.</p></article>
-      </div>
-      <div class="process">
-        <div class="step"><div class="step-no">01</div><b>Ξεχωρίζουμε</b><span>Εντοπίζουμε τα παιχνίδια που αξίζουν να παρακολουθηθούν.</span></div>
-        <div class="step"><div class="step-no">02</div><b>Παρακολουθούμε</b><span>Περιμένουμε την πιο καθαρή εικόνα όσο πλησιάζει η ώρα.</span></div>
-        <div class="step"><div class="step-no">03</div><b>Οριστικοποιούμε</b><span>Η επιλογή δημοσιεύεται μόνο όταν η ομάδα αποφασίσει ότι πρέπει.</span></div>
-        <div class="step"><div class="step-no">04</div><b>Ενημερώνουμε</b><span>Push και ενημερώσεις μέσα στην εφαρμογή για τις σημαντικές αλλαγές.</span></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="block" id="app">
-    <div class="wrap">
-      <div class="download">
-        <div>
-          <div class="section-kicker">DreamTeamTips App</div>
-          <h2>Η εφαρμογή στο κινητό σου.</h2>
-          <p>Η Android έκδοση θα διατίθεται απευθείας από το επίσημο site του DreamTeamTips. Μέχρι να ολοκληρωθεί το τελικό APK, η υπάρχουσα web εφαρμογή παραμένει διαθέσιμη κανονικά από τον browser.</p>
-          <div class="hero-actions">
-            <a class="btn primary" href="../">Χρήση web εφαρμογής</a>
-            <span class="btn secondary disabled">Λήψη Android · Σύντομα</span>
-          </div>
-        </div>
-        <div class="download-box">
-          <div class="download-icon"><img src="../dreamteamtips-icon.svg" alt="DreamTeamTips app icon"></div>
-          <b>DreamTeamTips για Android</b>
-          <span>Επίσημη έκδοση APK</span>
-          <div class="btn secondary disabled">Η λήψη θα ενεργοποιηθεί εδώ</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="block" id="faq">
-    <div class="wrap">
-      <div class="section-kicker">FAQ</div>
-      <h2 class="section-title">Χωρίς ψιλά γράμματα.</h2>
-      <div class="faq">
-        <details><summary>Δίνετε πολλές επιλογές κάθε μέρα;</summary><p>Όχι απαραίτητα. Η φιλοσοφία του DreamTeamTips είναι ποιότητα πάνω από την ποσότητα. Υπάρχουν ημέρες με λίγες επιλογές ή και χωρίς επιλογή αν δεν υπάρχει κάτι που θέλουμε να δημοσιεύσουμε.</p></details>
-        <details><summary>Μπορεί μια επιλογή να αλλάξει;</summary><p>Ναι. Αν προκύψουν νέα δεδομένα πριν από τον αγώνα, μια επιλογή μπορεί να ενημερωθεί ή να αποσυρθεί. Η εφαρμογή έχει σχεδιαστεί ώστε αυτή η αλλαγή να φαίνεται καθαρά.</p></details>
-        <details><summary>Υπάρχουν «σίγουρες» επιλογές;</summary><p>Όχι. Καμία επιλογή δεν είναι σίγουρη και δεν παρουσιάζουμε κάποιο παιχνίδι ως εγγυημένο αποτέλεσμα.</p></details>
-        <details><summary>Πώς θα εγκαθίσταται η Android εφαρμογή;</summary><p>Η τελική Android έκδοση θα κατεβαίνει από το επίσημο site. Θα υπάρχει σαφές κουμπί λήψης και οδηγίες εγκατάστασης όταν το APK είναι έτοιμο.</p></details>
-      </div>
-      <div class="notice"><strong>18+.</strong> Το περιεχόμενο αφορά ενημέρωση και επιλογές αθλητικού στοιχήματος. Καμία επιλογή δεν εγγυάται αποτέλεσμα. Χρησιμοποίησε το περιεχόμενο υπεύθυνα και μόνο όπου επιτρέπεται.</div>
-    </div>
-  </section>
-</main>
-
-<footer>
-  <div class="wrap foot">
-    <div class="foot-brand"><strong style="color:#bfa96c">DreamTeamTips</strong><br>Football Data • Smart Picks</div>
-    <div class="foot-right">© <span id="year"></span> DreamTeamTips<br>All rights reserved</div>
   </div>
-</footer>
+</section>
+
+<div class="login-layer" id="loginLayer" aria-hidden="true">
+  <div class="login-card">
+    <button class="close" id="closeLogin" aria-label="Κλείσιμο">×</button>
+    <div class="login-brand"><img src="../dreamteamtips-icon.svg" alt=""><h2>DreamTeam<span>Tips</span></h2><p>Private Members Area</p></div>
+    <div class="login-title">Είσοδος μελών</div>
+    <div class="login-copy">Συνδέσου με τα προσωπικά στοιχεία του λογαριασμού σου.</div>
+    <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
+    <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="login-btn" id="loginSubmit">ΕΙΣΟΔΟΣ</button>
+    <div class="login-msg" id="loginMsg"></div>
+    <div class="code-note">Η πρόσβαση είναι προσωπική και αφορά μόνο εγκεκριμένα μέλη.</div>
+  </div>
+</div>
+
 <script>
-document.getElementById("year").textContent=new Date().getFullYear();
-const btn=document.getElementById("menuBtn"),links=document.getElementById("navLinks");
-btn.addEventListener("click",()=>links.classList.toggle("open"));
-links.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>links.classList.remove("open")));
+const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
+const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg");
+const DEVICE_STORAGE_KEY="dtt_device_id_v1";
+function getDeviceId(){let id=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(id)return id;try{id=crypto.randomUUID()}catch(_){id="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,id);return id}
+const deviceId=getDeviceId();
+function showLogin(){if(localStorage.getItem("ma_token")){location.href="../";return}layer.classList.add("open");layer.setAttribute("aria-hidden","false");setTimeout(()=>user.focus(),80)}
+function hideLogin(){layer.classList.remove("open");layer.setAttribute("aria-hidden","true");msg.textContent=""}
+openBtn.onclick=showLogin;closeBtn.onclick=hideLogin;layer.addEventListener("click",e=>{if(e.target===layer)hideLogin()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideLogin()});
+async function apiPost(params){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
+  try{
+    const body=new URLSearchParams();Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
+    const r=await fetch("/api",{method:"POST",body,signal:controller.signal,cache:"no-store"});
+    return await r.json();
+  }finally{clearTimeout(timer)}
+}
+function errText(e){const m={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει.",BACKEND_UNREACHABLE:"Προσωρινό πρόβλημα σύνδεσης. Δοκίμασε ξανά."};return m[e]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}
+async function login(){
+  const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}
+  submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";
+  try{
+    const r=await apiPost({action:"login",username:u,password:p,deviceId});
+    if(!r.ok)throw new Error(r.error||"ERROR");
+    if(r.token)localStorage.setItem("ma_token",r.token);
+    msg.className="login-msg ok";msg.textContent="Η σύνδεση ολοκληρώθηκε.";
+    setTimeout(()=>location.href="../",350);
+  }catch(e){msg.className="login-msg";msg.textContent=errText(e.message)}
+  finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}
+}
+submit.onclick=login;pass.addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+if(localStorage.getItem("ma_token"))openBtn.textContent="♛   ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ   ›";
 </script>
 </body>
 </html>
