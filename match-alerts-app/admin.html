@@ -120,23 +120,23 @@ const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api
 const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const ALERT_PREFS_KEY="dtt_admin_alert_prefs_v1";
 const ALERT_CATALOG=[
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",w:33,t:40,mainW:19,mainT:21,otherW:7,otherT:8},
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)",w:2,t:4,mainW:2,mainT:3,otherW:0,otherT:0},
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ",w:8,t:9,mainW:5,mainT:6,otherW:1,otherT:1},
-  {name:"🔔 ΚΟΝΤΡΑ",w:11,t:16,mainW:3,mainT:5,otherW:4,otherT:6},
-  {name:"🔔 ΦΑΒΟΡΙ",w:13,t:20,mainW:10,mainT:12,otherW:0,otherT:1},
-  {name:"👀 WATCH ΚΟΝΤΡΑ",w:4,t:13,mainW:2,mainT:8,otherW:0,otherT:2},
-  {name:"👀 WATCH ΦΑΒΟΡΙ",w:29,t:48,mainW:15,mainT:27,otherW:4,otherT:7},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X",w:15,t:24,mainW:12,mainT:14,otherW:1,otherT:5},
-  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+3X",w:19,t:26,mainW:11,mainT:13,otherW:3,otherT:6},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%",w:14,t:17,mainW:10,mainT:11,otherW:0,otherT:1},
-  {name:"🔔🧪 ΦΑΒΟΡΙ 84+P60",w:11,t:15,mainW:7,mainT:10,otherW:1,otherT:1},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ",w:11,t:16,mainW:1,mainT:1,otherW:0,otherT:0},
-  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ",w:6,t:11,mainW:1,mainT:2,otherW:0,otherT:0},
-  {name:"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ",w:2,t:2,mainW:0,mainT:0,otherW:0,otherT:0},
-  {name:"🔔 ΦΑΒ 60+",w:23,t:35,mainW:2,mainT:3,otherW:0,otherT:0},
-  {name:"🔔 ΦΑΒ 75+",w:22,t:34,mainW:2,mainT:3,otherW:0,otherT:0},
-  {name:"🔔 ΤΖΙΡΟΣ ↑",w:0,t:0,mainW:0,mainT:0,otherW:0,otherT:0}
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",w:33,t:40,mainW:19,mainT:21,otherW:7,otherT:8,nationalW:5,nationalT:7,americaW:2,americaT:4},
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)",w:2,t:4,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:0,nationalT:1,americaW:0,americaT:0},
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ",w:8,t:9,mainW:5,mainT:6,otherW:1,otherT:1,nationalW:1,nationalT:1,americaW:1,americaT:1},
+  {name:"🔔 ΚΟΝΤΡΑ",w:11,t:16,mainW:3,mainT:5,otherW:4,otherT:6,nationalW:3,nationalT:4,americaW:1,americaT:1},
+  {name:"🔔 ΦΑΒΟΡΙ",w:13,t:20,mainW:10,mainT:12,otherW:0,otherT:1,nationalW:2,nationalT:6,americaW:1,americaT:1},
+  {name:"👀 WATCH ΚΟΝΤΡΑ",w:4,t:13,mainW:2,mainT:8,otherW:0,otherT:2,nationalW:1,nationalT:2,americaW:1,americaT:1},
+  {name:"👀 WATCH ΦΑΒΟΡΙ",w:29,t:48,mainW:15,mainT:27,otherW:4,otherT:7,nationalW:8,nationalT:10,americaW:2,americaT:4},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X",w:15,t:24,mainW:12,mainT:14,otherW:1,otherT:5,nationalW:2,nationalT:5,americaW:0,americaT:0},
+  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+3X",w:19,t:26,mainW:11,mainT:13,otherW:3,otherT:6,nationalW:4,nationalT:6,americaW:1,americaT:1},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%",w:14,t:17,mainW:10,mainT:11,otherW:0,otherT:1,nationalW:4,nationalT:5,americaW:0,americaT:0},
+  {name:"🔔🧪 ΦΑΒΟΡΙ 84+P60",w:11,t:15,mainW:7,mainT:10,otherW:1,otherT:1,nationalW:3,nationalT:4,americaW:0,americaT:0},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ",w:11,t:16,mainW:1,mainT:1,otherW:0,otherT:0,nationalW:10,nationalT:15,americaW:0,americaT:0},
+  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ",w:6,t:11,mainW:1,mainT:2,otherW:0,otherT:0,nationalW:5,nationalT:9,americaW:0,americaT:0},
+  {name:"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ",w:2,t:2,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:2,nationalT:2,americaW:0,americaT:0},
+  {name:"🔔 ΦΑΒ 60+",w:23,t:35,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:19,nationalT:28,americaW:2,americaT:4},
+  {name:"🔔 ΦΑΒ 75+",w:22,t:34,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:18,nationalT:27,americaW:2,americaT:4},
+  {name:"🔔 ΤΖΙΡΟΣ ↑",w:0,t:0,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:0,nationalT:0,americaW:0,americaT:0}
 ];
 let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, profileCurrentUsername="";
 let adminSignalsCache=[], slipDraftIds=[];
@@ -268,7 +268,7 @@ function renderAlertManager(){
   alertManagerSummary.innerHTML='<div class="stat"><b>'+items.length+'</b><span>Σύνολο</span></div><div class="stat"><b>'+enabled+'</b><span>Ενεργά</span></div><div class="stat"><b>'+(items.length-enabled)+'</b><span>Κλειστά</span></div>';
   alertManagerList.innerHTML=items.map(x=>{
     const on=alertEnabled(x.name);
-    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+esc(x.name)+'</div><div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+esc(x.name)+'</div><div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
   }).join("");
 }
 function signalRecordLabel(v){
