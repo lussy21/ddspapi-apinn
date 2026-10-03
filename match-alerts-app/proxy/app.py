@@ -19,6 +19,7 @@ AUTO_PUSH_SECRET = os.environ.get("AUTO_PUSH_SECRET", "").strip()
 VAPID_PRIVATE_KEY_B64 = os.environ.get("VAPID_PRIVATE_KEY_B64", "").strip()
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:support@dreamteamtips.com").strip()
+AUTO_ALERTS_TO_CUSTOMERS = os.environ.get("AUTO_ALERTS_TO_CUSTOMERS", "0").strip() == "1"
 
 
 def _normalize_vapid_key(value):
@@ -85,6 +86,83 @@ def upstream_post_direct(data, timeout=(4, 15)):
 
 
 
+def push_to_all_active_users(admin_code, title, body, tag):
+    vapid_private_key = get_vapid_private_key()
+    if not vapid_private_key:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "error": "PUSH_NOT_CONFIGURED"}
+
+    try:
+        target_data = upstream_post_direct(
+            {"action": "adminPushTargets", "adminCode": str(admin_code or "")},
+            timeout=(4, 15),
+        )
+    except requests.RequestException:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "error": "BACKEND_UNREACHABLE"}
+    except RuntimeError:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "error": "BACKEND_BAD_RESPONSE"}
+
+    if not target_data.get("ok"):
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "error": str(target_data.get("error") or "PUSH_TARGETS_FAILED")}
+
+    targets = target_data.get("targets", [])
+    sent = 0
+    failed = 0
+    removed = 0
+    failure_codes = {}
+    message = json.dumps(
+        {"title": title, "body": body, "url": "./", "tag": tag},
+        ensure_ascii=False,
+    )
+
+    for target in targets:
+        subscription = {
+            "endpoint": target.get("endpoint", ""),
+            "keys": target.get("keys") or {},
+        }
+        if not subscription["endpoint"]:
+            continue
+        try:
+            webpush(
+                subscription_info=subscription,
+                data=message,
+                vapid_private_key=vapid_private_key,
+                vapid_claims={"sub": VAPID_SUBJECT},
+                ttl=900,
+            )
+            sent += 1
+        except WebPushException as exc:
+            failed += 1
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            code = "webpush_" + str(status or "unknown")
+            failure_codes[code] = failure_codes.get(code, 0) + 1
+            if status in (404, 410) and target.get("key"):
+                try:
+                    cleanup = upstream_post_direct(
+                        {
+                            "action": "adminPushDelete",
+                            "adminCode": str(admin_code or ""),
+                            "key": target.get("key", ""),
+                        },
+                        timeout=(4, 15),
+                    )
+                    if cleanup.get("ok"):
+                        removed += 1
+                except Exception:
+                    pass
+        except Exception as exc:
+            failed += 1
+            code = "client_" + exc.__class__.__name__
+            failure_codes[code] = failure_codes.get(code, 0) + 1
+
+    return {
+        "sent": sent,
+        "failed": failed,
+        "removed": removed,
+        "total": int(target_data.get("count") or 0),
+        "failureCodes": failure_codes,
+    }
+
+
 def cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = APP_ORIGIN
     resp.headers["Vary"] = "Origin"
@@ -120,6 +198,17 @@ def internal_alerts_push():
     supplied = request.headers.get("X-Auto-Push-Secret", "")
     if not AUTO_PUSH_SECRET or not hmac.compare_digest(supplied, AUTO_PUSH_SECRET):
         return jsonify(ok=False, error="AUTOMATION_UNAUTHORIZED"), 403
+
+    if not AUTO_ALERTS_TO_CUSTOMERS:
+        return jsonify(
+            ok=True,
+            sent=0,
+            failed=0,
+            removed=0,
+            total=0,
+            suppressed=True,
+            reason="ADMIN_APPROVAL_REQUIRED",
+        ), 200
 
     payload = request.get_json(silent=True) or {}
     alerts = payload.get("alerts") or []
@@ -302,6 +391,116 @@ def api():
             return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
         return jsonify(data), 200
 
+    if payload.get("action") in {"adminSignalPublish", "adminSignalEdit"}:
+        action = str(payload.get("action") or "")
+        admin_code = str(payload.get("adminCode") or "")
+        control_id = str(payload.get("controlId") or "").strip()
+        pick = str(payload.get("pick") or "").strip()
+
+        request_data = {
+            "action": action,
+            "adminCode": admin_code,
+            "controlId": control_id,
+        }
+        if action == "adminSignalEdit":
+            request_data["pick"] = pick
+
+        try:
+            data = upstream_post(request_data, timeout=(4, 35))
+        except requests.RequestException:
+            return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+        except RuntimeError:
+            return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+
+        if not data.get("ok"):
+            return jsonify(data), 200
+
+        home = str(data.get("home") or "").strip()
+        away = str(data.get("away") or "").strip()
+        public_pick = str(data.get("pick") or "").strip()
+        odds = data.get("odds")
+        odds_text = ""
+        try:
+            if float(odds) > 1:
+                odds_text = " @ " + ("%.2f" % float(odds)).replace(".", ",")
+        except (TypeError, ValueError):
+            pass
+
+        title = "Νέα επιλογή" if action == "adminSignalPublish" else "Επιλογή ενημερώθηκε"
+        match_name = (home + " – " + away).strip(" –")
+        body = match_name + ((" · " + public_pick + odds_text) if public_pick else "")
+        if not body:
+            body = "Νέα ενημέρωση DreamTeamTips."
+
+        push = push_to_all_active_users(
+            admin_code,
+            title,
+            body,
+            "dreamteamtips-" + ("publish-" if action == "adminSignalPublish" else "edit-") + control_id,
+        )
+        data["pushSent"] = push.get("sent", 0)
+        data["pushFailed"] = push.get("failed", 0)
+        data["pushRemoved"] = push.get("removed", 0)
+        data["pushTotal"] = push.get("total", 0)
+        data["pushFailureCodes"] = push.get("failureCodes", {})
+        return jsonify(data), 200
+
+    if payload.get("action") == "adminSlipPublish":
+        admin_code = str(payload.get("adminCode") or "")
+        try:
+            data = upstream_post(payload, timeout=(4, 35))
+        except requests.RequestException:
+            return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+        except RuntimeError:
+            return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+        if not data.get("ok"):
+            return jsonify(data), 200
+
+        slip = data.get("slip") or {}
+        label = str(slip.get("label") or "Νέο δελτίο").strip()
+        total_odds = slip.get("totalOdds")
+        odds_text = ""
+        try:
+            if float(total_odds) > 1:
+                odds_text = " · συνολική απόδοση " + ("%.2f" % float(total_odds)).replace(".", ",")
+        except (TypeError, ValueError):
+            pass
+
+        push = push_to_all_active_users(
+            admin_code,
+            "Νέο δελτίο DreamTeamTips",
+            label + odds_text,
+            "dreamteamtips-slip-" + str(slip.get("id") or "new"),
+        )
+        data["pushSent"] = push.get("sent", 0)
+        data["pushFailed"] = push.get("failed", 0)
+        data["pushRemoved"] = push.get("removed", 0)
+        data["pushTotal"] = push.get("total", 0)
+        return jsonify(data), 200
+
+    if payload.get("action") == "adminSlipWithdraw":
+        admin_code = str(payload.get("adminCode") or "")
+        try:
+            data = upstream_post(payload, timeout=(4, 15))
+        except requests.RequestException:
+            return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+        except RuntimeError:
+            return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+        if not data.get("ok"):
+            return jsonify(data), 200
+
+        push = push_to_all_active_users(
+            admin_code,
+            "Δελτίο αποσύρθηκε",
+            "Ένα δελτίο του DreamTeamTips αποσύρθηκε.",
+            "dreamteamtips-slip-withdraw-" + str(payload.get("slipId") or ""),
+        )
+        data["pushSent"] = push.get("sent", 0)
+        data["pushFailed"] = push.get("failed", 0)
+        data["pushRemoved"] = push.get("removed", 0)
+        data["pushTotal"] = push.get("total", 0)
+        return jsonify(data), 200
+
     if payload.get("action") == "adminSignalWithdraw":
         admin_code = str(payload.get("adminCode") or "")
         control_id = str(payload.get("controlId") or "").strip()
@@ -313,7 +512,7 @@ def api():
                     "adminCode": admin_code,
                     "controlId": control_id,
                 },
-                timeout=(4, 15),
+                timeout=(4, 35),
             )
         except requests.RequestException:
             return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
@@ -323,97 +522,32 @@ def api():
         if not data.get("ok"):
             return jsonify(data), 200
 
-        affected_users = {
-            str(username or "").strip().lower()
-            for username in (data.get("savedBy") or [])
-            if str(username or "").strip()
-        }
-        sent = 0
-        failed = 0
-        removed = 0
-        total = 0
-        failure_codes = {}
-
-        if affected_users and get_vapid_private_key():
-            try:
-                target_data = upstream_post(
-                    {"action": "adminPushTargets", "adminCode": admin_code},
-                    timeout=(4, 15),
-                )
-            except (requests.RequestException, RuntimeError):
-                target_data = {"ok": False, "targets": []}
-
-            if target_data.get("ok"):
-                targets = [
-                    target
-                    for target in target_data.get("targets", [])
-                    if str(target.get("username") or "").strip().lower() in affected_users
-                ]
-                total = len(targets)
-                title = "Επιλογή αποσύρθηκε"
-                match_name = (str(data.get("home") or "").strip() + " – " + str(data.get("away") or "").strip()).strip(" –")
-                pick = str(data.get("pick") or "").strip()
-                body = match_name + ((" · " + pick) if pick else "")
-                if not body:
-                    body = "Μία επιλογή του DreamTeamTips αποσύρθηκε."
-                message = json.dumps(
-                    {
-                        "title": title,
-                        "body": body,
-                        "url": "./",
-                        "tag": "dreamteamtips-withdraw-" + control_id,
-                    },
-                    ensure_ascii=False,
-                )
-                vapid_private_key = get_vapid_private_key()
-
-                for target in targets:
-                    subscription = {
-                        "endpoint": target.get("endpoint", ""),
-                        "keys": target.get("keys") or {},
-                    }
-                    if not subscription["endpoint"]:
-                        continue
-                    try:
-                        webpush(
-                            subscription_info=subscription,
-                            data=message,
-                            vapid_private_key=vapid_private_key,
-                            vapid_claims={"sub": VAPID_SUBJECT},
-                            ttl=900,
-                        )
-                        sent += 1
-                    except WebPushException as exc:
-                        failed += 1
-                        status = getattr(getattr(exc, "response", None), "status_code", None)
-                        code = "webpush_" + str(status or "unknown")
-                        failure_codes[code] = failure_codes.get(code, 0) + 1
-                        app.logger.warning("withdraw_push_failure code=%s", code)
-                        if status in (404, 410) and target.get("key"):
-                            try:
-                                cleanup = upstream_post(
-                                    {
-                                        "action": "adminPushDelete",
-                                        "adminCode": admin_code,
-                                        "key": target.get("key", ""),
-                                    }
-                                )
-                                if cleanup.get("ok"):
-                                    removed += 1
-                            except Exception:
-                                pass
-                    except Exception as exc:
-                        failed += 1
-                        code = "client_" + exc.__class__.__name__
-                        failure_codes[code] = failure_codes.get(code, 0) + 1
-                        app.logger.warning("withdraw_push_failure code=%s", code)
+        if data.get("wasPublished"):
+            home = str(data.get("home") or "").strip()
+            away = str(data.get("away") or "").strip()
+            pick = str(data.get("pick") or "").strip()
+            match_name = (home + " – " + away).strip(" –")
+            body = match_name + ((" · " + pick) if pick else "")
+            if not body:
+                body = "Μία επιλογή του DreamTeamTips αποσύρθηκε."
+            push = push_to_all_active_users(
+                admin_code,
+                "Επιλογή αποσύρθηκε",
+                body,
+                "dreamteamtips-withdraw-" + control_id,
+            )
+            data["pushSent"] = push.get("sent", 0)
+            data["pushFailed"] = push.get("failed", 0)
+            data["pushRemoved"] = push.get("removed", 0)
+            data["pushTotal"] = push.get("total", 0)
+            data["pushFailureCodes"] = push.get("failureCodes", {})
+        else:
+            data["pushSent"] = 0
+            data["pushFailed"] = 0
+            data["pushRemoved"] = 0
+            data["pushTotal"] = 0
 
         data.pop("savedBy", None)
-        data["pushSent"] = sent
-        data["pushFailed"] = failed
-        data["pushRemoved"] = removed
-        data["pushTotal"] = total
-        data["pushFailureCodes"] = failure_codes
         return jsonify(data), 200
 
     if payload.get("action") == "adminPushSend":
