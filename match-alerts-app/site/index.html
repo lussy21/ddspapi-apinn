@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070708">
+<meta name="description" content="DreamTeamTips — επιλεγμένες ποδοσφαιρικές προτάσεις, ιδιωτική πρόσβαση και ενημερώσεις στην κατάλληλη στιγμή.">
+<link rel="icon" href="../dreamteamtips-icon.svg" type="image/svg+xml">
+<title>DreamTeamTips</title>
+<style>
+:root{
+  --bg:#060607;--panel:#0d0d0f;--panel2:#111013;--text:#f7f3e8;--muted:#9a969e;
+  --gold:#d9b157;--gold2:#f2d98f;--gold3:#fff0b4;--line:rgba(217,177,87,.18);
+  --soft:rgba(255,255,255,.055);--good:#bfe9c7
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:
+ radial-gradient(900px 520px at 50% -160px,rgba(217,177,87,.14),transparent 62%),
+ linear-gradient(180deg,#0a0a0c 0,#050506 58%,#070708 100%);min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:
+ linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+ linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+ background-size:30px 30px;mask-image:linear-gradient(to bottom,#000,transparent 86%)}
+a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 34px));margin:auto;position:relative;z-index:1}
+header{position:sticky;top:0;z-index:50;background:rgba(6,6,7,.78);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.045)}
+.nav{height:76px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}.brand img{width:46px;height:46px;border-radius:14px;border:1px solid rgba(217,177,87,.34);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.brand-name{font:600 23px/1 Georgia,serif;white-space:nowrap}.brand-name span{color:var(--gold2)}
+.brand-sub{margin-top:5px;color:#827d84;font-size:8px;letter-spacing:1.75px;text-transform:uppercase}
+.links{display:flex;align-items:center;gap:22px;color:#aaa6ad;font-size:12px;font-weight:800}.links a:hover{color:var(--gold3)}
+.nav-cta{padding:10px 14px;border-radius:12px;border:1px solid rgba(217,177,87,.30);background:rgba(217,177,87,.08);color:#ffe7a5!important}
+.menu{display:none;border:1px solid var(--line);background:rgba(217,177,87,.06);color:var(--gold2);border-radius:11px;width:40px;height:40px;font-size:20px}
+.hero{padding:96px 0 72px}.hero-grid{display:grid;grid-template-columns:1.16fr .84fr;gap:56px;align-items:center}
+.kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(217,177,87,.22);border-radius:999px;background:rgba(217,177,87,.055);color:#dbc98d;font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase}
+.kicker:before{content:"◆";font-size:7px;color:var(--gold2)}
+h1{font:500 clamp(44px,7vw,78px)/.98 Georgia,serif;letter-spacing:-2.7px;margin:18px 0 20px;max-width:780px}
+h1 em{font-style:normal;color:var(--gold2)}
+.hero-copy{max-width:690px;color:#aaa6ad;font-size:16px;line-height:1.72;margin:0}
+.hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin-top:28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 18px;border-radius:14px;font-weight:900;font-size:12px;border:1px solid rgba(255,255,255,.08)}
+.btn.primary{border-color:rgba(217,177,87,.32);background:linear-gradient(145deg,rgba(217,177,87,.19),rgba(217,177,87,.07));color:#fff0bc;box-shadow:0 14px 34px rgba(0,0,0,.26)}
+.btn.secondary{background:rgba(255,255,255,.025);color:#d6d2d7}.btn.disabled{opacity:.48;cursor:default}
+.hero-note{margin-top:15px;color:#716d74;font-size:10px}.phone{position:relative;margin:auto;width:min(100%,365px);padding:12px;border-radius:36px;border:1px solid rgba(217,177,87,.28);background:linear-gradient(145deg,#131216,#070708);box-shadow:0 34px 90px rgba(0,0,0,.5),0 0 70px rgba(217,177,87,.05)}
+.phone:before{content:"";position:absolute;left:50%;top:9px;transform:translateX(-50%);width:82px;height:20px;border-radius:999px;background:#030304;border:1px solid rgba(255,255,255,.035)}
+.screen{min-height:570px;border-radius:27px;padding:44px 16px 17px;border:1px solid rgba(255,255,255,.055);background:radial-gradient(300px 180px at 100% 0,rgba(217,177,87,.10),transparent 72%),#09090b}
+.screen-brand{display:flex;align-items:center;gap:10px}.screen-brand img{width:45px;height:45px;border-radius:13px}.screen-brand b{font:600 20px Georgia,serif}.screen-brand b span{color:var(--gold2)}.screen-sub{font-size:7px;color:#77727a;letter-spacing:1.4px;text-transform:uppercase;margin-top:4px}
+.mini-card{margin-top:20px;padding:16px;border-radius:20px;border:1px solid rgba(217,177,87,.19);background:linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.015))}
+.mini-label{font-size:8px;font-weight:900;letter-spacing:1.35px;text-transform:uppercase;color:#c7ae68}.mini-title{font:500 21px/1.1 Georgia,serif;margin:7px 0;color:#f2ead8}.mini-copy{color:#858089;font-size:9px;line-height:1.5}
+.pick{margin-top:10px;padding:13px;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.018)}.pick-top{display:flex;justify-content:space-between;gap:10px}.pick b{font-size:11px}.pick span{color:#77727c;font-size:8px}.symbol{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);font-size:14px}
+.pick-line{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-top:13px;padding-top:10px;border-top:1px solid rgba(255,255,255,.04)}.pick-line strong{color:#ffe2a0;font-size:13px}.pick-line small{display:block;color:#6f6a72;font-size:7px;margin-bottom:3px}
+.trust{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}.trust div{padding:10px 8px;border-radius:13px;text-align:center;border:1px solid rgba(217,177,87,.10);background:rgba(217,177,87,.025)}.trust b{display:block;font-size:12px;color:#f4df9f}.trust span{display:block;color:#6f6a72;font-size:7px;margin-top:3px}
+section.block{padding:76px 0;border-top:1px solid rgba(255,255,255,.045)}.section-kicker{color:#c5ad68;font-size:9px;font-weight:900;letter-spacing:1.55px;text-transform:uppercase}.section-title{font:500 clamp(31px,5vw,49px)/1.05 Georgia,serif;margin:10px 0 12px}.section-copy{max-width:740px;color:#97939b;font-size:14px;line-height:1.72}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}.card{padding:21px;border-radius:21px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012));box-shadow:inset 0 1px rgba(255,255,255,.018)}.card-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.055);font-size:17px}.card h3{margin:15px 0 7px;font:600 20px Georgia,serif}.card p{margin:0;color:#858089;font-size:11px;line-height:1.6}
+.process{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:26px}.step{position:relative;padding:20px;border-radius:20px;border:1px solid rgba(255,255,255,.055);background:rgba(255,255,255,.017)}.step-no{font:600 22px Georgia,serif;color:var(--gold2)}.step b{display:block;margin-top:12px;font-size:12px}.step span{display:block;margin-top:5px;color:#7c7880;font-size:10px;line-height:1.5}
+.download{display:grid;grid-template-columns:1fr .8fr;gap:28px;align-items:center;padding:32px;border-radius:28px;border:1px solid rgba(217,177,87,.25);background:radial-gradient(420px 240px at 100% 0,rgba(217,177,87,.12),transparent 72%),linear-gradient(145deg,rgba(217,177,87,.06),rgba(255,255,255,.012))}
+.download h2{font:500 clamp(30px,5vw,46px)/1.05 Georgia,serif;margin:8px 0 12px}.download p{color:#97939b;font-size:13px;line-height:1.7;margin:0}.download-box{padding:22px;border-radius:21px;border:1px solid rgba(217,177,87,.18);background:#09090b;text-align:center}.download-icon{width:72px;height:72px;margin:auto;border-radius:21px;border:1px solid rgba(217,177,87,.28);padding:8px;background:rgba(217,177,87,.04)}.download-icon img{width:100%;height:100%;border-radius:14px}.download-box b{display:block;margin-top:13px;font-size:13px}.download-box span{display:block;margin:5px 0 14px;color:#79747c;font-size:9px}
+.faq{display:grid;gap:8px;margin-top:24px}.faq details{border:1px solid rgba(255,255,255,.06);border-radius:16px;background:rgba(255,255,255,.016);padding:0 16px}.faq summary{cursor:pointer;padding:16px 0;font-size:12px;font-weight:900;list-style:none}.faq summary::-webkit-details-marker{display:none}.faq p{margin:0;padding:0 0 16px;color:#87838b;font-size:11px;line-height:1.6}
+.notice{margin-top:22px;padding:15px 17px;border-radius:16px;border:1px solid rgba(217,177,87,.12);background:rgba(217,177,87,.025);color:#8d8991;font-size:10px;line-height:1.6}
+footer{padding:34px 0 44px;border-top:1px solid rgba(255,255,255,.045)}.foot{display:flex;justify-content:space-between;gap:20px;align-items:center}.foot-brand{color:#706b72;font-size:10px;line-height:1.5}.foot-right{color:#5f5b62;font-size:9px;text-align:right}
+@media(max-width:850px){.hero-grid,.download{grid-template-columns:1fr}.hero{padding-top:62px}.hero-grid{gap:38px}.phone{width:min(92%,365px)}.cards{grid-template-columns:1fr}.process{grid-template-columns:1fr 1fr}.links{display:none}.menu{display:block}.links.open{position:absolute;display:grid;top:70px;right:17px;width:220px;padding:13px;border:1px solid rgba(217,177,87,.18);border-radius:16px;background:#0d0d0f;box-shadow:0 20px 50px rgba(0,0,0,.45)}.links.open a{padding:8px 10px}.nav-cta{margin-top:3px}}
+@media(max-width:520px){.wrap{width:min(100% - 28px,1120px)}.nav{height:68px}.brand img{width:42px;height:42px}.brand-name{font-size:20px}.hero{padding:48px 0 58px}h1{font-size:43px;letter-spacing:-1.8px}.hero-copy{font-size:14px}.hero-actions{display:grid}.btn{width:100%}.phone{width:100%}.screen{min-height:530px}.process{grid-template-columns:1fr}.download{padding:22px}.foot{align-items:flex-start;flex-direction:column}.foot-right{text-align:left}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <img src="../dreamteamtips-icon.svg" alt="DreamTeamTips">
+      <div><div class="brand-name">DreamTeam<span>Tips</span></div><div class="brand-sub">Football Data • Smart Picks</div></div>
+    </a>
+    <button class="menu" id="menuBtn" aria-label="Μενού">☰</button>
+    <nav class="links" id="navLinks">
+      <a href="#about">Πώς δουλεύουμε</a>
+      <a href="#app">Η εφαρμογή</a>
+      <a href="#faq">Συχνές ερωτήσεις</a>
+      <a class="nav-cta" href="../">Είσοδος μελών</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="kicker">Private Members Experience</div>
+        <h1>Ποιότητα πάνω από την <em>ποσότητα.</em></h1>
+        <p class="hero-copy">Το DreamTeamTips συγκεντρώνει τις επιλογές που ξεχωρίζουμε και τις παρουσιάζει καθαρά, χωρίς υπερβολές και χωρίς βιαστικές αποφάσεις. Η πληροφορία φτάνει όταν πραγματικά αξίζει την προσοχή σου.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="../">Άνοιγμα εφαρμογής</a>
+          <a class="btn secondary" href="#app">Εφαρμογή Android</a>
+        </div>
+        <div class="hero-note">Ιδιωτική πρόσβαση • Ενημερώσεις επιλογών • Ιστορικό λογαριασμού</div>
+      </div>
+      <div class="phone" aria-label="Προεπισκόπηση εφαρμογής">
+        <div class="screen">
+          <div class="screen-brand"><img src="../dreamteamtips-icon.svg" alt=""><div><b>DreamTeam<span>Tips</span></b><div class="screen-sub">Members Area</div></div></div>
+          <div class="mini-card">
+            <div class="mini-label">Today's selections</div>
+            <div class="mini-title">Οι επιλογές που ξεχωρίζουμε.</div>
+            <div class="mini-copy">Παρακολούθηση μέσα στην ημέρα και ενημέρωση μόνο όταν υπάρχει λόγος.</div>
+            <div class="pick">
+              <div class="pick-top"><div><b>Match Preview</b><br><span>Ιδιωτική επιλογή μελών</span></div><div class="symbol">💎</div></div>
+              <div class="pick-line"><div><small>ΕΠΙΛΟΓΗ</small><strong>Διαθέσιμη στην εφαρμογή</strong></div><span>›</span></div>
+            </div>
+            <div class="pick">
+              <div class="pick-top"><div><b>Live monitoring</b><br><span>Νέα δεδομένα μέχρι την οριστικοποίηση</span></div><div class="symbol">⚡</div></div>
+              <div class="pick-line"><div><small>ΚΑΤΑΣΤΑΣΗ</small><strong>Παρακολούθηση</strong></div><span>›</span></div>
+            </div>
+          </div>
+          <div class="trust"><div><b>1–2</b><span>επιλεγμένες προτάσεις</span></div><div><b>LIVE</b><span>ενημερώσεις</span></div><div><b>VIP</b><span>ιδιωτική πρόσβαση</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="about">
+    <div class="wrap">
+      <div class="section-kicker">Πώς δουλεύουμε</div>
+      <h2 class="section-title">Δεν βιαζόμαστε να δώσουμε επιλογή.</h2>
+      <p class="section-copy">Κατά τη διάρκεια της ημέρας ξεχωρίζουμε τα παιχνίδια που αξίζουν προσοχή, παρακολουθούμε συνεχώς τις τελευταίες εξελίξεις και δεν βιαζόμαστε να οριστικοποιήσουμε επιλογές από νωρίς. Μια επιλογή μπορεί να αλλάξει ή να αποσυρθεί αν προκύψουν νέα δεδομένα, ώστε η τελική απόφαση να βασίζεται στην πιο ενημερωμένη εικόνα όσο πλησιάζει ο αγώνας.</p>
+      <div class="cards">
+        <article class="card"><div class="card-icon">◉</div><h3>Παρακολούθηση</h3><p>Τα παιχνίδια παραμένουν υπό παρακολούθηση μέσα στην ημέρα. Δεν θεωρούμε ότι μια πρώτη εικόνα είναι απαραίτητα και η τελική.</p></article>
+        <article class="card"><div class="card-icon">◆</div><h3>Επιλογή</h3><p>Στόχος δεν είναι να γεμίζουμε την εφαρμογή με προτάσεις. Κρατάμε εκείνες που θεωρούμε ότι αξίζουν πραγματική προσοχή.</p></article>
+        <article class="card"><div class="card-icon">↻</div><h3>Ενημέρωση</h3><p>Αν αλλάξει κάτι σημαντικό πριν τον αγώνα, η επιλογή μπορεί να ενημερωθεί ή να αποσυρθεί και ο χρήστης ενημερώνεται αντίστοιχα.</p></article>
+      </div>
+      <div class="process">
+        <div class="step"><div class="step-no">01</div><b>Ξεχωρίζουμε</b><span>Εντοπίζουμε τα παιχνίδια που αξίζουν να παρακολουθηθούν.</span></div>
+        <div class="step"><div class="step-no">02</div><b>Παρακολουθούμε</b><span>Περιμένουμε την πιο καθαρή εικόνα όσο πλησιάζει η ώρα.</span></div>
+        <div class="step"><div class="step-no">03</div><b>Οριστικοποιούμε</b><span>Η επιλογή δημοσιεύεται μόνο όταν η ομάδα αποφασίσει ότι πρέπει.</span></div>
+        <div class="step"><div class="step-no">04</div><b>Ενημερώνουμε</b><span>Push και ενημερώσεις μέσα στην εφαρμογή για τις σημαντικές αλλαγές.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="app">
+    <div class="wrap">
+      <div class="download">
+        <div>
+          <div class="section-kicker">DreamTeamTips App</div>
+          <h2>Η εφαρμογή στο κινητό σου.</h2>
+          <p>Η Android έκδοση θα διατίθεται απευθείας από το επίσημο site του DreamTeamTips. Μέχρι να ολοκληρωθεί το τελικό APK, η υπάρχουσα web εφαρμογή παραμένει διαθέσιμη κανονικά από τον browser.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="../">Χρήση web εφαρμογής</a>
+            <span class="btn secondary disabled">Λήψη Android · Σύντομα</span>
+          </div>
+        </div>
+        <div class="download-box">
+          <div class="download-icon"><img src="../dreamteamtips-icon.svg" alt="DreamTeamTips app icon"></div>
+          <b>DreamTeamTips για Android</b>
+          <span>Επίσημη έκδοση APK</span>
+          <div class="btn secondary disabled">Η λήψη θα ενεργοποιηθεί εδώ</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="section-kicker">FAQ</div>
+      <h2 class="section-title">Χωρίς ψιλά γράμματα.</h2>
+      <div class="faq">
+        <details><summary>Δίνετε πολλές επιλογές κάθε μέρα;</summary><p>Όχι απαραίτητα. Η φιλοσοφία του DreamTeamTips είναι ποιότητα πάνω από την ποσότητα. Υπάρχουν ημέρες με λίγες επιλογές ή και χωρίς επιλογή αν δεν υπάρχει κάτι που θέλουμε να δημοσιεύσουμε.</p></details>
+        <details><summary>Μπορεί μια επιλογή να αλλάξει;</summary><p>Ναι. Αν προκύψουν νέα δεδομένα πριν από τον αγώνα, μια επιλογή μπορεί να ενημερωθεί ή να αποσυρθεί. Η εφαρμογή έχει σχεδιαστεί ώστε αυτή η αλλαγή να φαίνεται καθαρά.</p></details>
+        <details><summary>Υπάρχουν «σίγουρες» επιλογές;</summary><p>Όχι. Καμία επιλογή δεν είναι σίγουρη και δεν παρουσιάζουμε κάποιο παιχνίδι ως εγγυημένο αποτέλεσμα.</p></details>
+        <details><summary>Πώς θα εγκαθίσταται η Android εφαρμογή;</summary><p>Η τελική Android έκδοση θα κατεβαίνει από το επίσημο site. Θα υπάρχει σαφές κουμπί λήψης και οδηγίες εγκατάστασης όταν το APK είναι έτοιμο.</p></details>
+      </div>
+      <div class="notice"><strong>18+.</strong> Το περιεχόμενο αφορά ενημέρωση και επιλογές αθλητικού στοιχήματος. Καμία επιλογή δεν εγγυάται αποτέλεσμα. Χρησιμοποίησε το περιεχόμενο υπεύθυνα και μόνο όπου επιτρέπεται.</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="foot-brand"><strong style="color:#bfa96c">DreamTeamTips</strong><br>Football Data • Smart Picks</div>
+    <div class="foot-right">© <span id="year"></span> DreamTeamTips<br>All rights reserved</div>
+  </div>
+</footer>
+<script>
+document.getElementById("year").textContent=new Date().getFullYear();
+const btn=document.getElementById("menuBtn"),links=document.getElementById("navLinks");
+btn.addEventListener("click",()=>links.classList.toggle("open"));
+links.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>links.classList.remove("open")));
+</script>
+</body>
+</html>
