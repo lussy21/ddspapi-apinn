@@ -13,7 +13,9 @@ html.modal-open,body.modal-open{overflow:hidden;height:100dvh;overscroll-behavio
 html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
 body{display:flex;justify-content:center;overflow-x:hidden}
 .hero{position:relative;width:min(100vw,520px);background:#000}
-.hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}.hero-club-label{position:absolute;left:13%;right:13%;top:32.15%;height:3.65%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(2,3,4,.98) 0%,rgba(2,3,4,.96) 56%,rgba(2,3,4,.72) 76%,rgba(2,3,4,0) 100%);color:#e9d9b9;font-size:clamp(8px,2.45vw,13px);font-weight:500;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;text-shadow:0 0 12px rgba(222,176,73,.24);pointer-events:none}.hero-club-label:before,.hero-club-label:after{content:"";height:1px;flex:1;max-width:58px;background:linear-gradient(90deg,transparent,#c28d2e)}.hero-club-label:after{background:linear-gradient(90deg,#c28d2e,transparent)}.hero-club-label span{padding:0 10px;white-space:nowrap}
+.hero-art{position:relative;width:100%}
+.hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.desktop-intro{display:none}.hero-club-label{position:absolute;left:13%;right:13%;top:32.15%;height:3.65%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(2,3,4,.98) 0%,rgba(2,3,4,.96) 56%,rgba(2,3,4,.72) 76%,rgba(2,3,4,0) 100%);color:#e9d9b9;font-size:clamp(8px,2.45vw,13px);font-weight:500;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;text-shadow:0 0 12px rgba(222,176,73,.24);pointer-events:none}.hero-club-label:before,.hero-club-label:after{content:"";height:1px;flex:1;max-width:58px;background:linear-gradient(90deg,transparent,#c28d2e)}.hero-club-label:after{background:linear-gradient(90deg,#c28d2e,transparent)}.hero-club-label span{padding:0 10px;white-space:nowrap}
 .login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}.menu-hotspot{position:absolute;right:4.2%;top:2.2%;width:12%;height:5.7%;border:0;background:transparent;cursor:pointer;border-radius:12px;-webkit-tap-highlight-color:transparent}.menu-hotspot:active{background:rgba(255,255,255,.05)}
 .login-hotspot:active{background:rgba(255,255,255,.06)}
 .login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:0 18px 24px;background:rgba(0,0,0,.12)}
@@ -53,47 +55,80 @@ rgba(255,255,255,.018);box-shadow:0 14px 38px rgba(0,0,0,.28)}
 .plan-features li:before{content:"◆";position:absolute;left:0;top:0;color:#cfa544;font-size:8px}
 .plan-select{width:100%;height:45px;border:1px solid rgba(237,189,79,.66);border-radius:12px;background:linear-gradient(135deg,#8f5d12,#dba53b,#f3d47c);color:#090909;font-weight:900;letter-spacing:.35px}
 .plan-footnote{text-align:center;margin-top:17px;color:#706961;font-size:9px;line-height:1.55}
-@media(min-width:700px){
+@media(min-width:700px) and (max-width:999px){
   body{position:relative;min-height:100vh;align-items:flex-start;background:#050505}
   body:before{content:"";position:fixed;inset:-45px;z-index:0;background:
-    linear-gradient(90deg,rgba(0,0,0,.80),rgba(0,0,0,.42) 27%,rgba(0,0,0,.18) 50%,rgba(0,0,0,.42) 73%,rgba(0,0,0,.80)),
-    url("approved-hero.webp") center 24%/cover no-repeat;
-    filter:blur(24px);transform:scale(1.06);opacity:.42;pointer-events:none}
-  body:after{content:"";position:fixed;inset:0;z-index:0;background:
-    radial-gradient(circle at 50% 26%,rgba(204,145,42,.10),transparent 36%),
-    linear-gradient(180deg,rgba(0,0,0,.10),rgba(0,0,0,.58));pointer-events:none}
-  .hero{z-index:1;width:clamp(560px,46vw,680px);box-shadow:0 0 95px rgba(0,0,0,.95),0 0 34px rgba(211,156,49,.08)}
-  .hero-club-label{font-size:clamp(10px,1.05vw,13px)}
+    linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.34),rgba(0,0,0,.78)),
+    url("approved-hero.webp") center 24%/cover no-repeat;filter:blur(24px);transform:scale(1.06);opacity:.38;pointer-events:none}
+  .hero{z-index:1;width:min(72vw,620px);box-shadow:0 0 95px rgba(0,0,0,.95)}
   .login-layer,.menu-layer,.public-page{z-index:70}
-  .login-card{width:min(460px,90vw);margin-top:27vh}
-  .login-card.register-mode{margin-top:18vh}
-  .login-card.verify-mode{margin-top:25vh}
-  .menu-panel{width:min(420px,38vw);padding:32px 26px 28px}
-  .public-shell{width:min(1120px,calc(100% - 72px));padding:30px 28px 58px}
-  .public-title{font-size:38px;margin-top:11px}
-  .public-copy{max-width:650px;font-size:13px;margin-bottom:28px}
+  .public-shell{width:min(900px,calc(100% - 48px))}
+  .plan-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+}
+@media(min-width:1000px){
+  html,body{width:100%;min-height:100%;background:#050505}
+  body{display:block;overflow:hidden}
+  .hero{width:100vw;height:100vh;max-width:none;display:grid;grid-template-columns:minmax(500px,46%) minmax(430px,54%);align-items:center;overflow:hidden;background:
+    radial-gradient(circle at 68% 38%,rgba(191,132,33,.11),transparent 34%),
+    linear-gradient(115deg,#030303 0%,#090909 48%,#030303 100%)}
+  .hero:before{content:"";position:absolute;inset:0;background:
+    radial-gradient(circle at 25% 50%,rgba(208,147,37,.08),transparent 31%),
+    linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.20));pointer-events:none}
+  .hero-art{position:relative;z-index:1;width:min(100%,650px);justify-self:end;align-self:center;box-shadow:0 0 95px rgba(0,0,0,.82)}
+  .hero-art img{width:100%;height:auto;max-height:100vh;object-fit:contain}
+  .hero-club-label{font-size:clamp(10px,.78vw,13px)}
+  .desktop-intro{position:relative;z-index:2;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:min(560px,82%);padding:44px 10px 44px 64px}
+  .desktop-kicker{color:#a78c59;font-size:11px;font-weight:800;letter-spacing:3.2px}
+  .desktop-brand{margin-top:12px;font:600 clamp(44px,4vw,68px) Georgia,serif;color:#e3ad45;line-height:.98;text-shadow:0 0 24px rgba(205,149,45,.10)}
+  .desktop-brand span{color:#f4eee5}
+  .desktop-line{width:86px;height:1px;margin:24px 0 21px;background:linear-gradient(90deg,#d1a54d,transparent)}
+  .desktop-intro p{max-width:520px;margin:0 0 28px;color:#bdb5aa;font-size:15px;line-height:1.75}
+  .desktop-primary,.desktop-secondary{width:min(360px,100%);height:54px;border-radius:14px;font-weight:900;letter-spacing:.55px;cursor:pointer}
+  .desktop-primary{border:1px solid #edbd52;background:linear-gradient(135deg,#a66912,#e6ad42,#f6db8b);color:#090909;box-shadow:0 11px 32px rgba(206,151,43,.11)}
+  .desktop-secondary{margin-top:11px;border:1px solid rgba(225,180,73,.30);background:rgba(255,255,255,.025);color:#dfbd6c}
+  .desktop-note{margin-top:16px;color:#6f685f;font-size:10px;letter-spacing:.35px}
+  .login-layer,.menu-layer,.public-page{z-index:80}
+  .login-card{width:min(460px,90vw);margin-top:22vh}
+  .login-card.register-mode{margin-top:13vh}
+  .login-card.verify-mode{margin-top:20vh}
+  .menu-panel{width:min(420px,34vw);padding:32px 26px 28px}
+  .public-shell{width:min(1180px,calc(100% - 72px));padding:30px 28px 58px}
+  .public-title{font-size:40px;margin-top:12px}
+  .public-copy{max-width:680px;font-size:13px;margin-bottom:30px}
   .plan-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
   .plan-card{display:flex;flex-direction:column;min-height:330px;padding:26px 22px}
   .plan-price{font-size:31px}
   .plan-features{margin-bottom:22px}
   .plan-select{margin-top:auto}
 }
-@media(min-width:1400px){
-  .hero{width:clamp(640px,42vw,720px)}
-}
-@media(min-width:700px) and (max-height:820px){
-  .hero{width:clamp(520px,39vw,610px)}
-  .login-card{margin-top:18vh}
-  .login-card.register-mode{margin-top:9vh}
-  .login-card.verify-mode{margin-top:16vh}
+@media(min-width:1000px) and (max-height:760px){
+  .hero-art{width:min(86%,560px)}
+  .desktop-intro{padding-top:24px;padding-bottom:24px}
+  .desktop-brand{font-size:46px}
+  .desktop-intro p{font-size:13px;margin-bottom:20px}
+  .desktop-primary,.desktop-secondary{height:48px}
+  .login-card{margin-top:13vh}
+  .login-card.register-mode{margin-top:6vh}
+  .login-card.verify-mode{margin-top:11vh}
 }
 </style>
 </head>
 <body>
 <main class="hero">
-  <img src="approved-hero.webp" alt="DreamTeamTips Private Members Club"><div class="hero-club-label"><span>PRIVATE MEMBERS CLUB</span></div>
-  <button id="openMenu" class="menu-hotspot" aria-label="Μενού"></button>
-  <button id="openLogin" class="login-hotspot" aria-label="Είσοδος Μελών"></button>
+  <div class="hero-art">
+    <img src="approved-hero.webp" alt="DreamTeamTips Private Members Club"><div class="hero-club-label"><span>PRIVATE MEMBERS CLUB</span></div>
+    <button id="openMenu" class="menu-hotspot" aria-label="Μενού"></button>
+    <button id="openLogin" class="login-hotspot" aria-label="Είσοδος Μελών"></button>
+  </div>
+  <section class="desktop-intro" aria-label="DreamTeamTips">
+    <div class="desktop-kicker">PRIVATE MEMBERS CLUB</div>
+    <div class="desktop-brand">DreamTeam<span>Tips</span></div>
+    <div class="desktop-line"></div>
+    <p>Ιδιωτική πρόσβαση σε επιλεγμένες ποδοσφαιρικές επιλογές και ενημερώσεις την κατάλληλη στιγμή.</p>
+    <button id="desktopLogin" class="desktop-primary">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+    <button id="desktopPlans" class="desktop-secondary">ΠΑΚΕΤΑ / ΣΥΝΔΡΟΜΕΣ</button>
+    <div class="desktop-note">Πρόσβαση αποκλειστικά για μέλη DreamTeamTips</div>
+  </section>
 </main>
 
 <div id="menuLayer" class="menu-layer" aria-hidden="true">
@@ -215,6 +250,7 @@ rgba(255,255,255,.018);box-shadow:0 14px 38px rgba(0,0,0,.28)}
 const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
 const menuLayer=document.getElementById("menuLayer"),openMenu=document.getElementById("openMenu"),closeMenu=document.getElementById("closeMenu"),menuLogin=document.getElementById("menuLogin");
 const plansPage=document.getElementById("plansPage"),closePlans=document.getElementById("closePlans");
+const desktopLogin=document.getElementById("desktopLogin"),desktopPlans=document.getElementById("desktopPlans");
 const card=document.querySelector(".login-card");
 const loginView=document.getElementById("loginView"),registerView=document.getElementById("registerView"),verifyView=document.getElementById("verifyView"),accountReadyView=document.getElementById("accountReadyView");
 const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
@@ -276,7 +312,10 @@ function showStage(stage){
   if(stage==="ready"){accountReadyView.classList.remove("view-hidden");card.classList.add("verify-mode");return}
   loginView.classList.remove("view-hidden");setTimeout(()=>user.focus(),80)
 }
-openBtn.onclick=openLogin;closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};
+openBtn.onclick=openLogin;
+if(desktopLogin)desktopLogin.onclick=openLogin;
+if(desktopPlans)desktopPlans.onclick=()=>{if(!document.body.classList.contains("modal-open"))lockBackground();plansPage.classList.add("open");plansPage.setAttribute("aria-hidden","false")};
+closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};
 openMenu.onclick=openPublicMenu;closeMenu.onclick=()=>closePublicMenu(true);menuLayer.onclick=e=>{if(e.target===menuLayer)closePublicMenu(true)};
 menuLogin.onclick=()=>{closePublicMenu(false);openLogin()};
 document.querySelectorAll("[data-public-section]").forEach(btn=>btn.onclick=()=>{
