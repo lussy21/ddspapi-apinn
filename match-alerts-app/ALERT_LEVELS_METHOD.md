@@ -26,6 +26,20 @@ Use the `PINNACLE` sheet only.
 
 For historical evaluation, run the CURRENT alert rule retrospectively over all compatible historical rows in `PINNACLE`, regardless of when the alert was first discovered.
 
+### Core-rule priority is mandatory
+For the legacy/core family, the backtest must reproduce the same IFS/priority used by the live model. A row that qualifies for a higher-priority core alert must NOT also be counted as a lower-priority core alert.
+
+Current core priority:
+1. ΔΥΝΑΤΟ ΚΟΝΤΡΑ
+2. ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)
+3. ΔΥΝΑΤΟ ΦΑΒΟΡΙ
+4. ΚΟΝΤΡΑ
+5. ΦΑΒΟΡΙ
+6. WATCH ΚΟΝΤΡΑ
+7. WATCH ΦΑΒΟΡΙ
+
+Independent alerts such as turnover, reversal, 3X and drop alerts are evaluated by their own rules and may coexist on the same match. For the customer, coexistence is resolved by showing only the highest public level.
+
 INCLUDED:
 - Main leagues
 - "Λοιπά Ευρώπης"
@@ -79,11 +93,13 @@ The public level of an alert is NOT recalculated every day.
 - Maximum movement per review: one level up or one level down.
 - New alerts remain TEST / WAITING until they have enough sample.
 
-Working score thresholds:
+Working score thresholds (diagnostic, not a blind auto-switch):
 - Level 1 -> Level 2: score >= 62 and enough sample (normally at least 12-15 completed matches).
 - Level 2 -> Level 3: score >= 80 and at least 20 completed matches.
 - Level 3 -> Level 2: downgrade only if score < 72.
 - Level 2 -> Level 1: downgrade only if score < 55.
+
+Important: the score is a decision aid, not the only criterion. Favorite and contra alerts have different odds/hit-rate profiles. The automatic review must also respect family-specific evidence and sample size; it must not downgrade or upgrade solely because a generic ROI-heavy score crossed one line. Until family-specific gates are validated, the system may calculate a recommendation/trend but must not silently rewrite the live level.
 
 This creates a safety band (hysteresis) so one or two results cannot make an alert bounce between levels.
 
@@ -142,21 +158,30 @@ Admin should show, when available:
 ## Current benchmark snapshot used for the working mapping
 Scope: Main + Λοιπά Ευρώπης only; America, Nationals and Super League 2 excluded.
 
+Core family (priority-corrected):
 - ΔΥΝΑΤΟ ΚΟΝΤΡΑ: 26/28 (92.9%), avg odds ~1.77
-- ΚΟΝΤΡΑ: 33/40 (82.5%), avg odds ~1.83
+- ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10): 2/3 (66.7%), avg odds ~1.96 — TEST
+- ΚΟΝΤΡΑ: 7/11 (63.6%), avg odds ~1.95
+- ΔΥΝΑΤΟ ΦΑΒΟΡΙ: 6/6 (100%), avg odds ~1.27 — TEST because sample is too small
+- ΦΑΒΟΡΙ: 9/12 (75.0%), avg odds ~1.44
+- WATCH ΚΟΝΤΡΑ: 2/9 (22.2%), avg odds ~2.23 — Admin only
+- WATCH ΦΑΒΟΡΙ: 19/34 (55.9%), avg odds ~1.64 — Admin only
+
+Independent alerts:
 - ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ: 14/18 (77.8%), avg odds ~2.12
 - ΦΑΒΟΡΙ ΤΖΙΡΟΥ: 22/23 (95.7%), avg odds ~1.31
 - ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ: 20/22 (90.9%), avg odds ~1.34
 - ΦΑΒΟΡΙ ΠΤΩΣΗ 2%: 10/12 (83.3%), avg odds ~1.63
 - ΦΑΒ 60+: 41/49 (83.7%), avg odds ~1.35
 - ΦΑΒ 75+: 29/36 (80.6%), avg odds ~1.33
+- ΤΖΙΡΟΣ ↑: 9/12 (75.0%), avg odds ~1.84
 - ΦΑΒΟΡΙ 84+P60: 8/10 (80.0%), avg odds ~1.65
 - ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X: 13/19 (68.4%), avg odds ~1.78
 - ΦΑΒΟΡΙ SOFA+3X: 14/19 (73.7%), avg odds ~1.81
-- ΔΥΝΑΤΟ ΦΑΒΟΡΙ: 6/6, still TEST because sample is too small
-- ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10): 2/3, still TEST because sample is too small
 
 These are benchmark values, not permanent promises. Recompute from PINNACLE when re-evaluating.
+
+The currently assigned symbols remain a working mapping until a review explicitly changes them. Correcting a historical calculation does not silently rewrite already-agreed/public levels.
 
 ## Public statistics launch rule
 When the user explicitly says the customer-facing system is officially open:
