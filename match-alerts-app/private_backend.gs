@@ -496,8 +496,13 @@ function highestPublicAlert_(alerts, visibleAlert, catalog) {
       return;
     }
     if (best && candidate.level === best.level) {
-      // On ties keep the Sheet's visible/primary alert if it is one of the tied candidates.
-      if (canonicalAlertKey_(candidate.alert) === visibleKey && canonicalAlertKey_(best.alert) !== visibleKey) {
+      if (Number(candidate.score || 0) > Number(best.score || 0)) {
+        best = candidate;
+      } else if (
+        Number(candidate.score || 0) === Number(best.score || 0) &&
+        canonicalAlertKey_(candidate.alert) === visibleKey &&
+        canonicalAlertKey_(best.alert) !== visibleKey
+      ) {
         best = candidate;
       }
     }
