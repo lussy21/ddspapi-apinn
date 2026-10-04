@@ -103,7 +103,6 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .history-symbol-head{margin:14px 0 8px}.history-symbol-title{font-size:10px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;color:#d7c181}.history-symbol-note{margin-top:4px;color:#747079;font-size:8px;line-height:1.4}
 .history-symbol-filters{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:0 0 14px}.history-symbol-filter{min-width:0;min-height:54px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:rgba(255,255,255,.02);color:#9b969e;padding:7px 2px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.history-symbol-filter span{font-size:15px;line-height:1}.history-symbol-filter b{font-size:8px;color:#b9b3bc;line-height:1}.history-symbol-filter.all span{font-size:8px}.history-symbol-filter.all b{font-size:7px}.history-symbol-filter.active{border-color:rgba(217,177,87,.32);background:rgba(217,177,87,.10);color:#fff0c4;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.history-symbol-filter.active b{color:#f1d78e}
 .symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.symbol-stat-card{min-height:96px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.014));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.symbol-stat-card span{font-size:28px;line-height:1}.symbol-stat-card b{font:700 17px/1 Georgia,serif;color:#efd58c;letter-spacing:.5px}
-.pick-symbol{display:inline-grid;place-items:center;min-width:30px;height:30px;margin-bottom:7px;border-radius:10px;border:1px solid rgba(217,177,87,.23);background:rgba(217,177,87,.06);font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
 .pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 .pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
 .pick-card.result-loss{border-color:rgba(255,119,130,.34);background:linear-gradient(145deg,rgba(176,58,70,.11),rgba(255,255,255,.012))}
@@ -243,7 +242,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
       <div id="symbolStatsView" class="history-view hidden">
         <div class="history-head" style="margin:4px 0 14px">
-          <div><h3 style="font-size:18px">Στατιστικά συμβόλων</h3><p>Η δημόσια πορεία κάθε σήματος ξεκινά από 0/0.</p></div>
+          <div><h3 style="font-size:18px">Στατιστικά</h3><p>Η δημόσια πορεία των κατηγοριών ξεκινά από 0/0.</p></div>
         </div>
         <div class="symbol-stats-grid">
           <div class="symbol-stat-card"><span>🔷</span><b id="symbolStat-🔷">0/0</b></div>
@@ -1056,8 +1055,6 @@ function renderAlerts(alerts,slips=[]){
   const singleHtml=rows.map((a,idx)=>{
     const start=kickoffMs(a);
     const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
-    const symbol=frozenHistorySymbol(a);
-    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
     return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${(a.publicSymbol||publicSignalSymbol(a.alert))?esc(a.publicSymbol||publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
@@ -1088,16 +1085,10 @@ function frozenHistorySymbol(a){
   const symbol=String(a&&a.publicSymbol||"").trim();
   return ["🔷","💎","👑","🎯","⚡","💣"].includes(symbol)?symbol:"";
 }
-function renderPublicSymbolStats(summary){
-  const symbols=["🔷","💎","👑","🎯","⚡","💣"];
-  const stats=(summary&&summary.publicSymbolStats&&typeof summary.publicSymbolStats==="object")?summary.publicSymbolStats:{};
-  symbols.forEach(symbol=>{
+function renderPublicSymbolStats(){
+  ["🔷","💎","👑","🎯","⚡","💣"].forEach(symbol=>{
     const el=document.getElementById("symbolStat-"+symbol);
-    if(!el) return;
-    const row=stats[symbol]||{};
-    const wins=Number(row.wins||0)||0;
-    const total=Number(row.total||0)||0;
-    el.textContent=wins+"/"+total;
+    if(el) el.textContent="0/0";
   });
 }
 function renderOfficialHistory(items,summary){
@@ -1126,9 +1117,7 @@ function renderOfficialHistory(items,summary){
     const oddsNumber=Number(a.odds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",","))
       :"";
-    const symbol=frozenHistorySymbol(a);
-    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
-    return '<div class="pick-card result-'+visualStatus+'"><div class="pick-top"><div>'+symbolHtml+'<div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
+    return '<div class="pick-card result-'+visualStatus+'"><div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
   }).join("")+'</div>';
 }
 async function loadOfficialHistory({background=false,force=false}={}){
@@ -1184,7 +1173,7 @@ function renderMyHistory(items){
     const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div>${symbolHtml}<div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
+    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
   }).join("")+'</div>';
 }
 async function loadMyHistory({background=false,force=false}={}){
