@@ -1009,7 +1009,14 @@ function selectionMark(a){
   return side==="H"?"1":side==="A"?"2":"—";
 }
 function renderAlerts(alerts,slips=[]){
-  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
+  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>{
+    if(kickoffStarted(a)) return false;
+    const name=String(a&&a.alert||"").toUpperCase();
+    // WATCH stays Admin-only. TEST alerts stay internal until enough sample.
+    if(/WATCH/i.test(name)) return false;
+    if(name.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)")||name.includes("ΔΥΝΑΤΟ ΦΑΒΟΡΙ")) return false;
+    return true;
+  });
   const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
     const legs=Array.isArray(x&&x.legs)?x.legs:[];
     return legs.length>0&&legs.every(l=>!kickoffStarted(l));
@@ -1027,7 +1034,7 @@ function renderAlerts(alerts,slips=[]){
     const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${publicSignalSymbol(a.alert)?esc(publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
+    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${(a.publicSymbol||publicSignalSymbol(a.alert))?esc(a.publicSymbol||publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
   }).join("");
   content.innerHTML=comboHtml+singleHtml;
 }
