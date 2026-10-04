@@ -885,7 +885,7 @@ def api():
         ), 200
 
     try:
-        slow_actions = {"alerts", "adminSignals", "officialHistory", "adminPlayedHistory", "adminSignalKeep"}
+        slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "officialHistory", "adminPlayedHistory", "adminSignalKeep"}
         timeout = (4, 35) if payload.get("action") in slow_actions else (4, 10)
         data = upstream_post(payload, timeout=timeout)
     except requests.RequestException:
