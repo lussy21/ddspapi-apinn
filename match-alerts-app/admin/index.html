@@ -145,7 +145,7 @@ const ALERT_CATALOG=[
   {name:"🔔 ΤΖΙΡΟΣ ↑",w:0,t:0,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:0,nationalT:0,americaW:0,americaT:0}
 ];
 let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, profileCurrentUsername="";
-let adminSignalsCache=[], slipDraftIds=[];
+let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={};
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
 let signalsLoadPromise=null;
@@ -223,6 +223,16 @@ async function loadAdmin(){
   const jobs=[];
   if(internalSignalsLive){
     jobs.push(loadSignalsFresh().catch(()=>{}));
+    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
+      if(!r.ok)return;
+      adminLevelCatalog={};
+      (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
+        const key=alertBaseKey(x.alert);
+        if(key)adminLevelCatalog[key]=x;
+      });
+      renderAlertManager();
+      renderSignals(adminSignalsCache);
+    }).catch(()=>{}));
   }
   if(slipBuilderLive){
     jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
@@ -257,6 +267,22 @@ function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
 function normalizeAlertName(v){
   return String(v||"").trim().replace(/\s+·\s+\d+(?:[\.,]\d+)?\/10.*$/,"").trim();
 }
+function alertBaseKey(v){
+  return normalizeAlertName(v).replace(/^[🔔🔥💎🧪👀🎯⚡💣🔷👑\s]+/g,"").trim().toUpperCase();
+}
+function levelInfoFor(v){
+  return adminLevelCatalog[alertBaseKey(v)]||null;
+}
+function pctText(v){
+  const n=Number(v);
+  return Number.isFinite(n)?(n*100).toFixed(1).replace(".",",")+"%":"—";
+}
+function roiText(v){
+  const n=Number(v);
+  if(!Number.isFinite(n))return "—";
+  return (n>=0?"+":"")+(n*100).toFixed(1).replace(".",",")+"%";
+}
+
 function publicSignalForAlert(value){
   const a=normalizeAlertName(value).toUpperCase();
 
@@ -318,13 +344,23 @@ function renderAlertManager(){
     const m=String(s.allStatsRecord||"").match(/^(\d+)\/(\d+)$/);
     if(n&&m)liveStats[n]={w:Number(m[1]),t:Number(m[2])};
   });
-  const items=ALERT_CATALOG.map(x=>Object.assign({},x,liveStats[x.name]||{}));
+  const items=ALERT_CATALOG.map(x=>{
+    const item=Object.assign({},x,liveStats[x.name]||{});
+    item.levelInfo=levelInfoFor(x.name);
+    return item;
+  });
   const enabled=items.filter(x=>alertEnabled(x.name)).length;
   alertManagerLaunchCount.textContent=enabled+"/"+items.length;
   alertManagerSummary.innerHTML='<div class="stat"><b>'+items.length+'</b><span>Σύνολο</span></div><div class="stat"><b>'+enabled+'</b><span>Ενεργά</span></div><div class="stat"><b>'+(items.length-enabled)+'</b><span>Κλειστά</span></div>';
   alertManagerList.innerHTML=items.map(x=>{
     const on=alertEnabled(x.name);
-    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(publicSignalSymbol(x.name)?esc(publicSignalSymbol(x.name))+" · ":"")+esc(x.name)+'</div><div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+    const li=x.levelInfo;
+    const symbol=li&&li.symbol?li.symbol:publicSignalSymbol(x.name);
+    const levelStats=li
+      ? '<div class="alert-manager-stats">LEVEL: <b>'+esc(symbol||"TEST")+' · '+esc(pctText(li.hit))+' · '+esc(String(li.wins||0)+"/"+String(li.total||0))+' · ROI '+esc(roiText(li.roi))+' · Score '+esc(String(li.score||0).replace(".",","))+'</b></div>'+
+        '<div class="alert-manager-stats">Review: <b>'+esc(li.nextReview||"—")+(li.reviewState&&li.reviewState!=="STAY"?(" · "+esc(li.reviewState)+(li.suggestedSymbol?(" "+esc(li.suggestedSymbol)):"")):"")+'</b></div>'
+      : '';
+    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(symbol?esc(symbol)+" · ":"")+esc(x.name)+'</div>'+levelStats+'<div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
   }).join("");
 }
 function signalRecordLabel(v){
@@ -345,6 +381,17 @@ function signalHistoryText(items){
 }
 function signalCardHtml(s){
   const rating=s.rating?(" · "+esc(s.rating)):"";
+  const li=levelInfoFor(s.internalAlert);
+  const levelSymbol=String(s.publicSymbol||(li&&li.symbol)||publicSignalSymbol(s.internalAlert)||"");
+  const levelScore=Number(s.levelScore||(li&&li.score)||0);
+  const levelWins=Number(s.levelWins||(li&&li.wins)||0);
+  const levelTotal=Number(s.levelTotal||(li&&li.total)||0);
+  const levelNext=String(s.levelNextReview||(li&&li.nextReview)||"");
+  const reviewState=String(s.reviewState||(li&&li.reviewState)||"");
+  const suggestedSymbol=String(s.suggestedSymbol||(li&&li.suggestedSymbol)||"");
+  const levelLine=levelSymbol
+    ? '<div class="signal-line">Δημόσιο Level: <b>'+esc(levelSymbol)+' · Score '+esc(levelScore.toFixed(1).replace(".",","))+(levelTotal?(" · "+esc(String(levelWins)+"/"+String(levelTotal))):"")+(levelNext?(" · review "+esc(levelNext)):"")+(reviewState&&reviewState!=="STAY"?(" · "+esc(reviewState)+(suggestedSymbol?(" "+esc(suggestedSymbol)):"")):"")+'</b></div>'
+    : '<div class="signal-line">Δημόσιο Level: <b>TEST / ADMIN ONLY</b></div>';
   const stats=(s.leagueRecord||s.allStatsRecord)
     ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
     : '';
@@ -375,7 +422,7 @@ function signalCardHtml(s){
   const history=publicationControlsLive&&s.controlHistory&&s.controlHistory.length?'<div class="signal-history">'+esc(signalHistoryText(s.controlHistory))+'</div>':'';
   const lockedNote=s.canEdit?'':'<div class="signal-locked">🔒 Κλειδωμένο — ο αγώνας έχει ξεκινήσει. Δεν επιτρέπεται αλλαγή ή απόσυρση.</div>';
   const odds=s.customerOdds?(' · @ '+Number(s.customerOdds).toFixed(2).replace('.',',')):'';
-  return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+((s.publicSymbol||publicSignalSymbol(s.internalAlert))?esc(s.publicSymbol||publicSignalSymbol(s.internalAlert))+" · ":"")+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
+  return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+(levelSymbol?esc(levelSymbol)+" · ":"")+esc(s.internalAlert||"—")+rating+'</div>'+levelLine+'<div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
 }
 function renderSignals(arr){
   const source=Array.isArray(arr)?arr:[];
