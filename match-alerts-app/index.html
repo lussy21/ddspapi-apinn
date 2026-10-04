@@ -1321,7 +1321,7 @@ setInterval(()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
+      const reg=await navigator.serviceWorker.register("./sw.js?v=12-final",{updateViaCache:"none"});
       await reg.update();
       if(Notification.permission==="granted"){
         const sub=await reg.pushManager.getSubscription();
