@@ -1,4 +1,4 @@
-const CACHE='dreamteamtips-v12-final';
+const CACHE='dreamteamtips-v13-auto';
 const ASSETS=['./manifest.json','./dreamteamtips-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
