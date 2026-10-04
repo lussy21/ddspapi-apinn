@@ -1,11 +1,25 @@
-const CACHE='dreamteamtips-v13-auto';
+const CACHE='dreamteamtips-v15-force';
 const ASSETS=['./manifest.json','./dreamteamtips-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
 });
 self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  e.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+    const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    await Promise.all(windows.map(client=>{
+      try{
+        const u=new URL(client.url);
+        u.searchParams.set('appv','15');
+        return client.navigate(u.toString());
+      }catch(_){
+        return Promise.resolve();
+      }
+    }));
+  })());
 });
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET') return;
