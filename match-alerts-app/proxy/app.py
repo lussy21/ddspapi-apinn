@@ -165,6 +165,118 @@ def push_to_all_active_users(admin_code, title, body, tag):
     }
 
 
+
+def push_owner_new_alerts(alerts):
+    """Send model-open notifications only to the owner/admin push targets."""
+    new_alerts = [
+        item for item in (alerts or [])
+        if isinstance(item, dict) and str(item.get("event") or "").strip() == "ΑΝΟΙΞΕ"
+    ]
+    if not new_alerts:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": 0}
+
+    vapid_private_key = get_vapid_private_key()
+    if not vapid_private_key:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "PUSH_NOT_CONFIGURED"}
+
+    try:
+        target_data = upstream_post_direct(
+            {"action": "automationOwnerPushTargets", "secret": AUTO_PUSH_SECRET},
+            timeout=(4, 15),
+        )
+    except requests.RequestException:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "BACKEND_UNREACHABLE"}
+    except RuntimeError:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "BACKEND_BAD_RESPONSE"}
+
+    if not target_data.get("ok"):
+        return {
+            "sent": 0,
+            "failed": 0,
+            "removed": 0,
+            "total": 0,
+            "alerts": len(new_alerts),
+            "error": str(target_data.get("error") or "OWNER_PUSH_TARGETS_FAILED"),
+        }
+
+    targets = target_data.get("targets", [])
+    sent = 0
+    failed = 0
+    removed = 0
+    failure_codes = {}
+
+    for item in new_alerts:
+        match_name = str(item.get("match") or "").strip().replace(" - ", " – ")
+        alert_name = str(item.get("alert") or "").strip()
+        body = match_name or "Νέο alert DreamTeamTips"
+        if alert_name:
+            body += " · " + alert_name
+        target_url = (
+            APP_ORIGIN
+            + "/admin/?daily=1&match="
+            + requests.utils.quote(str(item.get("match") or "").strip())
+        )
+        tag = "dreamteamtips-owner-new-" + str(item.get("key") or "alert")
+        message = json.dumps(
+            {
+                "title": "🔔 Νέο καμπανάκι",
+                "body": body[:220],
+                "url": target_url,
+                "tag": tag,
+            },
+            ensure_ascii=False,
+        )
+
+        for target in targets:
+            subscription = {
+                "endpoint": target.get("endpoint", ""),
+                "keys": target.get("keys") or {},
+            }
+            if not subscription["endpoint"]:
+                continue
+            try:
+                webpush(
+                    subscription_info=subscription,
+                    data=message,
+                    vapid_private_key=vapid_private_key,
+                    vapid_claims={"sub": VAPID_SUBJECT},
+                    ttl=900,
+                )
+                sent += 1
+            except WebPushException as exc:
+                failed += 1
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                code = "webpush_" + str(status or "unknown")
+                failure_codes[code] = failure_codes.get(code, 0) + 1
+                if status in (404, 410) and target.get("key"):
+                    try:
+                        cleanup = upstream_post_direct(
+                            {
+                                "action": "automationOwnerPushDelete",
+                                "secret": AUTO_PUSH_SECRET,
+                                "key": target.get("key", ""),
+                            },
+                            timeout=(4, 15),
+                        )
+                        if cleanup.get("ok"):
+                            removed += 1
+                    except Exception:
+                        pass
+            except Exception as exc:
+                failed += 1
+                code = "client_" + exc.__class__.__name__
+                failure_codes[code] = failure_codes.get(code, 0) + 1
+
+    return {
+        "sent": sent,
+        "failed": failed,
+        "removed": removed,
+        "total": int(target_data.get("count") or 0),
+        "alerts": len(new_alerts),
+        "failureCodes": failure_codes,
+    }
+
+
 def cors(resp):
     origin = request.headers.get("Origin", "")
     resp.headers["Access-Control-Allow-Origin"] = origin if origin in ALLOWED_ORIGINS else APP_ORIGIN
@@ -202,21 +314,29 @@ def internal_alerts_push():
     if not AUTO_PUSH_SECRET or not hmac.compare_digest(supplied, AUTO_PUSH_SECRET):
         return jsonify(ok=False, error="AUTOMATION_UNAUTHORIZED"), 403
 
-    if not AUTO_ALERTS_TO_CUSTOMERS:
-        return jsonify(
-            ok=True,
-            sent=0,
-            failed=0,
-            removed=0,
-            total=0,
-            suppressed=True,
-            reason="ADMIN_APPROVAL_REQUIRED",
-        ), 200
-
     payload = request.get_json(silent=True) or {}
     alerts = payload.get("alerts") or []
     if not isinstance(alerts, list) or not alerts:
         return jsonify(ok=True, sent=0, failed=0, removed=0, total=0), 200
+
+    # Owner notifications are independent from customer auto-push.
+    # Only brand-new model alerts (ΑΝΟΙΞΕ) are sent to owner/admin devices.
+    owner_push = push_owner_new_alerts(alerts)
+
+    if not AUTO_ALERTS_TO_CUSTOMERS:
+        return jsonify(
+            ok=True,
+            sent=int(owner_push.get("sent") or 0),
+            failed=int(owner_push.get("failed") or 0),
+            removed=int(owner_push.get("removed") or 0),
+            total=int(owner_push.get("total") or 0),
+            ownerAlerts=int(owner_push.get("alerts") or 0),
+            ownerOnly=True,
+            customersSuppressed=True,
+            reason="ADMIN_APPROVAL_REQUIRED",
+            failureCodes=owner_push.get("failureCodes", {}),
+            ownerError=owner_push.get("error", ""),
+        ), 200
 
     count = len(alerts)
 
