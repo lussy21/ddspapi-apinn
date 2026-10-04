@@ -61,6 +61,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 <div class="admin-launch-grid">
   <button class="admin-launch hidden" id="dailySelectionsLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">⭐</span><div><div class="admin-launch-title">Επιλογές ημέρας</div><div class="admin-launch-sub">Προς δημοσίευση</div></div></div><span class="admin-launch-count" id="dailySelectionsLaunchCount">0</span></button>
   <button class="admin-launch hidden" id="alertManagerLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">🔔</span><div><div class="admin-launch-title">Καμπανάκια</div><div class="admin-launch-sub">Alerts & συνολικά stats</div></div></div><span class="admin-launch-count" id="alertManagerLaunchCount">0</span></button>
+  <button class="admin-launch hidden" id="leagueManagerLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">🏆</span><div><div class="admin-launch-title">Πρωταθλήματα</div><div class="admin-launch-sub">Ενεργά / ανενεργά alerts</div></div></div><span class="admin-launch-count" id="leagueManagerLaunchCount">0</span></button>
 </div>
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
 <div class="section" id="ownerPushSection">
@@ -107,6 +108,14 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <div id="alertManagerList" class="alert-manager-grid"></div>
   <div class="msg" id="alertManagerMsg"></div>
 </div>
+<div id="leagueManagerView" class="hidden">
+  <div class="admin-view-head"><button class="admin-view-back" id="leagueManagerBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Πρωταθλήματα</div><div class="admin-view-sub">Admin · alerts ανά λίγκα</div></div></div>
+  <div id="leagueManagerSummary" class="alert-manager-summary"></div>
+  <div class="alert-manager-note">Όταν ένα πρωτάθλημα είναι ανενεργό, τα δεδομένα του συνεχίζουν να γράφονται κανονικά, αλλά νέα σήματα δεν εμφανίζονται στο Admin και δεν στέλνεται ειδοποίηση Admin. Ήδη δημοσιευμένες επιλογές δεν επηρεάζονται.</div>
+  <input class="input" id="leagueManagerSearch" type="search" placeholder="Αναζήτηση πρωταθλήματος…" style="margin-bottom:12px">
+  <div id="leagueManagerList" class="alert-manager-grid"><div class="note">Φόρτωση πρωταθλημάτων…</div></div>
+  <div class="msg" id="leagueManagerMsg"></div>
+</div>
 </div>
 </div></section></div>
 
@@ -144,8 +153,8 @@ const ALERT_CATALOG=[
   {name:"🔔 ΦΑΒ 75+",w:22,t:34,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:18,nationalT:27,americaW:2,americaT:4},
   {name:"🔔 ΤΖΙΡΟΣ ↑",w:0,t:0,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:0,nationalT:0,americaW:0,americaT:0}
 ];
-let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, profileCurrentUsername="";
-let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={};
+let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, leagueControlsLive=false, profileCurrentUsername="";
+let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={}, leagueSettings=[];
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
 let signalsLoadPromise=null;
@@ -176,6 +185,14 @@ async function loadSignalsFresh(){
     throw lastErr||new Error("ADMIN_ERROR");
   })().finally(()=>{signalsLoadPromise=null;});
   return signalsLoadPromise;
+}
+async function loadLeagueSettings(){
+  if(!leagueControlsLive) return null;
+  const r=await apiPost({action:"adminLeagueSettings",adminCode:adminSecret});
+  if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+  leagueSettings=Array.isArray(r.leagues)?r.leagues:[];
+  renderLeagueManager();
+  return r;
 }
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
@@ -216,6 +233,8 @@ async function loadAdmin(){
   publicationControlsLive=settings.publicationControls===true;
   slipBuilderLive=settings.slipBuilder===true;
   slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
+  leagueControlsLive=settings.leagueControls===true;
+  leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
   if(!settings.autoPushConfigured){
     apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
   }
@@ -233,6 +252,9 @@ async function loadAdmin(){
       renderAlertManager();
       renderSignals(adminSignalsCache);
     }).catch(()=>{}));
+  }
+  if(leagueControlsLive){
+    jobs.push(loadLeagueSettings().catch(()=>{}));
   }
   if(slipBuilderLive){
     jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
@@ -362,6 +384,21 @@ function renderAlertManager(){
       : '';
     return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(symbol?esc(symbol)+" · ":"")+esc(x.name)+'</div>'+levelStats+'<div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
   }).join("");
+}
+function renderLeagueManager(){
+  const items=Array.isArray(leagueSettings)?leagueSettings:[];
+  const enabled=items.filter(x=>x.enabled!==false).length;
+  if(typeof leagueManagerLaunchCount!=="undefined") leagueManagerLaunchCount.textContent=enabled+"/"+items.length;
+  if(typeof leagueManagerSummary!=="undefined"){
+    leagueManagerSummary.innerHTML='<div class="stat"><b>'+items.length+'</b><span>Σύνολο</span></div><div class="stat"><b>'+enabled+'</b><span>Ενεργά</span></div><div class="stat"><b>'+(items.length-enabled)+'</b><span>Κλειστά</span></div>';
+  }
+  if(typeof leagueManagerList==="undefined") return;
+  const q=String((typeof leagueManagerSearch!=="undefined"&&leagueManagerSearch.value)||"").trim().toLocaleLowerCase("el-GR");
+  const visible=q?items.filter(x=>String(x.league||"").toLocaleLowerCase("el-GR").includes(q)):items;
+  leagueManagerList.innerHTML=visible.length?visible.map(x=>{
+    const on=x.enabled!==false;
+    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+esc(x.league||"")+'</div><div class="alert-manager-stats">'+(on?'Νέα alerts και ειδοποιήσεις Admin ενεργά':'Νέα alerts και ειδοποιήσεις Admin κλειστά')+'</div></div><button class="alert-toggle '+(on?'':'off')+'" data-league-toggle="'+esc(x.league||"")+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+  }).join(""):'<div class="note">Δεν βρέθηκε πρωτάθλημα.</div>';
 }
 function signalRecordLabel(v){
   const m=String(v||"").match(/^(\d+)\/(\d+)$/);
@@ -537,7 +574,7 @@ window.signalToggle=async(action,controlId,btn)=>{
     }
   }catch(e){
     btn.disabled=false;btn.textContent=old;
-    msg.textContent=e.message==="SELECTION_LOCKED"?"Ο αγώνας έχει ξεκινήσει και η επιλογή έχει κλειδώσει.":"Σφάλμα: "+e.message;
+    msg.textContent=e.message==="SELECTION_LOCKED"?"Ο αγώνας έχει ξεκινήσει και η επιλογή έχει κλειδώσει.":e.message==="LEAGUE_ALERTS_DISABLED"?"Το πρωτάθλημα είναι απενεργοποιημένο στα Alerts.":"Σφάλμα: "+e.message;
   }
 };
 publishSlip.addEventListener("click",async()=>{
@@ -561,6 +598,7 @@ function hideAdminViews(){
   adminHomeView.classList.add("hidden");
   dailyAdminView.classList.add("hidden");
   alertManagerView.classList.add("hidden");
+  leagueManagerView.classList.add("hidden");
 }
 function showAdminHome(){
   hideAdminViews();
@@ -580,10 +618,19 @@ function showAlertManager(){
   renderAlertManager();
   window.scrollTo({top:0,behavior:"instant"});
 }
+function showLeagueManager(){
+  hideAdminViews();
+  leagueManagerView.classList.remove("hidden");
+  renderLeagueManager();
+  window.scrollTo({top:0,behavior:"instant"});
+  if(leagueControlsLive) loadLeagueSettings().catch(e=>leagueManagerMsg.textContent="Σφάλμα: "+e.message);
+}
 dailySelectionsLaunch.onclick=showDailyAdmin;
 dailyBack.onclick=showAdminHome;
 alertManagerLaunch.onclick=showAlertManager;
 alertManagerBack.onclick=showAdminHome;
+leagueManagerLaunch.onclick=showLeagueManager;
+leagueManagerBack.onclick=showAdminHome;
 alertManagerList.addEventListener("click",e=>{
   const btn=e.target.closest("[data-alert-toggle]");
   if(!btn)return;
@@ -594,6 +641,30 @@ alertManagerList.addEventListener("click",e=>{
   renderSignals(adminSignalsCache);
   alertManagerMsg.textContent=(alertEnabled(name)?"Ενεργοποιήθηκε: ":"Απενεργοποιήθηκε: ")+name;
 });
+leagueManagerList.addEventListener("click",async e=>{
+  const btn=e.target.closest("[data-league-toggle]");
+  if(!btn||!leagueControlsLive)return;
+  const league=btn.getAttribute("data-league-toggle")||"";
+  const item=leagueSettings.find(x=>String(x.league||"")===league);
+  if(!item)return;
+  const next=!(item.enabled!==false);
+  btn.disabled=true;
+  const old=btn.textContent;
+  btn.textContent="Αποθήκευση…";
+  try{
+    const r=await apiPost({action:"adminSetLeagueEnabled",adminCode:adminSecret,league,enabled:next?"1":"0"});
+    if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");
+    item.enabled=r.enabled!==false;
+    renderLeagueManager();
+    await reloadSignals().catch(()=>{});
+    leagueManagerMsg.textContent=(item.enabled?"Ενεργοποιήθηκε: ":"Απενεργοποιήθηκε: ")+league;
+  }catch(err){
+    btn.disabled=false;
+    btn.textContent=old;
+    leagueManagerMsg.textContent="Σφάλμα: "+err.message;
+  }
+});
+leagueManagerSearch.addEventListener("input",renderLeagueManager);
 
 window.signalEdit=async(controlId,btn)=>{
   if(!publicationControlsLive||!controlId) return;
