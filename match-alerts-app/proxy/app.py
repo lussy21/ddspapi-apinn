@@ -23,6 +23,13 @@ VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:support@dreamteamtips.com").strip()
 AUTO_ALERTS_TO_CUSTOMERS = os.environ.get("AUTO_ALERTS_TO_CUSTOMERS", "0").strip() == "1"
 
+MS_EMAIL_ADDRESS = os.environ.get("MS_EMAIL_ADDRESS", "").strip()
+MS_CLIENT_ID = os.environ.get("MS_CLIENT_ID", "").strip()
+MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET", "").strip()
+MS_REFRESH_TOKEN = os.environ.get("MS_REFRESH_TOKEN", "").strip()
+MS_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+MS_GRAPH_SEND_URL = "https://graph.microsoft.com/v1.0/me/sendMail"
+
 
 def _normalize_vapid_key(value):
     raw = str(value or "").strip()
@@ -277,6 +284,75 @@ def push_owner_new_alerts(alerts):
     }
 
 
+
+def microsoft_sender_configured():
+    return bool(MS_EMAIL_ADDRESS and MS_CLIENT_ID and MS_REFRESH_TOKEN)
+
+
+def microsoft_access_token():
+    if not microsoft_sender_configured():
+        raise RuntimeError("EMAIL_SENDER_NOT_CONFIGURED")
+
+    payload = {
+        "client_id": MS_CLIENT_ID,
+        "grant_type": "refresh_token",
+        "refresh_token": MS_REFRESH_TOKEN,
+        "scope": "offline_access https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/User.Read",
+    }
+    if MS_CLIENT_SECRET:
+        payload["client_secret"] = MS_CLIENT_SECRET
+
+    response = requests.post(MS_TOKEN_URL, data=payload, timeout=(4, 20))
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+
+    if not response.ok or not data.get("access_token"):
+        app.logger.warning(
+            "microsoft_token_error status=%s error=%s",
+            response.status_code,
+            str(data.get("error") or "bad_response"),
+        )
+        raise RuntimeError("EMAIL_AUTH_FAILED")
+
+    return str(data.get("access_token"))
+
+
+def send_via_microsoft(to_email, subject, text_body, html_body, reply_to=""):
+    token = microsoft_access_token()
+    message = {
+        "subject": str(subject or "")[:180],
+        "body": {
+            "contentType": "HTML" if html_body else "Text",
+            "content": str(html_body or text_body or ""),
+        },
+        "toRecipients": [
+            {"emailAddress": {"address": str(to_email or "").strip()}}
+        ],
+    }
+    reply = str(reply_to or "").strip()
+    if reply:
+        message["replyTo"] = [{"emailAddress": {"address": reply}}]
+
+    response = requests.post(
+        MS_GRAPH_SEND_URL,
+        headers={
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json",
+        },
+        json={"message": message, "saveToSentItems": True},
+        timeout=(4, 20),
+    )
+    if response.status_code not in (200, 202):
+        app.logger.warning(
+            "microsoft_send_error status=%s body=%s",
+            response.status_code,
+            response.text[:300],
+        )
+        raise RuntimeError("EMAIL_SEND_FAILED")
+
+
 def cors(resp):
     origin = request.headers.get("Origin", "")
     resp.headers["Access-Control-Allow-Origin"] = origin if origin in ALLOWED_ORIGINS else APP_ORIGIN
@@ -306,6 +382,34 @@ def admin_page():
 @app.get("/admin/<path:filename>")
 def admin_asset(filename):
     return send_from_directory(ADMIN_DIR, filename)
+
+
+@app.post("/internal/email/send")
+def internal_email_send():
+    supplied = request.headers.get("X-Email-Relay-Secret", "")
+    if not AUTO_PUSH_SECRET or not hmac.compare_digest(supplied, AUTO_PUSH_SECRET):
+        return jsonify(ok=False, error="EMAIL_RELAY_UNAUTHORIZED"), 403
+
+    payload = request.get_json(silent=True) or {}
+    to_email = str(payload.get("to") or "").strip()
+    subject = str(payload.get("subject") or "").strip()
+    text_body = str(payload.get("text") or "")
+    html_body = str(payload.get("html") or "")
+    reply_to = str(payload.get("replyTo") or "").strip()
+
+    if not to_email or "@" not in to_email or not subject or (not text_body and not html_body):
+        return jsonify(ok=False, error="BAD_EMAIL_MESSAGE"), 400
+
+    try:
+        send_via_microsoft(to_email, subject, text_body, html_body, reply_to)
+    except RuntimeError as exc:
+        code = str(exc)
+        status = 503 if code == "EMAIL_SENDER_NOT_CONFIGURED" else 502
+        return jsonify(ok=False, error=code), status
+    except requests.RequestException:
+        return jsonify(ok=False, error="EMAIL_PROVIDER_UNREACHABLE"), 502
+
+    return jsonify(ok=True, provider="microsoft", sender=MS_EMAIL_ADDRESS), 200
 
 
 @app.post("/internal/alerts-push")
