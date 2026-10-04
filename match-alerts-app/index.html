@@ -100,6 +100,9 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .played-btn:disabled{cursor:default}.played-btn.done{border-color:rgba(139,211,155,.22);background:rgba(139,211,155,.065);color:#c8efcf}
 .history-shell{padding:18px}.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}.history-head h3{font:500 25px/1.05 Georgia,serif;margin:0}.history-head p{margin:6px 0 0;color:#817c85;font-size:10px;line-height:1.45}.history-count{font-size:10px;font-weight:900;color:#cdbd89;white-space:nowrap}
 .history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
+.history-symbol-head{margin:14px 0 8px}.history-symbol-title{font-size:10px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;color:#d7c181}.history-symbol-note{margin-top:4px;color:#747079;font-size:8px;line-height:1.4}
+.history-symbol-filters{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:0 0 14px}.history-symbol-filter{min-width:0;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:rgba(255,255,255,.02);color:#9b969e;padding:8px 2px;font-size:13px;font-weight:900}.history-symbol-filter:first-child{font-size:8px}.history-symbol-filter.active{border-color:rgba(217,177,87,.32);background:rgba(217,177,87,.10);color:#fff0c4;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.pick-symbol{display:inline-grid;place-items:center;min-width:30px;height:30px;margin-bottom:7px;border-radius:10px;border:1px solid rgba(217,177,87,.23);background:rgba(217,177,87,.06);font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
 .pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 .pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
 .pick-card.result-loss{border-color:rgba(255,119,130,.34);background:linear-gradient(145deg,rgba(176,58,70,.11),rgba(255,255,255,.012))}
@@ -224,6 +227,19 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           <div class="stat"><b>—</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div>
           <div class="stat"><b>—</b><span>ΧΑΜΕΝΕΣ</span></div>
           <div class="stat"><b>—</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>
+        </div>
+        <div class="history-symbol-head">
+          <div class="history-symbol-title">Ιστορικό ανά σήμα</div>
+          <div class="history-symbol-note">Κάθε επιλογή κρατά το σήμα που είχε όταν δημοσιεύτηκε.</div>
+        </div>
+        <div class="history-symbol-filters" id="officialSymbolFilters">
+          <button class="history-symbol-filter active" data-symbol="">Όλα</button>
+          <button class="history-symbol-filter" data-symbol="🔷">🔷</button>
+          <button class="history-symbol-filter" data-symbol="💎">💎</button>
+          <button class="history-symbol-filter" data-symbol="👑">👑</button>
+          <button class="history-symbol-filter" data-symbol="🎯">🎯</button>
+          <button class="history-symbol-filter" data-symbol="⚡">⚡</button>
+          <button class="history-symbol-filter" data-symbol="💣">💣</button>
         </div>
         <div id="officialHistoryContent"><div class="history-empty">Φόρτωση ιστορικού DreamTeamTips…</div></div>
       </div>
@@ -422,7 +438,7 @@ const deviceId=getDeviceId();
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
 let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
-let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
+let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team", officialHistorySymbol="";
 const UI_CACHE_MS=30000;
 const ALERTS_CACHE_PREFIX="dtt_public_alerts_v2::";
 const ALERTS_CACHE_MAX_MS=12*60*60*1000;
@@ -1032,6 +1048,8 @@ function renderAlerts(alerts,slips=[]){
   const singleHtml=rows.map((a,idx)=>{
     const start=kickoffMs(a);
     const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
+    const symbol=frozenHistorySymbol(a);
+    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
     return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${(a.publicSymbol||publicSignalSymbol(a.alert))?esc(a.publicSymbol||publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
@@ -1058,20 +1076,28 @@ function officialDateLabel(value){
   }
   return String(value||"");
 }
+function frozenHistorySymbol(a){
+  const symbol=String(a&&a.publicSymbol||"").trim();
+  return ["🔷","💎","👑","🎯","⚡","💣"].includes(symbol)?symbol:"";
+}
 function renderOfficialHistory(items,summary){
   const raw=Array.isArray(items)?items:[];
-  const list=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
-  const wins=list.filter(a=>a.status==="win").length;
-  const losses=list.filter(a=>a.status==="loss").length;
-  const withdrawn=list.filter(a=>a.status==="withdrawn").length;
+  const complete=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
+  const list=officialHistorySymbol?complete.filter(a=>frozenHistorySymbol(a)===officialHistorySymbol):complete;
+  const wins=complete.filter(a=>a.status==="win").length;
+  const losses=complete.filter(a=>a.status==="loss").length;
+  const withdrawn=complete.filter(a=>a.status==="withdrawn").length;
   const sum=document.getElementById("officialHistorySummary");
   if(sum){
-    sum.innerHTML='<div class="stat"><b>'+list.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
+    sum.innerHTML='<div class="stat"><b>'+complete.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
   }
+  document.querySelectorAll("#officialSymbolFilters .history-symbol-filter").forEach(btn=>{
+    btn.classList.toggle("active",String(btn.dataset.symbol||"")===officialHistorySymbol);
+  });
   const box=document.getElementById("officialHistoryContent");
   if(!box) return;
   if(!list.length){
-    box.innerHTML='<div class="history-empty">Δεν υπάρχουν ακόμη ολοκληρωμένες προτάσεις στο επίσημο ιστορικό.</div>';
+    box.innerHTML='<div class="history-empty">'+(officialHistorySymbol?'Δεν υπάρχουν ακόμη ολοκληρωμένες επιλογές με το σήμα '+esc(officialHistorySymbol)+'.':'Δεν υπάρχουν ακόμη ολοκληρωμένες προτάσεις στο επίσημο ιστορικό.')+'</div>';
     return;
   }
   box.innerHTML='<div class="history-list">'+list.map(a=>{
@@ -1080,8 +1106,11 @@ function renderOfficialHistory(items,summary){
     const score=a.score||"—";
     const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.pick)||"withdrawn"):status;
     const oddsNumber=Number(a.odds);
-    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return '<div class="pick-card result-'+visualStatus+'">'<div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",","))
+      :"";
+    const symbol=frozenHistorySymbol(a);
+    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
+    return '<div class="pick-card result-'+visualStatus+'"><div class="pick-top"><div>'+symbolHtml+'<div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
   }).join("")+'</div>';
 }
 async function loadOfficialHistory({background=false,force=false}={}){
@@ -1135,7 +1164,7 @@ function renderMyHistory(items){
     const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.customerPick||selectionMark(a))||"withdrawn"):status;
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
+    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div>${symbolHtml}<div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
   }).join("")+'</div>';
 }
 async function loadMyHistory({background=false,force=false}={}){
@@ -1164,6 +1193,12 @@ async function loadMyHistory({background=false,force=false}={}){
   })();
   return historyRequest;
 }
+document.getElementById("officialSymbolFilters")?.addEventListener("click",e=>{
+  const btn=e.target.closest(".history-symbol-filter");
+  if(!btn) return;
+  officialHistorySymbol=String(btn.dataset.symbol||"");
+  renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
+});
 historyContent.addEventListener("click",async e=>{
   const button=e.target.closest(".pick-remove");
   if(!button) return;
