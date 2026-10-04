@@ -393,6 +393,38 @@ def health():
     return jsonify(ok=True, service="match-alerts-api")
 
 
+# Serve the customer PWA from the API origin too.
+# Older installed copies were created from this origin, so keeping these
+# routes live lets those existing installations receive the newest UI
+# without reinstalling.
+@app.get("/")
+@app.get("/index.html")
+def customer_page():
+    return send_from_directory(APP_DIR, "index.html")
+
+
+@app.get("/manifest.json")
+def customer_manifest():
+    return send_from_directory(APP_DIR, "manifest.json")
+
+
+@app.get("/sw.js")
+def customer_service_worker():
+    resp = make_response(send_from_directory(APP_DIR, "sw.js"))
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
+
+
+@app.get("/icon.svg")
+def customer_icon():
+    return send_from_directory(APP_DIR, "icon.svg")
+
+
+@app.get("/dreamteamtips-icon.svg")
+def customer_brand_icon():
+    return send_from_directory(APP_DIR, "dreamteamtips-icon.svg")
+
+
 @app.get("/admin")
 @app.get("/admin/")
 def admin_page():
