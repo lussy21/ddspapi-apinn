@@ -945,7 +945,33 @@ logoutBtn.onclick=async()=>{
   localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
-function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
+function publicSignalForAlert(value){
+  const a=String(value||"").toUpperCase().trim();
+
+  // TEST / αναμονή: δεν αποκτούν δημόσιο level ακόμη.
+  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)")||a.includes("ΔΥΝΑΤΟ ΦΑΒΟΡΙ")) return {symbol:"",level:0,family:"test"};
+
+  // Κόντρα: 🎯 < ⚡ < 💣
+  if(a.includes("ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ")) return {symbol:"🎯",level:1,family:"contra"};
+  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ")) return {symbol:"💣",level:3,family:"contra"};
+  if(a.includes("ΚΟΝΤΡΑ")) return {symbol:"⚡",level:2,family:"contra"};
+
+  // Φαβορί: 🔷 < 💎 < 👑
+  if(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X")||a.includes("ΦΑΒΟΡΙ SOFA+3X")||a.includes("84+P60")||a.includes("ΤΖΙΡΟΣ ↑")){
+    return {symbol:"🔷",level:1,family:"favorite"};
+  }
+  if(a.includes("ΦΑΒΟΡΙ ΠΤΩΣΗ 2%")||a.includes("ΦΑΒ 60+")||a.includes("ΦΑΒ 75+")){
+    return {symbol:"💎",level:2,family:"favorite"};
+  }
+  if(a.includes("SOFA+ΤΖΙΡΟΥ")||(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ")&&!a.includes("3X"))){
+    return {symbol:"👑",level:3,family:"favorite"};
+  }
+  if(/(^|\s)ΦΑΒΟΡΙ($|\s)/.test(a)) return {symbol:"💎",level:2,family:"favorite"};
+
+  return {symbol:"",level:0,family:""};
+}
+function publicSignalSymbol(value){return publicSignalForAlert(value).symbol;}
+function badgeClass(a){return /WATCH/i.test(a)?"watch":(publicSignalForAlert(a).level>=3?"strong":"");}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function recordLabel(v){
   const m=String(v||"").match(/^(\d+)\/(\d+)$/); if(!m||!Number(m[2]))return v||"—";
@@ -1001,7 +1027,7 @@ function renderAlerts(alerts,slips=[]){
     const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
+    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${publicSignalSymbol(a.alert)?esc(publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
   }).join("");
   content.innerHTML=comboHtml+singleHtml;
 }
