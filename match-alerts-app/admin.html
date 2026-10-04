@@ -257,6 +257,32 @@ function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
 function normalizeAlertName(v){
   return String(v||"").trim().replace(/\s+·\s+\d+(?:[\.,]\d+)?\/10.*$/,"").trim();
 }
+function publicSignalForAlert(value){
+  const a=normalizeAlertName(value).toUpperCase();
+
+  // TEST / αναμονή: δεν έχουν δημόσιο level ακόμη.
+  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)")||a.includes("ΔΥΝΑΤΟ ΦΑΒΟΡΙ")) return {symbol:"",level:0,family:"test"};
+
+  // Κόντρα: 🎯 < ⚡ < 💣
+  if(a.includes("ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ")) return {symbol:"🎯",level:1,family:"contra"};
+  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ")) return {symbol:"💣",level:3,family:"contra"};
+  if(a.includes("ΚΟΝΤΡΑ")) return {symbol:"⚡",level:2,family:"contra"};
+
+  // Φαβορί: 🔷 < 💎 < 👑
+  if(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X")||a.includes("ΦΑΒΟΡΙ SOFA+3X")||a.includes("84+P60")||a.includes("ΤΖΙΡΟΣ ↑")){
+    return {symbol:"🔷",level:1,family:"favorite"};
+  }
+  if(a.includes("ΦΑΒΟΡΙ ΠΤΩΣΗ 2%")||a.includes("ΦΑΒ 60+")||a.includes("ΦΑΒ 75+")){
+    return {symbol:"💎",level:2,family:"favorite"};
+  }
+  if(a.includes("SOFA+ΤΖΙΡΟΥ")||(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ")&&!a.includes("3X"))){
+    return {symbol:"👑",level:3,family:"favorite"};
+  }
+  if(/(^|\s)ΦΑΒΟΡΙ($|\s)/.test(a)) return {symbol:"💎",level:2,family:"favorite"};
+
+  return {symbol:"",level:0,family:""};
+}
+function publicSignalSymbol(value){return publicSignalForAlert(value).symbol;}
 function signalAlertNames(s){
   const out=[];
   const push=v=>{const n=normalizeAlertName(v);if(n&&!out.includes(n))out.push(n);};
@@ -298,7 +324,7 @@ function renderAlertManager(){
   alertManagerSummary.innerHTML='<div class="stat"><b>'+items.length+'</b><span>Σύνολο</span></div><div class="stat"><b>'+enabled+'</b><span>Ενεργά</span></div><div class="stat"><b>'+(items.length-enabled)+'</b><span>Κλειστά</span></div>';
   alertManagerList.innerHTML=items.map(x=>{
     const on=alertEnabled(x.name);
-    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+esc(x.name)+'</div><div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(publicSignalSymbol(x.name)?esc(publicSignalSymbol(x.name))+" · ":"")+esc(x.name)+'</div><div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
   }).join("");
 }
 function signalRecordLabel(v){
@@ -349,7 +375,7 @@ function signalCardHtml(s){
   const history=publicationControlsLive&&s.controlHistory&&s.controlHistory.length?'<div class="signal-history">'+esc(signalHistoryText(s.controlHistory))+'</div>':'';
   const lockedNote=s.canEdit?'':'<div class="signal-locked">🔒 Κλειδωμένο — ο αγώνας έχει ξεκινήσει. Δεν επιτρέπεται αλλαγή ή απόσυρση.</div>';
   const odds=s.customerOdds?(' · @ '+Number(s.customerOdds).toFixed(2).replace('.',',')):'';
-  return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
+  return '<div class="signal-card '+(modelWarning?'model-warning':'')+'"><div class="signal-top"><div><div class="signal-match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="signal-league">'+esc(s.league||"")+'</div>'+stateTag+'</div><div class="signal-pick">'+esc(s.customerPick||"—")+'</div></div>'+warningHtml+'<div class="signal-lines"><div class="signal-line signal-internal">Εσωτερικό σήμα: '+(publicSignalSymbol(s.internalAlert)?esc(publicSignalSymbol(s.internalAlert))+" · ":"")+esc(s.internalAlert||"—")+rating+'</div><div class="signal-line">Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div>'+stats+'<div class="signal-line">Πρόταση πελάτη: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+odds+'</b></div></div>'+controls+lockedNote+history+'</div>';
 }
 function renderSignals(arr){
   const source=Array.isArray(arr)?arr:[];
