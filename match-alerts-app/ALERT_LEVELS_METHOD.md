@@ -83,6 +83,26 @@ Reference weighting:
 - 20% sample
 - 15% stability
 
+## Family-specific level gates
+
+The 35/30/20/15 quality score remains useful as a diagnostic/ranking metric, but public levels are primarily a reliability signal to the customer. Therefore the 15-day review uses family-specific gates as the main level test, with ROI acting as a safety filter.
+
+### Favorite alerts
+- Level 3 / 👑: at least 15 completed matches, hit rate >= 88%, ROI >= 10%
+- Level 2 / 💎: at least 12 completed matches, hit rate >= 80%, ROI >= 0%
+- Level 1 / 🔷: at least 10 completed matches, hit rate >= 65%, ROI >= 0%
+- Otherwise: TEST / not public
+
+### Contra alerts
+- Level 3 / 💣: at least 20 completed matches, hit rate >= 85%, ROI >= 20%
+- Level 2 / ⚡: at least 12 completed matches, hit rate >= 75%, ROI >= 15%
+- Level 1 / 🎯: at least 10 completed matches, hit rate >= 60%, ROI >= 0%
+- Otherwise: TEST / not public
+
+WATCH alerts remain Admin-only and do not enter these gates.
+
+At a review, compute the natural level from these gates, then move the live level by at most one step toward it. This preserves the agreed 15-day stability rule.
+
 ## Review cadence and movement rules
 
 The public level of an alert is NOT recalculated every day.
@@ -168,9 +188,9 @@ Core family (priority-corrected):
 - WATCH ΦΑΒΟΡΙ: 19/34 (55.9%), avg odds ~1.64 — Admin only
 
 Independent alerts:
-- ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ: 14/18 (77.8%), avg odds ~2.12
-- ΦΑΒΟΡΙ ΤΖΙΡΟΥ: 22/23 (95.7%), avg odds ~1.31
-- ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ: 20/22 (90.9%), avg odds ~1.34
+- ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ: 12/13 (92.3%), avg odds ~2.17
+- ΦΑΒΟΡΙ ΤΖΙΡΟΥ: 19/19 (100%), avg odds ~1.30
+- ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ: 19/20 (95.0%), avg odds ~1.35
 - ΦΑΒΟΡΙ ΠΤΩΣΗ 2%: 10/12 (83.3%), avg odds ~1.63
 - ΦΑΒ 60+: 41/49 (83.7%), avg odds ~1.35
 - ΦΑΒ 75+: 29/36 (80.6%), avg odds ~1.33
