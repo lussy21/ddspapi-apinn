@@ -206,6 +206,26 @@ def push_owner_new_alerts(alerts):
             "error": str(target_data.get("error") or "OWNER_PUSH_TARGETS_FAILED"),
         }
 
+    disabled_leagues = {
+        str(value or "").strip()
+        for value in (target_data.get("disabledLeagues") or [])
+        if str(value or "").strip()
+    }
+    if disabled_leagues:
+        new_alerts = [
+            item for item in new_alerts
+            if str(item.get("league") or "").strip() not in disabled_leagues
+        ]
+    if not new_alerts:
+        return {
+            "sent": 0,
+            "failed": 0,
+            "removed": 0,
+            "total": int(target_data.get("count") or 0),
+            "alerts": 0,
+            "filteredByLeague": True,
+        }
+
     targets = target_data.get("targets", [])
     sent = 0
     failed = 0
