@@ -1408,6 +1408,35 @@ for match in matches:
         '"🔔 ΤΖΙΡΟΣ ↑";"")'
     )
 
+    # Newer favorite alerts already used by the sheet. Keep them inside the
+    # core writer so current rows cannot lose BZ:CC formulas on a cron refresh.
+    fav_84_p60_formula = (
+        f'=IF(AND(ISNUMBER($E{row_number});$E{row_number}>=1,55;$E{row_number}<=1,85;'
+        f'ISNUMBER($L{row_number});$L{row_number}>=84;'
+        f'ISNUMBER($BM{row_number});$BM{row_number}>=60);'
+        '"🔔🧪 ΦΑΒΟΡΙ 84+P60";"")'
+    )
+    fav_turnover_3x_formula = (
+        f'=IF(AND(ISNUMBER($G{row_number});$G{row_number}>=1,65;$G{row_number}<=1,9;'
+        f'IFERROR($K{row_number}/$T{row_number};0)>=3;'
+        f'ISNUMBER($F{row_number});$G{row_number}<=$F{row_number});'
+        '"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X";"")'
+    )
+    fav_sofa_3x_formula = (
+        f'=IF(AND(ISNUMBER($G{row_number});$G{row_number}>=1,65;$G{row_number}<=2,05;'
+        f'ISNUMBER($N{row_number});$N{row_number}>=70;'
+        f'IFERROR($K{row_number}/$T{row_number};0)>=3;'
+        f'ISNUMBER($F{row_number});$G{row_number}<=$F{row_number});'
+        '"🔔💎 ΦΑΒΟΡΙ SOFA+3X";"")'
+    )
+    fav_drop_2_formula = (
+        f'=IF(AND(ISNUMBER($G{row_number});$G{row_number}>=1,4;$G{row_number}<=1,9;'
+        f'ISNUMBER($N{row_number});$N{row_number}>=75;'
+        f'ISNUMBER($F{row_number});$F{row_number}>0;'
+        f'$G{row_number}<=$F{row_number}*0,98);'
+        '"🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%";"")'
+    )
+
     # Existing STRONG / SIMPLE / WATCH rules are hierarchical. Count only
     # the highest active one from that family so a strong alert is not
     # artificially counted again as simple/watch. Independent turnover/model
@@ -1417,6 +1446,10 @@ for match in matches:
         f'+IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");1;0)'
+        f'+IF($CA{row_number}<>"";1;0)'
+        f'+IF($CB{row_number}<>"";1;0)'
+        f'+IF($CC{row_number}<>"";1;0)'
+        f'+IF($BZ{row_number}<>"";1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");1;0)'
@@ -1432,6 +1465,10 @@ for match in matches:
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};"");'
+        f'IF($CA{row_number}<>"";$CA{row_number};"");'
+        f'IF($CB{row_number}<>"";$CB{row_number};"");'
+        f'IF($CC{row_number}<>"";$CC{row_number};"");'
+        f'IF($BZ{row_number}<>"";$BZ{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};"");'
@@ -1447,11 +1484,15 @@ for match in matches:
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
+        f'IF($CA{row_number}<>"";$CA{row_number};'
+        f'IF($CB{row_number}<>"";$CB{row_number};'
+        f'IF($CC{row_number}<>"";$CC{row_number};'
+        f'IF($BZ{row_number}<>"";$BZ{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
-        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))'
+        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))))))'
     )
     # O is the visual "at a glance" column: primary alert + selector strength.
     # The real alert state still lives in the helper columns; BX keeps the full score/stage.
@@ -1483,6 +1524,15 @@ for match in matches:
             turnover_up_formula,
             alert_count_formula,
             alert_list_formula,
+        ]],
+    })
+    updates.append({
+        "range": f"BZ{row_number}:CC{row_number}",
+        "values": [[
+            fav_84_p60_formula,
+            fav_turnover_3x_formula,
+            fav_sofa_3x_formula,
+            fav_drop_2_formula,
         ]],
     })
     updates.append({
