@@ -9,7 +9,7 @@ if(location.hostname!=="match-alerts-api-private.onrender.com"){
   location.replace("https://match-alerts-api-private.onrender.com/admin/");
 }
 </script>
-<link rel="icon" href="./admin-icon.svg" type="image/svg+xml">
+<link rel="icon" href="./dreamteamtips-icon.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.json">
 <meta name="application-name" content="DreamTeamTips Admin">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -63,6 +63,11 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <button class="admin-launch hidden" id="alertManagerLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">🔔</span><div><div class="admin-launch-title">Καμπανάκια</div><div class="admin-launch-sub">Alerts & συνολικά stats</div></div></div><span class="admin-launch-count" id="alertManagerLaunchCount">0</span></button>
 </div>
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
+<div class="section" id="ownerPushSection">
+  <h3>Ειδοποιήσεις Admin</h3>
+  <div class="actions"><button class="btn secondary" id="ownerPushToggle" type="button">Ενεργοποίηση</button></div>
+  <div class="push-hint" id="ownerPushStatus">Μόνο εσύ θα λαμβάνεις ειδοποίηση όταν ανοίγει νέο καμπανάκι. Οι πελάτες δεν ειδοποιούνται πριν το Publish.</div>
+</div>
 <div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
 <div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
 <div class="section hidden" id="subscriptionBulk">
@@ -117,6 +122,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </div>
 <script>
 const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
+const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const ALERT_PREFS_KEY="dtt_admin_alert_prefs_v1";
 const ALERT_CATALOG=[
@@ -210,7 +216,7 @@ async function loadAdmin(){
   publicationControlsLive=settings.publicationControls===true;
   slipBuilderLive=settings.slipBuilder===true;
   slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
-  if(subscriptionFeatureLive && !settings.autoPushConfigured){
+  if(!settings.autoPushConfigured){
     apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
   }
 
@@ -650,6 +656,89 @@ window.act=async(action,username)=>{
         :"Η πρόσβαση ενημερώθηκε.";
   }catch(e){msg.textContent="Σφάλμα: "+e.message;}
 };
+
+function ownerPushSupported(){
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+}
+function ownerPushKeyBytes(value){
+  const padding="=".repeat((4-value.length%4)%4);
+  const base64=(value+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+}
+async function currentOwnerPushSubscription(){
+  if(!ownerPushSupported()) return null;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  }catch(_){return null;}
+}
+async function registerOwnerPushSubscription(sub){
+  if(!sub||!adminSecret) return false;
+  const json=sub.toJSON();
+  const r=await apiPost({
+    action:"adminOwnerPushSubscribe",
+    adminCode:adminSecret,
+    endpoint:json.endpoint||sub.endpoint,
+    p256dh:json.keys&&json.keys.p256dh||"",
+    auth:json.keys&&json.keys.auth||""
+  });
+  if(!r.ok) throw new Error(r.error||"OWNER_PUSH_REGISTER_FAILED");
+  localStorage.setItem("dtt_owner_push_endpoint_v1",sub.endpoint||"");
+  return true;
+}
+async function refreshOwnerPushState(){
+  if(typeof ownerPushToggle==="undefined"||typeof ownerPushStatus==="undefined") return;
+  ownerPushToggle.classList.remove("active");
+  if(!ownerPushSupported()){
+    ownerPushToggle.disabled=true;
+    ownerPushToggle.textContent="Μη διαθέσιμες";
+    ownerPushStatus.textContent="Η συσκευή ή ο browser δεν υποστηρίζει push ειδοποιήσεις.";
+    return;
+  }
+  ownerPushToggle.disabled=false;
+  if(Notification.permission==="denied"){
+    ownerPushToggle.textContent="Μπλοκαρισμένες";
+    ownerPushStatus.textContent="Οι ειδοποιήσεις έχουν μπλοκαριστεί από τον browser. Χρειάζεται άδεια από τις ρυθμίσεις.";
+    return;
+  }
+  const sub=await currentOwnerPushSubscription();
+  if(Notification.permission==="granted"&&sub){
+    try{
+      await registerOwnerPushSubscription(sub);
+      ownerPushToggle.textContent="Ενεργές ✓";
+      ownerPushToggle.classList.add("active");
+      ownerPushStatus.textContent="Θα ειδοποιείσαι μόνο εσύ όταν ανοίγει νέο καμπανάκι.";
+      return;
+    }catch(_){}
+  }
+  ownerPushToggle.textContent="Ενεργοποίηση";
+  ownerPushStatus.textContent="Πάτησε για να λαμβάνεις ειδοποίηση όταν ανοίγει νέο καμπανάκι.";
+}
+ownerPushToggle.onclick=async()=>{
+  if(!ownerPushSupported()) return;
+  ownerPushToggle.disabled=true;
+  ownerPushToggle.textContent="Αναμονή…";
+  try{
+    let permission=Notification.permission;
+    if(permission!=="granted") permission=await Notification.requestPermission();
+    if(permission!=="granted"){await refreshOwnerPushState();return;}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:ownerPushKeyBytes(PUSH_PUBLIC_KEY)
+      });
+    }
+    await apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
+    await registerOwnerPushSubscription(sub);
+  }catch(e){
+    ownerPushStatus.textContent="Δεν ολοκληρώθηκε η ενεργοποίηση: "+(e.message||"σφάλμα")+".";
+  }
+  await refreshOwnerPushState();
+};
+
 unlock.onclick=async()=>{
   adminSecret=adminCode.value.trim();
   if(!adminSecret){lockMsg.textContent="Βάλε admin code.";return;}
@@ -671,6 +760,8 @@ unlock.onclick=async()=>{
     lock.classList.add("hidden");
     dash.classList.remove("hidden");
     lockMsg.textContent="";
+    refreshOwnerPushState().catch(()=>{});
+    if(new URLSearchParams(location.search).get("daily")==="1") showDailyAdmin();
   }catch(e){
     if(e.message==="ADMIN_UNAUTHORIZED"){
       localStorage.removeItem(ADMIN_STORAGE_KEY);
@@ -727,7 +818,16 @@ addDaysAll.onclick=async()=>{
 saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
 if(adminSecret){adminCode.value=adminSecret;setTimeout(()=>unlock.click(),0);}
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{}));
+  window.addEventListener("load",async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register("/sw.js",{scope:"/",updateViaCache:"none"});
+      await reg.update();
+      if(adminSecret && Notification.permission==="granted"){
+        const sub=await reg.pushManager.getSubscription();
+        if(sub) await registerOwnerPushSubscription(sub);
+      }
+    }catch(_){}
+  });
 }
 </script>
 </body></html>
