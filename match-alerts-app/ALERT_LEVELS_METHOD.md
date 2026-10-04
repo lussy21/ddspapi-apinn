@@ -69,6 +69,37 @@ Reference weighting:
 - 20% sample
 - 15% stability
 
+## Review cadence and movement rules
+
+The public level of an alert is NOT recalculated every day.
+
+- Official review cadence: every 15 days.
+- Between reviews, the current public level stays locked.
+- At review time, recompute the alert from the allowed PINNACLE scope using all completed qualifying matches.
+- Maximum movement per review: one level up or one level down.
+- New alerts remain TEST / WAITING until they have enough sample.
+
+Working score thresholds:
+- Level 1 -> Level 2: score >= 62 and enough sample (normally at least 12-15 completed matches).
+- Level 2 -> Level 3: score >= 80 and at least 20 completed matches.
+- Level 3 -> Level 2: downgrade only if score < 72.
+- Level 2 -> Level 1: downgrade only if score < 55.
+
+This creates a safety band (hysteresis) so one or two results cannot make an alert bounce between levels.
+
+Historical integrity rule:
+- A selection keeps the level/symbol it had when it was published.
+- A later review changes only future selections.
+- Past public statistics are never rewritten because an alert later moved level.
+
+Admin should show, when available:
+- current symbol / level
+- current quality score
+- last review date
+- next review date
+- trend toward the next/previous level
+- last level change
+
 ## Practical safeguards
 
 - No Level 3 from a tiny sample.
