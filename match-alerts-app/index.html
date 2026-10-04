@@ -100,9 +100,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .played-btn:disabled{cursor:default}.played-btn.done{border-color:rgba(139,211,155,.22);background:rgba(139,211,155,.065);color:#c8efcf}
 .history-shell{padding:18px}.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}.history-head h3{font:500 25px/1.05 Georgia,serif;margin:0}.history-head p{margin:6px 0 0;color:#817c85;font-size:10px;line-height:1.45}.history-count{font-size:10px;font-weight:900;color:#cdbd89;white-space:nowrap}
 .history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
-.history-symbol-head{margin:14px 0 8px}.history-symbol-title{font-size:10px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;color:#d7c181}.history-symbol-note{margin-top:4px;color:#747079;font-size:8px;line-height:1.4}
-.history-symbol-filters{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:0 0 14px}.history-symbol-filter{min-width:0;min-height:54px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:rgba(255,255,255,.02);color:#9b969e;padding:7px 2px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.history-symbol-filter span{font-size:15px;line-height:1}.history-symbol-filter b{font-size:8px;color:#b9b3bc;line-height:1}.history-symbol-filter.all span{font-size:8px}.history-symbol-filter.all b{font-size:7px}.history-symbol-filter.active{border-color:rgba(217,177,87,.32);background:rgba(217,177,87,.10);color:#fff0c4;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.history-symbol-filter.active b{color:#f1d78e}
-.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}.symbol-stat-card{min-height:74px;border:1px solid rgba(217,177,87,.18);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.012));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.symbol-stat-card span{font-size:20px;line-height:1}.symbol-stat-card b{font:700 14px/1 Georgia,serif;color:#efd58c;letter-spacing:.4px}
+.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}.symbol-stat-card{min-height:72px;border:1px solid rgba(217,177,87,.18);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.012));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.symbol-stat-card span{font-size:19px;line-height:1}.symbol-stat-card b{font:700 14px/1 Georgia,serif;color:#efd58c}
 .pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 .pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
 .pick-card.result-loss{border-color:rgba(255,119,130,.34);background:linear-gradient(145deg,rgba(176,58,70,.11),rgba(255,255,255,.012))}
@@ -241,16 +239,16 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
       </div>
 
       <div id="symbolStatsView" class="history-view hidden">
-        <div class="history-head" style="margin:4px 0 14px">
+        <div class="history-head" style="margin:4px 0 12px">
           <div><h3 style="font-size:18px">Στατιστικά</h3><p>Η πορεία κάθε κατηγορίας ξεκινά από 0/0.</p></div>
         </div>
         <div class="symbol-stats-grid">
-          <div class="symbol-stat-card"><span>🔷</span><b id="symbolStat-🔷">0/0</b></div>
-          <div class="symbol-stat-card"><span>💎</span><b id="symbolStat-💎">0/0</b></div>
-          <div class="symbol-stat-card"><span>👑</span><b id="symbolStat-👑">0/0</b></div>
-          <div class="symbol-stat-card"><span>🎯</span><b id="symbolStat-🎯">0/0</b></div>
-          <div class="symbol-stat-card"><span>⚡</span><b id="symbolStat-⚡">0/0</b></div>
-          <div class="symbol-stat-card"><span>💣</span><b id="symbolStat-💣">0/0</b></div>
+          <div class="symbol-stat-card"><span>🔷</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>💎</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>👑</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>🎯</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>⚡</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>💣</span><b>0/0</b></div>
         </div>
       </div>
     </div>
@@ -440,7 +438,7 @@ const deviceId=getDeviceId();
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
 let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
-let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team", officialHistorySymbol="";
+let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
 const ALERTS_CACHE_PREFIX="dtt_public_alerts_v2::";
 const ALERTS_CACHE_MAX_MS=12*60*60*1000;
@@ -630,9 +628,6 @@ function setHistoryMode(mode){
   }else if(historyMode==="mine"){
     if(historyLoadedAt) renderMyHistory(historyCache);
     if(!historyLoadedAt || Date.now()-historyLoadedAt>UI_CACHE_MS) loadMyHistory({background:true});
-  }else{
-    renderPublicSymbolStats(officialHistorySummaryCache);
-    if(!officialHistoryLoadedAt || Date.now()-officialHistoryLoadedAt>UI_CACHE_MS) loadOfficialHistory({background:true});
   }
 }
 function showScreen(name){
@@ -1081,27 +1076,15 @@ function officialDateLabel(value){
   }
   return String(value||"");
 }
-function frozenHistorySymbol(a){
-  const symbol=String(a&&a.publicSymbol||"").trim();
-  return ["🔷","💎","👑","🎯","⚡","💣"].includes(symbol)?symbol:"";
-}
-function renderPublicSymbolStats(){
-  ["🔷","💎","👑","🎯","⚡","💣"].forEach(symbol=>{
-    const el=document.getElementById("symbolStat-"+symbol);
-    if(el) el.textContent="0/0";
-  });
-}
 function renderOfficialHistory(items,summary){
-  renderPublicSymbolStats(summary);
   const raw=Array.isArray(items)?items:[];
-  const complete=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
-  const list=complete;
-  const wins=complete.filter(a=>a.status==="win").length;
-  const losses=complete.filter(a=>a.status==="loss").length;
-  const withdrawn=complete.filter(a=>a.status==="withdrawn").length;
+  const list=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
+  const wins=list.filter(a=>a.status==="win").length;
+  const losses=list.filter(a=>a.status==="loss").length;
+  const withdrawn=list.filter(a=>a.status==="withdrawn").length;
   const sum=document.getElementById("officialHistorySummary");
   if(sum){
-    sum.innerHTML='<div class="stat"><b>'+complete.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
+    sum.innerHTML='<div class="stat"><b>'+list.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
   }
   const box=document.getElementById("officialHistoryContent");
   if(!box) return;
@@ -1115,8 +1098,7 @@ function renderOfficialHistory(items,summary){
     const score=a.score||"—";
     const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.pick)||"withdrawn"):status;
     const oddsNumber=Number(a.odds);
-    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",","))
-      :"";
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
     return '<div class="pick-card result-'+visualStatus+'"><div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
   }).join("")+'</div>';
 }
@@ -1169,8 +1151,6 @@ function renderMyHistory(items){
     const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
     const score=a.score||"—";
     const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.customerPick||selectionMark(a))||"withdrawn"):status;
-    const symbol=frozenHistorySymbol(a);
-    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
     return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
@@ -1316,7 +1296,7 @@ if("serviceWorker" in navigator){
   });
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./sw.js?v=13-auto",{updateViaCache:"none"});
+      const reg=await navigator.serviceWorker.register("./sw.js?v=16-reference",{updateViaCache:"none"});
       await reg.update();
       if(Notification.permission==="granted"){
         const sub=await reg.pushManager.getSubscription();
