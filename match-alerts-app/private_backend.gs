@@ -12,6 +12,8 @@
 
 const SPREADSHEET_ID = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM";
 const SHEET_NAME = "PINNACLE";
+const ALERT_LEVELS_SHEET_NAME = "ALERT LEVELS";
+const ALERT_LIST_COLUMN = 74; // BV: full active internal alert list
 const APP_ORIGIN = "https://match-alerts-private.onrender.com";
 const VERIFY_SITE_URL = "https://dreamteamtips-site.onrender.com/";
 
@@ -298,8 +300,10 @@ function alerts_(p) {
   }
 
   const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
   // BY is a hidden, app-only kickoff field written by the core in Greece time.
   const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+  const levelCatalog = publicLevelCatalog_(ss);
   const out = [];
 
   pinRows.forEach(function(row, idx) {
@@ -313,20 +317,31 @@ function alerts_(p) {
 
     if (!league || !home || !away || !currentAlert || result) return;
 
-    const records = alertRecords_(pinRows, league, currentAlert);
+    const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
+    const sourceAlerts = sourceAlertsForRow_(currentAlert, listText);
+    const selectedPublic = highestPublicAlert_(sourceAlerts, currentAlert, levelCatalog);
+    // WATCH, TEST and unknown internal alerts remain Admin-only.
+    if (!selectedPublic) return;
+
+    const publicAlert = selectedPublic.alert;
+    const records = alertRecords_(pinRows, league, publicAlert);
     const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
-    const selectionId = selectionId_(league, home, away, currentAlert, kickoff);
+    const selectionId = selectionId_(league, home, away, publicAlert, kickoff);
     const controlId = signalMatchId_(league, home, away, kickoff);
     const control = readSignalControl_(controlId);
     if (String(control.status || "") === "withdrawn") return;
-    const customer = effectiveCustomerPick_(favoriteSide, currentAlert, control);
+    const customer = effectiveCustomerPick_(favoriteSide, publicAlert, control);
     out.push({
       league:league,
       home:home,
       away:away,
       favoriteSide:favoriteSide,
-      alert:currentAlert,
-      rating:alertRating_(rawAlert),
+      alert:publicAlert,
+      internalAlert:currentAlert,
+      sourceAlerts:sourceAlerts,
+      publicSymbol:selectedPublic.symbol,
+      publicLevel:selectedPublic.level,
+      rating:canonicalAlertKey_(publicAlert) === canonicalAlertKey_(currentAlert) ? alertRating_(rawAlert) : "",
       leagueRecord:records.leagueRecord,
       allStatsRecord:records.allStatsRecord,
       kickoff:kickoff,
@@ -348,6 +363,120 @@ function alerts_(p) {
   };
 }
 
+
+
+function canonicalAlertKey_(value) {
+  let text = normalizeAlertName_(value);
+  text = String(text || "").trim();
+  // Strip only known decorative prefixes used internally in the Sheet.
+  text = text.replace(/^[🔔🔥💎🧪👀🎯⚡💣🔷👑\s]+/g, "").trim();
+  return text.toUpperCase();
+}
+
+function fallbackPublicLevelInfo_(value) {
+  const a = canonicalAlertKey_(value);
+  if (!a) return {level:0,symbol:"",status:"UNKNOWN"};
+
+  if (a === "ΔΥΝΑΤΟ ΚΟΝΤΡΑ") return {level:3,symbol:"💣",status:"ACTIVE"};
+  if (a === "ΚΟΝΤΡΑ") return {level:2,symbol:"⚡",status:"ACTIVE"};
+  if (a === "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ") return {level:1,symbol:"🎯",status:"ACTIVE"};
+  if (a === "ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)" || a === "ΔΥΝΑΤΟ ΦΑΒΟΡΙ") {
+    return {level:0,symbol:"",status:"TEST"};
+  }
+  if (a.indexOf("WATCH ") === 0) return {level:0,symbol:"",status:"ADMIN_ONLY"};
+
+  if (a === "ΦΑΒΟΡΙ ΤΖΙΡΟΥ" || a === "ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ") {
+    return {level:3,symbol:"👑",status:"ACTIVE"};
+  }
+  if (
+    a === "ΦΑΒΟΡΙ" ||
+    a === "ΦΑΒ 60+" ||
+    a === "ΦΑΒ 75+" ||
+    a === "ΦΑΒΟΡΙ ΠΤΩΣΗ 2%"
+  ) {
+    return {level:2,symbol:"💎",status:"ACTIVE"};
+  }
+  if (
+    a === "ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X" ||
+    a === "ΦΑΒΟΡΙ SOFA+3X" ||
+    a === "ΤΖΙΡΟΣ ↑" ||
+    a === "ΦΑΒΟΡΙ 84+P60"
+  ) {
+    return {level:1,symbol:"🔷",status:"ACTIVE"};
+  }
+  return {level:0,symbol:"",status:"UNKNOWN"};
+}
+
+function publicLevelCatalog_(ss) {
+  const catalog = {};
+  try {
+    const sheet = ss.getSheetByName(ALERT_LEVELS_SHEET_NAME);
+    if (sheet && sheet.getLastRow() >= 2) {
+      const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getDisplayValues();
+      values.forEach(function(row) {
+        const key = canonicalAlertKey_(row[0]);
+        if (!key) return;
+        const level = Number(String(row[2] || "").replace(",", ".")) || 0;
+        const symbol = String(row[3] || "").trim();
+        const status = String(row[4] || "").trim().toUpperCase() || "UNKNOWN";
+        catalog[key] = {level:level,symbol:symbol,status:status};
+      });
+    }
+  } catch (_) {}
+  return catalog;
+}
+
+function publicLevelInfo_(value, catalog) {
+  const key = canonicalAlertKey_(value);
+  if (key && catalog && catalog[key]) return catalog[key];
+  return fallbackPublicLevelInfo_(value);
+}
+
+function splitAlertList_(value) {
+  const out = [];
+  String(value || "").split("|").forEach(function(part) {
+    const alert = normalizeAlertName_(part);
+    const key = canonicalAlertKey_(alert);
+    if (!key) return;
+    if (!out.some(function(x){ return canonicalAlertKey_(x) === key; })) out.push(alert);
+  });
+  return out;
+}
+
+function sourceAlertsForRow_(visibleAlert, listText) {
+  const out = splitAlertList_(listText);
+  const visible = normalizeAlertName_(visibleAlert);
+  const visibleKey = canonicalAlertKey_(visible);
+  if (visibleKey && !out.some(function(x){ return canonicalAlertKey_(x) === visibleKey; })) {
+    out.unshift(visible);
+  }
+  return out;
+}
+
+function highestPublicAlert_(alerts, visibleAlert, catalog) {
+  const visibleKey = canonicalAlertKey_(visibleAlert);
+  let best = null;
+  (alerts || []).forEach(function(alert) {
+    const info = publicLevelInfo_(alert, catalog);
+    if (String(info.status || "").toUpperCase() !== "ACTIVE" || Number(info.level || 0) <= 0) return;
+    const candidate = {
+      alert:normalizeAlertName_(alert),
+      level:Number(info.level || 0),
+      symbol:String(info.symbol || "")
+    };
+    if (!best || candidate.level > best.level) {
+      best = candidate;
+      return;
+    }
+    if (best && candidate.level === best.level) {
+      // On ties keep the Sheet's visible/primary alert if it is one of the tied candidates.
+      if (canonicalAlertKey_(candidate.alert) === visibleKey && canonicalAlertKey_(best.alert) !== visibleKey) {
+        best = candidate;
+      }
+    }
+  });
+  return best;
+}
 
 function selectionId_(league, home, away, alertName, kickoff) {
   const raw = [
@@ -1328,7 +1457,9 @@ function adminSignals_(p) {
   }
 
   const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
   const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+  const levelCatalog = publicLevelCatalog_(ss);
   const signals = [];
 
   rows.forEach(function(row, idx) {
@@ -1344,10 +1475,14 @@ function adminSignals_(p) {
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
     const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
+    const sourceAlerts = sourceAlertsForRow_(alert, listText);
+    const selectedPublic = highestPublicAlert_(sourceAlerts, alert, levelCatalog);
+    const customerAlert = selectedPublic ? selectedPublic.alert : alert;
     const controlId = signalMatchId_(league, home, away, kickoff);
-    const selectionId = selectionId_(league, home, away, alert, kickoff);
+    const selectionId = selectionId_(league, home, away, customerAlert, kickoff);
     const control = readSignalControl_(controlId);
-    const customer = effectiveCustomerPick_(favoriteSide, alert, control);
+    const customer = effectiveCustomerPick_(favoriteSide, customerAlert, control);
     const records = alertRecords_(rows, league, alert);
     const startMs = kickoffTimeMs_(kickoff);
     const canEdit = Number.isFinite(startMs) && Date.now() < startMs;
@@ -1362,6 +1497,10 @@ function adminSignals_(p) {
       favoriteSide:favoriteSide,
       favoriteTeam:favoriteSide === "H" ? home : away,
       internalAlert:alert,
+      allAlerts:sourceAlerts,
+      publicAlert:selectedPublic ? selectedPublic.alert : "",
+      publicSymbol:selectedPublic ? selectedPublic.symbol : "",
+      publicLevel:selectedPublic ? selectedPublic.level : 0,
       rawAlert:rawAlert,
       rating:alertRating_(rawAlert),
       leagueRecord:records.leagueRecord,
