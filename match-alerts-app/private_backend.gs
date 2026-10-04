@@ -58,6 +58,9 @@ function doPost(e) {
     else if (action === "adminMessageCreate") payload = adminMessageCreate_(p);
     else if (action === "adminPushTargets") payload = adminPushTargets_(p);
     else if (action === "adminPushDelete") payload = adminPushDelete_(p);
+    else if (action === "adminOwnerPushSubscribe") payload = adminOwnerPushSubscribe_(p);
+    else if (action === "automationOwnerPushTargets") payload = automationOwnerPushTargets_(p);
+    else if (action === "automationOwnerPushDelete") payload = automationOwnerPushDelete_(p);
     else if (action === "adminAutomationSetup") payload = adminAutomationSetup_(p);
     else if (action === "automationPushTargets") payload = automationPushTargets_(p);
     else if (action === "automationPushDelete") payload = automationPushDelete_(p);
@@ -1013,6 +1016,88 @@ function adminPushDelete_(p) {
   return {ok:true};
 }
 
+
+function ownerPushKey_(endpoint) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(endpoint || ""),
+    Utilities.Charset.UTF_8
+  );
+  const id = Utilities.base64EncodeWebSafe(digest).replace(/=+$/g,"").slice(0,24);
+  return "OWNER_PUSH::" + id;
+}
+
+function adminOwnerPushSubscribe_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const endpoint = String(p.endpoint || "").trim();
+  const p256dh = String(p.p256dh || "").trim();
+  const authKey = String(p.auth || "").trim();
+
+  if (!/^https:\/\//i.test(endpoint) || endpoint.length > 1800) {
+    return {ok:false,error:"BAD_PUSH_SUBSCRIPTION"};
+  }
+  if (!p256dh || !authKey || p256dh.length > 400 || authKey.length > 200) {
+    return {ok:false,error:"BAD_PUSH_SUBSCRIPTION"};
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const key = ownerPushKey_(endpoint);
+  const previous = props.getProperty(key);
+  let createdAt = new Date().toISOString();
+
+  if (previous) {
+    try {
+      const old = JSON.parse(previous);
+      if (old && old.createdAt) createdAt = old.createdAt;
+    } catch (_) {}
+  }
+
+  props.setProperty(key, JSON.stringify({
+    endpoint:endpoint,
+    keys:{p256dh:p256dh,auth:authKey},
+    createdAt:createdAt,
+    updatedAt:new Date().toISOString()
+  }));
+
+  return {ok:true,registered:true};
+}
+
+function automationOwnerPushTargets_(p) {
+  if (!automationAuthorized_(p.secret)) {
+    return {ok:false,error:"AUTOMATION_UNAUTHORIZED"};
+  }
+
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const targets = [];
+
+  Object.keys(props).forEach(function(key) {
+    if (key.indexOf("OWNER_PUSH::") !== 0) return;
+    try {
+      const item = JSON.parse(props[key]);
+      if (item && item.endpoint && item.keys && item.keys.p256dh && item.keys.auth) {
+        targets.push({
+          key:key,
+          endpoint:item.endpoint,
+          keys:{p256dh:item.keys.p256dh,auth:item.keys.auth}
+        });
+      }
+    } catch (_) {}
+  });
+
+  return {ok:true,count:targets.length,targets:targets};
+}
+
+function automationOwnerPushDelete_(p) {
+  if (!automationAuthorized_(p.secret)) {
+    return {ok:false,error:"AUTOMATION_UNAUTHORIZED"};
+  }
+  const key = String(p.key || "");
+  if (key.indexOf("OWNER_PUSH::") !== 0) return {ok:false,error:"BAD_PUSH_KEY"};
+  PropertiesService.getScriptProperties().deleteProperty(key);
+  return {ok:true};
+}
+
 function adminAutomationSetup_(p) {
   if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
 
@@ -1750,7 +1835,8 @@ function sendVerificationEmail_(email, username, token) {
     subject: subject,
     body: body,
     htmlBody: htmlBody,
-    name: "DreamTeamTips"
+    name: "DreamTeamTips",
+    replyTo: "DreamTeamTips@hotmail.com"
   });
 }
 
