@@ -11,6 +11,8 @@ import google.auth
 import requests
 from google.oauth2.service_account import Credentials
 
+from alert_level_review import run_level_review_if_due
+
 
 SPREADSHEET_ID = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM"
 SHEET_NAME = "PINNACLE"
@@ -1084,6 +1086,16 @@ def main():
     # Στέλνουμε ένα ομαδοποιημένο push για όλα τα νέα alerts.
     # Αν υπάρξει προσωρινό πρόβλημα, μένουν PENDING και ξαναδοκιμάζονται.
     send_pending_pushes(log_ws)
+
+    # Lightweight 15-day level review. Until launch ALERT LEVELS!S2 is FALSE,
+    # so the review can refresh diagnostics/suggestions but cannot change live levels.
+    try:
+        run_level_review_if_due(spreadsheet)
+    except Exception as exc:
+        print(
+            "ALERT LEVEL REVIEW ERROR | "
+            f"{type(exc).__name__}: {exc}"
+        )
 
 
     print(
