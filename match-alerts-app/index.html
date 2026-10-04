@@ -99,9 +99,10 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .played-btn{border:1px solid rgba(217,177,87,.28);background:linear-gradient(180deg,rgba(217,177,87,.12),rgba(217,177,87,.055));color:#ffe8aa;border-radius:12px;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:.2px;min-width:118px}
 .played-btn:disabled{cursor:default}.played-btn.done{border-color:rgba(139,211,155,.22);background:rgba(139,211,155,.065);color:#c8efcf}
 .history-shell{padding:18px}.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}.history-head h3{font:500 25px/1.05 Georgia,serif;margin:0}.history-head p{margin:6px 0 0;color:#817c85;font-size:10px;line-height:1.45}.history-count{font-size:10px;font-weight:900;color:#cdbd89;white-space:nowrap}
-.history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
+.history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
 .history-symbol-head{margin:14px 0 8px}.history-symbol-title{font-size:10px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;color:#d7c181}.history-symbol-note{margin-top:4px;color:#747079;font-size:8px;line-height:1.4}
 .history-symbol-filters{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:0 0 14px}.history-symbol-filter{min-width:0;min-height:54px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:rgba(255,255,255,.02);color:#9b969e;padding:7px 2px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.history-symbol-filter span{font-size:15px;line-height:1}.history-symbol-filter b{font-size:8px;color:#b9b3bc;line-height:1}.history-symbol-filter.all span{font-size:8px}.history-symbol-filter.all b{font-size:7px}.history-symbol-filter.active{border-color:rgba(217,177,87,.32);background:rgba(217,177,87,.10);color:#fff0c4;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.history-symbol-filter.active b{color:#f1d78e}
+.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.symbol-stat-card{min-height:96px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.014));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.symbol-stat-card span{font-size:28px;line-height:1}.symbol-stat-card b{font:700 17px/1 Georgia,serif;color:#efd58c;letter-spacing:.5px}
 .pick-symbol{display:inline-grid;place-items:center;min-width:30px;height:30px;margin-bottom:7px;border-radius:10px;border:1px solid rgba(217,177,87,.23);background:rgba(217,177,87,.06);font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
 .pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 .pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
@@ -219,6 +220,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
       <div class="history-tabs">
         <button class="history-tab active" id="historyModeTeam" data-history-mode="team">DreamTeamTips</button>
         <button class="history-tab" id="historyModeMine" data-history-mode="mine">Οι επιλογές μου</button>
+        <button class="history-tab" id="historyModeStats" data-history-mode="stats">Σύμβολα</button>
       </div>
 
       <div id="officialHistoryView" class="history-view">
@@ -227,19 +229,6 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           <div class="stat"><b>—</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div>
           <div class="stat"><b>—</b><span>ΧΑΜΕΝΕΣ</span></div>
           <div class="stat"><b>—</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>
-        </div>
-        <div class="history-symbol-head">
-          <div class="history-symbol-title">Ιστορικό ανά σήμα</div>
-          <div class="history-symbol-note">Τα δημόσια stats είναι έτοιμα στο 0/0 και θα αρχίσουν μόνο όταν ανοίξει επίσημα η καταμέτρηση.</div>
-        </div>
-        <div class="history-symbol-filters" id="officialSymbolFilters">
-          <button class="history-symbol-filter active all" data-symbol=""><span>Όλα</span><b>Ιστορικό</b></button>
-          <button class="history-symbol-filter" data-symbol="🔷"><span>🔷</span><b id="symbolStat-🔷">0/0</b></button>
-          <button class="history-symbol-filter" data-symbol="💎"><span>💎</span><b id="symbolStat-💎">0/0</b></button>
-          <button class="history-symbol-filter" data-symbol="👑"><span>👑</span><b id="symbolStat-👑">0/0</b></button>
-          <button class="history-symbol-filter" data-symbol="🎯"><span>🎯</span><b id="symbolStat-🎯">0/0</b></button>
-          <button class="history-symbol-filter" data-symbol="⚡"><span>⚡</span><b id="symbolStat-⚡">0/0</b></button>
-          <button class="history-symbol-filter" data-symbol="💣"><span>💣</span><b id="symbolStat-💣">0/0</b></button>
         </div>
         <div id="officialHistoryContent"><div class="history-empty">Φόρτωση ιστορικού DreamTeamTips…</div></div>
       </div>
@@ -250,6 +239,20 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           <div class="history-count" id="historyCount">0 επιλογές</div>
         </div>
         <div id="historyContent"><div class="history-empty">Δεν έχεις προσθέσει ακόμα κάποια επιλογή.<br>Πρόσθεσε μία ενεργή επιλογή στις επιλογές σου.</div></div>
+      </div>
+
+      <div id="symbolStatsView" class="history-view hidden">
+        <div class="history-head" style="margin:4px 0 14px">
+          <div><h3 style="font-size:18px">Στατιστικά συμβόλων</h3><p>Η δημόσια πορεία κάθε σήματος ξεκινά από 0/0.</p></div>
+        </div>
+        <div class="symbol-stats-grid">
+          <div class="symbol-stat-card"><span>🔷</span><b id="symbolStat-🔷">0/0</b></div>
+          <div class="symbol-stat-card"><span>💎</span><b id="symbolStat-💎">0/0</b></div>
+          <div class="symbol-stat-card"><span>👑</span><b id="symbolStat-👑">0/0</b></div>
+          <div class="symbol-stat-card"><span>🎯</span><b id="symbolStat-🎯">0/0</b></div>
+          <div class="symbol-stat-card"><span>⚡</span><b id="symbolStat-⚡">0/0</b></div>
+          <div class="symbol-stat-card"><span>💣</span><b id="symbolStat-💣">0/0</b></div>
+        </div>
       </div>
     </div>
   </section>
@@ -613,19 +616,24 @@ legacyCodeBtn.onclick=()=>{legacyCodeWrap.classList.toggle("hidden");legacyCodeB
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
 function setHistoryMode(mode){
-  historyMode=mode==="mine"?"mine":"team";
+  historyMode=mode==="mine"?"mine":mode==="stats"?"stats":"team";
   document.getElementById("historyModeTeam")?.classList.toggle("active",historyMode==="team");
   document.getElementById("historyModeMine")?.classList.toggle("active",historyMode==="mine");
+  document.getElementById("historyModeStats")?.classList.toggle("active",historyMode==="stats");
   document.getElementById("officialHistoryView")?.classList.toggle("hidden",historyMode!=="team");
   document.getElementById("myHistoryView")?.classList.toggle("hidden",historyMode!=="mine");
+  document.getElementById("symbolStatsView")?.classList.toggle("hidden",historyMode!=="stats");
 
   if(!sessionToken) return;
   if(historyMode==="team"){
     if(officialHistoryLoadedAt) renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
     if(!officialHistoryLoadedAt || Date.now()-officialHistoryLoadedAt>UI_CACHE_MS) loadOfficialHistory({background:true});
-  }else{
+  }else if(historyMode==="mine"){
     if(historyLoadedAt) renderMyHistory(historyCache);
     if(!historyLoadedAt || Date.now()-historyLoadedAt>UI_CACHE_MS) loadMyHistory({background:true});
+  }else{
+    renderPublicSymbolStats(officialHistorySummaryCache);
+    if(!officialHistoryLoadedAt || Date.now()-officialHistoryLoadedAt>UI_CACHE_MS) loadOfficialHistory({background:true});
   }
 }
 function showScreen(name){
@@ -1096,7 +1104,7 @@ function renderOfficialHistory(items,summary){
   renderPublicSymbolStats(summary);
   const raw=Array.isArray(items)?items:[];
   const complete=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
-  const list=officialHistorySymbol?complete.filter(a=>frozenHistorySymbol(a)===officialHistorySymbol):complete;
+  const list=complete;
   const wins=complete.filter(a=>a.status==="win").length;
   const losses=complete.filter(a=>a.status==="loss").length;
   const withdrawn=complete.filter(a=>a.status==="withdrawn").length;
@@ -1104,13 +1112,10 @@ function renderOfficialHistory(items,summary){
   if(sum){
     sum.innerHTML='<div class="stat"><b>'+complete.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
   }
-  document.querySelectorAll("#officialSymbolFilters .history-symbol-filter").forEach(btn=>{
-    btn.classList.toggle("active",String(btn.dataset.symbol||"")===officialHistorySymbol);
-  });
   const box=document.getElementById("officialHistoryContent");
   if(!box) return;
   if(!list.length){
-    box.innerHTML='<div class="history-empty">'+(officialHistorySymbol?'Δεν υπάρχουν ακόμη ολοκληρωμένες επιλογές με το σήμα '+esc(officialHistorySymbol)+'.':'Δεν υπάρχουν ακόμη ολοκληρωμένες προτάσεις στο επίσημο ιστορικό.')+'</div>';
+    box.innerHTML='<div class="history-empty">Δεν υπάρχουν ακόμη ολοκληρωμένες προτάσεις στο επίσημο ιστορικό.</div>';
     return;
   }
   box.innerHTML='<div class="history-list">'+list.map(a=>{
@@ -1175,6 +1180,8 @@ function renderMyHistory(items){
     const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
     const score=a.score||"—";
     const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.customerPick||selectionMark(a))||"withdrawn"):status;
+    const symbol=frozenHistorySymbol(a);
+    const symbolHtml=symbol?'<div class="pick-symbol">'+esc(symbol)+'</div>':"";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
     return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div>${symbolHtml}<div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
@@ -1206,12 +1213,6 @@ async function loadMyHistory({background=false,force=false}={}){
   })();
   return historyRequest;
 }
-document.getElementById("officialSymbolFilters")?.addEventListener("click",e=>{
-  const btn=e.target.closest(".history-symbol-filter");
-  if(!btn) return;
-  officialHistorySymbol=String(btn.dataset.symbol||"");
-  renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
-});
 historyContent.addEventListener("click",async e=>{
   const button=e.target.closest(".pick-remove");
   if(!button) return;
