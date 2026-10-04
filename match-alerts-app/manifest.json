@@ -8,7 +8,7 @@
   "theme_color": "#070708",
   "icons": [
     {
-      "src": "dreamteamtips-icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
