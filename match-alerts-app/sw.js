@@ -1,5 +1,5 @@
 const CACHE='dreamteamtips-v16-reference';
-const ASSETS=['./manifest.json','./dreamteamtips-icon.svg'];
+const ASSETS=['./manifest.json','./reference-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
@@ -25,8 +25,8 @@ self.addEventListener('push',e=>{
   const title=data.title||'DreamTeamTips';
   const options={
     body:data.body||'Νέα ενημέρωση είναι διαθέσιμη.',
-    icon:'./dreamteamtips-icon.svg',
-    badge:'./dreamteamtips-icon.svg',
+    icon:'./reference-icon.svg',
+    badge:'./reference-icon.svg',
     tag:data.tag||'dreamteamtips-update',
     renotify:true,
     data:{url:data.url||'./'}
