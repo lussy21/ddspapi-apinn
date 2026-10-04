@@ -1039,6 +1039,18 @@ function renderAlerts(alerts,slips=[]){
   content.innerHTML=comboHtml+singleHtml;
 }
 
+function withdrawnVisualResult(scoreValue,pickValue){
+  const m=String(scoreValue||"").trim().match(/^(\d+)\s*-\s*(\d+)/);
+  if(!m) return "";
+  const h=Number(m[1]), a=Number(m[2]);
+  const pick=String(pickValue||"").trim().toUpperCase();
+  if(pick==="1") return h>a?"win":"loss";
+  if(pick==="2") return a>h?"win":"loss";
+  if(pick==="1X") return h>=a?"win":"loss";
+  if(pick==="2X") return a>=h?"win":"loss";
+  return "";
+}
+
 function officialDateLabel(value){
   const n=Date.parse(value||"");
   if(Number.isFinite(n)){
@@ -1066,9 +1078,10 @@ function renderOfficialHistory(items,summary){
     const status=a.status==="win"?"win":a.status==="loss"?"loss":a.status==="withdrawn"?"withdrawn":"pending";
     const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
     const score=a.score||"—";
+    const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.pick)||"withdrawn"):status;
     const oddsNumber=Number(a.odds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return '<div class="pick-card result-'+status+'"><div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
+    return '<div class="pick-card result-'+visualStatus+'">'<div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
   }).join("")+'</div>';
 }
 async function loadOfficialHistory({background=false,force=false}={}){
@@ -1119,9 +1132,10 @@ function renderMyHistory(items){
     const status=a.status==="win"?"win":a.status==="loss"?"loss":a.status==="withdrawn"?"withdrawn":"pending";
     const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
     const score=a.score||"—";
+    const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.customerPick||selectionMark(a))||"withdrawn"):status;
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<div class="pick-card result-${status}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
+    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
   }).join("")+'</div>';
 }
 async function loadMyHistory({background=false,force=false}={}){
