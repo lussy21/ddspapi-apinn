@@ -1,5 +1,5 @@
 const CACHE='dreamteamtips-v12-final';
-const ASSETS=['./manifest.json','./icon.svg'];
+const ASSETS=['./manifest.json','./dreamteamtips-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
@@ -10,7 +10,7 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET') return;
   const url=new URL(e.request.url);
-  if(e.request.mode==='navigate'||url.pathname.endsWith('/icon.svg')||url.pathname.endsWith('/manifest.json')){
+  if(e.request.mode==='navigate'||url.pathname.endsWith('/dreamteamtips-icon.svg')||url.pathname.endsWith('/manifest.json')){
     e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{
       const copy=r.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return r;
     }).catch(()=>caches.match(e.request)));
@@ -25,8 +25,8 @@ self.addEventListener('push',e=>{
   const title=data.title||'DreamTeamTips';
   const options={
     body:data.body||'Νέα ενημέρωση είναι διαθέσιμη.',
-    icon:'./icon.svg',
-    badge:'./icon.svg',
+    icon:'./dreamteamtips-icon.svg',
+    badge:'./dreamteamtips-icon.svg',
     tag:data.tag||'dreamteamtips-update',
     renotify:true,
     data:{url:data.url||'./'}
