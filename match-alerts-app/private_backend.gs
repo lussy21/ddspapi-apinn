@@ -73,6 +73,7 @@ function doPost(e) {
     else if (action === "adminUsers") payload = adminUsers_(p);
     else if (action === "adminPlayedHistory") payload = adminPlayedHistory_(p);
     else if (action === "adminSignals") payload = adminSignals_(p);
+    else if (action === "adminAlertLevels") payload = adminAlertLevels_(p);
     else if (action === "adminSignalPublish") payload = adminSignalPublish_(p);
     else if (action === "adminSignalWithdraw") payload = adminSignalWithdraw_(p);
     else if (action === "adminSignalEdit") payload = adminSignalEdit_(p);
@@ -412,14 +413,31 @@ function publicLevelCatalog_(ss) {
   try {
     const sheet = ss.getSheetByName(ALERT_LEVELS_SHEET_NAME);
     if (sheet && sheet.getLastRow() >= 2) {
-      const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getDisplayValues();
+      const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 18).getDisplayValues();
       values.forEach(function(row) {
         const key = canonicalAlertKey_(row[0]);
         if (!key) return;
         const level = Number(String(row[2] || "").replace(",", ".")) || 0;
         const symbol = String(row[3] || "").trim();
         const status = String(row[4] || "").trim().toUpperCase() || "UNKNOWN";
-        catalog[key] = {level:level,symbol:symbol,status:status};
+        catalog[key] = {
+          alert:String(row[0] || "").trim(),
+          family:String(row[1] || "").trim().toUpperCase(),
+          level:level,
+          symbol:symbol,
+          status:status,
+          score:Number(String(row[5] || "").replace(",", ".")) || 0,
+          wins:Number(row[6] || 0) || 0,
+          total:Number(row[7] || 0) || 0,
+          hit:Number(String(row[8] || "").replace(",", ".")) || 0,
+          avgOdds:Number(String(row[9] || "").replace(",", ".")) || 0,
+          roi:Number(String(row[10] || "").replace(",", ".")) || 0,
+          lastReview:String(row[11] || "").trim(),
+          nextReview:String(row[12] || "").trim(),
+          suggestedLevel:Number(row[15] || 0) || 0,
+          suggestedSymbol:String(row[16] || "").trim(),
+          reviewState:String(row[17] || "").trim()
+        };
       });
     }
   } catch (_) {}
@@ -462,7 +480,16 @@ function highestPublicAlert_(alerts, visibleAlert, catalog) {
     const candidate = {
       alert:normalizeAlertName_(alert),
       level:Number(info.level || 0),
-      symbol:String(info.symbol || "")
+      symbol:String(info.symbol || ""),
+      score:Number(info.score || 0),
+      wins:Number(info.wins || 0),
+      total:Number(info.total || 0),
+      hit:Number(info.hit || 0),
+      roi:Number(info.roi || 0),
+      nextReview:String(info.nextReview || ""),
+      suggestedLevel:Number(info.suggestedLevel || 0),
+      suggestedSymbol:String(info.suggestedSymbol || ""),
+      reviewState:String(info.reviewState || "")
     };
     if (!best || candidate.level > best.level) {
       best = candidate;
@@ -1444,6 +1471,38 @@ function adminSettings_(p) {
   };
 }
 
+function adminAlertLevels_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const catalog = publicLevelCatalog_(ss);
+  const levels = Object.keys(catalog).map(function(key) {
+    const x = catalog[key];
+    return {
+      alert:x.alert || key,
+      family:x.family || "",
+      level:Number(x.level || 0),
+      symbol:String(x.symbol || ""),
+      status:String(x.status || ""),
+      score:Number(x.score || 0),
+      wins:Number(x.wins || 0),
+      total:Number(x.total || 0),
+      hit:Number(x.hit || 0),
+      avgOdds:Number(x.avgOdds || 0),
+      roi:Number(x.roi || 0),
+      lastReview:String(x.lastReview || ""),
+      nextReview:String(x.nextReview || ""),
+      suggestedLevel:Number(x.suggestedLevel || 0),
+      suggestedSymbol:String(x.suggestedSymbol || ""),
+      reviewState:String(x.reviewState || "")
+    };
+  });
+  levels.sort(function(a,b){
+    if (a.family !== b.family) return a.family.localeCompare(b.family);
+    return b.level - a.level || a.alert.localeCompare(b.alert);
+  });
+  return {ok:true,levels:levels,updatedAt:new Date().toISOString()};
+}
+
 function adminSignals_(p) {
   if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
 
@@ -1501,6 +1560,15 @@ function adminSignals_(p) {
       publicAlert:selectedPublic ? selectedPublic.alert : "",
       publicSymbol:selectedPublic ? selectedPublic.symbol : "",
       publicLevel:selectedPublic ? selectedPublic.level : 0,
+      levelScore:selectedPublic ? selectedPublic.score : 0,
+      levelWins:selectedPublic ? selectedPublic.wins : 0,
+      levelTotal:selectedPublic ? selectedPublic.total : 0,
+      levelHit:selectedPublic ? selectedPublic.hit : 0,
+      levelRoi:selectedPublic ? selectedPublic.roi : 0,
+      levelNextReview:selectedPublic ? selectedPublic.nextReview : "",
+      suggestedLevel:selectedPublic ? selectedPublic.suggestedLevel : 0,
+      suggestedSymbol:selectedPublic ? selectedPublic.suggestedSymbol : "",
+      reviewState:selectedPublic ? selectedPublic.reviewState : "",
       rawAlert:rawAlert,
       rating:alertRating_(rawAlert),
       leagueRecord:records.leagueRecord,
