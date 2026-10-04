@@ -14,6 +14,7 @@ const SPREADSHEET_ID = "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM";
 const SHEET_NAME = "PINNACLE";
 const ALERT_LEVELS_SHEET_NAME = "ALERT LEVELS";
 const ALERT_LIST_COLUMN = 74; // BV: full active internal alert list
+const DISABLED_ALERT_LEAGUES_KEY = "CONFIG::DISABLED_ALERT_LEAGUES";
 const APP_ORIGIN = "https://match-alerts-private.onrender.com";
 const VERIFY_SITE_URL = "https://dreamteamtips-site.onrender.com/";
 
@@ -70,6 +71,8 @@ function doPost(e) {
     else if (action === "adminSupport") payload = adminSupport_(p);
     else if (action === "adminSupportClose") payload = adminSupportClose_(p);
     else if (action === "adminSettings") payload = adminSettings_(p);
+    else if (action === "adminLeagueSettings") payload = adminLeagueSettings_(p);
+    else if (action === "adminSetLeagueEnabled") payload = adminSetLeagueEnabled_(p);
     else if (action === "adminUsers") payload = adminUsers_(p);
     else if (action === "adminPlayedHistory") payload = adminPlayedHistory_(p);
     else if (action === "adminSignals") payload = adminSignals_(p);
@@ -658,6 +661,7 @@ function signalActionGuard_(p) {
 function adminSignalPublish_(p) {
   const guard = signalActionGuard_(p);
   if (!guard.ok) return guard;
+  if (!leagueAlertsEnabled_(guard.signal.league)) return {ok:false,error:"LEAGUE_ALERTS_DISABLED"};
   const control = writeSignalControl_(guard.signal.controlId, {status:"published"}, "publish");
   return {ok:true,controlId:guard.signal.controlId,status:"published",pick:String(control.pick || "")};
 }
@@ -1246,7 +1250,7 @@ function automationOwnerPushTargets_(p) {
     } catch (_) {}
   });
 
-  return {ok:true,count:targets.length,targets:targets};
+  return {ok:true,count:targets.length,targets:targets,disabledLeagues:Object.keys(disabledAlertLeagues_())};
 }
 
 function automationOwnerPushDelete_(p) {
@@ -1310,7 +1314,7 @@ function automationPushTargets_(p) {
     } catch (_) {}
   });
 
-  return {ok:true,count:targets.length,targets:targets};
+  return {ok:true,count:targets.length,targets:targets,disabledLeagues:Object.keys(disabledAlertLeagues_())};
 }
 
 function automationPushDelete_(p) {
@@ -1455,6 +1459,89 @@ function cleanupSupport_() {
   }
 }
 
+function normalizedLeagueName_(value) {
+  return String(value || "").trim();
+}
+
+function disabledAlertLeagues_() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty(DISABLED_ALERT_LEAGUES_KEY);
+  const map = {};
+  if (!raw) return map;
+  try {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) {
+      arr.forEach(function(value) {
+        const league = normalizedLeagueName_(value);
+        if (league) map[league] = true;
+      });
+    }
+  } catch (_) {}
+  return map;
+}
+
+function saveDisabledAlertLeagues_(map) {
+  const props = PropertiesService.getScriptProperties();
+  const list = Object.keys(map || {}).filter(function(x){return !!normalizedLeagueName_(x);}).sort();
+  if (!list.length) {
+    props.deleteProperty(DISABLED_ALERT_LEAGUES_KEY);
+    return [];
+  }
+  props.setProperty(DISABLED_ALERT_LEAGUES_KEY, JSON.stringify(list));
+  return list;
+}
+
+function leagueAlertsEnabled_(league, disabledMap) {
+  const name = normalizedLeagueName_(league);
+  if (!name) return false;
+  const map = disabledMap || disabledAlertLeagues_();
+  return map[name] !== true;
+}
+
+function adminLeagueSettings_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+  const disabled = disabledAlertLeagues_();
+  const unique = {};
+  const last = pin.getLastRow();
+  if (last >= 3) {
+    pin.getRange(3, 1, last - 2, 1).getDisplayValues().forEach(function(row) {
+      const league = normalizedLeagueName_(row && row[0]);
+      if (league) unique[league] = true;
+    });
+  }
+  Object.keys(disabled).forEach(function(league){unique[league]=true;});
+  const leagues = Object.keys(unique).sort(function(a,b){return a.localeCompare(b);}).map(function(league){
+    return {league:league,enabled:disabled[league] !== true};
+  });
+  return {
+    ok:true,
+    leagues:leagues,
+    total:leagues.length,
+    enabledCount:leagues.filter(function(x){return x.enabled;}).length,
+    disabledCount:leagues.filter(function(x){return !x.enabled;}).length,
+    updatedAt:new Date().toISOString()
+  };
+}
+
+function adminSetLeagueEnabled_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+  const league = normalizedLeagueName_(p.league);
+  if (!league || league.length > 160) return {ok:false,error:"BAD_LEAGUE"};
+  const t = String(p.enabled || "").trim().toLowerCase();
+  const yes = ["1","true","yes","on"];
+  const no = ["0","false","no","off"];
+  if (yes.indexOf(t) < 0 && no.indexOf(t) < 0) return {ok:false,error:"BAD_LEAGUE_STATE"};
+  const enabled = yes.indexOf(t) >= 0;
+  const disabled = disabledAlertLeagues_();
+  if (enabled) delete disabled[league];
+  else disabled[league] = true;
+  const disabledList = saveDisabledAlertLeagues_(disabled);
+  return {ok:true,league:league,enabled:enabled,disabledCount:disabledList.length,updatedAt:new Date().toISOString()};
+}
+
 function adminSettings_(p) {
   if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
 
@@ -1472,7 +1559,8 @@ function adminSettings_(p) {
     autoPushConfigured:!!PropertiesService.getScriptProperties().getProperty("CONFIG::AUTO_PUSH_SECRET"),
     internalSignals:true,
     memberHistory:true,
-    publicationControls:true
+    publicationControls:true,
+    leagueControls:true
   };
 }
 
@@ -1524,6 +1612,7 @@ function adminSignals_(p) {
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
   const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
   const levelCatalog = publicLevelCatalog_(ss);
+  const disabledLeagues = disabledAlertLeagues_();
   const signals = [];
 
   rows.forEach(function(row, idx) {
@@ -1536,6 +1625,7 @@ function adminSignals_(p) {
     const result = String(row[15] || "").trim();
 
     if (!league || !home || !away || !alert || result) return;
+    if (!leagueAlertsEnabled_(league, disabledLeagues)) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
     const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
