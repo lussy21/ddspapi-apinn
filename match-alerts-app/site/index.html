@@ -3,387 +3,784 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#000000">
-<meta name="description" content="DreamTeamTips · Private Members Club">
-<title>DreamTeamTips · Private Members Club</title>
+<meta name="theme-color" content="#070708">
+<meta name="description" content="DreamTeamTips — Football Data & Smart Picks">
+<title>DreamTeamTips</title>
 <link rel="icon" href="dreamteamtips-icon.svg" type="image/svg+xml">
 <style>
+:root{
+  --bg:#070708;
+  --bg2:#0a0a0c;
+  --panel:#101013;
+  --text:#f7f6f1;
+  --muted:#9c99a1;
+  --muted2:#77737c;
+  --gold:#d9b157;
+  --gold2:#f1d78e;
+  --line:rgba(255,255,255,.075);
+  --goldline:rgba(217,177,87,.22);
+  --danger:#ff8d98;
+}
 *{box-sizing:border-box}
-html.modal-open,body.modal-open{overflow:hidden;height:100dvh;overscroll-behavior:none;touch-action:none}
-html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-body{display:flex;justify-content:center;overflow-x:hidden}
-.hero{position:relative;width:min(100vw,520px);background:#000}
-.hero-art{position:relative;width:100%}
-.hero img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
-.desktop-intro{display:none}.hero-club-label{position:absolute;left:13%;right:13%;top:32.15%;height:3.65%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(2,3,4,.98) 0%,rgba(2,3,4,.96) 56%,rgba(2,3,4,.72) 76%,rgba(2,3,4,0) 100%);color:#e9d9b9;font-size:clamp(8px,2.45vw,13px);font-weight:500;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;text-shadow:0 0 12px rgba(222,176,73,.24);pointer-events:none}.hero-club-label:before,.hero-club-label:after{content:"";height:1px;flex:1;max-width:58px;background:linear-gradient(90deg,transparent,#c28d2e)}.hero-club-label:after{background:linear-gradient(90deg,#c28d2e,transparent)}.hero-club-label span{padding:0 10px;white-space:nowrap}
-.login-hotspot{position:absolute;left:18.2%;top:40.55%;width:62.1%;height:6.05%;border:0;background:transparent;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}.menu-hotspot{position:absolute;right:4.2%;top:2.2%;width:12%;height:5.7%;border:0;background:transparent;cursor:pointer;border-radius:12px;-webkit-tap-highlight-color:transparent}.menu-hotspot:active{background:rgba(255,255,255,.05)}
-.login-hotspot:active{background:rgba(255,255,255,.06)}
-.login-layer{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:0 18px 24px;background:rgba(0,0,0,.12)}
-.login-layer.open{display:flex}
-.login-card{position:relative;width:min(420px,88vw);margin-top:46vh;padding:18px 20px 19px;border:1px solid rgba(224,176,69,.46);border-radius:22px;background:linear-gradient(180deg,rgba(7,7,8,.90),rgba(4,4,5,.94));box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 28px rgba(217,169,64,.06);backdrop-filter:blur(6px);max-height:61vh;overflow-y:auto;scrollbar-width:none}.login-card::-webkit-scrollbar{display:none}.login-card.register-mode{margin-top:31vh}.login-card.verify-mode{margin-top:39vh}
-.close{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#b8b0a4;font-size:18px}
-.login-brand{display:none}.login-title{text-align:center;margin:3px 0 14px;font:500 22px Georgia,serif;color:#f1eadb}
-.field{margin-top:10px}.field label{display:block;margin:0 0 6px 2px;color:#c6beb3;font-size:9px;font-weight:900}
-.field input{width:100%;height:46px;border:1px solid rgba(225,180,73,.27);border-radius:13px;background:rgba(5,5,6,.82);color:#fff;padding:0 13px;font:inherit;outline:none}
-.field input:focus{border-color:rgba(217,169,64,.52)}
-.submit{width:100%;height:48px;margin-top:14px;border:1px solid #edbd52;border-radius:13px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#080808;font-weight:1000;letter-spacing:.5px}
-.submit:disabled{opacity:.62}.msg{min-height:18px;margin-top:10px;text-align:center;color:#ffb3bc;font-size:10px;line-height:1.4}
-.signup-line{text-align:center;margin-top:11px;color:#aaa39b;font-size:10px}.signup-line button,.text-link{border:0;background:transparent;color:#e7bd5b;font:inherit;font-weight:800;padding:0 0 0 4px;cursor:pointer}.private-note{text-align:center;margin-top:8px;color:#6f696d;font-size:8px;letter-spacing:.4px}.view-hidden{display:none!important}.verify-code{letter-spacing:.38em;text-align:center;font-weight:900;font-size:20px}.form-note{text-align:center;margin:0 12px 12px;color:#9d968c;font-size:10px;line-height:1.45}.success-box{text-align:center;padding:5px 2px}.success-box h3{margin:0 0 8px;font:500 22px Georgia,serif;color:#f1d281}.success-box p{margin:0 5px 14px;color:#aaa39b;font-size:11px;line-height:1.5}.secondary{width:100%;height:43px;margin-top:9px;border:1px solid rgba(230,187,87,.34);border-radius:12px;background:rgba(255,255,255,.025);color:#e3c573;font-weight:800}.menu-layer{position:fixed;inset:0;z-index:60;display:none;background:rgba(0,0,0,.42);backdrop-filter:blur(3px)}.menu-layer.open{display:block}.menu-panel{position:absolute;top:0;right:0;width:min(86vw,380px);height:100%;padding:26px 22px 24px;background:linear-gradient(180deg,rgba(11,11,12,.98),rgba(3,3,4,.99));border-left:1px solid rgba(221,174,63,.32);box-shadow:-24px 0 70px rgba(0,0,0,.62)}.menu-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid rgba(221,174,63,.16)}.menu-brand{font:600 23px Georgia,serif;color:#e8bb55}.menu-brand span{color:#f4f0e8}.menu-close{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025);color:#bbb2a4;font-size:20px}.menu-kicker{margin:18px 0 14px;color:#8f816b;font-size:9px;letter-spacing:2px;text-transform:uppercase}.menu-list{display:grid;gap:8px}.menu-item{width:100%;height:52px;padding:0 14px;border:1px solid rgba(255,255,255,.06);border-radius:13px;background:rgba(255,255,255,.018);color:#e8e2d9;text-align:left;font:600 14px Inter,system-ui,sans-serif}.menu-item:active{border-color:rgba(230,185,79,.36);background:rgba(230,185,79,.05)}.menu-login{margin-top:18px}.menu-note{margin-top:16px;text-align:center;color:#625d56;font-size:9px;line-height:1.5}
-.public-page{position:fixed;inset:0;z-index:70;display:none;overflow-y:auto;background:
-radial-gradient(620px 300px at 50% -70px,rgba(217,177,87,.16),transparent 65%),
-linear-gradient(180deg,#080809 0%,#020203 100%);color:#fff}
-.public-page.open{display:block}
-.public-shell{width:min(100%,520px);min-height:100%;margin:0 auto;padding:22px 18px 42px}
-.public-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:17px;border-bottom:1px solid rgba(224,176,69,.18)}
-.public-brand{font:600 22px Georgia,serif;color:#e8bb55}.public-brand span{color:#f4f0e8}
-.public-close{width:36px;height:36px;border:1px solid rgba(255,255,255,.10);border-radius:11px;background:rgba(255,255,255,.025);color:#c5bcad;font-size:20px}
-.public-kicker{text-align:center;margin-top:28px;color:#9e8a67;font-size:9px;letter-spacing:2.4px;text-transform:uppercase}
-.public-title{text-align:center;margin:8px 0 8px;font:600 31px Georgia,serif;color:#f3eadc}
-.public-copy{max-width:390px;margin:0 auto 22px;text-align:center;color:#a7a097;font-size:12px;line-height:1.65}
-.plan-grid{display:grid;gap:13px}
-.plan-card{position:relative;padding:20px 18px;border:1px solid rgba(224,176,69,.24);border-radius:20px;background:
-radial-gradient(260px 120px at 50% 0,rgba(215,164,57,.08),transparent 72%),
-rgba(255,255,255,.018);box-shadow:0 14px 38px rgba(0,0,0,.28)}
-.plan-card.featured{border-color:rgba(237,190,84,.56);box-shadow:0 18px 48px rgba(0,0,0,.34),0 0 32px rgba(213,165,61,.06)}
-.plan-badge{position:absolute;right:14px;top:13px;padding:5px 8px;border-radius:999px;background:rgba(217,177,87,.12);border:1px solid rgba(217,177,87,.25);color:#e6c875;font-size:8px;font-weight:800;letter-spacing:.8px}
-.plan-name{font:600 22px Georgia,serif;color:#f2eadf}
-.plan-duration{margin-top:3px;color:#9a9289;font-size:11px}
-.plan-price{margin:16px 0 13px;font:600 27px Georgia,serif;color:#e7bd5b}
-.plan-price small{display:block;margin-top:4px;font:500 9px Inter,system-ui,sans-serif;color:#766f67;letter-spacing:.3px}
-.plan-features{display:grid;gap:8px;margin:0 0 16px;padding:0;list-style:none}
-.plan-features li{position:relative;padding-left:18px;color:#bdb5aa;font-size:11px;line-height:1.45}
-.plan-features li:before{content:"◆";position:absolute;left:0;top:0;color:#cfa544;font-size:8px}
-.plan-select{width:100%;height:45px;border:1px solid rgba(237,189,79,.66);border-radius:12px;background:linear-gradient(135deg,#8f5d12,#dba53b,#f3d47c);color:#090909;font-weight:900;letter-spacing:.35px}
-.plan-footnote{text-align:center;margin-top:17px;color:#706961;font-size:9px;line-height:1.55}
-@media(min-width:700px) and (max-width:999px){
-  body{position:relative;min-height:100vh;align-items:flex-start;background:#050505}
-  body:before{content:"";position:fixed;inset:-45px;z-index:0;background:
-    linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.34),rgba(0,0,0,.78)),
-    url("approved-hero.webp") center 24%/cover no-repeat;filter:blur(24px);transform:scale(1.06);opacity:.38;pointer-events:none}
-  .hero{z-index:1;width:min(72vw,620px);box-shadow:0 0 95px rgba(0,0,0,.95)}
-  .login-layer,.menu-layer,.public-page{z-index:70}
-  .public-shell{width:min(900px,calc(100% - 48px))}
-  .plan-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+html{scroll-behavior:smooth}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(900px 480px at 50% -170px,rgba(217,177,87,.13),transparent 62%),
+    linear-gradient(180deg,#0a0a0c 0%,#050506 100%);
+  overflow-x:hidden;
 }
-@media(min-width:1000px){
-  html,body{width:100%;min-height:100%;background:#030303}
-  body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidden}
-  body:before{content:"";position:fixed;inset:-55px;z-index:0;background:
-    linear-gradient(90deg,rgba(0,0,0,.82),rgba(0,0,0,.48) 26%,rgba(0,0,0,.22) 50%,rgba(0,0,0,.48) 74%,rgba(0,0,0,.82)),
-    url("approved-hero.webp") center 24%/cover no-repeat;
-    filter:blur(28px);transform:scale(1.08);opacity:.45;pointer-events:none}
-  body:after{content:"";position:fixed;inset:0;z-index:0;background:
-    radial-gradient(circle at 50% 34%,rgba(200,143,40,.10),transparent 36%),
-    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.50));pointer-events:none}
-  .hero{position:relative;z-index:1;display:block;width:min(100vw,680px);max-width:680px;height:auto;background:#000;box-shadow:0 0 110px rgba(0,0,0,.96),0 0 34px rgba(211,156,49,.08)}
-  .hero-art{position:relative;width:100%}
-  .hero-art img{display:block;width:100%;height:auto;max-height:none;object-fit:initial}
-  .desktop-intro{display:none!important}
-  .hero-club-label{font-size:clamp(10px,.82vw,13px)}
-  .login-layer,.menu-layer,.public-page{z-index:80}
-  .login-card{width:min(460px,90vw);margin-top:27vh}
-  .login-card.register-mode{margin-top:16vh}
-  .login-card.verify-mode{margin-top:23vh}
-  .menu-panel{width:min(420px,34vw);padding:32px 26px 28px}
-  .public-shell{width:min(1180px,calc(100% - 72px));padding:30px 28px 58px}
-  .public-title{font-size:40px;margin-top:12px}
-  .public-copy{max-width:680px;font-size:13px;margin-bottom:30px}
-  .plan-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
-  .plan-card{display:flex;flex-direction:column;min-height:330px;padding:26px 22px}
-  .plan-price{font-size:31px}
-  .plan-features{margin-bottom:22px}
-  .plan-select{margin-top:auto}
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.12;
+  background-image:
+    linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);
+  background-size:28px 28px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 90%);
 }
-@media(min-width:1000px) and (max-height:760px){
-  .hero{width:min(100vw,560px);max-width:560px}
-  .login-card{margin-top:15vh}
-  .login-card.register-mode{margin-top:7vh}
-  .login-card.verify-mode{margin-top:12vh}
+button,input{font:inherit}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+.hidden{display:none!important}
+.site{position:relative;z-index:1}
+.shell{width:min(1160px,calc(100% - 36px));margin:0 auto}
+
+.site-top{
+  position:sticky;
+  top:0;
+  z-index:40;
+  background:rgba(7,7,8,.83);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(217,177,87,.10);
+}
+.top-inner{
+  min-height:82px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-logo{
+  width:54px;height:54px;border-radius:17px;display:block;
+  border:1px solid rgba(217,177,87,.46);
+  background:#0a0907;
+  box-shadow:0 0 0 1px rgba(255,227,147,.08),0 12px 32px rgba(0,0,0,.34),0 0 18px rgba(217,177,87,.08)
+}
+.brand-name{font:600 27px/.98 Georgia,serif;white-space:nowrap}
+.brand-name span{color:var(--gold2)}
+.brand-sub{margin-top:6px;color:#9f9ca4;font-size:8px;letter-spacing:1.9px;text-transform:uppercase;white-space:nowrap}
+.nav{display:flex;align-items:center;gap:6px}
+.nav a,.nav button{
+  border:0;background:transparent;color:#aaa6ae;
+  padding:10px 11px;border-radius:12px;font-size:11px;font-weight:800
+}
+.nav a:hover,.nav button:hover{color:#fff1c7;background:rgba(217,177,87,.055)}
+.member-btn{
+  border:1px solid rgba(217,177,87,.28)!important;
+  background:linear-gradient(145deg,rgba(217,177,87,.16),rgba(217,177,87,.065))!important;
+  color:#fff1c7!important;
+  padding:10px 14px!important
+}
+.menu-btn{display:none;width:42px;height:42px;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.045);color:#e8d49a;border-radius:13px;font-size:20px}
+.mobile-menu{
+  position:fixed;inset:0;z-index:70;display:none;
+  background:rgba(0,0,0,.68);backdrop-filter:blur(8px)
+}
+.mobile-menu.open{display:block}
+.mobile-panel{
+  position:absolute;right:0;top:0;width:min(88vw,390px);height:100%;
+  padding:24px 20px;background:linear-gradient(180deg,#111114,#060607);
+  border-left:1px solid rgba(217,177,87,.24)
+}
+.mobile-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.mobile-title{font:600 23px Georgia,serif;color:#f3e9d4}
+.mobile-close{width:38px;height:38px;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#ccc;border-radius:12px;font-size:20px}
+.mobile-links{display:grid;gap:8px;margin-top:18px}
+.mobile-links a,.mobile-links button{
+  width:100%;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.018);
+  color:#e8e2d9;border-radius:14px;padding:14px;text-align:left;font-weight:800
+}
+.mobile-links .member-btn{margin-top:7px;text-align:center}
+
+.hero{padding:76px 0 58px}
+.hero-grid{display:grid;grid-template-columns:1.03fr .97fr;gap:54px;align-items:center}
+.kicker{color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:2px;text-transform:uppercase}
+.hero h1{
+  margin:11px 0 14px;
+  font:600 clamp(42px,6vw,72px)/.98 Georgia,serif;
+  letter-spacing:-1.8px;
+  color:#f6f0df
+}
+.hero h1 span{color:var(--gold2)}
+.hero-copy{
+  max-width:650px;margin:0;color:#aaa6ae;
+  font-size:15px;line-height:1.7
+}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:25px}
+.primary,.secondary{
+  min-height:48px;border-radius:14px;padding:0 18px;font-weight:900;font-size:12px;letter-spacing:.35px
+}
+.primary{border:1px solid rgba(217,177,87,.34);background:linear-gradient(145deg,rgba(217,177,87,.22),rgba(217,177,87,.08));color:#fff3d0}
+.secondary{border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.028);color:#ddd8ce}
+.hero-note{margin-top:15px;color:#716d75;font-size:10px;line-height:1.5}
+
+.app-preview{
+  position:relative;border:1px solid rgba(217,177,87,.28);border-radius:31px;padding:19px;
+  background:
+    radial-gradient(300px 190px at 100% 0,rgba(217,177,87,.11),transparent 72%),
+    linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 28px 80px rgba(0,0,0,.44)
+}
+.app-preview:after{
+  content:"";position:absolute;inset:auto 8% -22px 8%;height:34px;border-radius:50%;
+  background:rgba(217,177,87,.08);filter:blur(24px);z-index:-1
+}
+.preview-top{display:flex;align-items:center;gap:11px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.05)}
+.preview-logo{width:48px;height:48px;border-radius:15px;border:1px solid rgba(217,177,87,.38)}
+.preview-brand{font:600 20px/1 Georgia,serif}.preview-brand span{color:var(--gold2)}
+.preview-sub{margin-top:5px;color:#88848c;font-size:8px;letter-spacing:1.4px;text-transform:uppercase}
+.preview-card{
+  margin-top:12px;padding:15px;border:1px solid rgba(217,177,87,.15);border-radius:17px;
+  background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.012))
+}
+.preview-kicker{color:#cdbd89;font-size:8px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase}
+.preview-title{margin-top:5px;font:500 20px/1.08 Georgia,serif;color:#f5ecd9}
+.preview-copy{margin-top:7px;color:#817d85;font-size:9px;line-height:1.45}
+.preview-row{
+  margin-top:8px;display:flex;align-items:center;gap:11px;padding:11px 12px;
+  border:1px solid rgba(255,255,255,.055);border-radius:14px;background:rgba(255,255,255,.016)
+}
+.preview-icon{
+  width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:0 0 32px;
+  border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.05);color:#f1d78e
+}
+.preview-row b{display:block;font-size:11px;color:#ece8df}
+.preview-row small{display:block;margin-top:3px;color:#77737b;font-size:8px}
+
+.section{padding:58px 0}
+.section-head{max-width:720px;margin-bottom:24px}
+.section-kicker{color:var(--gold2);font-size:9px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase}
+.section-title{margin:7px 0 8px;font:500 clamp(29px,4vw,44px)/1.04 Georgia,serif;color:#f4eddd}
+.section-copy{margin:0;color:#98949d;font-size:13px;line-height:1.7}
+
+.card{
+  border:1px solid rgba(217,177,87,.20);border-radius:24px;
+  background:linear-gradient(145deg,rgba(255,255,255,.043),rgba(255,255,255,.012));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.022),0 18px 44px rgba(0,0,0,.24)
+}
+.about-card{
+  padding:26px;
+  background:
+    radial-gradient(340px 180px at 100% 0,rgba(217,177,87,.10),transparent 70%),
+    linear-gradient(145deg,rgba(255,255,255,.043),rgba(255,255,255,.012))
+}
+.about-card p{margin:0;color:#aaa5ad;font-size:14px;line-height:1.75}
+.about-card p+p{margin-top:14px}
+.about-highlight{color:#ead59a!important;font-weight:800}
+
+.work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.work-card{padding:20px}
+.work-num{font:600 22px Georgia,serif;color:var(--gold2)}
+.work-card h3{margin:10px 0 7px;font:500 20px/1.08 Georgia,serif;color:#f0e8d8}
+.work-card p{margin:0;color:#89858d;font-size:11px;line-height:1.6}
+.work-quote{
+  margin-top:14px;padding:18px 20px;border:1px solid rgba(217,177,87,.18);border-radius:18px;
+  background:rgba(217,177,87,.035);color:#d9c68e;text-align:center;
+  font:500 20px/1.35 Georgia,serif
+}
+
+.symbol-shell{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.symbol-group{padding:19px}
+.symbol-title{font:500 20px Georgia,serif;color:#f2ead8;margin-bottom:11px}
+.symbol-list{display:grid;gap:8px}
+.symbol-row{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid rgba(255,255,255,.055);
+  border-radius:14px;background:rgba(255,255,255,.016)
+}
+.symbol-icon{width:32px;text-align:center;font-size:19px}
+.symbol-row b{font-size:11px;color:#eee8da}
+.symbol-note{margin-top:14px;color:#77727d;font-size:9px;line-height:1.55}
+
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.plan-card{padding:22px;position:relative}
+.plan-card.featured{border-color:rgba(217,177,87,.42);background:radial-gradient(240px 130px at 100% 0,rgba(217,177,87,.12),transparent 72%),linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.012))}
+.plan-badge{position:absolute;right:14px;top:14px;padding:5px 8px;border-radius:999px;border:1px solid rgba(217,177,87,.25);background:rgba(217,177,87,.08);color:#e8cd7d;font-size:8px;font-weight:900}
+.plan-name{font:500 23px Georgia,serif;color:#f3ead9}
+.plan-duration{margin-top:4px;color:#827e86;font-size:10px}
+.plan-price{margin:17px 0 13px;font:600 29px Georgia,serif;color:#f1d78e}
+.plan-price small{display:block;margin-top:4px;color:#69656d;font:700 8px Inter,system-ui,sans-serif}
+.plan-features{display:grid;gap:8px;padding:0;margin:0 0 18px;list-style:none}
+.plan-features li{position:relative;padding-left:18px;color:#a8a3ab;font-size:10px;line-height:1.5}
+.plan-features li:before{content:"◆";position:absolute;left:0;color:#cfa544;font-size:8px}
+.plan-select{width:100%;min-height:44px;border:1px solid rgba(217,177,87,.30);border-radius:13px;background:rgba(217,177,87,.08);color:#ffe8aa;font-weight:900}
+.plan-footnote{margin-top:14px;color:#6f6b73;font-size:9px;line-height:1.55;text-align:center}
+
+.faq-grid{display:grid;gap:9px}
+details{
+  border:1px solid rgba(255,255,255,.065);border-radius:16px;background:rgba(255,255,255,.017);padding:0 15px
+}
+summary{list-style:none;padding:15px 28px 15px 0;cursor:pointer;font-size:12px;font-weight:900;color:#e9e4d9;position:relative}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";position:absolute;right:0;top:11px;font-size:22px;color:#b9a76e}
+details[open] summary:after{content:"–"}
+details p{margin:0 0 15px;color:#89858d;font-size:11px;line-height:1.6}
+
+.contact-card{padding:25px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.contact-card h3{margin:0;font:500 25px Georgia,serif;color:#f3ebdc}
+.contact-card p{margin:7px 0 0;color:#88848c;font-size:11px;line-height:1.55;max-width:650px}
+
+footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:20px}
+.footer-inner{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.footer-brand{font:600 19px Georgia,serif;color:#e7d6a2}.footer-brand span{color:#fff}
+.footer-copy{max-width:720px;color:#68656d;font-size:9px;line-height:1.6;text-align:right}
+
+.modal{
+  position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(9px)
+}
+.modal.open{display:flex}
+.modal-card{
+  width:min(100%,470px);max-height:88vh;overflow:auto;padding:22px;border:1px solid rgba(217,177,87,.28);
+  border-radius:26px;background:linear-gradient(180deg,#121113,#080809);box-shadow:0 30px 90px rgba(0,0,0,.58)
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modal-head h3{margin:0;font:500 25px Georgia,serif;color:#f3ead8}
+.modal-close{width:36px;height:36px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#ccc;border-radius:12px;font-size:20px}
+.form-note{margin:8px 0 14px;color:#8f8a93;font-size:10px;line-height:1.5}
+.field{margin-top:10px}
+.field label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:10px;font-weight:900}
+.field input{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:13px 14px;outline:none}
+.field input:focus{border-color:rgba(217,177,87,.55)}
+.form-btn{width:100%;margin-top:14px;min-height:46px;border:1px solid rgba(217,177,87,.30);border-radius:14px;background:linear-gradient(145deg,rgba(217,177,87,.20),rgba(217,177,87,.08));color:#fff4d2;font-weight:900}
+.form-btn:disabled{opacity:.6}
+.form-secondary{width:100%;margin-top:9px;min-height:43px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025);color:#ddd;font-weight:800}
+.msg{min-height:18px;margin-top:10px;color:#ffb0b9;font-size:10px;line-height:1.4;text-align:center}
+.verify-code{letter-spacing:.32em;text-align:center;font-size:20px;font-weight:900}
+.modal-link{text-align:center;margin-top:12px;color:#8d8991;font-size:10px}
+.modal-link a,.modal-link button{border:0;background:transparent;color:#e3c573;padding:0;font:inherit;font-weight:900}
+.ready{text-align:center;padding:8px 2px}
+.ready .ready-icon{font-size:32px}
+.ready h4{margin:8px 0 7px;font:500 24px Georgia,serif;color:#f0dc9d}
+.ready p{margin:0;color:#99949d;font-size:11px;line-height:1.55}
+
+@media(max-width:900px){
+  .nav{display:none}.menu-btn{display:block}
+  .hero{padding-top:48px}
+  .hero-grid{grid-template-columns:1fr;gap:28px}
+  .hero h1{max-width:700px}
+  .app-preview{max-width:620px}
+  .work-grid,.plan-grid{grid-template-columns:1fr}
+  .symbol-shell{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .shell{width:min(100% - 28px,1160px)}
+  .top-inner{min-height:74px}
+  .brand-logo{width:48px;height:48px;border-radius:15px}
+  .brand-name{font-size:22px}
+  .brand-sub{font-size:7px;letter-spacing:1.35px}
+  .hero{padding:38px 0 44px}
+  .hero h1{font-size:43px;letter-spacing:-1px}
+  .hero-copy{font-size:13px}
+  .hero-actions{display:grid}
+  .hero-actions .primary,.hero-actions .secondary{width:100%}
+  .section{padding:44px 0}
+  .section-title{font-size:31px}
+  .about-card{padding:20px}
+  .contact-card{align-items:flex-start;flex-direction:column}
+  .contact-card .primary{width:100%}
+  .footer-inner{display:grid}
+  .footer-copy{text-align:left}
 }
 </style>
 </head>
 <body>
-<main class="hero">
-  <div class="hero-art">
-    <img src="approved-hero.webp" alt="DreamTeamTips Private Members Club"><div class="hero-club-label"><span>PRIVATE MEMBERS CLUB</span></div>
-    <button id="openMenu" class="menu-hotspot" aria-label="Μενού"></button>
-    <button id="openLogin" class="login-hotspot" aria-label="Είσοδος Μελών"></button>
-  </div>
-  <section class="desktop-intro" aria-label="DreamTeamTips">
-    <div class="desktop-kicker">PRIVATE MEMBERS CLUB</div>
-    <div class="desktop-brand">DreamTeam<span>Tips</span></div>
-    <div class="desktop-line"></div>
-    <p>Ιδιωτική πρόσβαση σε επιλεγμένες ποδοσφαιρικές επιλογές και ενημερώσεις την κατάλληλη στιγμή.</p>
-    <button id="desktopLogin" class="desktop-primary">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
-    <button id="desktopPlans" class="desktop-secondary">ΠΑΚΕΤΑ / ΣΥΝΔΡΟΜΕΣ</button>
-    <div class="desktop-note">Πρόσβαση αποκλειστικά για μέλη DreamTeamTips</div>
-  </section>
-</main>
+<div class="site">
+  <header class="site-top">
+    <div class="shell top-inner">
+      <a class="brand" href="#top" aria-label="DreamTeamTips">
+        <img class="brand-logo" src="dreamteamtips-icon.svg" alt="DreamTeamTips">
+        <div>
+          <div class="brand-name">DreamTeam<span>Tips</span></div>
+          <div class="brand-sub">Football Data · Smart Picks</div>
+        </div>
+      </a>
 
-<div id="menuLayer" class="menu-layer" aria-hidden="true">
-  <aside class="menu-panel" aria-label="Μενού DreamTeamTips">
-    <div class="menu-top">
-      <div class="menu-brand">DreamTeam<span>Tips</span></div>
-      <button id="closeMenu" class="menu-close" aria-label="Κλείσιμο">×</button>
+      <nav class="nav" aria-label="Κύρια πλοήγηση">
+        <a href="#about">Σχετικά με εμάς</a>
+        <a href="#how">Πώς δουλεύουμε</a>
+        <a href="#symbols">Συμβολισμοί</a>
+        <a href="#plans">Συνδρομές</a>
+        <button class="member-btn" data-open-app type="button">Είσοδος μελών</button>
+      </nav>
+
+      <button id="openMenu" class="menu-btn" type="button" aria-label="Μενού">☰</button>
     </div>
-    <div class="menu-kicker">Private Members Club</div>
-    <div class="menu-list">
-      <button class="menu-item" data-public-section="about">Σχετικά με εμάς</button>
-      <button class="menu-item" data-public-section="how">Πώς δουλεύουμε</button>
-      <button class="menu-item" data-public-section="plans">Πακέτα / Συνδρομές</button>
-      <button class="menu-item" data-public-section="faq">FAQ</button>
-      <button class="menu-item" data-public-section="contact">Επικοινωνία</button>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <div class="kicker">Private Members Area</div>
+          <h1>Ποιότητα πάνω από <span>την ποσότητα.</span></h1>
+          <p class="hero-copy">Το DreamTeamTips βασίζεται σε καθημερινή δουλειά, υπομονή και πειθαρχία. Εξετάζουμε πολλές περιπτώσεις, όμως σε εσάς φτάνουν εκείνες που θεωρούμε ότι πραγματικά αξίζουν την προσοχή μας.</p>
+          <div class="hero-actions">
+            <button class="primary" data-open-app type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+            <button class="secondary" data-register type="button">ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ</button>
+          </div>
+          <div class="hero-note">Καμία επιλογή δεν είναι σίγουρη. Κάθε μέλος αποφασίζει ανεξάρτητα αν και πώς θα χρησιμοποιήσει το περιεχόμενο.</div>
+        </div>
+
+        <div class="app-preview" aria-label="Προεπισκόπηση DreamTeamTips">
+          <div class="preview-top">
+            <img class="preview-logo" src="dreamteamtips-icon.svg" alt="">
+            <div>
+              <div class="preview-brand">DreamTeam<span>Tips</span></div>
+              <div class="preview-sub">Members Area</div>
+            </div>
+          </div>
+
+          <div class="preview-card">
+            <div class="preview-kicker">Σήμερα</div>
+            <div class="preview-title">Ό,τι χρειάζεσαι, συγκεντρωμένο σε ένα σημείο.</div>
+            <div class="preview-copy">Ενεργές επιλογές, προσωπικό ιστορικό και ειδοποιήσεις όταν υπάρχει κάτι που χρειάζεται την προσοχή σου.</div>
+          </div>
+
+          <div class="preview-row">
+            <div class="preview-icon">◆</div>
+            <div><b>Ενεργές επιλογές</b><small>Καθαρή εικόνα χωρίς εσωτερικά δεδομένα</small></div>
+          </div>
+          <div class="preview-row">
+            <div class="preview-icon">↺</div>
+            <div><b>Ιστορικό DreamTeamTips</b><small>Αποτελέσματα και προσωπικές επιλογές</small></div>
+          </div>
+          <div class="preview-row">
+            <div class="preview-icon">🔔</div>
+            <div><b>Άμεσες ειδοποιήσεις</b><small>Νέα επιλογή ή σημαντική ενημέρωση</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <div class="section-kicker">DreamTeamTips</div>
+          <h2 class="section-title">Η φιλοσοφία μας</h2>
+          <p class="section-copy">Η ίδια λογική που βλέπει το μέλος μέσα στην εφαρμογή, χωρίς υπερβολές και χωρίς υποσχέσεις.</p>
+        </div>
+        <div class="card about-card">
+          <p>Το DreamTeamTips βασίζεται σε κάτι πολύ απλό: καθημερινή δουλειά, υπομονή και πειθαρχία. Κάθε επιλογή που εμφανίζεται εδώ είναι αποτέλεσμα της δικής μας αξιολόγησης και της δουλειάς που κάνουμε καθημερινά.</p>
+          <p>Δεν μας ενδιαφέρει να γεμίζουμε τη μέρα με επιλογές. Υπάρχουν φορές που θα δώσουμε μία, δύο ή και καμία. <strong>Αν κάποιος ψάχνει δεκάδες σημεία κάθε μέρα, αυτή δεν είναι η δική μας προσέγγιση.</strong></p>
+          <p class="about-highlight">Προτιμάμε να περιμένουμε μέχρι να θεωρήσουμε ότι υπάρχει πραγματικά λόγος να κινηθούμε.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <div class="section-kicker">Πώς δουλεύουμε</div>
+          <h2 class="section-title">Από την παρακολούθηση στην επιλογή</h2>
+          <p class="section-copy">Κατά τη διάρκεια της ημέρας ξεχωρίζουμε τα παιχνίδια που θεωρούμε ότι αξίζουν μεγαλύτερη προσοχή. Η αξιολόγησή μας όμως δεν σταματά εκεί.</p>
+        </div>
+
+        <div class="work-grid">
+          <article class="card work-card">
+            <div class="work-num">01</div>
+            <h3>Ξεχωρίζουμε</h3>
+            <p>Καθημερινά εξετάζουμε πολλές περιπτώσεις, όμως σε εσάς φτάνουν εκείνες που θεωρούμε ότι πραγματικά αξίζουν την προσοχή μας.</p>
+          </article>
+          <article class="card work-card">
+            <div class="work-num">02</div>
+            <h3>Παρακολουθούμε</h3>
+            <p>Η εικόνα ενός αγώνα μπορεί να αλλάξει. Γι’ αυτό παραμένουμε σε εγρήγορση μέχρι κοντά στην έναρξη.</p>
+          </article>
+          <article class="card work-card">
+            <div class="work-num">03</div>
+            <h3>Προσαρμοζόμαστε</h3>
+            <p>Αν προκύψει κάτι που αλλάζει ουσιαστικά την εικόνα ενός αγώνα, προτιμάμε να διορθώσουμε ή να αποσύρουμε μια επιλογή.</p>
+          </article>
+        </div>
+
+        <div class="work-quote">«Εσείς βλέπετε την επιλογή. Εμείς έχουμε ήδη κάνει τη δουλειά πίσω από αυτή — για εσάς.»</div>
+      </div>
+    </section>
+
+    <section id="symbols" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <div class="section-kicker">Συμβολισμοί</div>
+          <h2 class="section-title">Μια καθαρή γλώσσα μέσα στην εφαρμογή</h2>
+          <p class="section-copy">Τα σύμβολα συνοδεύουν τις επιλογές μας και δείχνουν τη θέση που έχει κάθε επιλογή στη δική μας αξιολόγηση.</p>
+        </div>
+
+        <div class="symbol-shell">
+          <div class="card symbol-group">
+            <div class="symbol-title">Με το φαβορί</div>
+            <div class="symbol-list">
+              <div class="symbol-row"><div class="symbol-icon">🔷</div><b>Επιλογή</b></div>
+              <div class="symbol-row"><div class="symbol-icon">💎</div><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-row"><div class="symbol-icon">👑</div><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+          <div class="card symbol-group">
+            <div class="symbol-title">Απέναντι στο φαβορί</div>
+            <div class="symbol-list">
+              <div class="symbol-row"><div class="symbol-icon">🎯</div><b>Επιλογή</b></div>
+              <div class="symbol-row"><div class="symbol-icon">⚡</div><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-row"><div class="symbol-icon">💣</div><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="symbol-note">Κάθε σύμβολο εκφράζει τη δική μας αξιολόγηση και δεν αποτελεί εγγύηση αποτελέσματος.</div>
+      </div>
+    </section>
+
+    <section id="plans" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <div class="section-kicker">Συνδρομές</div>
+          <h2 class="section-title">Η ίδια πρόσβαση. Διαφορετική διάρκεια.</h2>
+          <p class="section-copy">Τα πακέτα διαφέρουν μόνο στη διάρκεια. Οι τελικές τιμές και ο τρόπος πληρωμής θα ενεργοποιηθούν όταν κλειδώσουν οριστικά.</p>
+        </div>
+
+        <div class="plan-grid">
+          <article class="card plan-card">
+            <div class="plan-name">1 Μήνας</div>
+            <div class="plan-duration">Μηνιαία πρόσβαση</div>
+            <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+            <ul class="plan-features">
+              <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+              <li>Ειδοποιήσεις και σημαντικές ενημερώσεις</li>
+              <li>Ιστορικό και προσωπικές επιλογές</li>
+            </ul>
+            <button class="plan-select" data-plan="monthly" type="button">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+          </article>
+
+          <article class="card plan-card featured">
+            <div class="plan-badge">3 ΜΗΝΕΣ</div>
+            <div class="plan-name">3 Μήνες</div>
+            <div class="plan-duration">Τριμηνιαία πρόσβαση</div>
+            <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+            <ul class="plan-features">
+              <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+              <li>Ειδοποιήσεις και σημαντικές ενημερώσεις</li>
+              <li>Ιστορικό και προσωπικές επιλογές</li>
+            </ul>
+            <button class="plan-select" data-plan="quarterly" type="button">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+          </article>
+
+          <article class="card plan-card">
+            <div class="plan-name">12 Μήνες</div>
+            <div class="plan-duration">Ετήσια πρόσβαση</div>
+            <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
+            <ul class="plan-features">
+              <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
+              <li>Ειδοποιήσεις και σημαντικές ενημερώσεις</li>
+              <li>Ιστορικό και προσωπικές επιλογές</li>
+            </ul>
+            <button class="plan-select" data-plan="annual" type="button">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
+          </article>
+        </div>
+        <div class="plan-footnote">Η αγορά και η αυτόματη ενεργοποίηση συνδρομής θα προστεθούν όταν οριστούν οι τελικές τιμές και ο τρόπος πληρωμής.</div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <div class="section-kicker">FAQ</div>
+          <h2 class="section-title">Συχνές ερωτήσεις</h2>
+        </div>
+        <div class="faq-grid">
+          <details>
+            <summary>Πόσες επιλογές δημοσιεύονται κάθε μέρα;</summary>
+            <p>Δεν υπάρχει σταθερός αριθμός. Μπορεί να υπάρξει μία, δύο ή και καμία επιλογή. Η λογική μας είναι ποιότητα πάνω από ποσότητα.</p>
+          </details>
+          <details>
+            <summary>Μπορεί μια επιλογή να αλλάξει ή να αποσυρθεί;</summary>
+            <p>Ναι. Αν προκύψει κάτι που αλλάζει ουσιαστικά την εικόνα ενός αγώνα, προτιμάμε να διορθώσουμε ή να αποσύρουμε την επιλογή αντί να επιμείνουμε.</p>
+          </details>
+          <details>
+            <summary>Πώς ενημερώνομαι για νέα επιλογή;</summary>
+            <p>Μέσα από την εφαρμογή μελών. Όταν οι ειδοποιήσεις είναι ενεργοποιημένες στη συσκευή, λαμβάνεις ενημέρωση για νέα επιλογή ή σημαντική αλλαγή.</p>
+          </details>
+          <details>
+            <summary>Οι επιλογές είναι σίγουρες;</summary>
+            <p>Όχι. Καμία επιλογή δεν είναι σίγουρη και καμία δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="section">
+      <div class="shell">
+        <div class="card contact-card">
+          <div>
+            <h3>Υποστήριξη μελών</h3>
+            <p>Για πρόσβαση, συνδρομή ή τεχνικό πρόβλημα, η επικοινωνία γίνεται απευθείας μέσα από την εφαρμογή: Προφίλ → Υποστήριξη.</p>
+          </div>
+          <button class="primary" data-open-app type="button">ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <div class="footer-brand">DreamTeam<span>Tips</span></div>
+      <div class="footer-copy">Το DreamTeamTips παρέχει αθλητική ανάλυση και ενημερωτικό περιεχόμενο. Καμία επιλογή δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους και κάθε μέλος αποφασίζει ανεξάρτητα αν και πώς θα τη χρησιμοποιήσει.</div>
     </div>
-    <button id="menuLogin" class="submit menu-login">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+  </footer>
+</div>
+
+<div id="mobileMenu" class="mobile-menu" aria-hidden="true">
+  <aside class="mobile-panel">
+    <div class="mobile-head">
+      <div class="mobile-title">DreamTeamTips</div>
+      <button id="closeMenu" class="mobile-close" type="button" aria-label="Κλείσιμο">×</button>
+    </div>
+    <div class="mobile-links">
+      <a href="#about">Σχετικά με εμάς</a>
+      <a href="#how">Πώς δουλεύουμε</a>
+      <a href="#symbols">Συμβολισμοί</a>
+      <a href="#plans">Πακέτα / Συνδρομές</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Επικοινωνία</a>
+      <button class="member-btn" data-open-app type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+    </div>
   </aside>
 </div>
 
-<div id="plansPage" class="public-page" aria-hidden="true">
-  <div class="public-shell">
-    <div class="public-head">
-      <div class="public-brand">DreamTeam<span>Tips</span></div>
-      <button id="closePlans" class="public-close" aria-label="Κλείσιμο">×</button>
-    </div>
-    <div class="public-kicker">Private Members Club</div>
-    <h1 class="public-title">Πακέτα Συνδρομής</h1>
-    <p class="public-copy">Η πρόσβαση είναι ίδια σε όλα τα πακέτα. Αλλάζει μόνο η διάρκεια της συνδρομής. Τις τελικές τιμές θα τις ορίσουμε πριν ενεργοποιηθούν οι πληρωμές.</p>
-
-    <div class="plan-grid">
-      <section class="plan-card">
-        <div class="plan-name">1 Μήνας</div>
-        <div class="plan-duration">Μηνιαία πρόσβαση</div>
-        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
-        <ul class="plan-features">
-          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
-          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
-          <li>Ιστορικό και προσωπικές επιλογές</li>
-        </ul>
-        <button class="plan-select" data-plan="monthly">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
-      </section>
-
-      <section class="plan-card featured">
-        <div class="plan-badge">3 ΜΗΝΕΣ</div>
-        <div class="plan-name">3 Μήνες</div>
-        <div class="plan-duration">Τριμηνιαία πρόσβαση</div>
-        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
-        <ul class="plan-features">
-          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
-          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
-          <li>Ιστορικό και προσωπικές επιλογές</li>
-        </ul>
-        <button class="plan-select" data-plan="quarterly">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
-      </section>
-
-      <section class="plan-card">
-        <div class="plan-name">12 Μήνες</div>
-        <div class="plan-duration">Ετήσια πρόσβαση</div>
-        <div class="plan-price">— €<small>Τελική τιμή θα οριστεί</small></div>
-        <ul class="plan-features">
-          <li>Πλήρης πρόσβαση στις ενεργές επιλογές</li>
-          <li>Ενημερώσεις και ειδοποιήσεις μελών</li>
-          <li>Ιστορικό και προσωπικές επιλογές</li>
-        </ul>
-        <button class="plan-select" data-plan="annual">ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ</button>
-      </section>
-    </div>
-    <div class="plan-footnote">Η αγορά και η αυτόματη ενεργοποίηση συνδρομής θα προστεθούν όταν κλειδώσουμε τις τελικές τιμές και τον τρόπο πληρωμής.</div>
-  </div>
-</div>
-
-<div id="loginLayer" class="login-layer" aria-hidden="true">
-  <section class="login-card">
-    <button id="closeLogin" class="close" aria-label="Κλείσιμο">×</button>
-    <div id="loginView">
-      <div class="login-title">Είσοδος μελών</div>
-      <div class="field"><label for="loginUser">Όνομα χρήστη</label><input id="loginUser" autocomplete="username" placeholder="username"></div>
-      <div class="field"><label for="loginPass">Κωδικός</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-      <button id="loginSubmit" class="submit">ΕΙΣΟΔΟΣ</button>
-      <div id="loginMsg" class="msg"></div>
-      <div class="signup-line">Δεν έχεις λογαριασμό;<button id="signupLink" type="button">Δημιουργία λογαριασμού</button></div>
-      <div class="private-note">Πρόσβαση μόνο για εγκεκριμένα μέλη</div>
+<div id="registerModal" class="modal" aria-hidden="true">
+  <section class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">Δημιουργία λογαριασμού</h3>
+      <button id="closeRegister" class="modal-close" type="button" aria-label="Κλείσιμο">×</button>
     </div>
 
-    <div id="registerView" class="view-hidden">
-      <div class="login-title">Δημιουργία λογαριασμού</div>
-      <div class="form-note">Δημιούργησε πρώτα τον λογαριασμό σου. Η συνδρομή επιλέγεται ξεχωριστά.</div>
+    <div id="registerView">
+      <div class="form-note">Δημιούργησε τον λογαριασμό σου. Η συνδρομή επιλέγεται ξεχωριστά.</div>
       <div class="field"><label for="regUser">Όνομα χρήστη</label><input id="regUser" autocomplete="username" placeholder="username"></div>
       <div class="field"><label for="regEmail">Email</label><input id="regEmail" type="email" autocomplete="email" placeholder="name@email.com"></div>
       <div class="field"><label for="regPass">Κωδικός</label><input id="regPass" type="password" autocomplete="new-password" placeholder="Τουλάχιστον 8 χαρακτήρες"></div>
       <div class="field"><label for="regPass2">Επιβεβαίωση κωδικού</label><input id="regPass2" type="password" autocomplete="new-password" placeholder="Ξανά ο κωδικός"></div>
-      <button id="registerSubmit" class="submit">ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ</button>
+      <button id="registerSubmit" class="form-btn" type="button">ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ</button>
       <div id="registerMsg" class="msg"></div>
-      <div class="signup-line">Έχεις ήδη λογαριασμό;<button id="backToLogin" type="button">Είσοδος</button></div>
+      <div class="modal-link">Έχεις ήδη λογαριασμό; <button type="button" data-open-app>Είσοδος μελών</button></div>
     </div>
 
-    <div id="verifyView" class="view-hidden">
-      <div class="login-title">Έλεγξε το email σου</div>
-      <div id="verifyText" class="form-note">Σου στείλαμε email επιβεβαίωσης. Πάτησε το κουμπί μέσα στο email για να ολοκληρωθεί η εγγραφή.</div>
-      <button id="resendCode" class="secondary" type="button">ΞΑΝΑΣΤΕΙΛΕ EMAIL</button>
-      <div id="legacyVerify" class="view-hidden">
-        <div class="field"><label for="verifyCode">Παλιός κωδικός επιβεβαίωσης</label><input id="verifyCode" class="verify-code" inputmode="numeric" maxlength="6" placeholder="000000"></div>
-        <button id="verifySubmit" class="secondary" type="button">ΕΠΙΒΕΒΑΙΩΣΗ ΠΑΛΙΟΥ ΚΩΔΙΚΟΥ</button>
+    <div id="verifyView" class="hidden">
+      <div id="verifyText" class="form-note">Σου στείλαμε email επιβεβαίωσης.</div>
+      <button id="resendCode" class="form-secondary" type="button">ΞΑΝΑΣΤΕΙΛΕ EMAIL</button>
+      <div id="legacyVerify" class="hidden">
+        <div class="field"><label for="verifyCode">Παλιός 6ψήφιος κωδικός</label><input id="verifyCode" class="verify-code" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+        <button id="verifySubmit" class="form-secondary" type="button">ΕΠΙΒΕΒΑΙΩΣΗ ΠΑΛΙΟΥ ΚΩΔΙΚΟΥ</button>
       </div>
       <div id="verifyMsg" class="msg"></div>
-      <div class="signup-line"><button id="legacyToggle" type="button">Έχω παλιό 6ψήφιο κωδικό</button> · <button id="verifyBack" type="button">Πίσω</button></div>
+      <div class="modal-link"><button id="legacyToggle" type="button">Έχω παλιό 6ψήφιο κωδικό</button></div>
     </div>
 
-    <div id="accountReadyView" class="view-hidden success-box">
-      <h3 id="readyTitle">Το email επιβεβαιώθηκε</h3>
+    <div id="readyView" class="ready hidden">
+      <div class="ready-icon">✓</div>
+      <h4 id="readyTitle">Το email επιβεβαιώθηκε</h4>
       <p id="readyText">Ο λογαριασμός σου είναι έτοιμος. Η πρόσβαση στο περιεχόμενο ενεργοποιείται με ενεργή συνδρομή.</p>
-      <button id="readyClose" class="submit" type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
+      <button class="form-btn" data-open-app type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
     </div>
   </section>
 </div>
 
 <script>
-const layer=document.getElementById("loginLayer"),openBtn=document.getElementById("openLogin"),closeBtn=document.getElementById("closeLogin");
-const menuLayer=document.getElementById("menuLayer"),openMenu=document.getElementById("openMenu"),closeMenu=document.getElementById("closeMenu"),menuLogin=document.getElementById("menuLogin");
-const plansPage=document.getElementById("plansPage"),closePlans=document.getElementById("closePlans");
-const desktopLogin=document.getElementById("desktopLogin"),desktopPlans=document.getElementById("desktopPlans");
-const card=document.querySelector(".login-card");
-const loginView=document.getElementById("loginView"),registerView=document.getElementById("registerView"),verifyView=document.getElementById("verifyView"),accountReadyView=document.getElementById("accountReadyView");
-const user=document.getElementById("loginUser"),pass=document.getElementById("loginPass"),submit=document.getElementById("loginSubmit"),msg=document.getElementById("loginMsg"),signupLink=document.getElementById("signupLink");
-const regUser=document.getElementById("regUser"),regEmail=document.getElementById("regEmail"),regPass=document.getElementById("regPass"),regPass2=document.getElementById("regPass2"),registerSubmit=document.getElementById("registerSubmit"),registerMsg=document.getElementById("registerMsg"),backToLogin=document.getElementById("backToLogin");
-const verifyCode=document.getElementById("verifyCode"),verifySubmit=document.getElementById("verifySubmit"),resendCode=document.getElementById("resendCode"),verifyMsg=document.getElementById("verifyMsg"),verifyText=document.getElementById("verifyText"),verifyBack=document.getElementById("verifyBack"),legacyVerify=document.getElementById("legacyVerify"),legacyToggle=document.getElementById("legacyToggle"),readyClose=document.getElementById("readyClose"),readyTitle=document.getElementById("readyTitle"),readyText=document.getElementById("readyText");
-let pendingUsername="",pendingMaskedEmail="";
-const DEVICE_STORAGE_KEY="dtt_device_id_v1";const APP_URL="https://match-alerts-private.onrender.com/";const API_URL="https://match-alerts-api-private.onrender.com/api";
-function deviceId(){let x=localStorage.getItem(DEVICE_STORAGE_KEY)||"";if(x)return x;try{x=crypto.randomUUID()}catch(_){x="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}localStorage.setItem(DEVICE_STORAGE_KEY,x);return x}
-let lockedScrollY=0;
-function lockBackground(){
-  lockedScrollY=window.scrollY||window.pageYOffset||0;
-  document.documentElement.classList.add("modal-open");
-  document.body.classList.add("modal-open");
-  document.body.style.position="fixed";
-  document.body.style.top=`-${lockedScrollY}px`;
-  document.body.style.left="0";
-  document.body.style.right="0";
-  document.body.style.width="100%";
+const APP_URL="https://match-alerts.giannisg7828.workers.dev/";
+const API_URL="https://match-alerts-api-private.onrender.com/api";
+const menu=document.getElementById("mobileMenu");
+const registerModal=document.getElementById("registerModal");
+const registerView=document.getElementById("registerView");
+const verifyView=document.getElementById("verifyView");
+const readyView=document.getElementById("readyView");
+const modalTitle=document.getElementById("modalTitle");
+const regUser=document.getElementById("regUser");
+const regEmail=document.getElementById("regEmail");
+const regPass=document.getElementById("regPass");
+const regPass2=document.getElementById("regPass2");
+const registerSubmit=document.getElementById("registerSubmit");
+const registerMsg=document.getElementById("registerMsg");
+const verifyText=document.getElementById("verifyText");
+const verifyCode=document.getElementById("verifyCode");
+const verifySubmit=document.getElementById("verifySubmit");
+const resendCode=document.getElementById("resendCode");
+const verifyMsg=document.getElementById("verifyMsg");
+const legacyVerify=document.getElementById("legacyVerify");
+const legacyToggle=document.getElementById("legacyToggle");
+const readyTitle=document.getElementById("readyTitle");
+const readyText=document.getElementById("readyText");
+let pendingUsername="";
+let pendingMaskedEmail="";
+
+function openMenu(){
+  menu.classList.add("open");
+  menu.setAttribute("aria-hidden","false");
 }
-function unlockBackground(){
-  document.documentElement.classList.remove("modal-open");
-  document.body.classList.remove("modal-open");
-  document.body.style.position="";
-  document.body.style.top="";
-  document.body.style.left="";
-  document.body.style.right="";
-  document.body.style.width="";
-  window.scrollTo(0,lockedScrollY);
+function closeMenu(){
+  menu.classList.remove("open");
+  menu.setAttribute("aria-hidden","true");
 }
-function openLogin(){
-  if(localStorage.getItem("ma_token")){location.href=APP_URL;return}
-  if(menuLayer.classList.contains("open"))closePublicMenu(false);
-  if(!document.body.classList.contains("modal-open"))lockBackground();
-  layer.classList.add("open");
-  layer.setAttribute("aria-hidden","false");
-  setTimeout(()=>user.focus(),80)
+document.getElementById("openMenu").onclick=openMenu;
+document.getElementById("closeMenu").onclick=closeMenu;
+menu.onclick=function(e){if(e.target===menu)closeMenu()};
+document.querySelectorAll(".mobile-links a").forEach(function(a){a.onclick=closeMenu});
+
+function openRegister(){
+  registerModal.classList.add("open");
+  registerModal.setAttribute("aria-hidden","false");
+  showStage("register");
+  setTimeout(function(){regUser.focus()},70);
 }
-function closeLogin(){
-  layer.classList.remove("open");
-  layer.setAttribute("aria-hidden","true");
-  msg.textContent="";
-  unlockBackground()
+function closeRegister(){
+  registerModal.classList.remove("open");
+  registerModal.setAttribute("aria-hidden","true");
+  registerMsg.textContent="";
+  verifyMsg.textContent="";
 }
-function openPublicMenu(){
-  if(!document.body.classList.contains("modal-open"))lockBackground();
-  menuLayer.classList.add("open");
-  menuLayer.setAttribute("aria-hidden","false")
-}
-function closePublicMenu(unlock=true){
-  menuLayer.classList.remove("open");
-  menuLayer.setAttribute("aria-hidden","true");
-  if(unlock)unlockBackground()
-}
+document.getElementById("closeRegister").onclick=closeRegister;
+registerModal.onclick=function(e){if(e.target===registerModal)closeRegister()};
+
+document.querySelectorAll("[data-open-app]").forEach(function(btn){
+  btn.onclick=function(){location.href=APP_URL};
+});
+document.querySelectorAll("[data-register]").forEach(function(btn){
+  btn.onclick=openRegister;
+});
+document.querySelectorAll(".plan-select").forEach(function(btn){
+  btn.onclick=function(){
+    localStorage.setItem("dtt_selected_plan_v1",btn.dataset.plan||"");
+    openRegister();
+  };
+});
+
 function showStage(stage){
-  [loginView,registerView,verifyView,accountReadyView].forEach(v=>v.classList.add("view-hidden"));
-  card.classList.remove("register-mode","verify-mode");
-  if(stage==="register"){registerView.classList.remove("view-hidden");card.classList.add("register-mode");setTimeout(()=>regUser.focus(),80);return}
-  if(stage==="verify"){verifyView.classList.remove("view-hidden");card.classList.add("verify-mode");legacyVerify.classList.add("view-hidden");legacyToggle.classList.remove("view-hidden");return}
-  if(stage==="ready"){accountReadyView.classList.remove("view-hidden");card.classList.add("verify-mode");return}
-  loginView.classList.remove("view-hidden");setTimeout(()=>user.focus(),80)
-}
-openBtn.onclick=openLogin;
-if(desktopLogin)desktopLogin.onclick=openLogin;
-if(desktopPlans)desktopPlans.onclick=()=>{if(!document.body.classList.contains("modal-open"))lockBackground();plansPage.classList.add("open");plansPage.setAttribute("aria-hidden","false")};
-closeBtn.onclick=closeLogin;layer.onclick=e=>{if(e.target===layer)closeLogin()};
-openMenu.onclick=openPublicMenu;closeMenu.onclick=()=>closePublicMenu(true);menuLayer.onclick=e=>{if(e.target===menuLayer)closePublicMenu(true)};
-menuLogin.onclick=()=>{closePublicMenu(false);openLogin()};
-document.querySelectorAll("[data-public-section]").forEach(btn=>btn.onclick=()=>{
-  const section=btn.dataset.publicSection;
-  btn.blur();
-  if(section==="plans"){
-    closePublicMenu(false);
-    plansPage.classList.add("open");
-    plansPage.setAttribute("aria-hidden","false");
+  registerView.classList.add("hidden");
+  verifyView.classList.add("hidden");
+  readyView.classList.add("hidden");
+  if(stage==="verify"){
+    modalTitle.textContent="Έλεγξε το email σου";
+    verifyView.classList.remove("hidden");
     return;
   }
-});
-closePlans.onclick=()=>{
-  plansPage.classList.remove("open");
-  plansPage.setAttribute("aria-hidden","true");
-  unlockBackground()
+  if(stage==="ready"){
+    modalTitle.textContent="Ο λογαριασμός σου";
+    readyView.classList.remove("hidden");
+    return;
+  }
+  modalTitle.textContent="Δημιουργία λογαριασμού";
+  registerView.classList.remove("hidden");
+}
+async function apiPost(params){
+  const controller=new AbortController();
+  const timer=setTimeout(function(){controller.abort()},16000);
+  try{
+    const body=new URLSearchParams();
+    Object.entries(params).forEach(function(pair){body.append(pair[0],String(pair[1]??""))});
+    const res=await fetch(API_URL,{method:"POST",body:body,signal:controller.signal,cache:"no-store"});
+    return await res.json();
+  }finally{
+    clearTimeout(timer);
+  }
+}
+const errors={
+  BAD_USERNAME:"Το όνομα χρήστη θέλει 3–32 λατινικούς χαρακτήρες, αριθμούς, τελεία, _ ή -.",
+  BAD_EMAIL:"Το email δεν είναι σωστό.",
+  PASSWORD_TOO_SHORT:"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",
+  USER_EXISTS:"Αυτό το όνομα χρήστη υπάρχει ήδη.",
+  EMAIL_EXISTS:"Αυτό το email υπάρχει ήδη.",
+  REGISTRATION_FULL:"Οι διαθέσιμες εγγραφές έχουν συμπληρωθεί.",
+  BAD_CODE:"Ο κωδικός επιβεβαίωσης δεν είναι έγκυρος.",
+  INVALID_CODE:"Ο κωδικός επιβεβαίωσης δεν είναι έγκυρος.",
+  CODE_EXPIRED:"Ο σύνδεσμος ή ο κωδικός επιβεβαίωσης έληξε.",
+  USER_NOT_FOUND:"Ο λογαριασμός δεν βρέθηκε.",
+  ALREADY_VERIFIED:"Το email έχει ήδη επιβεβαιωθεί."
 };
-document.querySelectorAll(".plan-select").forEach(btn=>btn.onclick=()=>{
-  localStorage.setItem("dtt_selected_plan_v1",btn.dataset.plan||"");
-  plansPage.classList.remove("open");
-  plansPage.setAttribute("aria-hidden","true");
-  layer.classList.add("open");
-  layer.setAttribute("aria-hidden","false");
-  showStage("register");
-});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){
-  if(plansPage.classList.contains("open")){plansPage.classList.remove("open");plansPage.setAttribute("aria-hidden","true");unlockBackground()}
-  else if(menuLayer.classList.contains("open"))closePublicMenu(true);
-  else if(layer.classList.contains("open"))closeLogin()
-}});
-signupLink.onclick=()=>{msg.textContent="";showStage("register")};
-backToLogin.onclick=()=>{registerMsg.textContent="";showStage("login")};
-verifyBack.onclick=()=>{verifyMsg.textContent="";showStage("register")};
-readyClose.onclick=()=>{showStage("login");if(pendingUsername)user.value=pendingUsername};
-async function apiPost(params){const c=new AbortController(),t=setTimeout(()=>c.abort(),16000);try{const b=new URLSearchParams();Object.entries(params).forEach(([k,v])=>b.append(k,String(v??"")));const r=await fetch(API_URL,{method:"POST",body:b,signal:c.signal,cache:"no-store"});return await r.json()}finally{clearTimeout(t)}}
-const errors={INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",DEVICE_LOCKED:"Ο λογαριασμός είναι συνδεδεμένος με άλλη συσκευή.",EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει.",BAD_USERNAME:"Το όνομα χρήστη θέλει 3–32 λατινικούς χαρακτήρες, αριθμούς, τελεία, _ ή -.",BAD_EMAIL:"Το email δεν είναι σωστό.",PASSWORD_TOO_SHORT:"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",USER_EXISTS:"Αυτό το όνομα χρήστη υπάρχει ήδη.",EMAIL_EXISTS:"Αυτό το email υπάρχει ήδη.",REGISTRATION_FULL:"Οι διαθέσιμες εγγραφές έχουν συμπληρωθεί.",BAD_CODE:"Ο σύνδεσμος επιβεβαίωσης δεν είναι έγκυρος.",INVALID_CODE:"Ο σύνδεσμος επιβεβαίωσης δεν είναι έγκυρος.",CODE_EXPIRED:"Ο σύνδεσμος επιβεβαίωσης έληξε. Ζήτησε νέο email.",USER_NOT_FOUND:"Ο λογαριασμός δεν βρέθηκε.",ALREADY_VERIFIED:"Το email έχει ήδη επιβεβαιωθεί."};
-async function doLogin(){const u=user.value.trim(),p=pass.value;if(!u||!p){msg.textContent="Συμπλήρωσε όνομα χρήστη και κωδικό.";return}submit.disabled=true;submit.textContent="ΣΥΝΔΕΣΗ…";msg.textContent="";try{const r=await apiPost({action:"login",username:u,password:p,deviceId:deviceId()});if(!r.ok){if(r.error==="EMAIL_NOT_VERIFIED"){pendingUsername=u;pendingMaskedEmail="";verifyText.textContent="Το email σου δεν έχει επιβεβαιωθεί ακόμη. Έλεγξε το email επιβεβαίωσης ή ζήτησε νέο.";showStage("verify");return}throw new Error(r.error||"ERROR")}if(r.token)localStorage.setItem("ma_token",r.token);location.href=APP_URL}catch(e){msg.textContent=errors[e.message]||"Δεν ολοκληρώθηκε η σύνδεση. Δοκίμασε ξανά."}finally{submit.disabled=false;submit.textContent="ΕΙΣΟΔΟΣ"}}
+
 async function doRegister(){
-  const u=regUser.value.trim(),e=regEmail.value.trim(),p=regPass.value,p2=regPass2.value;
+  const u=regUser.value.trim();
+  const e=regEmail.value.trim();
+  const p=regPass.value;
+  const p2=regPass2.value;
   registerMsg.textContent="";
   if(!u||!e||!p||!p2){registerMsg.textContent="Συμπλήρωσε όλα τα πεδία.";return}
   if(p!==p2){registerMsg.textContent="Οι δύο κωδικοί δεν είναι ίδιοι.";return}
-  registerSubmit.disabled=true;registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ…";
+  registerSubmit.disabled=true;
+  registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ…";
   try{
     const r=await apiPost({action:"register",username:u,email:e,password:p});
     if(!r.ok)throw new Error(r.error||"ERROR");
-    pendingUsername=r.username||u;pendingMaskedEmail=r.emailMasked||e;
-    verifyText.textContent="Στείλαμε email επιβεβαίωσης στο "+pendingMaskedEmail+". Πάτησε το κουμπί μέσα στο email.";
-    verifyCode.value="";showStage("verify")
-  }catch(err){registerMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η εγγραφή. Δοκίμασε ξανά."}
-  finally{registerSubmit.disabled=false;registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ"}
+    pendingUsername=r.username||u;
+    pendingMaskedEmail=r.emailMasked||e;
+    verifyText.textContent="Στείλαμε email επιβεβαίωσης στο "+pendingMaskedEmail+". Πάτησε το κουμπί μέσα στο email για να ολοκληρωθεί η εγγραφή.";
+    verifyCode.value="";
+    legacyVerify.classList.add("hidden");
+    legacyToggle.classList.remove("hidden");
+    showStage("verify");
+  }catch(err){
+    registerMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η εγγραφή. Δοκίμασε ξανά.";
+  }finally{
+    registerSubmit.disabled=false;
+    registerSubmit.textContent="ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ";
+  }
 }
 async function doVerify(){
-  const code=verifyCode.value.trim();verifyMsg.textContent="";
-  if(!/^\d{6}$/.test(code)){verifyMsg.textContent=errors.BAD_CODE;return}
-  verifySubmit.disabled=true;verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ…";
+  const code=verifyCode.value.trim();
+  verifyMsg.textContent="";
+  if(!/^\d{6}$/.test(code)){verifyMsg.textContent="Ο κωδικός πρέπει να είναι 6 ψηφία.";return}
+  verifySubmit.disabled=true;
+  verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ…";
   try{
-    const r=await apiPost({action:"verify",username:pendingUsername,code});
+    const r=await apiPost({action:"verify",username:pendingUsername,code:code});
     if(!r.ok)throw new Error(r.error||"ERROR");
-    showStage("ready")
-  }catch(err){verifyMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η επιβεβαίωση."}
-  finally{verifySubmit.disabled=false;verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ"}
+    readyTitle.textContent="Το email επιβεβαιώθηκε";
+    readyText.textContent="Ο λογαριασμός σου είναι έτοιμος. Η πρόσβαση στο περιεχόμενο ενεργοποιείται με ενεργή συνδρομή.";
+    showStage("ready");
+  }catch(err){
+    verifyMsg.textContent=errors[err.message]||"Δεν ολοκληρώθηκε η επιβεβαίωση.";
+  }finally{
+    verifySubmit.disabled=false;
+    verifySubmit.textContent="ΕΠΙΒΕΒΑΙΩΣΗ ΠΑΛΙΟΥ ΚΩΔΙΚΟΥ";
+  }
 }
 async function doResend(){
   if(!pendingUsername){verifyMsg.textContent="Δεν βρέθηκε λογαριασμός.";return}
-  resendCode.disabled=true;resendCode.textContent="ΑΠΟΣΤΟΛΗ…";verifyMsg.textContent="";
+  resendCode.disabled=true;
+  resendCode.textContent="ΑΠΟΣΤΟΛΗ…";
+  verifyMsg.textContent="";
   try{
     const r=await apiPost({action:"resend",username:pendingUsername});
     if(!r.ok)throw new Error(r.error||"ERROR");
     pendingMaskedEmail=r.emailMasked||pendingMaskedEmail;
     verifyText.textContent="Στείλαμε νέο email επιβεβαίωσης στο "+pendingMaskedEmail+".";
-    verifyMsg.textContent="Στάλθηκε νέο email επιβεβαίωσης."
-  }catch(err){verifyMsg.textContent=errors[err.message]||"Δεν στάλθηκε νέος κωδικός."}
-  finally{resendCode.disabled=false;resendCode.textContent="ΞΑΝΑΣΤΕΙΛΕ EMAIL"}
+    verifyMsg.textContent="Στάλθηκε νέο email επιβεβαίωσης.";
+  }catch(err){
+    verifyMsg.textContent=errors[err.message]||"Δεν στάλθηκε νέο email.";
+  }finally{
+    resendCode.disabled=false;
+    resendCode.textContent="ΞΑΝΑΣΤΕΙΛΕ EMAIL";
+  }
 }
-submit.onclick=doLogin;pass.onkeydown=e=>{if(e.key==="Enter")doLogin()};
-registerSubmit.onclick=doRegister;regPass2.onkeydown=e=>{if(e.key==="Enter")doRegister()};
-verifySubmit.onclick=doVerify;verifyCode.onkeydown=e=>{if(e.key==="Enter")doVerify()};
-legacyToggle.onclick=()=>{legacyVerify.classList.toggle("view-hidden");legacyToggle.classList.toggle("view-hidden");setTimeout(()=>verifyCode.focus(),50)};
+registerSubmit.onclick=doRegister;
+regPass2.onkeydown=function(e){if(e.key==="Enter")doRegister()};
+verifySubmit.onclick=doVerify;
+verifyCode.onkeydown=function(e){if(e.key==="Enter")doVerify()};
+legacyToggle.onclick=function(){
+  legacyVerify.classList.toggle("hidden");
+  legacyToggle.classList.toggle("hidden");
+  setTimeout(function(){verifyCode.focus()},60);
+};
 resendCode.onclick=doResend;
 
 async function verifyFromEmailLink(){
@@ -394,25 +791,29 @@ async function verifyFromEmailLink(){
   if(!u||!token)return;
   history.replaceState(null,"",location.pathname+location.search);
   pendingUsername=u;
-  if(!layer.classList.contains("open")){lockBackground();layer.classList.add("open");layer.setAttribute("aria-hidden","false")}
+  registerModal.classList.add("open");
+  registerModal.setAttribute("aria-hidden","false");
   readyTitle.textContent="Επιβεβαίωση email";
   readyText.textContent="Γίνεται επιβεβαίωση…";
-  readyClose.classList.add("view-hidden");
   showStage("ready");
   try{
-    const r=await apiPost({action:"verify",username:u,token});
+    const r=await apiPost({action:"verify",username:u,token:token});
     if(!r.ok)throw new Error(r.error||"ERROR");
     readyTitle.textContent="Το email επιβεβαιώθηκε";
     readyText.textContent="Ο λογαριασμός σου είναι έτοιμος. Η πρόσβαση στο περιεχόμενο ενεργοποιείται με ενεργή συνδρομή.";
-    readyClose.classList.remove("view-hidden")
   }catch(err){
     readyTitle.textContent="Η επιβεβαίωση δεν ολοκληρώθηκε";
     readyText.textContent=errors[err.message]||"Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει.";
-    readyClose.textContent="ΕΠΙΣΤΡΟΦΗ";
-    readyClose.classList.remove("view-hidden")
   }
 }
 verifyFromEmailLink();
+
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"){
+    if(registerModal.classList.contains("open"))closeRegister();
+    else if(menu.classList.contains("open"))closeMenu();
+  }
+});
 </script>
 </body>
 </html>
