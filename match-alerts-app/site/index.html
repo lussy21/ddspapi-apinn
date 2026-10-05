@@ -163,6 +163,10 @@ a{color:inherit;text-decoration:none}
 .preview-row b{display:block;font-size:11px;color:#ece8df}
 .preview-row small{display:block;margin-top:3px;color:#77737b;font-size:8px}
 
+.site-page{display:none;min-height:calc(100vh - 150px)}
+.site-page.active{display:block}
+.page-back{display:inline-flex;align-items:center;gap:7px;margin-bottom:17px;border:1px solid rgba(217,177,87,.16);background:rgba(217,177,87,.035);color:#cfc5aa;border-radius:12px;padding:9px 12px;font-size:10px;font-weight:900}
+.page-back span{font-size:16px;line-height:1}
 .section{padding:58px 0}
 .section-head{max-width:720px;margin-bottom:24px}
 .section-kicker{color:var(--gold2);font-size:9px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase}
@@ -303,7 +307,7 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
 <div class="site">
   <header class="site-top">
     <div class="shell top-inner">
-      <a class="brand" href="#top" aria-label="DreamTeamTips">
+      <a class="brand" href="#top" data-site-page="home" aria-label="DreamTeamTips">
         <img class="brand-logo" src="icon.svg" alt="DreamTeamTips">
         <div>
           <div class="brand-name">DreamTeam<span>Tips</span></div>
@@ -312,10 +316,10 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </a>
 
       <nav class="nav" aria-label="Κύρια πλοήγηση">
-        <a href="#about">Σχετικά με εμάς</a>
-        <a href="#how">Πώς δουλεύουμε</a>
-        <a href="#symbols">Συμβολισμοί</a>
-        <a href="#plans">Συνδρομές</a>
+        <button type="button" data-site-page="about">Σχετικά με εμάς</button>
+        <button type="button" data-site-page="how">Πώς δουλεύουμε</button>
+        <button type="button" data-site-page="symbols">Συμβολισμοί</button>
+        <button type="button" data-site-page="plans">Συνδρομές</button>
         <button class="member-btn" data-open-app type="button">Είσοδος μελών</button>
       </nav>
 
@@ -324,7 +328,7 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
   </header>
 
   <main id="top">
-    <section class="hero">
+    <section id="homePage" class="hero site-page active" data-site-page-view="home">
       <div class="shell hero-grid">
         <div>
           <div class="kicker">DreamTeamTips</div>
@@ -360,8 +364,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="about" class="section">
+    <section id="about" class="section site-page" data-site-page-view="about">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="section-head">
           <div class="section-kicker">DreamTeamTips</div>
           <h2 class="section-title">Η φιλοσοφία μας</h2>
@@ -391,8 +396,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="how" class="section">
+    <section id="how" class="section site-page" data-site-page-view="how">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="section-head">
           <div class="section-kicker">DreamTeamTips</div>
           <h2 class="section-title">Πώς δουλεύουμε</h2>
@@ -419,8 +425,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="symbols" class="section">
+    <section id="symbols" class="section site-page" data-site-page-view="symbols">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="section-head">
           <div class="section-kicker">DreamTeamTips</div>
           <h2 class="section-title">Συμβολισμοί</h2>
@@ -449,8 +456,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="plans" class="section">
+    <section id="plans" class="section site-page" data-site-page-view="plans">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="section-head">
           <div class="section-kicker">DreamTeamTips</div>
           <h2 class="section-title">Πακέτα Συνδρομής</h2>
@@ -499,8 +507,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="faq" class="section">
+    <section id="faq" class="section site-page" data-site-page-view="faq">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="section-head">
           <div class="section-kicker">FAQ</div>
           <h2 class="section-title">Συχνές ερωτήσεις</h2>
@@ -526,8 +535,9 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       </div>
     </section>
 
-    <section id="contact" class="section">
+    <section id="contact" class="section site-page" data-site-page-view="contact">
       <div class="shell">
+        <button class="page-back" type="button" data-site-page="home"><span>‹</span> Αρχική</button>
         <div class="card contact-card">
           <div>
             <h3>Υποστήριξη μελών</h3>
@@ -554,12 +564,12 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
       <button id="closeMenu" class="mobile-close" type="button" aria-label="Κλείσιμο">×</button>
     </div>
     <div class="mobile-links">
-      <a href="#about">Σχετικά με εμάς</a>
-      <a href="#how">Πώς δουλεύουμε</a>
-      <a href="#symbols">Συμβολισμοί</a>
-      <a href="#plans">Πακέτα / Συνδρομές</a>
-      <a href="#faq">FAQ</a>
-      <a href="#contact">Επικοινωνία</a>
+      <button type="button" data-site-page="about">Σχετικά με εμάς</button>
+      <button type="button" data-site-page="how">Πώς δουλεύουμε</button>
+      <button type="button" data-site-page="symbols">Συμβολισμοί</button>
+      <button type="button" data-site-page="plans">Πακέτα / Συνδρομές</button>
+      <button type="button" data-site-page="faq">FAQ</button>
+      <button type="button" data-site-page="contact">Επικοινωνία</button>
       <button class="member-btn" data-open-app type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
     </div>
   </aside>
@@ -641,7 +651,21 @@ function closeMenu(){
 document.getElementById("openMenu").onclick=openMenu;
 document.getElementById("closeMenu").onclick=closeMenu;
 menu.onclick=function(e){if(e.target===menu)closeMenu()};
-document.querySelectorAll(".mobile-links a").forEach(function(a){a.onclick=closeMenu});
+
+function showSitePage(name){
+  const target=String(name||"home");
+  document.querySelectorAll("[data-site-page-view]").forEach(function(el){
+    el.classList.toggle("active",el.dataset.sitePageView===target);
+  });
+  closeMenu();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll("[data-site-page]").forEach(function(el){
+  el.addEventListener("click",function(e){
+    e.preventDefault();
+    showSitePage(el.dataset.sitePage||"home");
+  });
+});
 
 function openRegister(){
   registerModal.classList.add("open");
