@@ -986,7 +986,7 @@ if(adminSecret){adminCode.value=adminSecret;setTimeout(()=>unlock.click(),0);}
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("/sw.js",{scope:"/",updateViaCache:"none"});
+      const reg=await navigator.serviceWorker.register("/admin/sw.js",{scope:"/admin/",updateViaCache:"none"});
       await reg.update();
       if(adminSecret && Notification.permission==="granted"){
         let sub=await reg.pushManager.getSubscription();
