@@ -337,6 +337,7 @@ footer{padding:24px 0 42px;border-top:1px solid rgba(217,177,87,.10);margin-top:
           <div class="hero-actions">
             <button class="primary" data-open-app type="button">ΕΙΣΟΔΟΣ ΜΕΛΩΝ</button>
             <button class="secondary" data-register type="button">ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ</button>
+            <button class="secondary" data-install-app type="button">ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
           </div>
           <div class="hero-note">Καμία επιλογή δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους.</div>
         </div>
@@ -684,6 +685,9 @@ registerModal.onclick=function(e){if(e.target===registerModal)closeRegister()};
 
 document.querySelectorAll("[data-open-app]").forEach(function(btn){
   btn.onclick=function(){location.href=APP_URL};
+});
+document.querySelectorAll("[data-install-app]").forEach(function(btn){
+  btn.onclick=function(){location.href=APP_URL+"?install=1"};
 });
 document.querySelectorAll("[data-register]").forEach(function(btn){
   btn.onclick=openRegister;
