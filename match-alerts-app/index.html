@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#070708">
 <meta name="description" content="DreamTeamTips — Football Data & Smart Alerts">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="reference-icon.svg" type="image/svg+xml">
+<link rel="icon" href="dreamteamtips-icon.svg" type="image/svg+xml">
 <title>DreamTeamTips</title>
 <style>
 :root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075);--danger:#ff8d98}
@@ -36,9 +36,9 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;b
 .compact-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 14px;padding:11px 13px;border:1px solid rgba(217,177,87,.16);border-radius:16px;background:rgba(255,255,255,.022)}
 .compact-status .counter{margin:0}.compact-status .status-mini{padding:0}
 .home-card{padding:22px}.home-kicker{color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase}.home-title{font-family:Georgia,serif;font-size:28px;line-height:1.06;margin:7px 0 8px}.home-copy{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
-.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.quick-btn{border:1px solid rgba(217,177,87,.16);background:linear-gradient(145deg,rgba(217,177,87,.07),rgba(255,255,255,.018));color:#f6f1e4;border-radius:17px;padding:14px;text-align:left}.quick-btn b{display:block;font-size:13px}.quick-btn span{display:block;margin-top:5px;color:var(--muted);font-size:10px}.home-overview{display:grid;gap:9px;margin-top:18px}.home-overview-card{width:100%;display:flex;align-items:center;gap:12px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.015));color:#eee9df;border-radius:16px;padding:13px 14px;text-align:left}.home-overview-icon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);color:#f1d78e;font-size:12px}.home-overview-main{min-width:0;flex:1}.home-overview-main b{display:block;font-size:12px}.home-overview-main small{display:block;margin-top:4px;color:#85818a;font-size:9px;line-height:1.35}.home-overview-arrow{color:#8d8778;font-size:22px;line-height:1}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.quick-btn{border:1px solid rgba(217,177,87,.16);background:linear-gradient(145deg,rgba(217,177,87,.07),rgba(255,255,255,.018));color:#f6f1e4;border-radius:17px;padding:14px;text-align:left}.quick-btn b{display:block;font-size:13px}.quick-btn span{display:block;margin-top:5px;color:var(--muted);font-size:10px}.home-notification-notice{margin-top:14px;padding:12px 13px;border:1px solid rgba(217,177,87,.18);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));display:flex;align-items:center;gap:11px}.home-notification-notice.hidden{display:none}.home-notification-icon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);font-size:15px}.home-notification-copy{min-width:0;flex:1}.home-notification-copy b{display:block;font-size:11px;color:#eee9df}.home-notification-copy small{display:block;margin-top:4px;color:#85818a;font-size:9px;line-height:1.35}.home-notification-action{flex:0 0 auto;border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.08);color:#ffe6a1;border-radius:999px;padding:7px 9px;font-size:8px;font-weight:900;white-space:nowrap}.notification-help-link{width:100%;margin-top:4px;border:0;border-top:1px solid rgba(255,255,255,.035);background:transparent;color:#cdbd89;padding:11px 0 1px;text-align:left;font-size:9px;font-weight:800}.notification-help-link span{color:#77727d;font-weight:700}.home-overview{display:grid;gap:9px;margin-top:18px}.home-overview-card{width:100%;display:flex;align-items:center;gap:12px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.015));color:#eee9df;border-radius:16px;padding:13px 14px;text-align:left}.home-overview-icon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);color:#f1d78e;font-size:12px}.home-overview-main{min-width:0;flex:1}.home-overview-main b{display:block;font-size:12px}.home-overview-main small{display:block;margin-top:4px;color:#85818a;font-size:9px;line-height:1.35}.home-overview-arrow{color:#8d8778;font-size:22px;line-height:1}
 .placeholder-card{padding:22px}.placeholder-card h3{font-family:Georgia,serif;font-size:23px;margin:0 0 8px}.placeholder-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
-.model-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}.model-switch-btn{border:1px solid rgba(217,177,87,.14);background:rgba(255,255,255,.018);color:#8f8b95;border-radius:14px;padding:11px 10px;font-size:10px;font-weight:900;letter-spacing:.2px}.model-switch-btn.active{border-color:rgba(217,177,87,.34);background:rgba(217,177,87,.09);color:#fff2cf}.model-view.hidden{display:none}.work-note{margin-top:10px;padding:12px 13px;border-radius:14px;border:1px solid rgba(217,177,87,.14);background:rgba(217,177,87,.035);color:#b8b3bc;font-size:10px;line-height:1.5}
+.model-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.model-switch-btn{border:1px solid rgba(217,177,87,.14);background:rgba(255,255,255,.018);color:#8f8b95;border-radius:14px;padding:11px 10px;font-size:10px;font-weight:900;letter-spacing:.2px}.model-switch-btn.active{border-color:rgba(217,177,87,.34);background:rgba(217,177,87,.09);color:#fff2cf}.model-view.hidden{display:none}.symbol-guide{display:grid;gap:12px}.symbol-guide-group{padding:16px;border:1px solid rgba(217,177,87,.16);border-radius:17px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012))}.symbol-guide-title{font:600 15px/1.1 Georgia,serif;color:#f1e9d7;margin-bottom:10px}.symbol-guide-list{display:grid;gap:8px}.symbol-guide-row{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(255,255,255,.016)}.symbol-guide-icon{width:30px;flex:0 0 30px;text-align:center;font-size:18px;line-height:1}.symbol-guide-row b{font-size:11px;color:#eee8da}.symbol-guide-note{margin-top:10px;color:#8d8892;font-size:9px;line-height:1.5}.work-note{margin-top:10px;padding:12px 13px;border-radius:14px;border:1px solid rgba(217,177,87,.14);background:rgba(217,177,87,.035);color:#b8b3bc;font-size:10px;line-height:1.5}
 .legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.legend-item{padding:10px 8px;border-radius:12px;text-align:center;font-size:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}.legend-item b{display:block;font-size:12px;margin-bottom:4px}.legend-win b{color:#9ee0a8}.legend-loss b{color:#ff9aa3}.legend-pending b{color:#d9b157}
 .bottom-nav{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:24px 0 0;padding:7px;border:1px solid rgba(217,177,87,.18);border-radius:21px;background:rgba(9,9,11,.94);backdrop-filter:blur(16px);box-shadow:0 14px 42px rgba(0,0,0,.42)}
 .nav-btn{border:0;background:transparent;color:#77747d;border-radius:14px;padding:8px 3px 7px;font-size:8px;font-weight:900;letter-spacing:.2px}.nav-btn .nav-icon{display:block;font-size:16px;line-height:1;margin-bottom:5px;color:#8f8b95}.nav-btn.active{background:rgba(217,177,87,.09);color:#fff2cf}.nav-btn.active .nav-icon{color:var(--gold2)}
@@ -92,6 +92,12 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .support-sheet{max-height:82vh;overflow:auto}.support-intro{margin:8px 0 15px;color:#8f8a93;font-size:11px;line-height:1.5}.support-field{margin-top:12px}.support-label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:10px;font-weight:900;letter-spacing:.4px}.support-select,.support-textarea{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:12px 13px;font:inherit;outline:none}.support-select:focus,.support-textarea:focus{border-color:rgba(217,177,87,.55)}.support-textarea{min-height:132px;resize:vertical;line-height:1.45}.support-send{margin-top:13px}.support-msg{min-height:18px;margin-top:10px;color:#9f9aa3;font-size:11px;line-height:1.4}.support-msg.ok{color:#bde5c5}.support-msg.error{color:#ffabb3}
 
 
+.install-sheet{max-width:540px}
+.install-hero{display:flex;align-items:center;gap:13px;margin-top:10px;padding:14px;border:1px solid rgba(217,177,87,.16);border-radius:17px;background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.014))}
+.install-hero img{width:52px;height:52px;border-radius:16px;border:1px solid rgba(217,177,87,.32)}
+.install-hero b{display:block;font:600 18px/1 Georgia,serif;color:#f2ead8}.install-hero span{display:block;margin-top:5px;color:#827e86;font-size:9px;line-height:1.45}
+.install-copy{margin:14px 0 12px;color:#9b969e;font-size:11px;line-height:1.55}
+.install-status{min-height:18px;margin-top:10px;color:#b8b3bc;font-size:10px;line-height:1.45;text-align:center}
 .combo-list{display:grid;gap:12px;margin-bottom:14px}.combo-card{padding:16px;border:1px solid rgba(217,177,87,.28);border-radius:19px;background:radial-gradient(260px 120px at 100% 0,rgba(217,177,87,.10),transparent 72%),linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.combo-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.combo-kicker{color:#8d877e;font-size:8px;font-weight:900;letter-spacing:1.25px;text-transform:uppercase}.combo-title{margin-top:4px;font:600 20px/1.05 Georgia,serif;color:#fff0ba}.combo-odds{text-align:right}.combo-odds span{display:block;color:#7e7981;font-size:8px;text-transform:uppercase;letter-spacing:.8px}.combo-odds b{display:block;margin-top:3px;font:600 24px/1 Georgia,serif;color:#ffe39a}.combo-legs{display:grid;gap:0;margin-top:12px;border-top:1px solid rgba(255,255,255,.055)}.combo-leg{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.045)}.combo-leg:last-child{border-bottom:0;padding-bottom:0}.combo-leg-main b{display:block;font-size:11px;color:#ece7dc}.combo-leg-main span{display:block;margin-top:3px;color:#827d85;font-size:9px}.combo-leg-pick{flex:0 0 auto;text-align:right;font-size:11px;font-weight:900;color:#ffe2a0}.combo-leg-pick small{display:block;margin-top:3px;color:#77727a;font-size:8px;font-weight:700}.combo-note{margin-top:10px;color:#7f7a82;font-size:9px;line-height:1.4}
 
 /* Member picks / personal history */
@@ -100,7 +106,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .played-btn:disabled{cursor:default}.played-btn.done{border-color:rgba(139,211,155,.22);background:rgba(139,211,155,.065);color:#c8efcf}
 .history-shell{padding:18px}.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}.history-head h3{font:500 25px/1.05 Georgia,serif;margin:0}.history-head p{margin:6px 0 0;color:#817c85;font-size:10px;line-height:1.45}.history-count{font-size:10px;font-weight:900;color:#cdbd89;white-space:nowrap}
 .history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
-.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}.symbol-stat-card{min-height:72px;border:1px solid rgba(217,177,87,.18);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.012));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.symbol-stat-card span{font-size:19px;line-height:1}.symbol-stat-card b{font:700 14px/1 Georgia,serif;color:#efd58c}
+.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}.symbol-stat-card{min-height:70px;border:1px solid rgba(217,177,87,.16);border-radius:14px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.symbol-stat-card span{font-size:18px;line-height:1}.symbol-stat-card b{font:700 13px/1 Georgia,serif;color:#efd58c;letter-spacing:.3px}
 .pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 .pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
 .pick-card.result-loss{border-color:rgba(255,119,130,.34);background:linear-gradient(145deg,rgba(176,58,70,.11),rgba(255,255,255,.012))}
@@ -139,7 +145,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 </head>
 <body>
 <main class="app">
-<div class="top"><div class="brand"><img class="logo" src="reference-icon.svg" alt="DreamTeamTips"><div><h1>DreamTeam<span>Tips</span></h1><div class="sub">Football Data • Smart Picks</div></div></div><div class="top-actions"><button id="bellBtn" class="bell-btn hidden" aria-label="Μηνύματα"><span class="bell-shape">♟</span><span class="bell-mark hidden">•</span></button></div></div>
+<div class="top"><div class="brand"><img class="logo" src="icon.svg" alt="DreamTeamTips"><div><h1>DreamTeam<span>Tips</span></h1><div class="sub">Football Data • Smart Picks</div></div></div><div class="top-actions"><button id="bellBtn" class="bell-btn hidden" aria-label="Μηνύματα"><span class="bell-shape">♟</span><span class="bell-mark hidden">•</span></button></div></div>
 
 <section id="welcome" class="card auth"><h2>Οι επιλογές που ξεχωρίζουμε.<br>Τη στιγμή που αξίζουν.</h2><p>Ιδιωτική πρόσβαση στις επιλεγμένες προτάσεις του DreamTeamTips. Τα δεδομένα ανανεώνονται χωρίς να χρειάζεται να εγκαταστήσεις εφαρμογή.</p></section>
 
@@ -157,13 +163,11 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
   </div>
 
   <div id="verifyView" class="hidden">
-    <h2>Έλεγξε το email σου</h2>
-    <p id="verifyText">Σου στείλαμε email επιβεβαίωσης. Πάτησε το κουμπί μέσα στο email για να ολοκληρωθεί η εγγραφή.</p>
-    <div id="legacyCodeWrap" class="hidden">
-      <div class="field"><label class="label">Παλιός κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
-      <button class="primary" id="verifySubmit">Επιβεβαίωση παλιού κωδικού</button>
-    </div>
-    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε email</button><button class="ghost" id="legacyCodeBtn">Έχω παλιό κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
+    <h2>Επιβεβαίωση email</h2>
+    <p id="verifyText">Σου στείλαμε 6ψήφιο κωδικό.</p>
+    <div class="field"><label class="label">Κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+    <button class="primary" id="verifySubmit">Επιβεβαίωση</button>
+    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
     <div class="msg" id="resendTimer"></div>
     <div class="msg" id="verifyMsg"></div>
   </div>
@@ -175,6 +179,15 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
       <div class="home-kicker">Members Area</div>
       <div class="home-title">Καλώς ήρθες στο DreamTeamTips.</div>
       <p class="home-copy">Ό,τι χρειάζεσαι σήμερα, συγκεντρωμένο σε ένα σημείο.</p>
+
+      <div id="homeNotificationNotice" class="home-notification-notice hidden">
+        <div class="home-notification-icon">🔔</div>
+        <div class="home-notification-copy">
+          <b>Οι ειδοποιήσεις είναι απενεργοποιημένες</b>
+          <small>Ενεργοποίησέ τες για να ενημερώνεσαι όταν υπάρχει νέα επιλογή.</small>
+        </div>
+        <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
+      </div>
 
       <div class="home-overview">
         <button class="home-overview-card" data-go="choices">
@@ -259,6 +272,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
       <div class="model-switch" role="tablist" aria-label="Πληροφορίες DreamTeamTips">
         <button class="model-switch-btn active" id="aboutTabBtn" type="button">Σχετικά με εμάς</button>
         <button class="model-switch-btn" id="howWeWorkTabBtn" type="button">Πώς δουλεύουμε</button>
+        <button class="model-switch-btn" id="symbolsTabBtn" type="button">Συμβολισμοί</button>
       </div>
 
       <div id="aboutView" class="model-view">
@@ -280,13 +294,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
       <div class="card model-section">
         <h3>Χτίζουμε σταδιακά</h3>
-        <div class="model-rule">Η φιλοσοφία μας δεν είναι να ξεκινά κάποιος με μεγάλο κεφάλαιο ή να ρισκάρει υπερβολικά. Είναι να ξεκινά με μέτρο, να προστατεύει ό,τι έχει και να αφήνει την πορεία να χτίζει σταδιακά το κεφάλαιο.</div>
-        <div class="model-rule" style="margin-top:8px"><b>Τα λίγα δεν χρειάζεται να γίνουν πολλά σε μία μέρα· χρειάζεται να χτιστούν σωστά.</b></div>
-      </div>
-
-      <div class="card model-section">
-        <h3>Στο τέλος, μετράει η πορεία</h3>
-        <div class="model-rule">Δεν χρειάζονται μεγάλα λόγια. Εμείς θα συνεχίσουμε να δουλεύουμε με τον ίδιο τρόπο κάθε μέρα και η πορεία στον χρόνο είναι αυτή που θα δείξει την αξία της δουλειάς μας.</div>
+        <div class="model-rule">Δεν χρειάζονται μεγάλα λόγια. Θέλουμε αυτό που κάνουμε να έχει συνέπεια και διάρκεια, και αφήνουμε την πορεία στον χρόνο να δείξει την αξία της δουλειάς μας.</div>
         <div class="model-rule" style="margin-top:8px"><b>Σας ευχαριστούμε που επιλέγετε να είστε μαζί μας και που μας εμπιστεύεστε σε αυτή την πορεία.</b></div>
       </div>
 
@@ -302,23 +310,55 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
         </div>
 
         <div class="card model-section">
-          <h3>Η εικόνα αλλάζει όσο πλησιάζει ο αγώνας</h3>
-          <div class="model-rule">Παρακολουθούμε συνεχώς τις τελευταίες εξελίξεις γύρω από κάθε αγώνα και, όσο πλησιάζει η ώρα έναρξης, η εικόνα γίνεται πιο ολοκληρωμένη.</div>
-          <div class="model-rule" style="margin-top:8px">Γι’ αυτό μια επιλογή που βλέπετε νωρίτερα μέσα στην ημέρα μπορεί να αλλάξει ή να αποσυρθεί αν προκύψουν νέα δεδομένα.</div>
+          <h3>Από την παρακολούθηση στην επιλογή</h3>
+          <div class="model-rule">Καθημερινά εξετάζουμε πολλές περιπτώσεις, όμως σε εσάς φτάνουν εκείνες που θεωρούμε ότι πραγματικά αξίζουν την προσοχή μας. Κάθε επιλογή που μοιραζόμαστε έχει περάσει από τη δική μας αξιολόγηση πριν φτάσει σε εσάς.</div>
         </div>
 
         <div class="card model-section">
-          <h3>Δεν βιαζόμαστε από νωρίς</h3>
-          <div class="model-rule">Δεν μας ενδιαφέρει να βιαστούμε απλώς για να υπάρχει μια επιλογή από νωρίς. Όσο πλησιάζουμε στην έναρξη, τόσο περισσότερη εικόνα έχουμε για να αξιολογήσουμε σωστά την περίπτωση.</div>
-          <div class="work-note"><b>Με απλά λόγια:</b> όσο πιο κοντά φτάνουμε στον αγώνα, τόσο περισσότερο σταθεροποιείται η τελική μας εκτίμηση.</div>
+          <h3>Μέχρι την τελευταία στιγμή</h3>
+          <div class="model-rule">Η εικόνα ενός αγώνα μπορεί να αλλάξει. Γι’ αυτό παραμένουμε σε εγρήγορση μέχρι κοντά στην έναρξη, ώστε να μπορούμε να προσαρμοστούμε όταν υπάρχει ουσιαστικός λόγος.</div>
         </div>
 
         <div class="card model-section">
-          <h3>Αν κάτι αλλάξει, αλλάζουμε κι εμείς</h3>
-          <div class="model-rule">Αν προκύψει κάτι που αλλάζει ουσιαστικά την εικόνα ενός αγώνα, προτιμάμε να διορθώσουμε ή να αποσύρουμε μια επιλογή παρά να μείνουμε σε μια παλαιότερη εκτίμηση μόνο και μόνο επειδή είχε εμφανιστεί νωρίτερα.</div>
+          <h3>Όταν χρειάζεται, προσαρμοζόμαστε</h3>
+          <div class="model-rule">Αν προκύψει κάτι που αλλάζει ουσιαστικά την εικόνα ενός αγώνα, προτιμάμε να διορθώσουμε ή να αποσύρουμε μια επιλογή παρά να επιμείνουμε σε κάτι που δεν μας εκφράζει πλέον.</div>
+        </div>
+
+        <div class="card model-section">
+          <div class="model-rule"><b>Εσείς βλέπετε την επιλογή. Εμείς έχουμε ήδη κάνει τη δουλειά πίσω από αυτή — για εσάς.</b></div>
         </div>
 
         <div class="model-footnote">Η αξιολόγηση εξελίσσεται μέχρι κοντά στην έναρξη του αγώνα. Καμία επιλογή δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους.</div>
+      </div>
+
+      <div id="symbolsView" class="model-view hidden">
+        <div class="card model-hero">
+          <div class="model-kicker">DreamTeamTips</div>
+          <h3 class="model-title">Συμβολισμοί</h3>
+          <p class="model-copy">Τα σύμβολα συνοδεύουν τις επιλογές μας και δείχνουν τη θέση που έχει κάθε επιλογή στη δική μας αξιολόγηση.</p>
+        </div>
+
+        <div class="symbol-guide">
+          <div class="symbol-guide-group">
+            <div class="symbol-guide-title">Με το φαβορί</div>
+            <div class="symbol-guide-list">
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">🔷</span><b>Επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">💎</span><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">👑</span><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+
+          <div class="symbol-guide-group">
+            <div class="symbol-guide-title">Απέναντι στο φαβορί</div>
+            <div class="symbol-guide-list">
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">🎯</span><b>Επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">⚡</span><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">💣</span><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-footnote">Κάθε σύμβολο εκφράζει τη δική μας αξιολόγηση και δεν αποτελεί εγγύηση αποτελέσματος.</div>
       </div>
     </div>
   </section>
@@ -366,6 +406,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           </div>
           <button class="notification-toggle" id="notificationToggle" type="button">Έλεγχος…</button>
         </div>
+        <button class="notification-help-link" id="notificationHelpLink" type="button">Δεν λαμβάνεις ειδοποιήσεις; <span>Δες πώς ›</span></button>
       </div>
 
       <div class="profile-section">
@@ -397,12 +438,12 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
 <div id="notificationHelp" class="message-center hidden">
   <div class="message-sheet">
-    <div class="message-head"><h3>Ενεργοποίηση ειδοποιήσεων</h3><button class="close-msg" id="closeNotificationHelp">✕</button></div>
-    <div class="notification-help-copy">Επειδή πάτησες «Να μην επιτρέπεται», το Android δεν αφήνει το app να ξαναζητήσει άδεια μόνο του. Γίνεται όμως εύκολα:</div>
+    <div class="message-head"><h3>Ειδοποιήσεις DreamTeamTips</h3><button class="close-msg" id="closeNotificationHelp">✕</button></div>
+    <div class="notification-help-copy">Αν δεν εμφανίζονται ειδοποιήσεις, έλεγξε ότι το DreamTeamTips έχει άδεια από τις ρυθμίσεις της συσκευής σου.</div>
     <div class="notification-steps">
-      <div class="notification-step"><b>1</b><span>Άνοιξε τις <strong>Ρυθμίσεις</strong> του κινητού.</span></div>
-      <div class="notification-step"><b>2</b><span>Βρες το DreamTeamTips ή τον browser που χρησιμοποιείς και άνοιξε <strong>Ειδοποιήσεις</strong>.</span></div>
-      <div class="notification-step"><b>3</b><span>Ενεργοποίησε τις ειδοποιήσεις και γύρνα εδώ. Θα το ελέγξουμε αυτόματα.</span></div>
+      <div class="notification-step"><b>Android</b><span><strong>Ρυθμίσεις → Εφαρμογές → DreamTeamTips → Ειδοποιήσεις</strong><br>Ενεργοποίησε το «Να επιτρέπονται οι ειδοποιήσεις».</span></div>
+      <div class="notification-step"><b>iPhone</b><span><strong>Ρυθμίσεις → Ειδοποιήσεις → DreamTeamTips</strong><br>Ενεργοποίησε το «Επιτρέπονται ειδοποιήσεις».</span></div>
+      <div class="notification-step"><b>✓</b><span>Γύρνα στο DreamTeamTips και πάτησε <strong>Έλεγχος ξανά</strong>.</span></div>
     </div>
     <button id="notificationCheckAgain" class="primary support-send">Έλεγχος ξανά</button>
   </div>
@@ -420,10 +461,96 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <div id="supportMsg" class="support-msg"></div>
   </div>
 </div>
+<div id="installCenter" class="message-center hidden">
+  <div class="message-sheet install-sheet">
+    <div class="message-head"><h3>Εγκατάσταση DreamTeamTips</h3><button class="close-msg" id="closeInstallCenter">✕</button></div>
+    <div class="install-hero">
+      <img src="icon.svg" alt="DreamTeamTips">
+      <div><b>DreamTeamTips</b><span>Εγκατάστησέ το στο κινητό σου για να ανοίγει σαν κανονική εφαρμογή.</span></div>
+    </div>
+    <div class="install-copy" id="installCopy">Πάτησε «Εγκατάσταση» και επιβεβαίωσε το μήνυμα του κινητού σου.</div>
+    <button id="installAppNow" class="primary support-send" type="button">ΕΓΚΑΤΑΣΤΑΣΗ</button>
+    <div id="installStatus" class="install-status"></div>
+  </div>
+</div>
 <footer>DreamTeamTips · Members</footer>
 </main>
 <script>
-const API_URL="https://match-alerts-api-private.onrender.com/api";
+const API_URL="/api";
+const installCenter=document.getElementById("installCenter");
+const closeInstallCenter=document.getElementById("closeInstallCenter");
+const installAppNow=document.getElementById("installAppNow");
+const installCopy=document.getElementById("installCopy");
+const installStatus=document.getElementById("installStatus");
+let deferredInstallPrompt=null;
+const installRequested=new URLSearchParams(location.search).get("install")==="1";
+function isStandaloneInstall(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true}
+function showInstallCenter(){
+  installCenter.classList.remove("hidden");
+  if(isStandaloneInstall()){
+    installCopy.textContent="Το DreamTeamTips είναι ήδη εγκατεστημένο σε αυτή τη συσκευή.";
+    installAppNow.classList.add("hidden");
+    installStatus.textContent="";
+    return;
+  }
+  installAppNow.classList.remove("hidden");
+  const isiOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isiOS){
+    installCopy.textContent="Στο iPhone πάτησε Κοινή χρήση και μετά «Προσθήκη στην οθόνη αφετηρίας».";
+    installStatus.textContent="Η εγκατάσταση στο iPhone ολοκληρώνεται από το Safari.";
+  }else{
+    installCopy.textContent="Πάτησε «Εγκατάσταση» και επιβεβαίωσε το μήνυμα του κινητού σου.";
+    installStatus.textContent=deferredInstallPrompt?"Η εφαρμογή είναι έτοιμη για εγκατάσταση.":"Περιμένουμε την επιλογή εγκατάστασης από το κινητό σου…";
+  }
+}
+function closeInstall(){
+  installCenter.classList.add("hidden");
+  const url=new URL(location.href);
+  if(url.searchParams.has("install")){url.searchParams.delete("install");history.replaceState(null,"",url.pathname+url.search+url.hash)}
+}
+closeInstallCenter.onclick=closeInstall;
+installCenter.onclick=e=>{if(e.target===installCenter)closeInstall()};
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  if(installRequested){
+    installStatus.textContent="Η εφαρμογή είναι έτοιμη για εγκατάσταση.";
+    installAppNow.classList.remove("hidden");
+  }
+});
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  installCopy.textContent="Η εφαρμογή εγκαταστάθηκε.";
+  installAppNow.classList.add("hidden");
+  installStatus.textContent="Θα βρεις το DreamTeamTips μαζί με τις υπόλοιπες εφαρμογές σου.";
+});
+installAppNow.onclick=async()=>{
+  if(isStandaloneInstall()){
+    installCopy.textContent="Το DreamTeamTips είναι ήδη εγκατεστημένο σε αυτή τη συσκευή.";
+    installAppNow.classList.add("hidden");
+    return;
+  }
+  if(deferredInstallPrompt){
+    const prompt=deferredInstallPrompt;
+    deferredInstallPrompt=null;
+    await prompt.prompt();
+    const choice=await prompt.userChoice.catch(()=>null);
+    if(choice&&choice.outcome==="accepted"){
+      installStatus.textContent="Ολοκληρώνεται η εγκατάσταση…";
+    }else{
+      installStatus.textContent="Η εγκατάσταση δεν ολοκληρώθηκε.";
+    }
+    return;
+  }
+  const isiOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isiOS){
+    installCopy.textContent="Στο Safari πάτησε Κοινή χρήση και μετά «Προσθήκη στην οθόνη αφετηρίας».";
+    installStatus.textContent="Το iPhone χρειάζεται αυτή την επιβεβαίωση από εσένα.";
+  }else{
+    installStatus.textContent="Αν δεν εμφανιστεί μήνυμα, περίμενε λίγα δευτερόλεπτα και πάτησε ξανά.";
+  }
+};
+if(installRequested)setTimeout(showInstallCenter,120);
 const DEVICE_STORAGE_KEY="dtt_device_id_v1";
 function getDeviceId(){
   let id=localStorage.getItem(DEVICE_STORAGE_KEY)||"";
@@ -440,8 +567,6 @@ let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
-const ALERTS_CACHE_PREFIX="dtt_public_alerts_v2::";
-const ALERTS_CACHE_MAX_MS=12*60*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 
 async function apiPost(params){
@@ -503,9 +628,9 @@ function setMode(next){
   loginTab.classList.toggle("active",!reg); registerTab.classList.toggle("active",reg);
   emailField.classList.toggle("hidden",!reg);
   authTitle.textContent=reg?"Δωρεάν εγγραφή":"Σύνδεση";
-  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου από το link που θα σου στείλουμε.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
+  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
   authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
-  haveCodeBtn.classList.add("hidden");
+  haveCodeBtn.classList.toggle("hidden",!reg);
   password.autocomplete=reg?"new-password":"current-password";
   setMsg(authMsg,"");
 }
@@ -536,7 +661,7 @@ authSubmit.onclick=async()=>{
       pendingUsername=r.username||u;
       setVerifyExpiry(pendingUsername,15*60*1000);
       showVerify(pendingUsername,r.emailMasked||e);
-      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε email επιβεβαίωσης.","ok");
+      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
     }else{
       saveSession(r);
     }
@@ -560,11 +685,11 @@ function updateVerifyTimer(){
       const t=Math.ceil(left/1000), mm=String(Math.floor(t/60)).padStart(2,"0"), ss=String(t%60).padStart(2,"0");
       resendCode.disabled=true;
       resendCode.textContent="Ξαναστείλε σε "+mm+":"+ss;
-      resendTimer.textContent="Ο σύνδεσμος επιβεβαίωσης ισχύει για 15 λεπτά.";
+      resendTimer.textContent="Ο κωδικός ισχύει για 15 λεπτά.";
     }else{
       resendCode.disabled=false;
-      resendCode.textContent="Ξαναστείλε email";
-      resendTimer.textContent="Ο σύνδεσμος έληξε. Μπορείς να ζητήσεις νέο email.";
+      resendCode.textContent="Ξαναστείλε κωδικό";
+      resendTimer.textContent="Ο κωδικός έληξε. Μπορείς να ζητήσεις νέο.";
       if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
     }
   };
@@ -573,7 +698,7 @@ function updateVerifyTimer(){
 }
 function showVerify(u,masked){
   pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
-  verifyText.textContent=masked?"Στείλαμε email επιβεβαίωσης στο "+masked+". Πάτησε το κουμπί μέσα στο email.":"Έλεγξε το email σου και πάτησε το κουμπί επιβεβαίωσης.";
+  verifyText.textContent=masked?"Στείλαμε 6ψήφιο κωδικό στο "+masked+".":"Βάλε τον 6ψήφιο κωδικό που έλαβες στο email.";
   verifyCode.value=""; setMsg(verifyMsg,""); updateVerifyTimer();
 }
 verifySubmit.onclick=async()=>{
@@ -600,16 +725,13 @@ resendCode.onclick=async()=>{
     if(!r.ok) throw new Error(r.error||"ERROR");
     setVerifyExpiry(u,15*60*1000);
     updateVerifyTimer();
-    setMsg(verifyMsg,"Στάλθηκε νέο email επιβεβαίωσης. Έλεγξε και τα Ανεπιθύμητα.","ok");
+    setMsg(verifyMsg,"Στάλθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
   }catch(err){
     resendCode.disabled=false;
-    resendCode.textContent="Ξαναστείλε email";
+    resendCode.textContent="Ξαναστείλε κωδικό";
     setMsg(verifyMsg,mapError(err.message),"error");
   }
 };
-const legacyCodeWrap=document.getElementById("legacyCodeWrap");
-const legacyCodeBtn=document.getElementById("legacyCodeBtn");
-legacyCodeBtn.onclick=()=>{legacyCodeWrap.classList.toggle("hidden");legacyCodeBtn.classList.toggle("hidden");if(!legacyCodeWrap.classList.contains("hidden"))setTimeout(()=>verifyCode.focus(),50);};
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
 function setHistoryMode(mode){
@@ -700,6 +822,12 @@ function openMessages(){
 bellBtn.onclick=openMessages;
 const notificationToggle=document.getElementById("notificationToggle");
 const notificationSub=document.getElementById("notificationSub");
+const notificationHelpLink=document.getElementById("notificationHelpLink");
+const homeNotificationNotice=document.getElementById("homeNotificationNotice");
+const homeNotificationAction=document.getElementById("homeNotificationAction");
+function setHomeNotificationNotice(show){
+  homeNotificationNotice?.classList.toggle("hidden",!show);
+}
 
 function notificationSupported(){
   return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
@@ -743,6 +871,7 @@ async function ensurePushRegistration(sub,force=false){
 async function refreshNotificationState(){
   if(!notificationToggle||!notificationSub) return;
   notificationToggle.classList.remove("active","blocked");
+  setHomeNotificationNotice(true);
   if(!notificationSupported()){
     notificationToggle.textContent="Μη διαθέσιμες";
     notificationToggle.disabled=true;
@@ -772,6 +901,7 @@ async function refreshNotificationState(){
     notificationToggle.textContent="✓ Ενεργές";
     notificationToggle.classList.add("active");
     notificationSub.textContent="Οι push ειδοποιήσεις είναι συνδεδεμένες με το DreamTeamTips.";
+    setHomeNotificationNotice(false);
   }else{
     notificationToggle.textContent="Επανασύνδεση";
     notificationSub.textContent="Η άδεια υπάρχει, αλλά η συσκευή δεν έχει συνδεθεί σωστά. Πάτησε για επανασύνδεση.";
@@ -780,6 +910,12 @@ async function refreshNotificationState(){
 const notificationHelp=document.getElementById("notificationHelp");
 const closeNotificationHelp=document.getElementById("closeNotificationHelp");
 const notificationCheckAgain=document.getElementById("notificationCheckAgain");
+if(notificationHelpLink) notificationHelpLink.onclick=()=>notificationHelp.classList.remove("hidden");
+if(homeNotificationAction) homeNotificationAction.onclick=()=>{
+  showScreen("profile");
+  if(Notification.permission==="denied") notificationHelp.classList.remove("hidden");
+  else notificationToggle?.click();
+};
 closeNotificationHelp.onclick=()=>notificationHelp.classList.add("hidden");
 notificationHelp.onclick=e=>{if(e.target===notificationHelp)notificationHelp.classList.add("hidden");};
 notificationCheckAgain.onclick=async()=>{
@@ -900,96 +1036,35 @@ function applySubscription(endAt){
 
 const aboutTabBtn=document.getElementById("aboutTabBtn");
 const howWeWorkTabBtn=document.getElementById("howWeWorkTabBtn");
+const symbolsTabBtn=document.getElementById("symbolsTabBtn");
 const aboutView=document.getElementById("aboutView");
 const howWeWorkView=document.getElementById("howWeWorkView");
+const symbolsView=document.getElementById("symbolsView");
 function setModelView(view){
   const how=view==="how";
-  aboutTabBtn?.classList.toggle("active",!how);
+  const symbols=view==="symbols";
+  const about=!how&&!symbols;
+  aboutTabBtn?.classList.toggle("active",about);
   howWeWorkTabBtn?.classList.toggle("active",how);
-  aboutView?.classList.toggle("hidden",how);
+  symbolsTabBtn?.classList.toggle("active",symbols);
+  aboutView?.classList.toggle("hidden",!about);
   howWeWorkView?.classList.toggle("hidden",!how);
+  symbolsView?.classList.toggle("hidden",!symbols);
 }
 if(aboutTabBtn) aboutTabBtn.onclick=()=>setModelView("about");
 if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
+if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
-function alertCacheKey(){
-  const user=String(localStorage.getItem("ma_user")||"").trim().toLowerCase();
-  return ALERTS_CACHE_PREFIX+(user||"guest");
-}
-function readAlertsCache(){
-  try{
-    const raw=localStorage.getItem(alertCacheKey());
-    if(!raw)return null;
-    const x=JSON.parse(raw);
-    const savedAt=Number(x.savedAt||0);
-    if(!savedAt||Date.now()-savedAt>ALERTS_CACHE_MAX_MS)return null;
-    return x;
-  }catch(_){return null;}
-}
-function saveAlertsCache(r){
-  try{
-    localStorage.setItem(alertCacheKey(),JSON.stringify({
-      savedAt:Date.now(),
-      updatedAt:r.updatedAt||new Date().toISOString(),
-      alerts:Array.isArray(r.alerts)?r.alerts:[],
-      slips:Array.isArray(r.slips)?r.slips:[],
-      subscriptionEndsAt:r.subscriptionEndsAt||""
-    }));
-  }catch(_){}
-}
-function showCachedAlerts(){
-  const cached=readAlertsCache();
-  if(!cached)return false;
-  renderAlerts(cached.alerts||[],cached.slips||[]);
-  const singles=currentAlerts.length, slipCount=currentSlips.length;
-  const counterText=singles+" "+(singles===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
-  counter.textContent=counterText;
-  homeCount.textContent=(singles+slipCount)?counterText:"Καμία ενεργή επιλογή";
-  const d=new Date(cached.updatedAt||cached.savedAt);
-  updatedAt.textContent=isNaN(d)?"Τελευταία διαθέσιμη εικόνα":"Τελευταία εικόνα "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"});
-  if(cached.subscriptionEndsAt)applySubscription(cached.subscriptionEndsAt);
-  return true;
-}
 function saveSession(r){
   sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
-  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");
-  const hadCache=showCachedAlerts();
-  loadAlerts({background:hadCache});
-  loadMyHistory({background:true});
-  loadMemberMessages({background:true});
+  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadAlerts();loadMyHistory();loadMemberMessages();
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
   localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
-function publicSignalForAlert(value){
-  const a=String(value||"").toUpperCase().trim();
-
-  // TEST / αναμονή: δεν αποκτούν δημόσιο level ακόμη.
-  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)")||a.includes("ΔΥΝΑΤΟ ΦΑΒΟΡΙ")) return {symbol:"",level:0,family:"test"};
-
-  // Κόντρα: 🎯 < ⚡ < 💣
-  if(a.includes("ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ")) return {symbol:"🎯",level:1,family:"contra"};
-  if(a.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ")) return {symbol:"💣",level:3,family:"contra"};
-  if(a.includes("ΚΟΝΤΡΑ")) return {symbol:"⚡",level:2,family:"contra"};
-
-  // Φαβορί: 🔷 < 💎 < 👑
-  if(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X")||a.includes("ΦΑΒΟΡΙ SOFA+3X")||a.includes("84+P60")||a.includes("ΤΖΙΡΟΣ ↑")){
-    return {symbol:"🔷",level:1,family:"favorite"};
-  }
-  if(a.includes("ΦΑΒΟΡΙ ΠΤΩΣΗ 2%")||a.includes("ΦΑΒ 60+")||a.includes("ΦΑΒ 75+")){
-    return {symbol:"💎",level:2,family:"favorite"};
-  }
-  if(a.includes("SOFA+ΤΖΙΡΟΥ")||(a.includes("ΦΑΒΟΡΙ ΤΖΙΡΟΥ")&&!a.includes("3X"))){
-    return {symbol:"👑",level:3,family:"favorite"};
-  }
-  if(/(^|\s)ΦΑΒΟΡΙ($|\s)/.test(a)) return {symbol:"💎",level:2,family:"favorite"};
-
-  return {symbol:"",level:0,family:""};
-}
-function publicSignalSymbol(value){return publicSignalForAlert(value).symbol;}
-function badgeClass(a){return /WATCH/i.test(a)?"watch":(publicSignalForAlert(a).level>=3?"strong":"");}
+function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function recordLabel(v){
   const m=String(v||"").match(/^(\d+)\/(\d+)$/); if(!m||!Number(m[2]))return v||"—";
@@ -1027,18 +1102,8 @@ function selectionMark(a){
   return side==="H"?"1":side==="A"?"2":"—";
 }
 function renderAlerts(alerts,slips=[]){
-  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>{
-    if(kickoffStarted(a)) return false;
-    const name=String(a&&a.alert||"").toUpperCase();
-    // WATCH stays Admin-only. TEST alerts stay internal until enough sample.
-    if(/WATCH/i.test(name)) return false;
-    if(name.includes("ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)")||name.includes("ΔΥΝΑΤΟ ΦΑΒΟΡΙ")) return false;
-    return true;
-  });
-  const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
-    const legs=Array.isArray(x&&x.legs)?x.legs:[];
-    return legs.length>0&&legs.every(l=>!kickoffStarted(l));
-  });
+  const list=Array.isArray(alerts)?alerts:[];
+  const combos=Array.isArray(slips)?slips:[];
   if(!list.length&&!combos.length){currentAlerts=[];currentSlips=[];content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργές επιλογές αυτή τη στιγμή.</div>';return;}
   const rows=[...list].sort((a,b)=>kickoffMs(a)-kickoffMs(b));
   currentAlerts=rows;currentSlips=combos;
@@ -1052,7 +1117,7 @@ function renderAlerts(alerts,slips=[]){
     const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">${(a.publicSymbol||publicSignalSymbol(a.alert))?esc(a.publicSymbol||publicSignalSymbol(a.alert))+" · ":""}ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
+    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
   }).join("");
   content.innerHTML=comboHtml+singleHtml;
 }
@@ -1060,12 +1125,12 @@ function renderAlerts(alerts,slips=[]){
 function withdrawnVisualResult(scoreValue,pickValue){
   const m=String(scoreValue||"").trim().match(/^(\d+)\s*-\s*(\d+)/);
   if(!m) return "";
-  const h=Number(m[1]), a=Number(m[2]);
-  const pick=String(pickValue||"").trim().toUpperCase();
-  if(pick==="1") return h>a?"win":"loss";
-  if(pick==="2") return a>h?"win":"loss";
-  if(pick==="1X") return h>=a?"win":"loss";
-  if(pick==="2X") return a>=h?"win":"loss";
+  const home=Number(m[1]), away=Number(m[2]);
+  const pick=String(pickValue||"").trim().toUpperCase().replace(/\s+/g,"");
+  if(pick==="1") return home>away?"win":"loss";
+  if(pick==="2") return away>home?"win":"loss";
+  if(pick==="1X"||pick==="X1") return home>=away?"win":"loss";
+  if(pick==="2X"||pick==="X2") return away>=home?"win":"loss";
   return "";
 }
 
@@ -1077,14 +1142,11 @@ function officialDateLabel(value){
   return String(value||"");
 }
 function renderOfficialHistory(items,summary){
-  const raw=Array.isArray(items)?items:[];
-  const list=raw.filter(a=>String(a&&a.status||"").toLowerCase()!=="pending");
-  const wins=list.filter(a=>a.status==="win").length;
-  const losses=list.filter(a=>a.status==="loss").length;
-  const withdrawn=list.filter(a=>a.status==="withdrawn").length;
+  const list=Array.isArray(items)?items:[];
+  const s=summary||{};
   const sum=document.getElementById("officialHistorySummary");
   if(sum){
-    sum.innerHTML='<div class="stat"><b>'+list.length+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+wins+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+losses+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+withdrawn+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
+    sum.innerHTML='<div class="stat"><b>'+Number(s.total||0)+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+Number(s.wins||0)+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.losses||0)+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.withdrawn||0)+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
   }
   const box=document.getElementById("officialHistoryContent");
   if(!box) return;
@@ -1245,33 +1307,24 @@ async function playPick(index,button){
   }
 }
 
-async function loadAlerts({background=false}={}){
-  if(!background&&!currentAlerts.length&&!currentSlips.length){
-    content.innerHTML='<div class="loading">Φόρτωση…</div>';
-  }
+async function loadAlerts(){
+  content.innerHTML='<div class="loading">Φόρτωση…</div>';
   try{
     const r=await apiPost({action:"alerts",token:sessionToken});
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent=r.username||localStorage.getItem("ma_user")||"";
-    renderAlerts(r.alerts||[],r.slips||[]);
-    const singleCount=currentAlerts.length;
-    const slipCount=currentSlips.length;
+    const slipCount=Array.isArray(r.slips)?r.slips.length:0;
+    const singleCount=Number(r.count||0);
     const totalVisible=singleCount+slipCount;
     const counterText=singleCount+" "+(singleCount===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
     counter.textContent=counterText; homeCount.textContent=totalVisible?counterText:"Καμία ενεργή επιλογή";
     const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Ενημέρωση "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
     applySubscription(r.subscriptionEndsAt||"");
-    saveAlertsCache(r);
+    renderAlerts(r.alerts||[],r.slips||[]);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
       localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
-      return;
-    }
-    const cached=readAlertsCache();
-    if(cached){
-      if(!currentAlerts.length&&!currentSlips.length)showCachedAlerts();
-      updatedAt.textContent="Τελευταία διαθέσιμη εικόνα · ανανέωση στο background";
       return;
     }
     counter.textContent="—";homeCount.textContent="Η live σύνδεση δεν είναι διαθέσιμη";
@@ -1279,7 +1332,7 @@ async function loadAlerts({background=false}={}){
     content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
   }
 }
-if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");const hadCache=showCachedAlerts();loadAlerts({background:hadCache});loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});}
+if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});}
 setInterval(()=>{
   document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
     const start=Number(row.dataset.kickoffMs||"0");
@@ -1288,15 +1341,9 @@ setInterval(()=>{
 },5000);
 
 if("serviceWorker" in navigator){
-  let dttRefreshing=false;
-  navigator.serviceWorker.addEventListener("controllerchange",()=>{
-    if(dttRefreshing) return;
-    dttRefreshing=true;
-    location.reload();
-  });
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./sw.js?v=16-reference",{updateViaCache:"none"});
+      const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
       await reg.update();
       if(Notification.permission==="granted"){
         const sub=await reg.pushManager.getSubscription();
