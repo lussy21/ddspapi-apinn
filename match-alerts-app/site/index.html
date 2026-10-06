@@ -707,19 +707,7 @@ document.querySelectorAll("[data-open-app]").forEach(function(btn){
   btn.onclick=function(){location.href=APP_URL};
 });
 document.querySelectorAll("[data-install-app]").forEach(function(btn){
-  btn.onclick=async function(){
-    const apkUrl="https://github.com/lussy21/ddspapi-apinn/releases/download/app-v1/DreamTeamTips.apk";
-    try{
-      const r=await fetch(apkUrl);
-      if(!r.ok) throw new Error("download");
-      const blob=await r.blob();
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");
-      a.href=url; a.download="DreamTeamTips.apk";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),60000);
-    }catch(_){ location.href=apkUrl; }
-  };
+  btn.onclick=function(){location.href="https://match-alerts-api-private.onrender.com/download/DreamTeamTips.apk"};
 });
 document.querySelectorAll("[data-register]").forEach(function(btn){
   btn.onclick=openRegister;
