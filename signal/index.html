@@ -190,7 +190,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .signal-stats-filter{margin:0 0 14px;padding:12px;border:1px solid rgba(217,177,87,.14);border-radius:15px;background:rgba(255,255,255,.014)}
 .signal-stats-filter-title{font-size:9px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase;color:#77727c;margin-bottom:9px}
 .signal-stats-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.signal-stats-filter-btn{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.018);color:#77727c;border-radius:12px;padding:10px 8px;font-size:9px;font-weight:900}
+.signal-stats-filter-btn{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.018);color:#77727c;border-radius:12px;padding:10px 10px;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}.signal-stats-filter-btn .region-state{font-size:7px;letter-spacing:.7px;border-radius:999px;padding:5px 7px;border:1px solid rgba(255,255,255,.08);color:#77727c;white-space:nowrap}.signal-stats-filter-btn.active .region-state{border-color:rgba(217,177,87,.30);background:rgba(217,177,87,.10);color:#f3df9d}
 .signal-stats-filter-btn.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.075);color:#f3e2ae}
 .signal-stats-filter-note{margin-top:9px;color:#6f6a72;font-size:8px;line-height:1.4}
 </style></head>
@@ -295,10 +295,10 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
         <div class="signal-stats-filter">
           <div class="signal-stats-filter-title">Τι μετράει στα στατιστικά</div>
           <div class="signal-stats-filter-grid">
-            <button class="signal-stats-filter-btn" data-stats-region="MAIN">Μεγάλα Πρωταθλήματα</button>
-            <button class="signal-stats-filter-btn" data-stats-region="OTHER_EUROPE">Λοιπή Ευρώπη</button>
-            <button class="signal-stats-filter-btn" data-stats-region="NATIONAL">Εθνικές</button>
-            <button class="signal-stats-filter-btn" data-stats-region="AMERICA">Αμερική</button>
+            <button class="signal-stats-filter-btn" data-stats-region="MAIN"><span>Μεγάλα Πρωταθλήματα</span><span class="region-state">ΚΛΕΙΣΤΟ</span></button>
+            <button class="signal-stats-filter-btn" data-stats-region="OTHER_EUROPE"><span>Λοιπή Ευρώπη</span><span class="region-state">ΚΛΕΙΣΤΟ</span></button>
+            <button class="signal-stats-filter-btn" data-stats-region="NATIONAL"><span>Εθνικές</span><span class="region-state">ΚΛΕΙΣΤΟ</span></button>
+            <button class="signal-stats-filter-btn" data-stats-region="AMERICA"><span>Αμερική</span><span class="region-state">ΚΛΕΙΣΤΟ</span></button>
           </div>
           <div class="signal-stats-filter-note">Τα αποτελέσματα καταγράφονται πάντα. Εδώ επιλέγεις μόνο αν θα εμφανίζονται στο συνολικό 0/0.</div>
         </div>
@@ -1415,7 +1415,8 @@ function renderSignalStatsFilter(){
   document.querySelectorAll("[data-stats-region]").forEach(btn=>{
     const on=!!prefs[btn.dataset.statsRegion];
     btn.classList.toggle("active",on);
-    btn.textContent=(on?"✓ ":"＋ ")+btn.textContent.replace(/^[✓＋]s*/,"");
+    const state=btn.querySelector(".region-state");
+    if(state) state.textContent=on?"ΕΝΕΡΓΟ":"ΚΛΕΙΣΤΟ";
   });
 }
 
