@@ -952,16 +952,30 @@ def api():
             failureCodes=failure_codes,
         ), 200
 
-    try:
-        slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "officialHistory", "adminPlayedHistory", "adminSignalKeep"}
-        timeout = (4, 35) if payload.get("action") in slow_actions else (4, 10)
-        data = upstream_post(payload, timeout=timeout)
-    except requests.RequestException:
-        return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
-    except RuntimeError:
-        return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+    action = str(payload.get("action") or "")
+    slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "officialHistory", "adminPlayedHistory", "adminSignalKeep", "adminUsers", "adminSettings"}
+    timeout = (4, 35) if action in slow_actions else (4, 10)
 
-    return jsonify(data), 200
+    # Read-only requests are safe to retry once. This protects the customer/admin
+    # UI from a transient Apps Script timeout without ever repeating a write.
+    retryable_read_actions = {
+        "alerts", "adminSignals", "adminAlertLevels", "officialHistory",
+        "adminPlayedHistory", "adminUsers", "adminSettings"
+    }
+    attempts = 2 if action in retryable_read_actions else 1
+    last_error = "BACKEND_UNREACHABLE"
+    for attempt in range(attempts):
+        try:
+            data = upstream_post(payload, timeout=timeout)
+            return jsonify(data), 200
+        except requests.RequestException:
+            last_error = "BACKEND_UNREACHABLE"
+        except RuntimeError:
+            last_error = "BACKEND_BAD_RESPONSE"
+        if attempt + 1 < attempts:
+            app.logger.warning("upstream_retry action=%s attempt=%s", action, attempt + 1)
+
+    return jsonify(ok=False, error=last_error), 502
 
 
 if __name__ == "__main__":
