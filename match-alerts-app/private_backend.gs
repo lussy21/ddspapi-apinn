@@ -77,6 +77,7 @@ function doPost(e) {
     else if (action === "adminPlayedHistory") payload = adminPlayedHistory_(p);
     else if (action === "adminSignals") payload = adminSignals_(p);
     else if (action === "adminAlertLevels") payload = adminAlertLevels_(p);
+    else if (action === "adminSignalStats") payload = adminSignalStats_(p);
     else if (action === "adminSignalPublish") payload = adminSignalPublish_(p);
     else if (action === "adminSignalWithdraw") payload = adminSignalWithdraw_(p);
     else if (action === "adminSignalEdit") payload = adminSignalEdit_(p);
@@ -1671,6 +1672,65 @@ function adminAlertLevels_(p) {
     return b.level - a.level || a.alert.localeCompare(b.alert);
   });
   return {ok:true,levels:levels,updatedAt:new Date().toISOString()};
+}
+
+function signalStatsRegion_(leagueRaw) {
+  const league = String(leagueRaw || "").trim();
+  const u = league.toUpperCase();
+  if (!league) return "OTHER_EUROPE";
+  if (u.indexOf("ΕΘΝΙΚΕΣ") === 0) return "NATIONAL";
+  if (/^(USA|BRAZIL|ARGENTINA)\s+-/i.test(league)) return "AMERICA";
+  if (/^(ENGLAND|SPAIN|ITALY|GERMANY|FRANCE|NETHERLANDS)\s+-/i.test(league)) return "MAIN";
+  if (/^UEFA\s+-\s+(CHAMPIONS LEAGUE|EUROPA LEAGUE)/i.test(league)) return "MAIN";
+  return "OTHER_EUROPE";
+}
+
+function adminSignalStats_(p) {
+  if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pin = ss.getSheetByName(SHEET_NAME);
+  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+  const last = pin.getLastRow();
+  const regions = ["MAIN","OTHER_EUROPE","NATIONAL","AMERICA"];
+  const symbols = ["🔷","💎","👑","🎯","⚡","💣"];
+  const out = {};
+  regions.forEach(function(r){
+    out[r] = {};
+    symbols.forEach(function(s){ out[r][s] = {wins:0,total:0}; });
+  });
+
+  if (last < 3) return {ok:true,regions:out,updatedAt:new Date().toISOString()};
+
+  const rows = pin.getRange(3, 1, last - 2, 16).getDisplayValues();
+  const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, last - 2, 1).getDisplayValues();
+  const levelCatalog = publicLevelCatalog_(ss);
+
+  rows.forEach(function(row, idx){
+    const league = String(row[0] || "").trim();
+    const favoriteSide = String(row[3] || "").trim().toUpperCase();
+    const rawAlert = String(row[14] || "").trim();
+    const alert = normalizeAlertName_(rawAlert);
+    const result = String(row[15] || "").trim();
+    if (!league || !alert || !result) return;
+    if (favoriteSide !== "H" && favoriteSide !== "A") return;
+
+    const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
+    const sourceAlerts = sourceAlertsForRow_(alert, listText);
+    const selectedPublic = highestPublicAlert_(sourceAlerts, alert, levelCatalog);
+    const symbol = selectedPublic ? String(selectedPublic.symbol || "") : "";
+    if (symbols.indexOf(symbol) < 0) return;
+
+    const region = signalStatsRegion_(league);
+    const bucket = out[region][symbol];
+    bucket.total++;
+
+    const won = alertSuccess_(row, selectedPublic ? selectedPublic.alert : alert);
+    if (won === true) bucket.wins++;
+  });
+
+  return {ok:true,regions:out,updatedAt:new Date().toISOString()};
 }
 
 function adminSignals_(p) {
