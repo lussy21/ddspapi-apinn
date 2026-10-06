@@ -1,5 +1,5 @@
-const CACHE='dreamteamtips-v16-reference';
-const ASSETS=['./manifest.json','./reference-icon.svg'];
+const CACHE='dreamteamtips-v17-fast-open';
+const ASSETS=['./','./admin.html','./manifest.json','./reference-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
@@ -10,10 +10,17 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET') return;
   const url=new URL(e.request.url);
-  if(e.request.mode==='navigate'||url.pathname.endsWith('/dreamteamtips-icon.svg')||url.pathname.endsWith('/manifest.json')){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{
-      const copy=r.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return r;
-    }).catch(()=>caches.match(e.request)));
+  if(e.request.mode==='navigate'){
+    e.respondWith(caches.match(e.request).then(cached=>{
+      const network=fetch(e.request,{cache:'no-store'}).then(r=>{
+        const copy=r.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return r;
+      }).catch(()=>cached);
+      return cached||network;
+    }));
+    return;
+  }
+  if(url.pathname.endsWith('/dreamteamtips-icon.svg')||url.pathname.endsWith('/manifest.json')){
+    e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request)));
     return;
   }
   e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));
