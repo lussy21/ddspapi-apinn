@@ -110,6 +110,13 @@ def owner_feed():
             allow_redirects=True,
         )
         levels_data = levels_upstream.json()
+        regional_upstream = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action": "adminSignalStats", "adminCode": SIGNAL_ADMIN_CODE},
+            timeout=(4, 35),
+            allow_redirects=True,
+        )
+        regional_data = regional_upstream.json()
     except requests.RequestException:
         return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
     except ValueError:
@@ -171,6 +178,7 @@ def owner_feed():
         slips=[],
         count=len(alerts),
         symbolStats=symbol_stats,
+        regionalSymbolStats=(regional_data.get("regions") if isinstance(regional_data, dict) and regional_data.get("ok") else {}),
         updatedAt=data.get("updatedAt"),
     ), 200
 
