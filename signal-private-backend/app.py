@@ -1,0 +1,59 @@
+import os
+import requests
+from flask import Flask, request, jsonify, make_response
+
+app = Flask(__name__)
+
+APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
+ALLOWED_ORIGINS = {
+    x.strip() for x in os.environ.get("SIGNAL_ALLOWED_ORIGINS", "").split(",") if x.strip()
+}
+
+def cors(resp):
+    origin = request.headers.get("Origin", "")
+    if origin in ALLOWED_ORIGINS:
+        resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Vary"] = "Origin"
+    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS, GET"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.after_request
+def add_headers(resp):
+    return cors(resp)
+
+@app.get("/health")
+def health():
+    return jsonify(ok=True, service="signal-private-backend")
+
+@app.route("/api", methods=["POST", "OPTIONS"])
+def api():
+    if request.method == "OPTIONS":
+        return make_response("", 204)
+
+    origin = request.headers.get("Origin", "")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return jsonify(ok=False, error="ORIGIN_DENIED"), 403
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        payload = request.form.to_dict(flat=True)
+
+    if not APPS_SCRIPT_URL:
+        return jsonify(ok=False, error="BACKEND_NOT_CONFIGURED"), 500
+
+    try:
+        upstream = requests.post(
+            APPS_SCRIPT_URL,
+            data={k: "" if v is None else str(v) for k, v in payload.items()},
+            timeout=(4, 35),
+            allow_redirects=True,
+        )
+        data = upstream.json()
+    except requests.RequestException:
+        return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+    except ValueError:
+        return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+
+    return jsonify(data), 200
