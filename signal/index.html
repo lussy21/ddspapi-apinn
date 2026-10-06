@@ -207,6 +207,11 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .signal-admin-section{margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07)}.signal-admin-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.signal-admin-section-head h3{margin:0;color:#efd38b;font-size:12px;letter-spacing:.9px}.signal-admin-section-head span{font-size:9px;color:#aaa4ad}
 .signal-admin-live{margin-top:10px;width:100%;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:space-between;text-align:left;color:#fff}.signal-admin-live b{display:block;font-size:12px}.signal-admin-live small{display:block;margin-top:4px;color:#8e8992;font-size:9px}.signal-admin-live>span{font-size:22px;color:#8f8a92}.signal-admin-foot{margin-top:8px;color:#7f7a82;font-size:9px}
 @media(max-width:390px){.signal-admin-head{padding:24px 22px 20px}.signal-admin-body{padding:16px}.signal-admin-launch{min-height:108px;padding:13px 11px}.signal-admin-label{font-size:13px}.signal-admin-icon{font-size:21px}}
+</style><style id="signalManagerStyle">
+.signal-manager-shell{border:1px solid rgba(217,177,87,.22);border-radius:24px;padding:18px;background:linear-gradient(180deg,rgba(217,177,87,.018),rgba(255,255,255,.01))}
+.signal-manager-head{display:flex;align-items:center;gap:11px;margin-bottom:14px}.signal-manager-back{width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:#fff;font-size:20px}.signal-manager-title{font:500 25px/1.05 Georgia,serif}.signal-manager-sub{margin-top:4px;color:#89848d;font-size:9px;text-transform:uppercase;letter-spacing:1px}
+.signal-manager-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.signal-manager-summary>div{padding:12px 6px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.02);text-align:center}.signal-manager-summary b{display:block;font-size:22px}.signal-manager-summary span{display:block;margin-top:5px;color:#88838c;font-size:8px;text-transform:uppercase;letter-spacing:.8px}
+.signal-manager-note{margin:0 0 12px;color:#8d8890;font-size:10px;line-height:1.5}.signal-manager-list{display:grid;gap:9px}.signal-manager-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.075);border-radius:15px;background:rgba(255,255,255,.025)}.signal-manager-card.off{opacity:.58}.signal-manager-main{min-width:0}.signal-manager-name{font-size:12px;font-weight:900;line-height:1.35;color:#f1eadc}.signal-manager-stats{margin-top:5px;font-size:9px;color:#8e8992}.signal-manager-stats b{color:#d9c78f}.signal-manager-toggle{flex:0 0 auto;min-width:84px;padding:9px 8px;border-radius:11px;border:1px solid rgba(125,205,139,.22);background:rgba(125,205,139,.06);color:#bfe9c7;font-size:8px;font-weight:900}.signal-manager-toggle.off{border-color:rgba(255,119,130,.22);background:rgba(255,119,130,.055);color:#ffb7bd}
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
@@ -266,12 +271,12 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
             <span class="signal-admin-count" id="ownerHomeSelections">0</span>
           </button>
 
-          <button class="signal-admin-launch" data-go="choices">
+          <button class="signal-admin-launch" data-go="bells">
             <div class="signal-admin-main"><span class="signal-admin-icon">🔔</span><div><div class="signal-admin-label">Καμπανάκια</div><div class="signal-admin-desc">Alerts αυτή τη στιγμή</div></div></div>
             <span class="signal-admin-count" id="ownerHomeBellValue">0</span>
           </button>
 
-          <button class="signal-admin-launch" data-go="choices">
+          <button class="signal-admin-launch" data-go="leagues">
             <div class="signal-admin-main"><span class="signal-admin-icon">🏆</span><div><div class="signal-admin-label">Πρωταθλήματα</div><div class="signal-admin-desc">Με ενεργό alert</div></div></div>
             <span class="signal-admin-count" id="ownerHomeLeagueValue">0</span>
           </button>
@@ -297,6 +302,25 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           <div class="signal-admin-foot" id="ownerHomeBellText">Κανένα ενεργό καμπανάκι</div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section id="bellsPanel" class="member-panel">
+    <div class="signal-manager-shell">
+      <div class="signal-manager-head"><button class="signal-manager-back" data-go="home" type="button">‹</button><div><div class="signal-manager-title">Καμπανάκια</div><div class="signal-manager-sub">Signal · έλεγχος alerts</div></div></div>
+      <div id="signalBellSummary" class="signal-manager-summary"><div><b>—</b><span>Σύνολο</span></div><div><b>—</b><span>Ενεργά</span></div><div><b>—</b><span>Κλειστά</span></div></div>
+      <div class="signal-manager-note">Όπως στο Admin: βλέπεις τα καμπανάκια, το level και τα συνολικά στατιστικά τους. Το κλείσιμο εδώ αφορά το Signal.</div>
+      <div id="signalBellList" class="signal-manager-list"><div class="loading">Φόρτωση…</div></div>
+    </div>
+  </section>
+
+  <section id="leaguesPanel" class="member-panel">
+    <div class="signal-manager-shell">
+      <div class="signal-manager-head"><button class="signal-manager-back" data-go="home" type="button">‹</button><div><div class="signal-manager-title">Πρωταθλήματα</div><div class="signal-manager-sub">Signal · alerts ανά λίγκα</div></div></div>
+      <div id="signalLeagueSummary" class="signal-manager-summary"><div><b>—</b><span>Σύνολο</span></div><div><b>—</b><span>Ενεργά</span></div><div><b>—</b><span>Κλειστά</span></div></div>
+      <div class="signal-manager-note">Η αλλαγή είναι πραγματική και χρησιμοποιεί την ίδια ρύθμιση με το Admin. Τα δεδομένα συνεχίζουν να γράφονται κανονικά.</div>
+      <input id="signalLeagueSearch" class="input" type="search" placeholder="Αναζήτηση πρωταθλήματος…" style="margin-bottom:12px">
+      <div id="signalLeagueList" class="signal-manager-list"><div class="loading">Φόρτωση…</div></div>
     </div>
   </section>
 
@@ -753,11 +777,13 @@ function setHistoryMode(mode){
   document.getElementById("symbolStatsView")?.classList.remove("hidden");
 }
 function showScreen(name){
-  const map={home:"homePanel",choices:"choicesPanel",history:"historyPanel",model:"modelPanel",profile:"profilePanel"};
+  const map={home:"homePanel",choices:"choicesPanel",bells:"bellsPanel",leagues:"leaguesPanel",history:"historyPanel",model:"modelPanel",profile:"profilePanel"};
   Object.values(map).forEach(id=>document.getElementById(id)?.classList.remove("active"));
   document.getElementById(map[name]||map.choices)?.classList.add("active");
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===name));
   if(name==="history") setHistoryMode(historyMode);
+  if(name==="bells") loadSignalOwnerDashboard();
+  if(name==="leagues") loadSignalOwnerDashboard();
   window.scrollTo(0,0);
 }
 document.addEventListener("click",e=>{
@@ -1400,6 +1426,82 @@ async function playPick(index,button){
     alert(mapError(err.message));
   }
 }
+
+const OWNER_DASHBOARD_URL="https://signal-private-backend.onrender.com/owner-dashboard";
+const OWNER_LEAGUE_TOGGLE_URL="https://signal-private-backend.onrender.com/owner-league-toggle";
+const SIGNAL_BELL_PREFS_KEY="signal_bell_prefs_v1";
+const SIGNAL_ALERT_CATALOG=[
+"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ","🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)","🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ","🔔 ΚΟΝΤΡΑ","🔔 ΦΑΒΟΡΙ","👀 WATCH ΚΟΝΤΡΑ","👀 WATCH ΦΑΒΟΡΙ","🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X","🔔💎 ΦΑΒΟΡΙ SOFA+3X","🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%","🔔🧪 ΦΑΒΟΡΙ 84+P60","🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ","🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ","🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ","🔔 ΦΑΒ 60+","🔔 ΦΑΒ 75+","🔔 ΤΖΙΡΟΣ ↑"
+];
+let signalOwnerDashboardCache=null;
+
+function signalBellPrefs(){try{return JSON.parse(localStorage.getItem(SIGNAL_BELL_PREFS_KEY)||"{}")||{};}catch(_){return {};}}
+function signalBellOn(name){return signalBellPrefs()[name]!==false;}
+function signalBellBase(name){return String(name||"").replace(/^[🔔🔥💎🧪👀🎯⚡💣🔷👑\s]+/g,"").trim().toUpperCase();}
+function signalPct(v){const n=Number(v);return Number.isFinite(n)?(n*100).toFixed(1).replace(".",",")+"%":"—";}
+function signalRoi(v){const n=Number(v);return Number.isFinite(n)?((n>=0?"+":"")+(n*100).toFixed(1).replace(".",",")+"%"):"—";}
+
+function renderSignalBellManager(data){
+  const prefs=signalBellPrefs();
+  const levels=Array.isArray(data&&data.levels)?data.levels:[];
+  const byKey={}; levels.forEach(x=>byKey[signalBellBase(x.alert)]=x);
+  const enabled=SIGNAL_ALERT_CATALOG.filter(n=>prefs[n]!==false).length;
+  const sum=document.getElementById("signalBellSummary");
+  if(sum) sum.innerHTML='<div><b>'+SIGNAL_ALERT_CATALOG.length+'</b><span>Σύνολο</span></div><div><b>'+enabled+'</b><span>Ενεργά</span></div><div><b>'+(SIGNAL_ALERT_CATALOG.length-enabled)+'</b><span>Κλειστά</span></div>';
+  const list=document.getElementById("signalBellList"); if(!list)return;
+  list.innerHTML=SIGNAL_ALERT_CATALOG.map(name=>{
+    const on=prefs[name]!==false, li=byKey[signalBellBase(name)];
+    const detail=li?('<div class="signal-manager-stats">LEVEL: <b>'+esc((li.symbol||"TEST")+' · '+signalPct(li.hit)+' · '+String(li.wins||0)+'/'+String(li.total||0)+' · ROI '+signalRoi(li.roi)+' · Score '+String(li.score||0).replace(".",","))+'</b></div><div class="signal-manager-stats">Review: <b>'+esc(li.nextReview||"—")+'</b></div>'):'<div class="signal-manager-stats">TEST / ADMIN ONLY</div>';
+    return '<div class="signal-manager-card '+(on?'':'off')+'"><div class="signal-manager-main"><div class="signal-manager-name">'+esc(name)+'</div>'+detail+'</div><button class="signal-manager-toggle '+(on?'':'off')+'" data-signal-bell="'+esc(name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+  }).join("");
+}
+
+function renderSignalLeagueManager(data){
+  const leagues=Array.isArray(data&&data.leagues)?data.leagues:[];
+  const q=String(document.getElementById("signalLeagueSearch")?.value||"").trim().toLocaleLowerCase("el-GR");
+  const visible=q?leagues.filter(x=>String(x.league||"").toLocaleLowerCase("el-GR").includes(q)):leagues;
+  const s=data&&data.leagueSummary||{};
+  const sum=document.getElementById("signalLeagueSummary");
+  if(sum) sum.innerHTML='<div><b>'+Number(s.total||leagues.length)+'</b><span>Σύνολο</span></div><div><b>'+Number(s.enabled||leagues.filter(x=>x.enabled!==false).length)+'</b><span>Ενεργά</span></div><div><b>'+Number(s.disabled||leagues.filter(x=>x.enabled===false).length)+'</b><span>Κλειστά</span></div>';
+  const list=document.getElementById("signalLeagueList"); if(!list)return;
+  list.innerHTML=visible.length?visible.map(x=>{
+    const on=x.enabled!==false;
+    return '<div class="signal-manager-card '+(on?'':'off')+'"><div class="signal-manager-main"><div class="signal-manager-name">'+esc(x.league||"")+'</div><div class="signal-manager-stats">'+(on?'Νέα alerts ενεργά':'Νέα alerts κλειστά')+'</div></div><button class="signal-manager-toggle '+(on?'':'off')+'" data-signal-league="'+esc(x.league||"")+'" data-enabled="'+(on?'1':'0')+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+  }).join(""):'<div class="empty">Δεν βρέθηκε πρωτάθλημα.</div>';
+}
+
+async function loadSignalOwnerDashboard(force=false){
+  if(signalOwnerDashboardCache&&!force){renderSignalBellManager(signalOwnerDashboardCache);renderSignalLeagueManager(signalOwnerDashboardCache);return;}
+  const token=localStorage.getItem("signal_private_access_v1")||"";
+  try{
+    const res=await fetch(OWNER_DASHBOARD_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token}),cache:"no-store"});
+    const r=await res.json(); if(!r.ok)throw new Error(r.error||"ERROR");
+    signalOwnerDashboardCache=r; renderSignalBellManager(r);renderSignalLeagueManager(r);
+  }catch(_){
+    const a=document.getElementById("signalBellList");if(a)a.innerHTML='<div class="empty">Δεν έγινε φόρτωση.</div>';
+    const b=document.getElementById("signalLeagueList");if(b)b.innerHTML='<div class="empty">Δεν έγινε φόρτωση.</div>';
+  }
+}
+
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="signalLeagueSearch"&&signalOwnerDashboardCache)renderSignalLeagueManager(signalOwnerDashboardCache);});
+document.addEventListener("click",async e=>{
+  const bell=e.target.closest("[data-signal-bell]");
+  if(bell){
+    const name=bell.dataset.signalBell,p=signalBellPrefs();p[name]=!(p[name]!==false);localStorage.setItem(SIGNAL_BELL_PREFS_KEY,JSON.stringify(p));renderSignalBellManager(signalOwnerDashboardCache||{});return;
+  }
+  const lg=e.target.closest("[data-signal-league]");
+  if(lg){
+    lg.disabled=true;
+    const token=localStorage.getItem("signal_private_access_v1")||"";
+    const enabled=lg.dataset.enabled!=="1";
+    try{
+      const res=await fetch(OWNER_LEAGUE_TOGGLE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,league:lg.dataset.signalLeague,enabled}),cache:"no-store"});
+      const r=await res.json();if(!r.ok)throw new Error(r.error||"ERROR");
+      signalOwnerDashboardCache=null;await loadSignalOwnerDashboard(true);
+    }catch(_){lg.disabled=false;}
+    return;
+  }
+});
 
 const SIGNAL_STATS_BASELINE_KEY="signal_stats_region_baseline_v1";
 const SIGNAL_STATS_PREFS_KEY="signal_stats_region_prefs_v1";
