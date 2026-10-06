@@ -62,6 +62,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <button class="admin-launch hidden" id="dailySelectionsLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">⭐</span><div><div class="admin-launch-title">Επιλογές ημέρας</div><div class="admin-launch-sub">Προς δημοσίευση</div></div></div><span class="admin-launch-count" id="dailySelectionsLaunchCount">0</span></button>
   <button class="admin-launch hidden" id="alertManagerLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">🔔</span><div><div class="admin-launch-title">Καμπανάκια</div><div class="admin-launch-sub">Alerts & συνολικά stats</div></div></div><span class="admin-launch-count" id="alertManagerLaunchCount">0</span></button>
   <button class="admin-launch hidden" id="leagueManagerLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">🏆</span><div><div class="admin-launch-title">Πρωταθλήματα</div><div class="admin-launch-sub">Ενεργά / ανενεργά alerts</div></div></div><span class="admin-launch-count" id="leagueManagerLaunchCount">0</span></button>
+  <button class="admin-launch" id="usersLaunch" type="button"><div class="admin-launch-main"><span class="admin-launch-icon">👥</span><div><div class="admin-launch-title">Χρήστες</div><div class="admin-launch-sub">Μέλη & συνδρομές</div></div></div><span class="admin-launch-count" id="usersLaunchCount">0</span></button>
 </div>
 <div class="stats"><div class="stat"><b id="used">0</b><span>Εγγεγραμμένοι</span></div><div class="stat"><b id="max">2</b><span>Όριο</span></div><div class="stat"><b id="free">2</b><span>Θέσεις</span></div></div>
 <div class="section" id="ownerPushSection">
@@ -84,9 +85,9 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <div class="push-hint">Το μήνυμα αποθηκεύεται σε όλους μέσα στην εφαρμογή. Push λαμβάνουν όσοι έχουν ενεργοποιήσει ειδοποιήσεις.</div>
 </div>
 <div class="section"><h3>Μηνύματα υποστήριξης <span class="support-count" id="supportNew">0</span></h3><div id="supportInbox"><div class="note">Δεν υπάρχουν μηνύματα υποστήριξης.</div></div></div>
-<div class="section"><h3>Εγγεγραμμένοι χρήστες</h3><div id="users"><div class="note">Δεν υπάρχουν χρήστες ακόμα.</div></div></div>
 <div class="msg" id="msg"></div>
 </div>
+<div id="usersAdminView" class="hidden"><div class="admin-view-head"><button class="admin-view-back" id="usersBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Χρήστες</div><div class="admin-view-sub">Admin · μέλη & συνδρομές</div></div></div><div class="section" style="margin-top:0;padding-top:0;border-top:0"><div class="signals-head"><h3>👥 Εγγεγραμμένοι χρήστες</h3><span class="signals-count" id="usersViewCount">0 μέλη</span></div><div id="users"><div class="note">Φόρτωση χρηστών…</div></div></div></div>
 <div id="dailyAdminView" class="hidden">
   <div class="admin-view-head"><button class="admin-view-back" id="dailyBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Επιλογές της ημέρας</div><div class="admin-view-sub">Admin · προς δημοσίευση</div></div></div>
   <div class="section hidden" id="dailySelectionsSection" style="margin-top:0;padding-top:0;border-top:0"><div class="signals-head"><h3>⭐ Προς δημοσίευση</h3><span class="signals-count" id="dailySelectionsCount">0 προς δημοσίευση</span></div><div class="push-hint" style="margin:0 0 10px">Εδώ εμφανίζονται μόνο οι νέες επιλογές που περιμένουν τη δική σου έγκριση πριν τις δουν οι πελάτες.</div><div id="dailySelections"><div class="note">Φόρτωση επιλογών…</div></div></div>
@@ -599,10 +600,16 @@ function hideAdminViews(){
   dailyAdminView.classList.add("hidden");
   alertManagerView.classList.add("hidden");
   leagueManagerView.classList.add("hidden");
+  usersAdminView.classList.add("hidden");
 }
 function showAdminHome(){
   hideAdminViews();
   adminHomeView.classList.remove("hidden");
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function showUsersAdmin(){
+  hideAdminViews();
+  usersAdminView.classList.remove("hidden");
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showDailyAdmin(){
@@ -625,6 +632,8 @@ function showLeagueManager(){
   window.scrollTo({top:0,behavior:"instant"});
   if(leagueControlsLive) loadLeagueSettings().catch(e=>leagueManagerMsg.textContent="Σφάλμα: "+e.message);
 }
+usersLaunch.onclick=showUsersAdmin;
+usersBack.onclick=showAdminHome;
 dailySelectionsLaunch.onclick=showDailyAdmin;
 dailyBack.onclick=showAdminHome;
 alertManagerLaunch.onclick=showAlertManager;
@@ -685,6 +694,8 @@ window.signalEdit=async(controlId,btn)=>{
 };
 
 function renderUsers(arr){
+  usersLaunchCount.textContent=String(arr.length||0);
+  usersViewCount.textContent=String(arr.length||0)+" "+(arr.length===1?"μέλος":"μέλη");
   users.innerHTML=arr.length?arr.map(u=>{
     const status=!u.verified?"Email σε αναμονή":(u.revoked?"Κομμένη πρόσβαση":(u.subscriptionExpired?"Έληξε":"Ενεργός"));
     const expiry=u.subscriptionEndsAt?new Date(u.subscriptionEndsAt).toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"}):"Χωρίς ημερομηνία λήξης";
