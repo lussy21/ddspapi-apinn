@@ -563,7 +563,12 @@ function getDeviceId(){
   return id;
 }
 const deviceId=getDeviceId();
-let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||"";
+const rememberLogin=document.getElementById("rememberLogin");
+const rememberRow=document.getElementById("rememberRow");
+const REMEMBER_LOGIN_KEY="dtt_remember_login_v1";
+const rememberPreference=localStorage.getItem(REMEMBER_LOGIN_KEY)==="1";
+if(rememberLogin) rememberLogin.checked=rememberPreference;
+let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
 let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
@@ -632,6 +637,7 @@ function setMode(next){
   authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
   authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
   haveCodeBtn.classList.toggle("hidden",!reg);
+  if(rememberRow) rememberRow.classList.toggle("hidden",reg);
   password.autocomplete=reg?"new-password":"current-password";
   setMsg(authMsg,"");
 }
@@ -1058,12 +1064,14 @@ if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
 function saveSession(r){
   sessionToken=r.token;
-  const remember=!!rememberLogin?.checked;
+  const remember=!!(rememberLogin&&rememberLogin.checked);
   localStorage.setItem("ma_user",r.username||"");
   if(remember){
+    localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
     localStorage.setItem("ma_token",sessionToken);
     sessionStorage.removeItem("ma_token");
   }else{
+    localStorage.removeItem(REMEMBER_LOGIN_KEY);
     sessionStorage.setItem("ma_token",sessionToken);
     localStorage.removeItem("ma_token");
   }
@@ -1071,7 +1079,7 @@ function saveSession(r){
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
-  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
 function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
@@ -1333,7 +1341,7 @@ async function loadAlerts(){
     renderAlerts(r.alerts||[],r.slips||[]);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
-      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
       return;
     }
