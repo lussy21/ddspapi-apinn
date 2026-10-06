@@ -44,6 +44,24 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 .admin-view-head{display:flex;align-items:center;gap:11px;margin-bottom:14px}.admin-view-back{width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:#fff;font-size:20px}.admin-view-title{font:500 24px/1.05 Georgia,serif}.admin-view-sub{margin-top:4px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px}
 .alert-manager-grid{display:grid;gap:9px}.alert-manager-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.075);border-radius:15px;background:rgba(255,255,255,.025)}.alert-manager-card.off{opacity:.58}.alert-manager-main{min-width:0}.alert-manager-name{font-size:12px;font-weight:900;line-height:1.35;color:#f1eadc}.alert-manager-stats{margin-top:5px;font-size:9px;color:#8e8992}.alert-manager-stats b{color:#d9c78f}.alert-toggle{flex:0 0 auto;min-width:92px;padding:9px 10px;border-radius:11px;border:1px solid rgba(125,205,139,.22);background:rgba(125,205,139,.06);color:#bfe9c7;font-size:9px;font-weight:900}.alert-toggle.off{border-color:rgba(255,119,130,.22);background:rgba(255,119,130,.055);color:#ffb7bd}.alert-manager-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.alert-manager-summary .stat{margin:0}.alert-manager-note{margin:0 0 12px;color:#8d8890;font-size:10px;line-height:1.5}
 @media(max-width:460px){.profile-summary{grid-template-columns:repeat(2,1fr)}.profile-add-days{align-items:stretch}.profile-add-days .number{width:100px}.slip-draft-head{align-items:flex-start}}
+
+/* Lean Admin mode: keep daily signal workflow only. Backend capabilities remain intact. */
+#usersLaunch,
+#usersAdminView,
+.stats,
+#subscriptionBulk,
+#supportInbox,
+#supportNew,
+#pushTitle,
+#pushBody,
+#sendPush,
+#memberProfile,
+#saveMax,
+#maxInput {display:none!important;}
+/* Hide whole sections that became empty after removing the controls above. */
+#subscriptionBulk,
+#usersAdminView {display:none!important;}
+
 </style>
 </head>
 <body>
@@ -71,20 +89,13 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <div class="push-hint" id="ownerPushStatus">Μόνο εσύ θα λαμβάνεις ειδοποίηση όταν ανοίγει νέο καμπανάκι. Οι πελάτες δεν ειδοποιούνται πριν το Publish.</div>
 </div>
 <div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
-<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
+<div class="section"><div class="actions"><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
 <div class="section hidden" id="subscriptionBulk">
   <h3>Μαζική παράταση συνδρομών</h3>
   <div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div>
   <div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div>
 </div>
-<div class="section">
-  <h3>Μήνυμα προς όλους</h3>
-  <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
-  <textarea class="push-textarea" id="pushBody" maxlength="220" placeholder="Το μήνυμα που θα δουν στην εφαρμογή και στο κινητό"></textarea>
-  <div class="actions"><button class="btn" id="sendPush">Αποστολή σε όλους</button></div>
-  <div class="push-hint">Το μήνυμα αποθηκεύεται σε όλους μέσα στην εφαρμογή. Push λαμβάνουν όσοι έχουν ενεργοποιήσει ειδοποιήσεις.</div>
-</div>
-<div class="section"><h3>Μηνύματα υποστήριξης <span class="support-count" id="supportNew">0</span></h3><div id="supportInbox"><div class="note">Δεν υπάρχουν μηνύματα υποστήριξης.</div></div></div>
+
 <div class="msg" id="msg"></div>
 </div>
 <div id="usersAdminView" class="hidden"><div class="admin-view-head"><button class="admin-view-back" id="usersBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Χρήστες</div><div class="admin-view-sub">Admin · μέλη & συνδρομές</div></div></div><div class="section" style="margin-top:0;padding-top:0;border-top:0"><div class="signals-head"><h3>👥 Εγγεγραμμένοι χρήστες</h3><span class="signals-count" id="usersViewCount">0 μέλη</span></div><div id="users"><div class="note">Φόρτωση χρηστών…</div></div></div></div>
@@ -233,12 +244,12 @@ async function loadAdmin(){
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
   internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive); alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
   memberHistoryLive=settings.memberHistory===true;
-  publicationControlsLive=settings.publicationControls===true;
+  publicationControlsLive=false;
   slipBuilderLive=settings.slipBuilder===true;
   slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
   leagueControlsLive=settings.leagueControls===true;
   leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
-  usersLaunchCount.textContent="…";
+  if(typeof usersLaunchCount!=="undefined"&&usersLaunchCount) usersLaunchCount.textContent="";
   if(!settings.autoPushConfigured){
     apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
   }
@@ -247,9 +258,7 @@ async function loadAdmin(){
     await loadSignalsFresh().catch(()=>{});
   }
 
-  // Support is non-critical for opening the Admin. Load it after the first
-  // screen is already usable, so it never blocks entry.
-  setTimeout(()=>loadSupportLazy().catch(()=>{}),1800);
+
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
