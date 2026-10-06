@@ -1143,7 +1143,7 @@ function kickoffStarted(a){
   return Number.isFinite(n)&&n!==Number.MAX_SAFE_INTEGER&&Date.now()>=n;
 }
 function kickoffLabel(a){
-  const n=Date.parse(a.kickoff||""); if(!Number.isFinite(n))return "Ώρα —";
+  const n=Date.parse(a.kickoff||""); if(!Number.isFinite(n))return "";
   return new Intl.DateTimeFormat("el-GR",{timeZone:"Europe/Athens",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(n));
 }
 function statBox(label,value){return `<div class="stat"><b>${label}</b><span>${esc(value)}</span></div>`;}
@@ -1184,10 +1184,11 @@ function renderAlerts(alerts,slips=[]){
   }).join("")+'</div>':'';
   const singleHtml=rows.map((a,idx)=>{
     const start=kickoffMs(a);
-    const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
+    const playedRow="";
     const oddsNumber=Number(a.customerOdds);
     const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
+    const timeText=kickoffLabel(a);
+    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div>${timeText?`<div class="league-count">🕒 ${esc(timeText)}</div>`:""}</div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
   }).join("");
   content.innerHTML=comboHtml+singleHtml;
 }
