@@ -511,6 +511,7 @@ const ALERTS_CACHE_MAX_MS=30*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const PRIVATE_OWNER_MODE=true;
 const OWNER_FEED_URL="https://signal-private-backend.onrender.com/owner-feed";
+const OWNER_PUSH_URL="https://signal-private-backend.onrender.com/owner-push-subscribe";
 
 async function apiPost(params){
   const controller=new AbortController();
@@ -777,22 +778,42 @@ async function currentPushSubscription(){
   }catch(_){return null;}
 }
 async function registerPushSubscription(sub){
-  if(!sub||!sessionToken) return false;
+  if(!sub) return false;
   const json=sub.toJSON();
-  const r=await apiPost({
-    action:"pushSubscribe",
-    token:sessionToken,
-    endpoint:json.endpoint||sub.endpoint,
-    p256dh:json.keys&&json.keys.p256dh||"",
-    auth:json.keys&&json.keys.auth||""
-  });
+  let r;
+  if(PRIVATE_OWNER_MODE){
+    const token=localStorage.getItem("signal_private_access_v1")||"";
+    if(!token) return false;
+    const res=await fetch(OWNER_PUSH_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        token,
+        endpoint:json.endpoint||sub.endpoint,
+        p256dh:json.keys&&json.keys.p256dh||"",
+        auth:json.keys&&json.keys.auth||""
+      }),
+      cache:"no-store"
+    });
+    r=await res.json().catch(()=>({ok:false,error:"PUSH_REGISTER_FAILED"}));
+  }else{
+    if(!sessionToken) return false;
+    r=await apiPost({
+      action:"pushSubscribe",
+      token:sessionToken,
+      endpoint:json.endpoint||sub.endpoint,
+      p256dh:json.keys&&json.keys.p256dh||"",
+      auth:json.keys&&json.keys.auth||""
+    });
+  }
   if(!r.ok) throw new Error(r.error||"PUSH_REGISTER_FAILED");
   localStorage.setItem("dtt_push_registered",sub.endpoint);
   localStorage.setItem("dtt_push_synced_at",String(Date.now()));
   return true;
 }
 async function ensurePushRegistration(sub,force=false){
-  if(!sub||!sessionToken) return false;
+  if(!sub) return false;
+  if(!PRIVATE_OWNER_MODE && !sessionToken) return false;
   const same=localStorage.getItem("dtt_push_registered")===sub.endpoint;
   const syncedAt=Number(localStorage.getItem("dtt_push_synced_at")||"0");
   if(!force&&same&&Date.now()-syncedAt<10*60*1000) return true;
@@ -831,7 +852,7 @@ async function refreshNotificationState(){
   if(registered){
     notificationToggle.textContent="✓ Ενεργές";
     notificationToggle.classList.add("active");
-    notificationSub.textContent="Οι push ειδοποιήσεις είναι συνδεδεμένες με το DreamTeamTips.";
+    notificationSub.textContent="Οι push ειδοποιήσεις είναι συνδεδεμένες με το Signal.";
     setHomeNotificationNotice(false);
   }else{
     notificationToggle.textContent="Επανασύνδεση";
