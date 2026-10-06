@@ -157,7 +157,10 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <div id="emailField" class="field hidden"><label class="label">Email</label><input class="input" id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
     <div class="field"><label class="label">Όνομα χρήστη</label><input class="input" id="username" autocomplete="username" placeholder="username"></div>
     <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-    <label id="rememberRow" style="display:flex;align-items:center;gap:9px;margin:9px 2px 13px;color:#bcb8c0;font-size:11px;font-weight:800;cursor:pointer"><input id="rememberLogin" type="checkbox" style="width:17px;height:17px;accent-color:#c9a85d"><span>Να με θυμάσαι σε αυτή τη συσκευή</span></label>
+    <label id="rememberRow" style="display:flex;align-items:center;gap:9px;margin:9px 2px 13px;color:#bcb8c0;font-size:11px;font-weight:800;cursor:pointer">
+      <input id="rememberLogin" type="checkbox" style="width:17px;height:17px;accent-color:#c9a85d">
+      <span>Να με θυμάσαι σε αυτή τη συσκευή</span>
+    </label>
     <button class="primary" id="authSubmit">Σύνδεση</button>
     <button class="ghost hidden" id="haveCodeBtn" style="margin-top:9px">Έχω ήδη κωδικό</button>
     <div class="msg" id="authMsg"></div>
@@ -565,138 +568,13 @@ function getDeviceId(){
 const deviceId=getDeviceId();
 const rememberLogin=document.getElementById("rememberLogin");
 const rememberRow=document.getElementById("rememberRow");
-const REMEMBER_LOGIN_KEY="dtt_remember_login_v1";
-const REMEMBER_DB_NAME="dtt_auth_session_v1";
-const REMEMBER_DB_STORE="session";
-function openRememberDb(){
-  return new Promise((resolve,reject)=>{
-    if(!("indexedDB" in window)){reject(new Error("NO_IDB"));return;}
-    const req=indexedDB.open(REMEMBER_DB_NAME,1);
-    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(REMEMBER_DB_STORE))db.createObjectStore(REMEMBER_DB_STORE);};
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error("IDB_OPEN"));
-  });
-}
-async function saveRememberedSession(token,user){
-  try{
-    const db=await openRememberDb();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
-      tx.objectStore(REMEMBER_DB_STORE).put({token:String(token||""),user:String(user||""),savedAt:Date.now()},"current");
-      tx.oncomplete=()=>resolve();
-      tx.onerror=()=>reject(tx.error||new Error("IDB_WRITE"));
-    });
-    db.close();
-    if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
-  }catch(_){}
-}
-async function readRememberedSession(){
-  try{
-    const db=await openRememberDb();
-    const value=await new Promise((resolve,reject)=>{
-      const tx=db.transaction(REMEMBER_DB_STORE,"readonly");
-      const req=tx.objectStore(REMEMBER_DB_STORE).get("current");
-      req.onsuccess=()=>resolve(req.result||null);
-      req.onerror=()=>reject(req.error||new Error("IDB_READ"));
-    });
-    db.close();
-    return value;
-  }catch(_){return null;}
-}
-async function clearRememberedSession(){
-  try{
-    const db=await openRememberDb();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
-      tx.objectStore(REMEMBER_DB_STORE).delete("current");
-      tx.oncomplete=()=>resolve();
-      tx.onerror=()=>reject(tx.error||new Error("IDB_DELETE"));
-    });
-    db.close();
-  }catch(_){}
-}
-async function idbGetRememberValue(key){
-  try{
-    const db=await openRememberDb();
-    const value=await new Promise((resolve,reject)=>{
-      const tx=db.transaction(REMEMBER_DB_STORE,"readonly");
-      const req=tx.objectStore(REMEMBER_DB_STORE).get(key);
-      req.onsuccess=()=>resolve(req.result||null);
-      req.onerror=()=>reject(req.error||new Error("IDB_READ"));
-    });
-    db.close();
-    return value;
-  }catch(_){return null;}
-}
-async function idbPutRememberValue(key,value){
-  const db=await openRememberDb();
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
-    tx.objectStore(REMEMBER_DB_STORE).put(value,key);
-    tx.oncomplete=()=>resolve();
-    tx.onerror=()=>reject(tx.error||new Error("IDB_WRITE"));
-  });
-  db.close();
-}
-async function getRememberCryptoKey(create){
-  let key=await idbGetRememberValue("credentialKey");
-  if(key||!create||!window.crypto||!crypto.subtle)return key||null;
-  try{
-    key=await crypto.subtle.generateKey({name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
-    await idbPutRememberValue("credentialKey",key);
-    return key;
-  }catch(_){return null;}
-}
-async function saveRememberedCredentials(user,pass){
-  try{
-    const key=await getRememberCryptoKey(true);
-    if(!key)return;
-    const iv=crypto.getRandomValues(new Uint8Array(12));
-    const plain=new TextEncoder().encode(String(pass||""));
-    const cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plain);
-    await idbPutRememberValue("credentials",{
-      user:String(user||""),
-      iv:Array.from(iv),
-      data:Array.from(new Uint8Array(cipher))
-    });
-  }catch(_){}
-}
-async function readRememberedCredentials(){
-  try{
-    const rec=await idbGetRememberValue("credentials");
-    const key=await getRememberCryptoKey(false);
-    if(!rec||!key||!Array.isArray(rec.iv)||!Array.isArray(rec.data))return null;
-    const plain=await crypto.subtle.decrypt(
-      {name:"AES-GCM",iv:new Uint8Array(rec.iv)},
-      key,
-      new Uint8Array(rec.data)
-    );
-    return {username:String(rec.user||""),password:new TextDecoder().decode(plain)};
-  }catch(_){return null;}
-}
-async function clearRememberedAuth(){
-  try{
-    const db=await openRememberDb();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
-      const store=tx.objectStore(REMEMBER_DB_STORE);
-      store.delete("current");
-      store.delete("credentials");
-      store.delete("credentialKey");
-      tx.oncomplete=()=>resolve();
-      tx.onerror=()=>reject(tx.error||new Error("IDB_DELETE"));
-    });
-    db.close();
-  }catch(_){}
-}
-const rememberPreference=localStorage.getItem(REMEMBER_LOGIN_KEY)==="1";
-if(rememberLogin) rememberLogin.checked=rememberPreference;
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
 let currentAlerts=[], currentSlips=[];
-let rememberRecoveryAttempted=false;
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
+const ALERTS_CACHE_PREFIX="dtt_public_alerts_v3::";
+const ALERTS_CACHE_MAX_MS=30*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 
 async function apiPost(params){
@@ -794,8 +672,7 @@ authSubmit.onclick=async()=>{
       showVerify(pendingUsername,r.emailMasked||e);
       setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
     }else{
-      rememberRecoveryAttempted=false;
-      await saveSession(r,{username:u,password:p});
+      saveSession(r);
     }
   }catch(err){
     setMsg(authMsg,mapError(err.message),"error");
@@ -1091,7 +968,7 @@ notificationToggle.onclick=async()=>{
 };
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshNotificationState();});
 window.addEventListener("focus",async()=>{await refreshNotificationState();if(Notification.permission==="granted")notificationHelp?.classList.add("hidden");});
-refreshNotificationState();
+setTimeout(()=>refreshNotificationState(),2500);
 
 profileMessagesBtn.onclick=openMessages;
 closeMessages.onclick=()=>messageCenter.classList.add("hidden");
@@ -1187,27 +1064,60 @@ if(aboutTabBtn) aboutTabBtn.onclick=()=>setModelView("about");
 if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
 if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
-async function saveSession(r,credentials){
+function alertCacheKey(){
+  const user=String(localStorage.getItem("ma_user")||"").trim().toLowerCase();
+  return ALERTS_CACHE_PREFIX+(user||"guest");
+}
+function readAlertsCache(){
+  try{
+    const raw=localStorage.getItem(alertCacheKey());
+    if(!raw)return null;
+    const x=JSON.parse(raw);
+    const savedAt=Number(x.savedAt||0);
+    if(!savedAt||Date.now()-savedAt>ALERTS_CACHE_MAX_MS)return null;
+    return x;
+  }catch(_){return null;}
+}
+function saveAlertsCache(r){
+  try{
+    localStorage.setItem(alertCacheKey(),JSON.stringify({
+      savedAt:Date.now(),
+      updatedAt:r.updatedAt||new Date().toISOString(),
+      alerts:Array.isArray(r.alerts)?r.alerts:[],
+      slips:Array.isArray(r.slips)?r.slips:[],
+      subscriptionEndsAt:r.subscriptionEndsAt||""
+    }));
+  }catch(_){}
+}
+function showCachedAlerts(){
+  const cached=readAlertsCache();
+  if(!cached)return false;
+  renderAlerts(cached.alerts||[],cached.slips||[]);
+  const singles=currentAlerts.length, slipCount=currentSlips.length;
+  const counterText=singles+" "+(singles===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
+  counter.textContent=counterText;
+  homeCount.textContent=(singles+slipCount)?counterText:"Καμία ενεργή επιλογή";
+  const d=new Date(cached.updatedAt||cached.savedAt);
+  updatedAt.textContent=isNaN(d)?"Τελευταία διαθέσιμη εικόνα":"Τελευταία εικόνα "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"});
+  if(cached.subscriptionEndsAt)applySubscription(cached.subscriptionEndsAt);
+  return true;
+}
+
+function saveSession(r){
   sessionToken=r.token;
-  const remember=!!(rememberLogin&&rememberLogin.checked);
   localStorage.setItem("ma_user",r.username||"");
-  if(remember){
-    localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
+  if(rememberLogin&&rememberLogin.checked){
     localStorage.setItem("ma_token",sessionToken);
     sessionStorage.removeItem("ma_token");
-    await saveRememberedSession(sessionToken,r.username||"");
-    if(credentials&&credentials.password) await saveRememberedCredentials(credentials.username||r.username||"",credentials.password);
   }else{
-    localStorage.removeItem(REMEMBER_LOGIN_KEY);
-    await clearRememberedAuth();
     sessionStorage.setItem("ma_token",sessionToken);
     localStorage.removeItem("ma_token");
   }
-  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadAlerts();loadMyHistory();loadMemberMessages();
+  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadMemberStartupData();
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
-  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");await clearRememberedAuth();sessionToken="";
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
 function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
@@ -1248,8 +1158,11 @@ function selectionMark(a){
   return side==="H"?"1":side==="A"?"2":"—";
 }
 function renderAlerts(alerts,slips=[]){
-  const list=Array.isArray(alerts)?alerts:[];
-  const combos=Array.isArray(slips)?slips:[];
+  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
+  const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
+    const legs=Array.isArray(x&&x.legs)?x.legs:[];
+    return legs.length>0&&legs.every(l=>!kickoffStarted(l));
+  });
   if(!list.length&&!combos.length){currentAlerts=[];currentSlips=[];content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργές επιλογές αυτή τη στιγμή.</div>';return;}
   const rows=[...list].sort((a,b)=>kickoffMs(a)-kickoffMs(b));
   currentAlerts=rows;currentSlips=combos;
@@ -1453,41 +1366,33 @@ async function playPick(index,button){
   }
 }
 
-async function tryRememberedLogin(){
-  if(rememberRecoveryAttempted)return false;
-  rememberRecoveryAttempted=true;
-  const creds=await readRememberedCredentials();
-  if(!creds||!creds.username||!creds.password)return false;
-  try{
-    const r=await apiPost({action:"login",username:creds.username,password:creds.password,deviceId});
-    if(!r.ok)return false;
-    if(rememberLogin)rememberLogin.checked=true;
-    await saveSession(r,creds);
-    return true;
-  }catch(_){
-    return false;
+async function loadAlerts({background=false}={}){
+  if(!background&&!currentAlerts.length&&!currentSlips.length){
+    content.innerHTML='<div class="loading">Φόρτωση…</div>';
   }
-}
-
-async function loadAlerts(){
-  content.innerHTML='<div class="loading">Φόρτωση…</div>';
   try{
     const r=await apiPost({action:"alerts",token:sessionToken});
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent=r.username||localStorage.getItem("ma_user")||"";
-    const slipCount=Array.isArray(r.slips)?r.slips.length:0;
-    const singleCount=Number(r.count||0);
+    renderAlerts(r.alerts||[],r.slips||[]);
+    const singleCount=currentAlerts.length;
+    const slipCount=currentSlips.length;
     const totalVisible=singleCount+slipCount;
     const counterText=singleCount+" "+(singleCount===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
     counter.textContent=counterText; homeCount.textContent=totalVisible?counterText:"Καμία ενεργή επιλογή";
     const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Ενημέρωση "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
     applySubscription(r.subscriptionEndsAt||"");
-    renderAlerts(r.alerts||[],r.slips||[]);
+    saveAlertsCache(r);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
-      if(localStorage.getItem(REMEMBER_LOGIN_KEY)==="1" && await tryRememberedLogin()) return;
-      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");sessionToken="";
+      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
+      return;
+    }
+    const cached=readAlertsCache();
+    if(cached){
+      if(!currentAlerts.length&&!currentSlips.length)showCachedAlerts();
+      updatedAt.textContent="Τελευταία διαθέσιμη εικόνα · ανανέωση στο background";
       return;
     }
     counter.textContent="—";homeCount.textContent="Η live σύνδεση δεν είναι διαθέσιμη";
@@ -1495,32 +1400,18 @@ async function loadAlerts(){
     content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
   }
 }
-function openRememberedMemberSession(){
-  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");
-  currentUser.textContent=localStorage.getItem("ma_user")||"";
-  profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();
-  applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});
+async function loadMemberStartupData(){
+  const hadCache=showCachedAlerts();
+  await loadAlerts({background:hadCache});
+  if(!sessionToken) return;
+  setTimeout(async()=>{
+    if(!sessionToken) return;
+    await loadMyHistory({background:true});
+    if(!sessionToken) return;
+    await loadMemberMessages({background:true});
+  },350);
 }
-async function bootstrapMemberSession(){
-  if(!sessionToken){
-    const saved=await readRememberedSession();
-    if(saved&&saved.token){
-      sessionToken=String(saved.token);
-      localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
-      localStorage.setItem("ma_token",sessionToken);
-      if(saved.user)localStorage.setItem("ma_user",String(saved.user));
-      if(rememberLogin)rememberLogin.checked=true;
-    }
-  }
-  if(sessionToken){
-    openRememberedMemberSession();
-    return;
-  }
-  if(localStorage.getItem(REMEMBER_LOGIN_KEY)==="1"){
-    await tryRememberedLogin();
-  }
-}
-bootstrapMemberSession();
+if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadMemberStartupData();}
 setInterval(()=>{
   document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
     const start=Number(row.dataset.kickoffMs||"0");
@@ -1533,10 +1424,7 @@ if("serviceWorker" in navigator){
     try{
       const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
       await reg.update();
-      if(Notification.permission==="granted"){
-        const sub=await reg.pushManager.getSubscription();
-        if(sub&&sessionToken) await ensurePushRegistration(sub,true);
-      }
+
     }catch(_){}
   });
 }
