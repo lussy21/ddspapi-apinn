@@ -150,6 +150,23 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 #signalPrivateCode{width:100%;box-sizing:border-box;border:1px solid rgba(217,177,87,.25);background:#08080a;color:#fff;border-radius:14px;padding:14px;font-size:20px;letter-spacing:5px;text-align:center;outline:none}
 #signalPrivateEnter{width:100%;margin-top:12px;border:1px solid rgba(217,177,87,.35);background:rgba(217,177,87,.14);color:#f6d98c;border-radius:14px;padding:13px;font-weight:800}
 #signalPrivateMsg{min-height:18px;margin-top:10px;color:#ff9b9b;font-size:12px;text-align:center}
+</style><style id="ownerSignalCardStyle">
+.owner-signals-grid{display:grid;gap:16px}
+.owner-signal-card{padding:22px 20px;border:1px solid rgba(217,177,87,.18);border-radius:28px;background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 18px 45px rgba(0,0,0,.28)}
+.owner-signal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.owner-signal-match{font-size:24px;font-weight:900;line-height:1.15;color:#f4efe8}
+.owner-signal-league{margin-top:7px;font-size:12px;color:#8d8890;letter-spacing:.2px}
+.owner-signal-pick{flex:0 0 auto;min-width:54px;text-align:center;padding:10px 14px;border-radius:999px;border:1px solid rgba(217,177,87,.28);background:rgba(217,177,87,.08);color:#ffe49a;font-size:20px;font-weight:900}
+.owner-signal-state{display:inline-flex;margin-top:14px;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,119,130,.32);background:rgba(255,119,130,.06);color:#ffb5bd;font-size:11px;font-weight:900;letter-spacing:.5px}
+.owner-signal-state.live{border-color:rgba(125,205,139,.28);background:rgba(125,205,139,.06);color:#c4edcc}
+.owner-signal-lines{display:grid;gap:9px;margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.05)}
+.owner-signal-line{font-size:16px;line-height:1.35;color:#9f9aa2}
+.owner-signal-line b{color:#f2ece2}
+.owner-signal-internal{color:#ffd08a;font-weight:900}
+.owner-signal-public{color:#a49fa7}
+.owner-signal-bottom{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:10px;flex-wrap:wrap}
+.owner-signal-chip{padding:8px 10px;border-radius:12px;border:1px solid rgba(217,177,87,.16);background:rgba(217,177,87,.03);color:#d8d1c4;font-size:12px;font-weight:800}
+@media(max-width:520px){.owner-signal-card{padding:18px 16px;border-radius:24px}.owner-signal-match{font-size:21px}.owner-signal-line{font-size:14px}.owner-signal-pick{font-size:18px}}
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
@@ -1076,14 +1093,23 @@ function renderAlerts(alerts,slips=[]){
     const total=x.totalOdds?String(x.totalOdds).replace(".",","):"—";
     return '<div class="combo-card"><div class="combo-top"><div><div class="combo-kicker">DreamTeamTips · Δελτίο</div><div class="combo-title">'+esc(x.label||"Δελτίο")+'</div></div><div class="combo-odds"><span>Συνολική απόδοση</span><b>'+esc(total)+'</b></div></div><div class="combo-legs">'+legs.map(l=>'<div class="combo-leg"><div class="combo-leg-main"><b>'+esc(l.home||"")+' – '+esc(l.away||"")+'</b><span>'+esc(l.league||"")+' · '+esc(kickoffLabel(l))+'</span></div><div class="combo-leg-pick">'+esc(l.pick||"—")+'<small>'+esc(l.team||"")+' · @ '+esc(String(l.odds||"—").replace(".",","))+'</small></div></div>').join("")+'</div><div class="combo-note">Το δελτίο δημοσιεύτηκε ως ενιαία πρόταση DreamTeamTips.</div></div>';
   }).join("")+'</div>':'';
-  const singleHtml=rows.map((a,idx)=>{
-    const start=kickoffMs(a);
-    const playedRow="";
+  const singleHtml='<div class="owner-signals-grid">'+rows.map((a)=>{
+    const publicSymbol=String(a.publicSymbol||"");
+    const score=Number(a.levelScore||0);
+    const wins=Number(a.levelWins||0);
+    const total=Number(a.levelTotal||0);
+    const nextReview=String(a.levelNextReview||"");
+    const status=String(a.publicationStatus||"waiting");
+    const stateText=status==="published"?"ΔΗΜΟΣΙΕΥΜΕΝΗ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ";
+    const stateClass=status==="published"?" live":"";
+    const rating=a.rating?(" · "+esc(a.rating)):"";
     const oddsNumber=Number(a.customerOdds);
-    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
-    const timeText=kickoffLabel(a);
-    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div>${timeText?`<div class="league-count">🕒 ${esc(timeText)}</div>`:""}</div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
-  }).join("");
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" · @ "+oddsNumber.toFixed(2).replace(".",",")):"";
+    const levelLine=publicSymbol
+      ? '<div class="owner-signal-line owner-signal-public">Δημόσιο Level: <b>'+esc(publicSymbol)+' · Score '+esc(score.toFixed(1).replace(".",","))+(total?(" · "+esc(wins+"/"+total)):"")+(nextReview?(" · review "+esc(nextReview)):"")+'</b></div>'
+      : '<div class="owner-signal-line owner-signal-public">Δημόσιο Level: <b>TEST / ADMIN ONLY</b></div>';
+    return '<div class="owner-signal-card"><div class="owner-signal-top"><div><div class="owner-signal-match">'+esc(a.home)+' – '+esc(a.away)+'</div><div class="owner-signal-league">'+esc(a.league||"")+'</div><div class="owner-signal-state'+stateClass+'">'+stateText+'</div></div><div class="owner-signal-pick">'+esc(a.customerPick||"—")+'</div></div><div class="owner-signal-lines"><div class="owner-signal-line owner-signal-internal">Εσωτερικό σήμα: '+(publicSymbol?esc(publicSymbol)+" · ":"")+esc(a.internalAlert||"—")+rating+'</div>'+levelLine+'<div class="owner-signal-line">Φαβορί: <b>'+esc(a.favoriteTeam||"—")+'</b></div><div class="owner-signal-line">Πρωτάθλημα: <b>'+esc(recordLabel(a.leagueRecord))+'</b></div><div class="owner-signal-line">ALL STATS: <b>'+esc(recordLabel(a.allStatsRecord))+'</b></div><div class="owner-signal-line">Πρόταση πελάτη: <b>'+esc(a.customerPick||"—")+' · '+esc(a.customerTeam||"—")+oddsText+'</b></div></div><div class="owner-signal-bottom">'+(kickoffLabel(a)?'<div class="owner-signal-chip">🕒 '+esc(kickoffLabel(a))+'</div>':'')+(a.reviewState?'<div class="owner-signal-chip">'+esc(a.reviewState)+'</div>':'')+'</div></div>';
+  }).join("")+'</div>';
   content.innerHTML=comboHtml+singleHtml;
 }
 
