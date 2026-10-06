@@ -172,7 +172,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .owner-home-kicker{font-size:10px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#a29da5}
 .owner-home-title{font:500 31px/1.02 Georgia,serif;margin:7px 0 7px;color:#f3eee5}
 .owner-home-copy{margin:0;color:#8d8891;font-size:11px;line-height:1.5}
-.owner-home-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px}
+.owner-home-summary{display:none}.owner-home-livebar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:11px 12px;border:1px solid rgba(217,177,87,.13);border-radius:14px;background:rgba(255,255,255,.014);color:#8f8a93;font-size:9px;font-weight:800;letter-spacing:.2px}.owner-home-livebar b{color:#f1e3b8;font-size:12px}.owner-home-livebar i{width:3px;height:3px;border-radius:50%;background:#6f6a72}
 .owner-home-stat{padding:16px 14px;border:1px solid rgba(217,177,87,.15);border-radius:17px;background:rgba(255,255,255,.018);text-align:center}
 .owner-home-stat b{display:block;font-size:25px;color:#f3eee5}
 .owner-home-stat span{display:block;margin-top:5px;color:#8a858e;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
@@ -237,11 +237,12 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
         <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
       </div>
 
-      <div class="owner-home-summary">
-        <div class="owner-home-stat"><b id="ownerHomeSelections">0</b><span>Ενεργές επιλογές</span></div>
-        <div class="owner-home-stat"><b id="ownerHomeLeagues">0</b><span>Πρωταθλήματα</span></div>
-        <div class="owner-home-stat"><b id="ownerHomeBells">0</b><span>Καμπανάκια</span></div>
-        <div class="owner-home-stat"><b>6</b><span>Κατηγορίες</span></div>
+      <div class="owner-home-livebar">
+        <span><b id="ownerHomeSelections">0</b> επιλογές</span>
+        <i></i>
+        <span><b id="ownerHomeLeagues">0</b> πρωταθλήματα</span>
+        <i></i>
+        <span><b id="ownerHomeBells">0</b> καμπανάκια</span>
       </div>
 
       <div class="owner-home-section">
