@@ -286,12 +286,12 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
       <div id="symbolStatsView" class="history-view">
         <div class="symbol-stats-grid">
-          <div class="symbol-stat-card"><span>🔷</span><b>0/0</b></div>
-          <div class="symbol-stat-card"><span>💎</span><b>0/0</b></div>
-          <div class="symbol-stat-card"><span>👑</span><b>0/0</b></div>
-          <div class="symbol-stat-card"><span>🎯</span><b>0/0</b></div>
-          <div class="symbol-stat-card"><span>⚡</span><b>0/0</b></div>
-          <div class="symbol-stat-card"><span>💣</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>🔷</span><b id="signalStat0">0/0</b></div>
+          <div class="symbol-stat-card"><span>💎</span><b id="signalStat1">0/0</b></div>
+          <div class="symbol-stat-card"><span>👑</span><b id="signalStat2">0/0</b></div>
+          <div class="symbol-stat-card"><span>🎯</span><b id="signalStat3">0/0</b></div>
+          <div class="symbol-stat-card"><span>⚡</span><b id="signalStat4">0/0</b></div>
+          <div class="symbol-stat-card"><span>💣</span><b id="signalStat5">0/0</b></div>
         </div>
       </div>
     </div>
@@ -1364,6 +1364,28 @@ async function playPick(index,button){
   }
 }
 
+const SIGNAL_STATS_BASELINE_KEY="signal_stats_baseline_v1";
+const SIGNAL_STATS_SYMBOLS=["🔷","💎","👑","🎯","⚡","💣"];
+function updateSignalStats(raw){
+  const stats=raw&&typeof raw==="object"?raw:{};
+  let baseline={};
+  try{baseline=JSON.parse(localStorage.getItem(SIGNAL_STATS_BASELINE_KEY)||"{}")||{};}catch(_){baseline={};}
+  if(!Object.keys(baseline).length){
+    SIGNAL_STATS_SYMBOLS.forEach(sym=>{
+      const cur=stats[sym]||{};
+      baseline[sym]={wins:Number(cur.wins||0),total:Number(cur.total||0)};
+    });
+    localStorage.setItem(SIGNAL_STATS_BASELINE_KEY,JSON.stringify(baseline));
+  }
+  SIGNAL_STATS_SYMBOLS.forEach((sym,i)=>{
+    const cur=stats[sym]||{}, base=baseline[sym]||{};
+    const wins=Math.max(0,Number(cur.wins||0)-Number(base.wins||0));
+    const total=Math.max(0,Number(cur.total||0)-Number(base.total||0));
+    const el=document.getElementById("signalStat"+i);
+    if(el) el.textContent=wins+"/"+total;
+  });
+}
+
 async function loadOwnerAlerts({background=false}={}){
   if(!background&&!currentAlerts.length&&!currentSlips.length){
     content.innerHTML='<div class="loading">Φόρτωση…</div>';
@@ -1381,6 +1403,7 @@ async function loadOwnerAlerts({background=false}={}){
     });
     clearTimeout(timer);
     const r=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
+    if(r&&r.symbolStats) updateSignalStats(r.symbolStats);
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent="Signal";
     renderAlerts(r.alerts||[],r.slips||[]);
