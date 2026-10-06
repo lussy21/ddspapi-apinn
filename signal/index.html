@@ -186,6 +186,13 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .owner-home-card-main small{display:block;margin-top:4px;color:#817c85;font-size:9px;line-height:1.4}
 .owner-home-card-value{font-size:18px;font-weight:900;color:#f0dfac}
 .owner-home-card-arrow{font-size:21px;color:#7d786d}
+</style><style id="signalStatsFilterStyle">
+.signal-stats-filter{margin:0 0 14px;padding:12px;border:1px solid rgba(217,177,87,.14);border-radius:15px;background:rgba(255,255,255,.014)}
+.signal-stats-filter-title{font-size:9px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase;color:#77727c;margin-bottom:9px}
+.signal-stats-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.signal-stats-filter-btn{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.018);color:#77727c;border-radius:12px;padding:10px 8px;font-size:9px;font-weight:900}
+.signal-stats-filter-btn.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.075);color:#f3e2ae}
+.signal-stats-filter-note{margin-top:9px;color:#6f6a72;font-size:8px;line-height:1.4}
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
@@ -285,6 +292,16 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
       </div>
 
       <div id="symbolStatsView" class="history-view">
+        <div class="signal-stats-filter">
+          <div class="signal-stats-filter-title">Τι μετράει στα στατιστικά</div>
+          <div class="signal-stats-filter-grid">
+            <button class="signal-stats-filter-btn" data-stats-region="MAIN">Μεγάλα Πρωταθλήματα</button>
+            <button class="signal-stats-filter-btn" data-stats-region="OTHER_EUROPE">Λοιπή Ευρώπη</button>
+            <button class="signal-stats-filter-btn" data-stats-region="NATIONAL">Εθνικές</button>
+            <button class="signal-stats-filter-btn" data-stats-region="AMERICA">Αμερική</button>
+          </div>
+          <div class="signal-stats-filter-note">Τα ματς εμφανίζονται πάντα κανονικά. Εδώ επιλέγεις μόνο αν θα μετράνε στα 0/0.</div>
+        </div>
         <div class="symbol-stats-grid">
           <div class="symbol-stat-card"><span>🔷</span><b id="signalStat0">0/0</b></div>
           <div class="symbol-stat-card"><span>💎</span><b id="signalStat1">0/0</b></div>
@@ -1364,27 +1381,103 @@ async function playPick(index,button){
   }
 }
 
-const SIGNAL_STATS_BASELINE_KEY="signal_stats_baseline_v1";
+const SIGNAL_STATS_BASELINE_KEY="signal_stats_region_baseline_v1";
+const SIGNAL_STATS_PREFS_KEY="signal_stats_region_prefs_v1";
 const SIGNAL_STATS_SYMBOLS=["🔷","💎","👑","🎯","⚡","💣"];
-function updateSignalStats(raw){
-  const stats=raw&&typeof raw==="object"?raw:{};
-  let baseline={};
-  try{baseline=JSON.parse(localStorage.getItem(SIGNAL_STATS_BASELINE_KEY)||"{}")||{};}catch(_){baseline={};}
-  if(!Object.keys(baseline).length){
-    SIGNAL_STATS_SYMBOLS.forEach(sym=>{
-      const cur=stats[sym]||{};
-      baseline[sym]={wins:Number(cur.wins||0),total:Number(cur.total||0)};
-    });
-    localStorage.setItem(SIGNAL_STATS_BASELINE_KEY,JSON.stringify(baseline));
+const SIGNAL_STATS_REGIONS=["MAIN","OTHER_EUROPE","NATIONAL","AMERICA"];
+let lastRegionalSymbolStats=null;
+
+function signalStatsPrefs(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(SIGNAL_STATS_PREFS_KEY)||"{}")||{};
+    return {
+      MAIN:saved.MAIN!==false,
+      OTHER_EUROPE:saved.OTHER_EUROPE!==false,
+      NATIONAL:saved.NATIONAL===true,
+      AMERICA:saved.AMERICA===true
+    };
+  }catch(_){
+    return {MAIN:true,OTHER_EUROPE:true,NATIONAL:false,AMERICA:false};
   }
+}
+
+function saveSignalStatsPrefs(prefs){
+  localStorage.setItem(SIGNAL_STATS_PREFS_KEY,JSON.stringify(prefs));
+}
+
+function readSignalRegionBaseline(){
+  try{return JSON.parse(localStorage.getItem(SIGNAL_STATS_BASELINE_KEY)||"{}")||{};}catch(_){return {};}
+}
+function saveSignalRegionBaseline(v){localStorage.setItem(SIGNAL_STATS_BASELINE_KEY,JSON.stringify(v));}
+
+function renderSignalStatsFilter(){
+  const prefs=signalStatsPrefs();
+  document.querySelectorAll("[data-stats-region]").forEach(btn=>{
+    const on=!!prefs[btn.dataset.statsRegion];
+    btn.classList.toggle("active",on);
+    btn.textContent=(on?"✓ ":"＋ ")+btn.textContent.replace(/^[✓＋]s*/,"");
+  });
+}
+
+function setSignalRegionEnabled(region,on){
+  const prefs=signalStatsPrefs();
+  prefs[region]=!!on;
+  saveSignalStatsPrefs(prefs);
+
+  if(lastRegionalSymbolStats){
+    const baseline=readSignalRegionBaseline();
+    baseline[region]=baseline[region]||{};
+    SIGNAL_STATS_SYMBOLS.forEach(sym=>{
+      const cur=(lastRegionalSymbolStats[region]&&lastRegionalSymbolStats[region][sym])||{};
+      baseline[region][sym]={wins:Number(cur.wins||0),total:Number(cur.total||0)};
+    });
+    saveSignalRegionBaseline(baseline);
+  }
+  renderSignalStatsFilter();
+  updateSignalStats(lastRegionalSymbolStats||{});
+}
+
+function updateSignalStats(regional){
+  if(!regional||typeof regional!=="object") return;
+  lastRegionalSymbolStats=regional;
+  const prefs=signalStatsPrefs();
+  let baseline=readSignalRegionBaseline();
+  let changed=false;
+
+  SIGNAL_STATS_REGIONS.forEach(region=>{
+    baseline[region]=baseline[region]||{};
+    SIGNAL_STATS_SYMBOLS.forEach(sym=>{
+      if(!baseline[region][sym]){
+        const cur=(regional[region]&&regional[region][sym])||{};
+        baseline[region][sym]={wins:Number(cur.wins||0),total:Number(cur.total||0)};
+        changed=true;
+      }
+    });
+  });
+  if(changed) saveSignalRegionBaseline(baseline);
+
   SIGNAL_STATS_SYMBOLS.forEach((sym,i)=>{
-    const cur=stats[sym]||{}, base=baseline[sym]||{};
-    const wins=Math.max(0,Number(cur.wins||0)-Number(base.wins||0));
-    const total=Math.max(0,Number(cur.total||0)-Number(base.total||0));
+    let wins=0,total=0;
+    SIGNAL_STATS_REGIONS.forEach(region=>{
+      if(!prefs[region]) return;
+      const cur=(regional[region]&&regional[region][sym])||{};
+      const base=(baseline[region]&&baseline[region][sym])||{};
+      wins+=Math.max(0,Number(cur.wins||0)-Number(base.wins||0));
+      total+=Math.max(0,Number(cur.total||0)-Number(base.total||0));
+    });
     const el=document.getElementById("signalStat"+i);
     if(el) el.textContent=wins+"/"+total;
   });
 }
+
+document.addEventListener("click",e=>{
+  const btn=e.target.closest("[data-stats-region]");
+  if(!btn)return;
+  const region=btn.dataset.statsRegion;
+  const prefs=signalStatsPrefs();
+  setSignalRegionEnabled(region,!prefs[region]);
+});
+renderSignalStatsFilter();
 
 async function loadOwnerAlerts({background=false}={}){
   if(!background&&!currentAlerts.length&&!currentSlips.length){
@@ -1403,7 +1496,7 @@ async function loadOwnerAlerts({background=false}={}){
     });
     clearTimeout(timer);
     const r=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
-    if(r&&r.symbolStats) updateSignalStats(r.symbolStats);
+    if(r&&r.regionalSymbolStats&&Object.keys(r.regionalSymbolStats).length) updateSignalStats(r.regionalSymbolStats);
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent="Signal";
     renderAlerts(r.alerts||[],r.slips||[]);
