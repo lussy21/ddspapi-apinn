@@ -1,5 +1,5 @@
-const CACHE='dreamteamtips-v17-fast-open';
-const ASSETS=['./','./admin.html','./manifest.json','./reference-icon.svg'];
+const CACHE='dreamteamtips-v18-stats-only';
+const ASSETS=['./','./index.html','./admin.html','./manifest.json','./reference-icon.svg'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
   self.skipWaiting();
