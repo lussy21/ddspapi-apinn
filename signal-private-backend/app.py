@@ -103,6 +103,13 @@ def owner_feed():
             allow_redirects=True,
         )
         data = upstream.json()
+        levels_upstream = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action": "adminAlertLevels", "adminCode": SIGNAL_ADMIN_CODE},
+            timeout=(4, 35),
+            allow_redirects=True,
+        )
+        levels_data = levels_upstream.json()
     except requests.RequestException:
         return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
     except ValueError:
@@ -147,12 +154,23 @@ def owner_feed():
             "played": False,
         })
 
+    symbol_stats = {"🔷": {"wins": 0, "total": 0}, "💎": {"wins": 0, "total": 0}, "👑": {"wins": 0, "total": 0},
+                    "🎯": {"wins": 0, "total": 0}, "⚡": {"wins": 0, "total": 0}, "💣": {"wins": 0, "total": 0}}
+    if isinstance(levels_data, dict) and levels_data.get("ok"):
+        for item in levels_data.get("levels") or []:
+            symbol = str(item.get("symbol") or "").strip()
+            if symbol not in symbol_stats:
+                continue
+            symbol_stats[symbol]["wins"] += int(item.get("wins") or 0)
+            symbol_stats[symbol]["total"] += int(item.get("total") or 0)
+
     return jsonify(
         ok=True,
         username="Signal",
         alerts=alerts,
         slips=[],
         count=len(alerts),
+        symbolStats=symbol_stats,
         updatedAt=data.get("updatedAt"),
     ), 200
 
