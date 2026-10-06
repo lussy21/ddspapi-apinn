@@ -921,7 +921,7 @@ notificationHelp.onclick=e=>{if(e.target===notificationHelp)notificationHelp.cla
 notificationCheckAgain.onclick=async()=>{
   notificationCheckAgain.disabled=true;
   notificationCheckAgain.textContent="Έλεγχος…";
-  await refreshNotificationState();
+  await setTimeout(()=>refreshNotificationState(),2500);
   notificationCheckAgain.disabled=false;
   notificationCheckAgain.textContent="Έλεγχος ξανά";
   if(Notification.permission==="granted") notificationHelp.classList.add("hidden");
@@ -1057,7 +1057,7 @@ if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
 function saveSession(r){
   sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
-  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadAlerts();loadMyHistory();loadMemberMessages();
+  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadMemberStartupData();
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
@@ -1332,7 +1332,17 @@ async function loadAlerts(){
     content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
   }
 }
-if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});}
+async function loadMemberStartupData(){
+  await loadAlerts();
+  if(!sessionToken) return;
+  setTimeout(async()=>{
+    if(!sessionToken) return;
+    await loadMyHistory({background:true});
+    if(!sessionToken) return;
+    await loadMemberMessages({background:true});
+  },350);
+}
+if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadMemberStartupData();}
 setInterval(()=>{
   document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
     const start=Number(row.dataset.kickoffMs||"0");
@@ -1345,10 +1355,7 @@ if("serviceWorker" in navigator){
     try{
       const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
       await reg.update();
-      if(Notification.permission==="granted"){
-        const sub=await reg.pushManager.getSubscription();
-        if(sub&&sessionToken) await ensurePushRegistration(sub,true);
-      }
+
     }catch(_){}
   });
 }
