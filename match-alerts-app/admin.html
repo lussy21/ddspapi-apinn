@@ -226,6 +226,8 @@ async function apiPost(params){
   }
 }
 async function loadAdmin(){
+  // Fast path: on login load only the essentials needed for the first screen.
+  // Everything else is fetched only when its view is opened.
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
@@ -236,54 +238,18 @@ async function loadAdmin(){
   slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
   leagueControlsLive=settings.leagueControls===true;
   leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
+  usersLaunchCount.textContent="…";
   if(!settings.autoPushConfigured){
     apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
   }
 
-  const jobs=[];
   if(internalSignalsLive){
-    jobs.push(loadSignalsFresh().catch(()=>{}));
-    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
-      if(!r.ok)return;
-      adminLevelCatalog={};
-      (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
-        const key=alertBaseKey(x.alert);
-        if(key)adminLevelCatalog[key]=x;
-      });
-      renderAlertManager();
-      renderSignals(adminSignalsCache);
-    }).catch(()=>{}));
-  }
-  if(leagueControlsLive){
-    jobs.push(loadLeagueSettings().catch(()=>{}));
-  }
-  if(slipBuilderLive){
-    jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
-      if(r.ok) renderAdminSlips(r.slips||[]);
-    }).catch(()=>{}));
+    await loadSignalsFresh().catch(()=>{});
   }
 
-  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret}).then(list=>{
-    if(list.ok) renderUsers(list.users||[]);
-    else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }).catch(()=>{
-    users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }));
-
-  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret}).then(support=>{
-    if(support.ok){
-      supportNew.textContent=String(support.newCount||0);
-      renderSupport(support.messages||[]);
-    }else{
-      supportNew.textContent="0";
-      supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
-    }
-  }).catch(()=>{
-    supportNew.textContent="0";
-    supportInbox.innerHTML='<div class="note">Η υποστήριξη δεν είναι διαθέσιμη προσωρινά.</div>';
-  }));
-
-  await Promise.all(jobs);
+  // Support is non-critical for opening the Admin. Load it after the first
+  // screen is already usable, so it never blocks entry.
+  setTimeout(()=>loadSupportLazy().catch(()=>{}),1800);
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
@@ -607,16 +573,46 @@ function showAdminHome(){
   adminHomeView.classList.remove("hidden");
   window.scrollTo({top:0,behavior:"instant"});
 }
+async function loadUsersLazy(){
+  users.innerHTML='<div class="note">Φόρτωση χρηστών…</div>';
+  const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
+  if(!list.ok) throw new Error(list.error||"ADMIN_ERROR");
+  renderUsers(list.users||[]);
+  return list;
+}
+async function loadAlertLevelsLazy(){
+  const r=await apiPost({action:"adminAlertLevels",adminCode:adminSecret});
+  if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
+  adminLevelCatalog={};
+  (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
+    const key=alertBaseKey(x.alert);
+    if(key)adminLevelCatalog[key]=x;
+  });
+  renderAlertManager();
+  renderSignals(adminSignalsCache);
+  return r;
+}
+async function loadSupportLazy(){
+  const support=await apiPost({action:"adminSupport",adminCode:adminSecret});
+  if(support.ok){
+    supportNew.textContent=String(support.newCount||0);
+    renderSupport(support.messages||[]);
+  }else{
+    supportNew.textContent="0";
+    supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
+  }
+}
 function showUsersAdmin(){
   hideAdminViews();
   usersAdminView.classList.remove("hidden");
   window.scrollTo({top:0,behavior:"instant"});
+  loadUsersLazy().catch(()=>{users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';});
 }
 function showDailyAdmin(){
   hideAdminViews();
   dailyAdminView.classList.remove("hidden");
   window.scrollTo({top:0,behavior:"instant"});
-  if(internalSignalsLive) reloadSignals().catch(()=>{});
+  if(internalSignalsLive && !adminSignalsCache.length) reloadSignals().catch(()=>{});
   if(slipBuilderLive) reloadAdminSlips().catch(()=>{});
 }
 function showAlertManager(){
@@ -624,6 +620,7 @@ function showAlertManager(){
   alertManagerView.classList.remove("hidden");
   renderAlertManager();
   window.scrollTo({top:0,behavior:"instant"});
+  loadAlertLevelsLazy().catch(e=>alertManagerMsg.textContent="Σφάλμα: "+e.message);
 }
 function showLeagueManager(){
   hideAdminViews();
