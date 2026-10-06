@@ -208,17 +208,13 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
           <span class="home-overview-arrow">›</span>
         </button>
 
-        <button class="home-overview-card" data-go="history" data-history-mode="team">
+        <button class="home-overview-card" data-go="history" data-history-mode="stats">
           <span class="home-overview-icon">↺</span>
-          <span class="home-overview-main"><b>Ιστορικό DreamTeamTips</b><small>Όλες οι προτάσεις και τα αποτελέσματά τους</small></span>
+          <span class="home-overview-main"><b>Στατιστικά</b><small>Σύνοψη ανά σύμβολο</small></span>
           <span class="home-overview-arrow">›</span>
         </button>
 
-        <button class="home-overview-card" data-go="history" data-history-mode="mine">
-          <span class="home-overview-icon">✓</span>
-          <span class="home-overview-main"><b>Οι επιλογές μου</b><small id="homePlayedCount">Καμία επιλογή ακόμα</small></span>
-          <span class="home-overview-arrow">›</span>
-        </button>
+        
 
         <button class="home-overview-card" data-messages="1">
           <span class="home-overview-icon">✦</span>
@@ -237,36 +233,10 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
   <section id="historyPanel" class="member-panel">
     <div class="card history-shell">
       <div class="history-head">
-        <div><h3>Ιστορικό</h3><p>Δες την επίσημη πορεία του DreamTeamTips ή μόνο τις επιλογές που έχεις κρατήσει εσύ.</p></div>
-      </div>
-      <div class="history-tabs">
-        <button class="history-tab active" id="historyModeTeam" data-history-mode="team">DreamTeamTips</button>
-        <button class="history-tab" id="historyModeMine" data-history-mode="mine">Οι επιλογές μου</button>
-        <button class="history-tab" id="historyModeStats" data-history-mode="stats">Στατιστικά</button>
+        <div><h3>Στατιστικά</h3><p>Η πορεία κάθε κατηγορίας ξεκινά από 0/0.</p></div>
       </div>
 
-      <div id="officialHistoryView" class="history-view">
-        <div class="history-summary" id="officialHistorySummary">
-          <div class="stat"><b>—</b><span>ΣΥΝΟΛΟ</span></div>
-          <div class="stat"><b>—</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div>
-          <div class="stat"><b>—</b><span>ΧΑΜΕΝΕΣ</span></div>
-          <div class="stat"><b>—</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>
-        </div>
-        <div id="officialHistoryContent"><div class="history-empty">Φόρτωση ιστορικού DreamTeamTips…</div></div>
-      </div>
-
-      <div id="myHistoryView" class="history-view hidden">
-        <div class="history-head" style="margin:4px 0 12px">
-          <div><h3 style="font-size:18px">Οι επιλογές μου</h3><p>Ό,τι προσθέτεις αποθηκεύεται εδώ και ενημερώνεται με το τελικό αποτέλεσμα.</p></div>
-          <div class="history-count" id="historyCount">0 επιλογές</div>
-        </div>
-        <div id="historyContent"><div class="history-empty">Δεν έχεις προσθέσει ακόμα κάποια επιλογή.<br>Πρόσθεσε μία ενεργή επιλογή στις επιλογές σου.</div></div>
-      </div>
-
-      <div id="symbolStatsView" class="history-view hidden">
-        <div class="history-head" style="margin:4px 0 12px">
-          <div><h3 style="font-size:18px">Στατιστικά</h3><p>Η πορεία κάθε κατηγορίας ξεκινά από 0/0.</p></div>
-        </div>
+      <div id="symbolStatsView" class="history-view">
         <div class="symbol-stats-grid">
           <div class="symbol-stat-card"><span>🔷</span><b>0/0</b></div>
           <div class="symbol-stat-card"><span>💎</span><b>0/0</b></div>
@@ -755,22 +725,8 @@ resendCode.onclick=async()=>{
 backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
 
 function setHistoryMode(mode){
-  historyMode=mode==="mine"?"mine":mode==="stats"?"stats":"team";
-  document.getElementById("historyModeTeam")?.classList.toggle("active",historyMode==="team");
-  document.getElementById("historyModeMine")?.classList.toggle("active",historyMode==="mine");
-  document.getElementById("historyModeStats")?.classList.toggle("active",historyMode==="stats");
-  document.getElementById("officialHistoryView")?.classList.toggle("hidden",historyMode!=="team");
-  document.getElementById("myHistoryView")?.classList.toggle("hidden",historyMode!=="mine");
-  document.getElementById("symbolStatsView")?.classList.toggle("hidden",historyMode!=="stats");
-
-  if(!sessionToken) return;
-  if(historyMode==="team"){
-    if(officialHistoryLoadedAt) renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
-    if(!officialHistoryLoadedAt || Date.now()-officialHistoryLoadedAt>UI_CACHE_MS) loadOfficialHistory({background:true});
-  }else if(historyMode==="mine"){
-    if(historyLoadedAt) renderMyHistory(historyCache);
-    if(!historyLoadedAt || Date.now()-historyLoadedAt>UI_CACHE_MS) loadMyHistory({background:true});
-  }
+  historyMode="stats";
+  document.getElementById("symbolStatsView")?.classList.remove("hidden");
 }
 function showScreen(name){
   const map={home:"homePanel",choices:"choicesPanel",history:"historyPanel",model:"modelPanel",profile:"profilePanel"};
