@@ -1,0 +1,11 @@
+{
+  "name": "Signal",
+  "short_name": "Signal",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#070708",
+  "theme_color": "#070708",
+  "icons": [
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
