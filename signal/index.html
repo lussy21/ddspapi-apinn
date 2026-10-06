@@ -1207,9 +1207,12 @@ function updateOwnerHome(alerts){
   if(byId("ownerHomeLeagueText")) byId("ownerHomeLeagueText").textContent=leagues.length?leagues.slice(0,3).join(" · ")+(leagues.length>3?" +"+(leagues.length-3):""):"Καμία ενεργή λίγκα";
   if(byId("ownerHomeBellText")) byId("ownerHomeBellText").textContent=bells.length?(bells.length+" ενεργά σήματα αυτή τη στιγμή"):"Κανένα ενεργό καμπανάκι";
 }
+let signalOwnerRawAlerts=[];
 function renderAlerts(alerts,slips=[]){
-  updateOwnerHome(alerts);
-  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
+  const source=(Array.isArray(alerts)?alerts:[]);
+  const filtered=(PRIVATE_OWNER_MODE&&typeof signalBellOn==="function")?source.filter(a=>signalBellOn(a.internalAlert||a.alert||"")):source;
+  updateOwnerHome(filtered);
+  const list=filtered.filter(a=>!kickoffStarted(a));
   const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
     const legs=Array.isArray(x&&x.legs)?x.legs:[];
     return legs.length>0&&legs.every(l=>!kickoffStarted(l));
@@ -1487,7 +1490,7 @@ document.addEventListener("input",e=>{if(e.target&&e.target.id==="signalLeagueSe
 document.addEventListener("click",async e=>{
   const bell=e.target.closest("[data-signal-bell]");
   if(bell){
-    const name=bell.dataset.signalBell,p=signalBellPrefs();p[name]=!(p[name]!==false);localStorage.setItem(SIGNAL_BELL_PREFS_KEY,JSON.stringify(p));renderSignalBellManager(signalOwnerDashboardCache||{});return;
+    const name=bell.dataset.signalBell,p=signalBellPrefs();p[name]=!(p[name]!==false);localStorage.setItem(SIGNAL_BELL_PREFS_KEY,JSON.stringify(p));renderSignalBellManager(signalOwnerDashboardCache||{});renderAlerts(signalOwnerRawAlerts,currentSlips);return;
   }
   const lg=e.target.closest("[data-signal-league]");
   if(lg){
@@ -1499,7 +1502,7 @@ document.addEventListener("click",async e=>{
     try{
       const res=await fetch(OWNER_LEAGUE_TOGGLE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,league:lg.dataset.signalLeague,enabled}),cache:"no-store"});
       const r=await res.json();if(!r.ok)throw new Error(r.error||"ERROR");
-      signalOwnerDashboardCache=null;await loadSignalOwnerDashboard(true);
+      signalOwnerDashboardCache=null;await loadSignalOwnerDashboard(true);if(typeof loadAlerts==="function")await loadAlerts({background:true});
     }catch(_){
       lg.disabled=false;
       lg.textContent=oldText;
@@ -1621,7 +1624,8 @@ async function loadOwnerAlerts({background=false}={}){
     if(r&&r.regionalSymbolStats&&Object.keys(r.regionalSymbolStats).length) updateSignalStats(r.regionalSymbolStats);
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent="Signal";
-    renderAlerts(r.alerts||[],r.slips||[]);
+    signalOwnerRawAlerts=Array.isArray(r.alerts)?r.alerts:[];
+    renderAlerts(signalOwnerRawAlerts,r.slips||[]);
     const singleCount=currentAlerts.length;
     const slipCount=currentSlips.length;
     const totalVisible=singleCount+slipCount;
