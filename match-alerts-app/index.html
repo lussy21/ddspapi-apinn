@@ -921,7 +921,7 @@ notificationHelp.onclick=e=>{if(e.target===notificationHelp)notificationHelp.cla
 notificationCheckAgain.onclick=async()=>{
   notificationCheckAgain.disabled=true;
   notificationCheckAgain.textContent="Έλεγχος…";
-  await setTimeout(()=>refreshNotificationState(),2500);
+  await refreshNotificationState();
   notificationCheckAgain.disabled=false;
   notificationCheckAgain.textContent="Έλεγχος ξανά";
   if(Notification.permission==="granted") notificationHelp.classList.add("hidden");
@@ -959,7 +959,7 @@ notificationToggle.onclick=async()=>{
 };
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshNotificationState();});
 window.addEventListener("focus",async()=>{await refreshNotificationState();if(Notification.permission==="granted")notificationHelp?.classList.add("hidden");});
-refreshNotificationState();
+setTimeout(()=>refreshNotificationState(),2500);
 
 profileMessagesBtn.onclick=openMessages;
 closeMessages.onclick=()=>messageCenter.classList.add("hidden");
