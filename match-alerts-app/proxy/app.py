@@ -2,6 +2,8 @@ import os
 import json
 import base64
 import hmac
+import hashlib
+import time
 import requests
 from pywebpush import webpush, WebPushException
 from flask import Flask, request, jsonify, make_response, send_from_directory
@@ -29,6 +31,52 @@ MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET", "").strip()
 MS_REFRESH_TOKEN = os.environ.get("MS_REFRESH_TOKEN", "").strip()
 MS_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 MS_GRAPH_SEND_URL = "https://graph.microsoft.com/v1.0/me/sendMail"
+
+# Tiny in-process cache for expensive read-only Admin calls. It reduces repeated
+# Apps Script executions without changing any stored data or alert logic.
+READ_CACHE = {}
+READ_CACHE_TTLS = {
+    "adminSettings": 10,
+    "adminUsers": 10,
+    "adminSignals": 3,
+    "adminAlertLevels": 30,
+}
+
+def _admin_cache_key(payload):
+    action = str(payload.get("action") or "")
+    if action not in READ_CACHE_TTLS:
+        return None
+    admin_code = str(payload.get("adminCode") or "")
+    if not admin_code:
+        return None
+    digest = hashlib.sha256(admin_code.encode("utf-8")).hexdigest()
+    return action + ":" + digest
+
+def _read_cache_get(payload):
+    key = _admin_cache_key(payload)
+    if not key:
+        return None
+    item = READ_CACHE.get(key)
+    if not item:
+        return None
+    if time.monotonic() >= item["expires"]:
+        READ_CACHE.pop(key, None)
+        return None
+    return item["data"]
+
+def _read_cache_put(payload, data):
+    key = _admin_cache_key(payload)
+    action = str(payload.get("action") or "")
+    ttl = READ_CACHE_TTLS.get(action, 0)
+    if not key or ttl <= 0 or not isinstance(data, dict) or not data.get("ok"):
+        return
+    READ_CACHE[key] = {
+        "expires": time.monotonic() + ttl,
+        "data": data,
+    }
+
+def _invalidate_admin_cache():
+    READ_CACHE.clear()
 
 
 def _normalize_vapid_key(value):
@@ -710,6 +758,8 @@ def api():
         if not data.get("ok"):
             return jsonify(data), 200
 
+        _invalidate_admin_cache()
+
         home = str(data.get("home") or "").strip()
         away = str(data.get("away") or "").strip()
         public_pick = str(data.get("pick") or "").strip()
@@ -751,6 +801,8 @@ def api():
         if not data.get("ok"):
             return jsonify(data), 200
 
+        _invalidate_admin_cache()
+
         slip = data.get("slip") or {}
         label = str(slip.get("label") or "Νέο δελτίο").strip()
         total_odds = slip.get("totalOdds")
@@ -784,6 +836,8 @@ def api():
         if not data.get("ok"):
             return jsonify(data), 200
 
+        _invalidate_admin_cache()
+
         push = push_to_all_active_users(
             admin_code,
             "Δελτίο αποσύρθηκε",
@@ -816,6 +870,8 @@ def api():
 
         if not data.get("ok"):
             return jsonify(data), 200
+
+        _invalidate_admin_cache()
 
         if data.get("wasPublished"):
             home = str(data.get("home") or "").strip()
@@ -953,6 +1009,10 @@ def api():
         ), 200
 
     action = str(payload.get("action") or "")
+    cached = _read_cache_get(payload)
+    if cached is not None:
+        return jsonify(cached), 200
+
     slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "officialHistory", "adminPlayedHistory", "adminSignalKeep", "adminUsers", "adminSettings"}
     timeout = (4, 35) if action in slow_actions else (4, 10)
 
@@ -967,6 +1027,10 @@ def api():
     for attempt in range(attempts):
         try:
             data = upstream_post(payload, timeout=timeout)
+            if action in READ_CACHE_TTLS:
+                _read_cache_put(payload, data)
+            elif action.startswith("admin") and action not in retryable_read_actions:
+                _invalidate_admin_cache()
             return jsonify(data), 200
         except requests.RequestException:
             last_error = "BACKEND_UNREACHABLE"
