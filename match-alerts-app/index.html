@@ -566,6 +566,55 @@ const deviceId=getDeviceId();
 const rememberLogin=document.getElementById("rememberLogin");
 const rememberRow=document.getElementById("rememberRow");
 const REMEMBER_LOGIN_KEY="dtt_remember_login_v1";
+const REMEMBER_DB_NAME="dtt_auth_session_v1";
+const REMEMBER_DB_STORE="session";
+function openRememberDb(){
+  return new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){reject(new Error("NO_IDB"));return;}
+    const req=indexedDB.open(REMEMBER_DB_NAME,1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(REMEMBER_DB_STORE))db.createObjectStore(REMEMBER_DB_STORE);};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error("IDB_OPEN"));
+  });
+}
+async function saveRememberedSession(token,user){
+  try{
+    const db=await openRememberDb();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
+      tx.objectStore(REMEMBER_DB_STORE).put({token:String(token||""),user:String(user||""),savedAt:Date.now()},"current");
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error||new Error("IDB_WRITE"));
+    });
+    db.close();
+    if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  }catch(_){}
+}
+async function readRememberedSession(){
+  try{
+    const db=await openRememberDb();
+    const value=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(REMEMBER_DB_STORE,"readonly");
+      const req=tx.objectStore(REMEMBER_DB_STORE).get("current");
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error||new Error("IDB_READ"));
+    });
+    db.close();
+    return value;
+  }catch(_){return null;}
+}
+async function clearRememberedSession(){
+  try{
+    const db=await openRememberDb();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
+      tx.objectStore(REMEMBER_DB_STORE).delete("current");
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error||new Error("IDB_DELETE"));
+    });
+    db.close();
+  }catch(_){}
+}
 const rememberPreference=localStorage.getItem(REMEMBER_LOGIN_KEY)==="1";
 if(rememberLogin) rememberLogin.checked=rememberPreference;
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
@@ -1070,8 +1119,10 @@ function saveSession(r){
     localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
     localStorage.setItem("ma_token",sessionToken);
     sessionStorage.removeItem("ma_token");
+    saveRememberedSession(sessionToken,r.username||"");
   }else{
     localStorage.removeItem(REMEMBER_LOGIN_KEY);
+    clearRememberedSession();
     sessionStorage.setItem("ma_token",sessionToken);
     localStorage.removeItem("ma_token");
   }
@@ -1079,7 +1130,7 @@ function saveSession(r){
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
-  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");sessionToken="";
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");clearRememberedSession();sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
 function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
@@ -1350,7 +1401,24 @@ async function loadAlerts(){
     content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
   }
 }
-if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});}
+function openRememberedMemberSession(){
+  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");
+  currentUser.textContent=localStorage.getItem("ma_user")||"";
+  profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();
+  applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});
+}
+async function bootstrapMemberSession(){
+  if(!sessionToken && localStorage.getItem(REMEMBER_LOGIN_KEY)==="1"){
+    const saved=await readRememberedSession();
+    if(saved&&saved.token){
+      sessionToken=String(saved.token);
+      localStorage.setItem("ma_token",sessionToken);
+      if(saved.user)localStorage.setItem("ma_user",String(saved.user));
+    }
+  }
+  if(sessionToken)openRememberedMemberSession();
+}
+bootstrapMemberSession();
 setInterval(()=>{
   document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
     const start=Number(row.dataset.kickoffMs||"0");
