@@ -284,90 +284,155 @@ function alerts_(p) {
   const auth = requireSession_(String(p.token || ""));
   if (!auth.ok) return auth;
 
-  // READ ONLY. For the first live bridge we return only what the app needs:
-  // active alerts from PINNACLE column O. No historical/statistical rescans here.
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const pin = ss.getSheetByName(SHEET_NAME);
-  if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "MATCH_ALERTS_PUBLIC_V2";
+  let base = null;
+  let propsSnapshot = null;
 
-  const pinLast = pin.getLastRow();
-  if (pinLast < 3) {
-    return {
-      ok:true,
-      live:true,
-      count:0,
-      alerts:[],
-      username:auth.username,
-      subscriptionEndsAt:auth.subscriptionEndsAt || "",
-      updatedAt:new Date().toISOString()
-    };
+  try {
+    const cached = cache.get(cacheKey);
+    if (cached) base = JSON.parse(cached);
+  } catch (_) {}
+
+  if (!base) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const pin = ss.getSheetByName(SHEET_NAME);
+    if (!pin) return {ok:false,error:"SHEET_READ_FAILED"};
+
+    const pinLast = pin.getLastRow();
+    if (pinLast < 3) {
+      base = {ok:true,live:true,count:0,alerts:[]};
+    } else {
+      // First read only the core columns. If there are no active internal
+      // signals, return immediately instead of reading extra columns/sheets.
+      const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+      const activeIndexes = [];
+      pinRows.forEach(function(row, idx) {
+        const league = String(row[0] || "").trim();
+        const home = String(row[1] || "").trim();
+        const away = String(row[2] || "").trim();
+        const currentAlert = normalizeAlertName_(row[14]);
+        const result = String(row[15] || "").trim();
+        if (league && home && away && currentAlert && !result) activeIndexes.push(idx);
+      });
+
+      if (!activeIndexes.length) {
+        base = {ok:true,live:true,count:0,alerts:[]};
+      } else {
+        const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
+        const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+        const levelCatalog = publicLevelCatalog_(ss);
+
+        // Build record totals once. The previous implementation rescanned all
+        // PINNACLE rows separately for every active public signal.
+        const allStats = {};
+        const leagueStats = {};
+        pinRows.forEach(function(row) {
+          const alertName = normalizeAlertName_(row[14]);
+          if (!alertName) return;
+          const success = alertSuccess_(row, alertName);
+          if (success === null) return;
+
+          if (!allStats[alertName]) allStats[alertName] = {wins:0,total:0};
+          allStats[alertName].total++;
+          if (success) allStats[alertName].wins++;
+
+          const league = String(row[0] || "").trim();
+          const leagueKey = league + "||" + alertName;
+          if (!leagueStats[leagueKey]) leagueStats[leagueKey] = {wins:0,total:0};
+          leagueStats[leagueKey].total++;
+          if (success) leagueStats[leagueKey].wins++;
+        });
+
+        propsSnapshot = PropertiesService.getScriptProperties().getProperties();
+        const out = [];
+
+        activeIndexes.forEach(function(idx) {
+          const row = pinRows[idx];
+          const league = String(row[0] || "").trim();
+          const home = String(row[1] || "").trim();
+          const away = String(row[2] || "").trim();
+          const favoriteSide = String(row[3] || "").trim();
+          const rawAlert = String(row[14] || "").trim();
+          const currentAlert = normalizeAlertName_(rawAlert);
+
+          const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
+          const sourceAlerts = sourceAlertsForRow_(currentAlert, listText);
+          const selectedPublic = highestPublicAlert_(sourceAlerts, currentAlert, levelCatalog);
+          if (!selectedPublic) return;
+
+          const publicAlert = selectedPublic.alert;
+          const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+          const selectionId = selectionId_(league, home, away, publicAlert, kickoff);
+          const controlId = signalMatchId_(league, home, away, kickoff);
+
+          let control = {};
+          const controlRaw = propsSnapshot[signalControlKey_(controlId)];
+          if (controlRaw) {
+            try {
+              const parsed = JSON.parse(controlRaw);
+              if (parsed && typeof parsed === "object") control = parsed;
+            } catch (_) {}
+          }
+          if (String(control.status || "") === "withdrawn") return;
+
+          const customer = effectiveCustomerPick_(favoriteSide, publicAlert, control);
+          const allRec = allStats[publicAlert] || {wins:0,total:0};
+          const leagueRec = leagueStats[league + "||" + publicAlert] || {wins:0,total:0};
+
+          out.push({
+            league:league,
+            home:home,
+            away:away,
+            favoriteSide:favoriteSide,
+            alert:publicAlert,
+            internalAlert:currentAlert,
+            sourceAlerts:sourceAlerts,
+            publicSymbol:selectedPublic.symbol,
+            publicLevel:selectedPublic.level,
+            rating:canonicalAlertKey_(publicAlert) === canonicalAlertKey_(currentAlert) ? alertRating_(rawAlert) : "",
+            leagueRecord:String(leagueRec.wins) + "/" + String(leagueRec.total),
+            allStatsRecord:String(allRec.wins) + "/" + String(allRec.total),
+            kickoff:kickoff,
+            selectionId:selectionId,
+            customerPick:customer.pick,
+            customerSide:customer.side
+          });
+        });
+
+        base = {ok:true,live:true,count:out.length,alerts:out};
+      }
+    }
+
+    // Tiny shared cache prevents several members from triggering the same
+    // spreadsheet scan at once while keeping withdrawals/edits effectively live.
+    try {
+      const cacheText = JSON.stringify(base);
+      if (cacheText.length < 90000) cache.put(cacheKey, cacheText, 5);
+    } catch (_) {}
   }
 
-  const pinRows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
-  const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
-  // BY is a hidden, app-only kickoff field written by the core in Greece time.
-  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
-  const levelCatalog = publicLevelCatalog_(ss);
-  const out = [];
+  const alerts = Array.isArray(base.alerts) ? base.alerts : [];
+  if (alerts.length && !propsSnapshot) {
+    propsSnapshot = PropertiesService.getScriptProperties().getProperties();
+  }
 
-  pinRows.forEach(function(row, idx) {
-    const league = String(row[0] || "").trim();
-    const home = String(row[1] || "").trim();
-    const away = String(row[2] || "").trim();
-    const favoriteSide = String(row[3] || "").trim();
-    const rawAlert = String(row[14] || "").trim();
-    const currentAlert = normalizeAlertName_(rawAlert);
-    const result = String(row[15] || "").trim();
-
-    if (!league || !home || !away || !currentAlert || result) return;
-
-    const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
-    const sourceAlerts = sourceAlertsForRow_(currentAlert, listText);
-    const selectedPublic = highestPublicAlert_(sourceAlerts, currentAlert, levelCatalog);
-    // WATCH, TEST and unknown internal alerts remain Admin-only.
-    if (!selectedPublic) return;
-
-    const publicAlert = selectedPublic.alert;
-    const records = alertRecords_(pinRows, league, publicAlert);
-    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
-    const selectionId = selectionId_(league, home, away, publicAlert, kickoff);
-    const controlId = signalMatchId_(league, home, away, kickoff);
-    const control = readSignalControl_(controlId);
-    if (String(control.status || "") === "withdrawn") return;
-    const customer = effectiveCustomerPick_(favoriteSide, publicAlert, control);
-    out.push({
-      league:league,
-      home:home,
-      away:away,
-      favoriteSide:favoriteSide,
-      alert:publicAlert,
-      internalAlert:currentAlert,
-      sourceAlerts:sourceAlerts,
-      publicSymbol:selectedPublic.symbol,
-      publicLevel:selectedPublic.level,
-      rating:canonicalAlertKey_(publicAlert) === canonicalAlertKey_(currentAlert) ? alertRating_(rawAlert) : "",
-      leagueRecord:records.leagueRecord,
-      allStatsRecord:records.allStatsRecord,
-      kickoff:kickoff,
-      selectionId:selectionId,
-      customerPick:customer.pick,
-      customerSide:customer.side,
-      played:!!PropertiesService.getScriptProperties().getProperty(playedKey_(auth.username, selectionId))
-    });
+  const userAlerts = alerts.map(function(item) {
+    const copy = Object.assign({}, item);
+    copy.played = !!(propsSnapshot && propsSnapshot[playedKey_(auth.username, item.selectionId)]);
+    return copy;
   });
 
   return {
     ok:true,
     live:true,
-    count:out.length,
-    alerts:out,
+    count:userAlerts.length,
+    alerts:userAlerts,
     username:auth.username,
     subscriptionEndsAt:auth.subscriptionEndsAt || "",
     updatedAt:new Date().toISOString()
   };
 }
-
-
 
 function canonicalAlertKey_(value) {
   let text = normalizeAlertName_(value);
