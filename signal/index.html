@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070708">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<title>Signal</title>
+<style>
+:root{--bg:#070708;--card:#101013;--line:rgba(255,255,255,.08);--gold:#d9b157;--gold2:#f3d98d;--text:#f7f5ef;--muted:#98939c}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(800px 440px at 50% -120px,rgba(217,177,87,.13),transparent 60%),#070708;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{width:min(100%,620px);margin:auto;padding:18px 14px 90px}.top{display:flex;align-items:center;gap:12px;margin:8px 0 18px}.logo{width:52px;height:52px;border-radius:15px}.brand{font:600 29px/1 Georgia,serif}.sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+.bar{display:flex;gap:8px;margin-bottom:14px}.btn{border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.08);color:#ffe8a2;border-radius:13px;padding:11px 13px;font-weight:800}.btn.secondary{border-color:var(--line);background:rgba(255,255,255,.035);color:#ddd}.grow{flex:1}.status{font-size:11px;color:var(--muted);margin:0 2px 12px}
+.card{background:linear-gradient(145deg,#111114,#0a0a0c);border:1px solid rgba(217,177,87,.17);border-radius:20px;padding:15px;margin:10px 0;box-shadow:0 18px 55px rgba(0,0,0,.25)}.match{font-size:17px;font-weight:900}.league{font-size:10px;color:#858089;margin-top:4px}.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.pick{padding:8px 11px;border-radius:999px;border:1px solid rgba(217,177,87,.28);background:rgba(217,177,87,.08);font-weight:900;color:#ffe39a;white-space:nowrap}.alert{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);font-size:12px;color:#ffcf8a;font-weight:900}.lines{display:grid;gap:6px;margin-top:9px;font-size:11px;color:#aaa5ad}.lines b{color:#eee8dc}.proposal{margin-top:11px;padding:11px;border-radius:14px;background:rgba(217,177,87,.06);border:1px solid rgba(217,177,87,.14);font-size:13px}.proposal b{color:#fff0bd}.empty{padding:32px 18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:10;padding:16px;overflow:auto}.panel{width:min(100%,620px);margin:18px auto;background:#0d0d10;border:1px solid rgba(217,177,87,.22);border-radius:22px;padding:18px}.hidden{display:none!important}.input{width:100%;padding:13px 14px;border-radius:13px;border:1px solid var(--line);background:#08080a;color:#fff;margin:8px 0 10px}.section{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.section h3{font-size:12px;color:var(--gold2);text-transform:uppercase;letter-spacing:.9px;margin:0 0 10px}.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.045);font-size:12px}.toggle input{width:20px;height:20px;accent-color:var(--gold)}.small{font-size:10px;color:var(--muted);line-height:1.45}.login{margin-top:110px}.error{color:#ffb7bd;font-size:11px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><img class="logo" src="./icon.svg"><div><div class="brand">Signal</div><div class="sub">Private monitor</div></div></div>
+  <div class="bar"><button class="btn secondary grow" id="refresh">Ανανέωση</button><button class="btn" id="settingsBtn">Ρυθμίσεις</button></div>
+  <div class="status" id="status">Σύνδεση…</div>
+  <div id="cards"></div>
+</div>
+
+<div class="overlay hidden" id="loginOverlay"><div class="panel login">
+  <div class="brand">Signal</div><div class="small" style="margin-top:6px">Βάλε τον προσωπικό κωδικό Admin. Αποθηκεύεται μόνο σε αυτή τη συσκευή.</div>
+  <input class="input" id="adminCode" type="password" placeholder="Admin code">
+  <button class="btn" id="loginBtn">Άνοιγμα</button><div class="error" id="loginError"></div>
+</div></div>
+
+<div class="overlay hidden" id="settingsOverlay"><div class="panel">
+  <div class="row"><div><div class="brand" style="font-size:24px">Ρυθμίσεις</div><div class="small">Τα φίλτρα ισχύουν μόνο στο Signal και δεν αλλάζουν το Excel ή το Admin.</div></div><button class="btn secondary" id="closeSettings">Κλείσιμο</button></div>
+  <div class="section"><h3>Καμπανάκια</h3><div id="alertToggles"></div></div>
+  <div class="section"><h3>Πρωταθλήματα</h3><div id="leagueToggles"></div></div>
+</div></div>
+
+<script>
+const API="https://match-alerts-api-private.onrender.com/api";
+const CODE_KEY="signal_admin_code_v1", FILTER_KEY="signal_filters_v1";
+let code=localStorage.getItem(CODE_KEY)||"", allSignals=[], filters=loadFilters();
+
+function loadFilters(){try{return JSON.parse(localStorage.getItem(FILTER_KEY)||'{"alerts":{},"leagues":{}}')}catch(_){return {alerts:{},leagues:{}}}}
+function saveFilters(){localStorage.setItem(FILTER_KEY,JSON.stringify(filters))}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function enabled(kind,name){const m=filters[kind]||{};return m[name]!==false}
+function rec(v){if(!v)return"—";if(typeof v==="string")return v;const w=Number(v.wins??v.win??0),t=Number(v.total??0);return t?Math.round(w/t*100)+"% ("+w+"/"+t+")":"—"}
+function scoreText(s){const v=s.score??s.modelScore??s.signalScore??"";return v!==""?String(v).replace(".",","):""}
+function oddsText(s){const n=Number(s.customerOdds??s.odds);return Number.isFinite(n)&&n>1?" @ "+n.toFixed(2).replace(".",","):""}
+
+async function api(params){
+  const body=new URLSearchParams();Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
+  const c=new AbortController(), t=setTimeout(()=>c.abort(),25000);
+  try{const r=await fetch(API,{method:"POST",body,signal:c.signal,cache:"no-store"});return await r.json()}
+  finally{clearTimeout(t)}
+}
+async function load(){
+  if(!code){loginOverlay.classList.remove("hidden");return}
+  status.textContent="Φόρτωση σημάτων…";
+  try{
+    const d=await api({action:"adminSignals",adminCode:code});
+    if(!d.ok){if(d.error==="ADMIN_UNAUTHORIZED"){localStorage.removeItem(CODE_KEY);code="";loginOverlay.classList.remove("hidden");loginError.textContent="Λάθος κωδικός."}throw new Error(d.error||"ERROR")}
+    allSignals=Array.isArray(d.signals)?d.signals:[];
+    render();
+    const tm=d.updatedAt?new Date(d.updatedAt).toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}):"";
+    status.textContent=allSignals.length+" ενεργά σήματα"+(tm?" · ενημέρωση "+tm:"");
+  }catch(e){status.textContent="Δεν έγινε ενημέρωση. Δοκίμασε ξανά.";if(!allSignals.length)cards.innerHTML='<div class="empty">Δεν υπάρχουν αποθηκευμένα σήματα.</div>'}
+}
+function render(){
+  const list=allSignals.filter(s=>enabled("alerts",s.internalAlert||"Άλλο")&&enabled("leagues",s.league||"Άλλο"));
+  cards.innerHTML=list.length?list.map(s=>{
+    const sc=scoreText(s), rating=s.rating?(" · "+esc(s.rating)):"";
+    const scoreLine=sc?'<div>Δύναμη σήματος: <b>'+esc(sc)+'</b></div>':"";
+    return '<div class="card"><div class="row"><div><div class="match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="league">'+esc(s.league||"")+'</div></div><div class="pick">'+esc(s.customerPick||"—")+'</div></div>'+
+      '<div class="alert">'+esc(s.internalAlert||"—")+rating+'</div><div class="lines">'+scoreLine+
+      '<div>Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div><div>Πρωτάθλημα: <b>'+esc(rec(s.leagueRecord))+'</b></div><div>ALL STATS: <b>'+esc(rec(s.allStatsRecord))+'</b></div></div>'+
+      '<div class="proposal">Πρόταση: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+esc(oddsText(s))+'</b></div></div>'
+  }).join(""):'<div class="empty">Δεν υπάρχουν ενεργά καμπανάκια με τα φίλτρα που έχεις επιλέξει.</div>';
+  renderSettings();
+}
+function renderSettings(){
+  const alerts=[...new Set(allSignals.map(s=>s.internalAlert||"Άλλο"))].sort();
+  const leagues=[...new Set(allSignals.map(s=>s.league||"Άλλο"))].sort();
+  alertToggles.innerHTML=alerts.map(x=>toggleHtml("alerts",x)).join("")||'<div class="small">Θα εμφανιστούν μόλις φορτωθούν σήματα.</div>';
+  leagueToggles.innerHTML=leagues.map(x=>toggleHtml("leagues",x)).join("")||'<div class="small">Θα εμφανιστούν μόλις φορτωθούν σήματα.</div>';
+  document.querySelectorAll("[data-kind]").forEach(el=>el.onchange=()=>{filters[el.dataset.kind][el.dataset.name]=el.checked;saveFilters();render()});
+}
+function toggleHtml(kind,name){return '<label class="toggle"><span>'+esc(name)+'</span><input type="checkbox" data-kind="'+kind+'" data-name="'+esc(name)+'" '+(enabled(kind,name)?"checked":"")+'></label>'}
+refresh.onclick=load;settingsBtn.onclick=()=>settingsOverlay.classList.remove("hidden");closeSettings.onclick=()=>settingsOverlay.classList.add("hidden");
+loginBtn.onclick=async()=>{code=adminCode.value.trim();if(!code)return;localStorage.setItem(CODE_KEY,code);loginError.textContent="";loginOverlay.classList.add("hidden");await load()};
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{}));
+load();
+</script>
+</body>
+</html>
