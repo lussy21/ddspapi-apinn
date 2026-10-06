@@ -4,104 +4,1430 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070708">
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="description" content="DreamTeamTips — Football Data & Smart Alerts">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="dreamteamtips-icon.svg" type="image/svg+xml">
 <title>Signal</title>
 <style>
-:root{--bg:#070708;--card:#101013;--line:rgba(255,255,255,.08);--gold:#d9b157;--gold2:#f3d98d;--text:#f7f5ef;--muted:#98939c}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(800px 440px at 50% -120px,rgba(217,177,87,.13),transparent 60%),#070708;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-.wrap{width:min(100%,620px);margin:auto;padding:20px 14px 90px}.brand{font:600 29px/1 Georgia,serif}.sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
-.hero{overflow:hidden;border:1px solid rgba(217,177,87,.22);border-radius:28px;background:linear-gradient(160deg,#111114,#080809);box-shadow:0 24px 70px rgba(0,0,0,.42);margin:10px 0 22px}.hero-kicker{padding:28px 28px 8px;color:#b8b3bb;font-size:11px;letter-spacing:3px}.hero-title{padding:0 28px 28px;font:500 54px/1 Georgia,serif}.hero-actions{display:flex;gap:9px;padding:18px 22px;border-top:1px solid rgba(255,255,255,.07)}
-.signals-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 2px 10px}.signals-title{font-size:15px;font-weight:900;letter-spacing:1px;color:#f2d486}.signals-head .status{margin:0;text-align:right}
-.bar{display:flex;gap:8px;margin-bottom:14px}.btn{border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.08);color:#ffe8a2;border-radius:13px;padding:11px 13px;font-weight:800}.btn.secondary{border-color:var(--line);background:rgba(255,255,255,.035);color:#ddd}.grow{flex:1}.status{font-size:11px;color:var(--muted);margin:0 2px 12px}
-.card{background:radial-gradient(420px 220px at 92% 4%,rgba(217,177,87,.08),transparent 70%),linear-gradient(145deg,#111114,#09090b);border:1px solid rgba(217,177,87,.28);border-radius:24px;padding:18px;margin:12px 0;box-shadow:0 18px 55px rgba(0,0,0,.28)}.match{font-size:18px;line-height:1.16;font-weight:900}.league{font-size:11px;color:#817d85;margin-top:6px}.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.pick{min-width:50px;text-align:center;padding:10px 12px;border-radius:999px;border:1px solid rgba(217,177,87,.34);background:rgba(217,177,87,.08);font-weight:900;color:#ffe39a;white-space:nowrap}.alert{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;line-height:1.35;color:#ffcf8a;font-weight:900}.lines{display:grid;gap:7px;margin-top:10px;font-size:12px;color:#aaa5ad}.lines b{color:#eee8dc}.proposal{margin-top:14px;padding:13px 14px;border-radius:15px;background:rgba(217,177,87,.055);border:1px solid rgba(217,177,87,.18);font-size:13px}.proposal b{color:#fff0bd}.empty{padding:32px 18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:10;padding:16px;overflow:auto}.panel{width:min(100%,620px);margin:18px auto;background:#0d0d10;border:1px solid rgba(217,177,87,.22);border-radius:22px;padding:18px}.hidden{display:none!important}.input{width:100%;padding:13px 14px;border-radius:13px;border:1px solid var(--line);background:#08080a;color:#fff;margin:8px 0 10px}.section{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.section h3{font-size:12px;color:var(--gold2);text-transform:uppercase;letter-spacing:.9px;margin:0 0 10px}.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.045);font-size:12px}.toggle input{width:20px;height:20px;accent-color:var(--gold)}.small{font-size:10px;color:var(--muted);line-height:1.45}.login{margin-top:110px}.error{color:#ffb7bd;font-size:11px;margin-top:8px}
+:root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075);--danger:#ff8d98}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(760px 430px at 50% -120px,rgba(217,177,87,.12),transparent 60%),linear-gradient(180deg,#0a0a0c 0%,#050506 100%)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.95),transparent 86%)}
+.app{width:min(100%,600px);margin:0 auto;padding:max(24px,env(safe-area-inset-top)) 18px max(44px,env(safe-area-inset-bottom));position:relative;z-index:1}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.logo{width:58px;height:58px;border-radius:17px;display:block;border:1px solid rgba(217,177,87,.46);background:#0a0907;box-shadow:0 0 0 1px rgba(255,227,147,.08),0 12px 32px rgba(0,0,0,.35),0 0 18px rgba(217,177,87,.08)}
+.brand h1{margin:0;font-family:Georgia,serif;font-size:28px;font-weight:600;line-height:.98;white-space:nowrap}.brand h1 span{color:var(--gold2)}.sub{margin-top:7px;color:#aaa7ad;font-size:10px;letter-spacing:2.05px;text-transform:uppercase;white-space:nowrap}
+.top-actions{display:flex;align-items:center;gap:8px}.bell-btn{position:relative;width:38px;height:38px;border-radius:13px;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);color:var(--gold2);display:grid;place-items:center;padding:0}.bell-shape{font-size:0}.bell-shape:before{content:"🔔";font-size:17px;filter:saturate(.65)}.bell-mark{position:absolute;right:5px;top:3px;color:#ff8d68;font-size:20px;line-height:8px;text-shadow:0 0 8px rgba(255,120,84,.65)}
+.card{border:1px solid rgba(217,177,87,.26);border-radius:28px;padding:20px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 20px 52px rgba(0,0,0,.36)}
+.auth{margin-top:26px}.auth h2,.summary h2{margin:0;font-family:Georgia,serif;font-size:29px;line-height:1.05;font-weight:500}.auth p,.summary p{margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 15px}.tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#aaa7af;padding:11px;border-radius:13px;font-weight:800}.tab.active{color:#fff4d2;border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.10)}
+.field{margin:10px 0}.label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:11px;font-weight:800}.input{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:13px 14px;font:inherit;outline:none}.input:focus{border-color:rgba(217,177,87,.55)}
+.primary,.ghost{width:100%;border-radius:14px;padding:13px 14px;font-weight:900;font-size:13px}.primary{border:1px solid rgba(217,177,87,.30);background:linear-gradient(145deg,rgba(217,177,87,.20),rgba(217,177,87,.08));color:#fff4d2}.primary:disabled{opacity:.65;cursor:wait}.ghost{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#ddd}
+.actions{display:flex;gap:9px;margin-top:12px}.actions>*{flex:1}.msg{min-height:18px;margin-top:12px;color:#bdb9c1;font-size:12px;line-height:1.4}.msg.error{color:var(--danger)}.msg.ok{color:#dff0c7}.verify-code{letter-spacing:8px;text-align:center;font-weight:900;font-size:21px}.hidden{display:none!important}
+.summary{margin-bottom:22px;position:relative;overflow:hidden}.summary:after{content:"";position:absolute;right:-45px;bottom:-70px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(217,177,87,.10),transparent 68%);pointer-events:none}.summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.counter{display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:9px 13px;border-radius:999px;background:linear-gradient(180deg,rgba(217,177,87,.11),rgba(217,177,87,.055));border:1px solid rgba(217,177,87,.25);color:#fff4d2;font-size:11px;font-weight:900;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}.counter:before{content:"●";font-size:8px;color:var(--gold2)}.status-mini{color:#aaa6ae;font-size:11px;white-space:nowrap;padding-top:4px}
+.userline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.userchip{font-size:11px;color:#d8d3c6}.logout{border:0;background:none;color:#8f8b95;font-size:11px;text-decoration:underline}
+.league{margin:20px 0 12px;border-radius:26px;overflow:hidden;border:1px solid rgba(255,255,255,.085);background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:inset 0 1px 0 rgba(255,255,255,.018),0 14px 36px rgba(0,0,0,.24)}
+.league-head{padding:15px 16px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,255,255,.055)}.league-title{font-size:11px;font-weight:900;letter-spacing:1.45px;text-transform:uppercase;color:var(--gold2)}.league-count{font-size:11px;color:#c1bdc5;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+.row{padding:16px;border-bottom:1px solid rgba(255,255,255,.045)}.row:last-child{border-bottom:0}.match{font-size:16px;font-weight:800;letter-spacing:-.15px;line-height:1.25;margin-bottom:8px}.meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.side{color:#98949d;font-size:11px}.badge{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;font-size:10px;font-weight:900;border:1px solid rgba(217,177,87,.22);background:linear-gradient(180deg,rgba(217,177,87,.10),rgba(217,177,87,.055));color:#fff7de;white-space:normal;text-align:right;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}.badge.watch{color:#ededf0;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}.badge.strong{color:#ffd9bd;background:rgba(194,71,20,.10);border-color:rgba(232,102,44,.22)}.alert-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.history{font-size:10px;color:#b9b5bc;text-align:right;white-space:nowrap}.history b{color:#f1d78e;font-weight:900}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;margin-top:4px}.stat{padding:9px 8px;border:1px solid rgba(217,177,87,.20);border-radius:12px;background:linear-gradient(180deg,rgba(217,177,87,.055),rgba(217,177,87,.022));text-align:center}.stat b{display:block;color:var(--gold2);font-size:8px;letter-spacing:.6px}.stat span{display:block;margin-top:3px;color:#d4d0d7;font-size:10px}.empty,.loading{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}footer{text-align:center;color:#68656d;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;padding-top:28px}
+@media(max-width:470px){.app{padding-left:15px;padding-right:15px}.top{gap:7px}.brand{gap:9px}.logo{width:50px;height:50px;border-radius:15px}.brand h1{font-size:22px}.sub{font-size:8px;letter-spacing:1.35px}.top-actions{gap:6px}.bell-btn{width:36px;height:36px}.summary-top{flex-direction:column}.status-mini{padding-top:0}.meta{align-items:flex-start;flex-direction:column}.badge{text-align:left}.alert-right{align-items:flex-start}.history{text-align:left;white-space:normal}}
+
+.member-panel{display:none}.member-panel.active{display:block}
+.compact-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 14px;padding:11px 13px;border:1px solid rgba(217,177,87,.16);border-radius:16px;background:rgba(255,255,255,.022)}
+.compact-status .counter{margin:0}.compact-status .status-mini{padding:0}
+.home-card{padding:22px}.home-kicker{color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase}.home-title{font-family:Georgia,serif;font-size:28px;line-height:1.06;margin:7px 0 8px}.home-copy{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.quick-btn{border:1px solid rgba(217,177,87,.16);background:linear-gradient(145deg,rgba(217,177,87,.07),rgba(255,255,255,.018));color:#f6f1e4;border-radius:17px;padding:14px;text-align:left}.quick-btn b{display:block;font-size:13px}.quick-btn span{display:block;margin-top:5px;color:var(--muted);font-size:10px}.home-notification-notice{margin-top:14px;padding:12px 13px;border:1px solid rgba(217,177,87,.18);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));display:flex;align-items:center;gap:11px}.home-notification-notice.hidden{display:none}.home-notification-icon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);font-size:15px}.home-notification-copy{min-width:0;flex:1}.home-notification-copy b{display:block;font-size:11px;color:#eee9df}.home-notification-copy small{display:block;margin-top:4px;color:#85818a;font-size:9px;line-height:1.35}.home-notification-action{flex:0 0 auto;border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.08);color:#ffe6a1;border-radius:999px;padding:7px 9px;font-size:8px;font-weight:900;white-space:nowrap}.notification-help-link{width:100%;margin-top:4px;border:0;border-top:1px solid rgba(255,255,255,.035);background:transparent;color:#cdbd89;padding:11px 0 1px;text-align:left;font-size:9px;font-weight:800}.notification-help-link span{color:#77727d;font-weight:700}.home-overview{display:grid;gap:9px;margin-top:18px}.home-overview-card{width:100%;display:flex;align-items:center;gap:12px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.015));color:#eee9df;border-radius:16px;padding:13px 14px;text-align:left}.home-overview-icon{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.20);background:rgba(217,177,87,.055);color:#f1d78e;font-size:12px}.home-overview-main{min-width:0;flex:1}.home-overview-main b{display:block;font-size:12px}.home-overview-main small{display:block;margin-top:4px;color:#85818a;font-size:9px;line-height:1.35}.home-overview-arrow{color:#8d8778;font-size:22px;line-height:1}
+.placeholder-card{padding:22px}.placeholder-card h3{font-family:Georgia,serif;font-size:23px;margin:0 0 8px}.placeholder-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.model-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.model-switch-btn{border:1px solid rgba(217,177,87,.14);background:rgba(255,255,255,.018);color:#8f8b95;border-radius:14px;padding:11px 10px;font-size:10px;font-weight:900;letter-spacing:.2px}.model-switch-btn.active{border-color:rgba(217,177,87,.34);background:rgba(217,177,87,.09);color:#fff2cf}.model-view.hidden{display:none}.symbol-guide{display:grid;gap:12px}.symbol-guide-group{padding:16px;border:1px solid rgba(217,177,87,.16);border-radius:17px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012))}.symbol-guide-title{font:600 15px/1.1 Georgia,serif;color:#f1e9d7;margin-bottom:10px}.symbol-guide-list{display:grid;gap:8px}.symbol-guide-row{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(255,255,255,.016)}.symbol-guide-icon{width:30px;flex:0 0 30px;text-align:center;font-size:18px;line-height:1}.symbol-guide-row b{font-size:11px;color:#eee8da}.symbol-guide-note{margin-top:10px;color:#8d8892;font-size:9px;line-height:1.5}.work-note{margin-top:10px;padding:12px 13px;border-radius:14px;border:1px solid rgba(217,177,87,.14);background:rgba(217,177,87,.035);color:#b8b3bc;font-size:10px;line-height:1.5}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.legend-item{padding:10px 8px;border-radius:12px;text-align:center;font-size:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}.legend-item b{display:block;font-size:12px;margin-bottom:4px}.legend-win b{color:#9ee0a8}.legend-loss b{color:#ff9aa3}.legend-pending b{color:#d9b157}
+.bottom-nav{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:24px 0 0;padding:7px;border:1px solid rgba(217,177,87,.18);border-radius:21px;background:rgba(9,9,11,.94);backdrop-filter:blur(16px);box-shadow:0 14px 42px rgba(0,0,0,.42)}
+.nav-btn{border:0;background:transparent;color:#77747d;border-radius:14px;padding:8px 3px 7px;font-size:8px;font-weight:900;letter-spacing:.2px}.nav-btn .nav-icon{display:block;font-size:16px;line-height:1;margin-bottom:5px;color:#8f8b95}.nav-btn.active{background:rgba(217,177,87,.09);color:#fff2cf}.nav-btn.active .nav-icon{color:var(--gold2)}
+.message-center{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.70);backdrop-filter:blur(7px);display:flex;align-items:flex-end;justify-content:center}.message-sheet{width:min(100%,600px);max-height:72vh;border-radius:28px 28px 0 0;border:1px solid rgba(217,177,87,.25);border-bottom:0;background:linear-gradient(180deg,#121113,#080809);padding:18px 18px max(28px,env(safe-area-inset-bottom));box-shadow:0 -20px 60px rgba(0,0,0,.55)}.message-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.message-head h3{font-family:Georgia,serif;font-size:24px;margin:0}.close-msg{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#ccc;border-radius:12px;width:36px;height:36px}.message-empty{margin-top:16px;padding:22px;border:1px dashed rgba(217,177,87,.18);border-radius:18px;color:var(--muted);font-size:12px;line-height:1.5;text-align:center}.message-inbox-sheet{overflow:auto}.message-head-sub{margin-top:4px;color:#77727d;font-size:9px}.message-list{display:grid;gap:7px;margin-top:14px}.member-message{width:100%;display:block;text-align:left;border:1px solid rgba(255,255,255,.055);border-radius:14px;background:rgba(255,255,255,.015);padding:11px 12px;color:#e9e5dc;transition:border-color .18s ease,background .18s ease}.member-message.unread{border-color:rgba(217,177,87,.20);background:linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.014))}.member-message-top{display:flex;align-items:center;gap:8px}.member-message-title{min-width:0;flex:1;font-size:11px;font-weight:900;color:#f1eadc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.member-message.unread .member-message-title{color:#ffe7a4}.member-message-new{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#d9b157;box-shadow:0 0 8px rgba(217,177,87,.42);font-size:0}.member-message-body{margin-top:5px;color:#88838c;font-size:10px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.member-message.expanded{border-color:rgba(217,177,87,.16);background:rgba(255,255,255,.022)}.member-message.expanded .member-message-body{white-space:pre-wrap;overflow:visible;text-overflow:clip;color:#aaa5ad}.member-message-time{margin-top:6px;color:#625e66;font-size:8px}
+.profile-name{font-size:18px;font-weight:900;margin:4px 0 14px}.profile-actions{display:grid;gap:9px}
+
+
+.profile-card{padding:0;overflow:hidden}
+.profile-hero{padding:22px;background:radial-gradient(260px 150px at 100% 0,rgba(217,177,87,.12),transparent 70%),linear-gradient(145deg,rgba(217,177,87,.055),rgba(255,255,255,.012));border-bottom:1px solid rgba(255,255,255,.055)}
+.profile-badge{width:56px;height:56px;border-radius:17px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.28);background:rgba(217,177,87,.08);font-family:Georgia,serif;font-size:20px;color:var(--gold2);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.profile-identity{display:flex;align-items:center;gap:13px}.profile-meta{min-width:0}.profile-name{font-size:19px;font-weight:900;margin:0 0 4px}.profile-role{font-size:10px;color:var(--gold2);letter-spacing:1.3px;text-transform:uppercase}
+.profile-section{padding:17px 18px;border-bottom:1px solid rgba(255,255,255,.045)}.profile-section:last-child{border-bottom:0}.profile-section-title{font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#77737c;margin-bottom:10px}
+.profile-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}.profile-row+.profile-row{border-top:1px solid rgba(255,255,255,.035)}.profile-row-left{min-width:0}.profile-row-label{font-size:12px;font-weight:800;color:#e9e6df}.profile-row-sub{font-size:10px;color:#77747d;margin-top:3px;line-height:1.35}.profile-value{font-size:11px;color:#bcb7c0;text-align:right}.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;border:1px solid rgba(125,205,139,.22);background:rgba(125,205,139,.065);color:#bde5c5;font-size:10px;font-weight:900}.status-pill:before{content:"";width:6px;height:6px;border-radius:50%;background:#8fd09b;box-shadow:0 0 8px rgba(143,208,155,.55)}
+.profile-link{width:100%;border:0;background:transparent;color:#e8e4dc;padding:0;text-align:left;font:inherit}.profile-link .profile-row{cursor:pointer}
+.profile-note{padding:12px 14px;border-radius:14px;border:1px solid rgba(217,177,87,.12);background:rgba(217,177,87,.035);color:#9f9ba4;font-size:10px;line-height:1.45}
+.logout.danger{width:100%;text-decoration:none;border:1px solid rgba(255,120,130,.16);background:rgba(255,120,130,.045);color:#ffb5bb;border-radius:14px;padding:11px 12px;font-weight:900}
+
+.vip-strip{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(217,177,87,.28);background:linear-gradient(180deg,rgba(217,177,87,.13),rgba(217,177,87,.055));color:#ffe7a4;font-size:9px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}.vip-strip:before{content:"◆";font-size:8px}.profile-hero{position:relative;overflow:hidden}.profile-hero:after{content:"VIP";position:absolute;right:14px;bottom:-18px;font-family:Georgia,serif;font-size:70px;font-weight:700;color:rgba(217,177,87,.035);letter-spacing:-4px;pointer-events:none}.member-number{font-size:10px;color:#8f8b95;margin-top:5px}.profile-premium-note{margin-top:14px;padding:11px 13px;border-radius:14px;border:1px solid rgba(217,177,87,.15);background:rgba(217,177,87,.035);color:#bdb8bf;font-size:10px;line-height:1.45}
+
+/* VIP profile v2 */
+.profile-card{padding:0;overflow:hidden;border-color:rgba(217,177,87,.30)}
+.profile-hero{position:relative;overflow:hidden;padding:24px 22px 20px;background:
+radial-gradient(260px 170px at 92% 0,rgba(255,230,160,.16),transparent 72%),
+linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bottom:1px solid rgba(255,255,255,.05)}
+.profile-hero:after{content:"VIP";position:absolute;right:12px;bottom:-28px;font-family:Georgia,serif;font-size:86px;font-weight:700;color:rgba(217,177,87,.035);letter-spacing:-6px;pointer-events:none}
+.profile-identity{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.profile-badge{width:66px;height:66px;border-radius:21px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.38);background:linear-gradient(145deg,rgba(217,177,87,.16),rgba(217,177,87,.045));font-family:Georgia,serif;font-size:23px;color:#ffe9aa;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.28)}
+.profile-name{margin:0;font-size:24px;font-weight:900;line-height:1.05;background:linear-gradient(90deg,#fff3bd 0%,#d5a344 45%,#fff0ad 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 20px rgba(217,177,87,.07)}
+.profile-role{margin-top:5px;color:#c9b77d;font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase}
+.vip-strip{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:7px 11px;border-radius:999px;border:1px solid rgba(217,177,87,.38);background:linear-gradient(180deg,rgba(217,177,87,.16),rgba(217,177,87,.06));color:#ffe7a4;font-size:9px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;box-shadow:0 0 18px rgba(217,177,87,.06)}
+.vip-strip:before{content:"◆";font-size:8px}
+.vip-access{padding:18px 18px 19px;border-bottom:1px solid rgba(255,255,255,.045)}
+.vip-access-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vip-access-kicker{font-size:9px;font-weight:900;letter-spacing:1.55px;text-transform:uppercase;color:#7d7881}
+.vip-access-title{margin-top:5px;font:500 23px/1.1 Georgia,serif;color:#fff0b4}
+.vip-access-copy{margin-top:7px;color:#8f8a93;font-size:10px;line-height:1.45}
+.vip-status{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid rgba(139,211,155,.24);background:rgba(139,211,155,.07);color:#c8efcf;font-size:10px;font-weight:900;white-space:nowrap}
+.vip-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#8bd39b;box-shadow:0 0 10px rgba(139,211,155,.65)}
+.subscription-countdown{margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.04)}
+.subscription-days{font:500 36px/1 Georgia,serif;color:#fff1ba}.subscription-days span{font:700 11px/1.3 Inter,system-ui;color:#aaa5ad;margin-left:6px}
+.subscription-expiry{margin-top:6px;color:#817c85;font-size:10px}
+.subscription-progress{height:7px;margin-top:11px;border-radius:999px;background:rgba(255,255,255,.055);overflow:hidden;border:1px solid rgba(255,255,255,.035)}
+.subscription-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9d6d1f,#e2b85c,#ffe39a);box-shadow:0 0 12px rgba(217,177,87,.16)}
+.profile-section{padding:17px 18px;border-bottom:1px solid rgba(255,255,255,.045)}.profile-section:last-child{border-bottom:0}
+.profile-section-title{font-size:9px;font-weight:900;letter-spacing:1.55px;text-transform:uppercase;color:#77727b;margin-bottom:9px}
+.profile-link{width:100%;border:0;background:transparent;color:#e8e4dc;padding:0;text-align:left;font:inherit}
+.profile-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}.profile-row+.profile-row{border-top:1px solid rgba(255,255,255,.035)}
+.profile-row-label{font-size:12px;font-weight:900;color:#eeeae2}.profile-row-sub{font-size:10px;color:#78747d;margin-top:3px;line-height:1.35}.profile-value{font-size:20px;color:#aaa4ad}
+.profile-note{padding:13px 14px;border-radius:15px;border:1px solid rgba(217,177,87,.12);background:rgba(217,177,87,.028);color:#9f99a2;font-size:10px;line-height:1.5}
+.logout.danger{width:100%;text-decoration:none;border:1px solid rgba(255,120,130,.16);background:rgba(255,120,130,.04);color:#ffb6bd;border-radius:15px;padding:12px;font-weight:900}.notification-toggle{flex:0 0 auto;border:1px solid rgba(217,177,87,.22);background:rgba(217,177,87,.055);color:#ffe7a4;border-radius:999px;padding:7px 10px;font-size:9px;font-weight:900;white-space:nowrap}.notification-toggle.active{border-color:rgba(139,211,155,.25);background:rgba(139,211,155,.075);color:#c8efcf}.notification-toggle.blocked{border-color:rgba(255,119,130,.22);background:rgba(255,119,130,.055);color:#ffb8bf}.notification-toggle:disabled{opacity:.65}.notification-help-copy{margin:12px 0 15px;color:#aaa5ad;font-size:11px;line-height:1.55}.notification-steps{display:grid;gap:10px}.notification-step{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid rgba(217,177,87,.12);border-radius:14px;background:rgba(217,177,87,.025)}.notification-step b{width:25px;height:25px;flex:0 0 25px;border-radius:9px;display:grid;place-items:center;background:rgba(217,177,87,.08);border:1px solid rgba(217,177,87,.18);color:#f1d78e;font-size:10px}.notification-step span{color:#9b969e;font-size:10px;line-height:1.5}.notification-step strong{color:#e9e4d9}
+.support-sheet{max-height:82vh;overflow:auto}.support-intro{margin:8px 0 15px;color:#8f8a93;font-size:11px;line-height:1.5}.support-field{margin-top:12px}.support-label{display:block;margin:0 0 6px 2px;color:#bcb8c0;font-size:10px;font-weight:900;letter-spacing:.4px}.support-select,.support-textarea{width:100%;border:1px solid rgba(255,255,255,.10);background:#0a0a0c;color:#fff;border-radius:14px;padding:12px 13px;font:inherit;outline:none}.support-select:focus,.support-textarea:focus{border-color:rgba(217,177,87,.55)}.support-textarea{min-height:132px;resize:vertical;line-height:1.45}.support-send{margin-top:13px}.support-msg{min-height:18px;margin-top:10px;color:#9f9aa3;font-size:11px;line-height:1.4}.support-msg.ok{color:#bde5c5}.support-msg.error{color:#ffabb3}
+
+
+.install-sheet{max-width:540px}
+.install-hero{display:flex;align-items:center;gap:13px;margin-top:10px;padding:14px;border:1px solid rgba(217,177,87,.16);border-radius:17px;background:linear-gradient(145deg,rgba(217,177,87,.05),rgba(255,255,255,.014))}
+.install-hero img{width:52px;height:52px;border-radius:16px;border:1px solid rgba(217,177,87,.32)}
+.install-hero b{display:block;font:600 18px/1 Georgia,serif;color:#f2ead8}.install-hero span{display:block;margin-top:5px;color:#827e86;font-size:9px;line-height:1.45}
+.install-copy{margin:14px 0 12px;color:#9b969e;font-size:11px;line-height:1.55}
+.install-status{min-height:18px;margin-top:10px;color:#b8b3bc;font-size:10px;line-height:1.45;text-align:center}
+.combo-list{display:grid;gap:12px;margin-bottom:14px}.combo-card{padding:16px;border:1px solid rgba(217,177,87,.28);border-radius:19px;background:radial-gradient(260px 120px at 100% 0,rgba(217,177,87,.10),transparent 72%),linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.combo-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.combo-kicker{color:#8d877e;font-size:8px;font-weight:900;letter-spacing:1.25px;text-transform:uppercase}.combo-title{margin-top:4px;font:600 20px/1.05 Georgia,serif;color:#fff0ba}.combo-odds{text-align:right}.combo-odds span{display:block;color:#7e7981;font-size:8px;text-transform:uppercase;letter-spacing:.8px}.combo-odds b{display:block;margin-top:3px;font:600 24px/1 Georgia,serif;color:#ffe39a}.combo-legs{display:grid;gap:0;margin-top:12px;border-top:1px solid rgba(255,255,255,.055)}.combo-leg{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.045)}.combo-leg:last-child{border-bottom:0;padding-bottom:0}.combo-leg-main b{display:block;font-size:11px;color:#ece7dc}.combo-leg-main span{display:block;margin-top:3px;color:#827d85;font-size:9px}.combo-leg-pick{flex:0 0 auto;text-align:right;font-size:11px;font-weight:900;color:#ffe2a0}.combo-leg-pick small{display:block;margin-top:3px;color:#77727a;font-size:8px;font-weight:700}.combo-note{margin-top:10px;color:#7f7a82;font-size:9px;line-height:1.4}
+
+/* Member picks / personal history */
+.played-row{margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.045);display:flex;justify-content:flex-end}
+.played-btn{border:1px solid rgba(217,177,87,.28);background:linear-gradient(180deg,rgba(217,177,87,.12),rgba(217,177,87,.055));color:#ffe8aa;border-radius:12px;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:.2px;min-width:118px}
+.played-btn:disabled{cursor:default}.played-btn.done{border-color:rgba(139,211,155,.22);background:rgba(139,211,155,.065);color:#c8efcf}
+.history-shell{padding:18px}.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}.history-head h3{font:500 25px/1.05 Georgia,serif;margin:0}.history-head p{margin:6px 0 0;color:#817c85;font-size:10px;line-height:1.45}.history-count{font-size:10px;font-weight:900;color:#cdbd89;white-space:nowrap}
+.history-list{display:grid;gap:11px}.history-empty{padding:26px 16px;border:1px dashed rgba(217,177,87,.18);border-radius:17px;color:#8f8a93;text-align:center;font-size:11px;line-height:1.55}.history-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.history-tab{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a93;border-radius:12px;padding:10px 8px;font-size:10px;font-weight:900}.history-tab.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.09);color:#ffe6a3}.history-view.hidden{display:none}.history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.history-summary .stat{padding:9px 4px}.history-summary .stat b{font-size:15px}.history-summary .stat span{font-size:7px}
+.symbol-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}.symbol-stat-card{min-height:70px;border:1px solid rgba(217,177,87,.16);border-radius:14px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.012));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.symbol-stat-card span{font-size:18px;line-height:1}.symbol-stat-card b{font:700 13px/1 Georgia,serif;color:#efd58c;letter-spacing:.3px}
+.pick-card{position:relative;overflow:hidden;padding:15px 15px 13px;border:1px solid rgba(217,177,87,.18);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.04),rgba(255,255,255,.014));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
+.pick-card.result-win{border-color:rgba(125,205,139,.38);background:linear-gradient(145deg,rgba(79,160,94,.115),rgba(255,255,255,.012))}
+.pick-card.result-loss{border-color:rgba(255,119,130,.34);background:linear-gradient(145deg,rgba(176,58,70,.11),rgba(255,255,255,.012))}
+.pick-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.pick-league{color:#bca45f;font-size:8px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase}.pick-match{margin-top:5px;font-size:14px;font-weight:900;line-height:1.3}.pick-time{margin-top:4px;color:#77727b;font-size:9px}.pick-status{padding:6px 8px;border-radius:999px;border:1px solid rgba(217,177,87,.20);color:#d9c68e;background:rgba(217,177,87,.055);font-size:8px;font-weight:900;white-space:nowrap}
+.result-win .pick-status{border-color:rgba(125,205,139,.27);background:rgba(125,205,139,.07);color:#bfe9c7}.result-loss .pick-status{border-color:rgba(255,119,130,.26);background:rgba(255,119,130,.06);color:#ffb7bd}.pick-card.result-withdrawn{border-color:rgba(217,177,87,.20);opacity:.82}.result-withdrawn .pick-status{border-color:rgba(217,177,87,.24);background:rgba(217,177,87,.055);color:#d9c68e}
+.pick-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.045)}.pick-choice{font-size:10px;color:#a39ea7;line-height:1.4}.pick-choice b{display:block;margin-top:3px;color:#ece7da;font-size:11px}.pick-score{text-align:right;min-width:60px}.pick-score span{display:block;color:#716d75;font-size:8px;text-transform:uppercase;letter-spacing:.8px}.pick-score b{display:block;margin-top:3px;font:600 16px/1 Georgia,serif;color:#d7d1c5}.result-win .pick-score b{color:#aee5b8}.result-loss .pick-score b{color:#ffadb5}.pick-actions{margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.04);display:flex;justify-content:flex-end}.pick-remove{border:1px solid rgba(255,128,138,.20);background:rgba(255,128,138,.045);color:#ffb7bd;border-radius:11px;padding:8px 10px;font-size:9px;font-weight:900}.pick-remove:disabled{opacity:.55;cursor:wait}
+@media(max-width:470px){.played-row{justify-content:stretch}.played-btn{width:100%}.history-head{align-items:flex-start}.pick-top{gap:8px}.pick-match{font-size:13px}.pick-actions{justify-content:stretch}.pick-remove{width:100%}}
+
+
+/* Model page */
+.model-wrap{display:grid;gap:13px}
+.model-hero{position:relative;overflow:hidden;padding:22px;border-color:rgba(217,177,87,.28);background:radial-gradient(280px 170px at 100% 0,rgba(217,177,87,.13),transparent 72%),linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))}
+.model-kicker{color:var(--gold2);font-size:9px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase}
+.model-title{margin:7px 0 8px;font:500 27px/1.06 Georgia,serif;color:#f6f0df}
+.model-copy{margin:0;color:#99949d;font-size:12px;line-height:1.55}
+.model-flow{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:16px}
+.model-flow-item{padding:13px;border:1px solid rgba(217,177,87,.14);border-radius:15px;background:rgba(217,177,87,.025)}
+.model-flow-num{font:600 18px/1 Georgia,serif;color:#f1d78e}
+.model-flow-item b{display:block;margin-top:7px;font-size:11px;color:#eee9dd}
+.model-flow-item span{display:block;margin-top:4px;color:#7f7a83;font-size:9px;line-height:1.4}
+.model-section{padding:18px}
+.model-section h3{margin:0 0 12px;font:500 20px/1.1 Georgia,serif;color:#f2ead8}
+.model-data-grid{display:grid;gap:8px}
+.model-data{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid rgba(255,255,255,.055);border-radius:14px;background:rgba(255,255,255,.018)}
+.model-data-icon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;flex:0 0 30px;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.05);font-size:13px}
+.model-data b{display:block;color:#e9e5dc;font-size:11px}.model-data span{display:block;margin-top:3px;color:#7f7a83;font-size:9px;line-height:1.4}
+.model-rule{padding:13px 14px;border-radius:15px;border:1px solid rgba(217,177,87,.14);background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.012));color:#9f9aa2;font-size:12px;line-height:1.6}
+.model-rule b{color:#ead59a}
+.model-budget{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.model-budget-item{padding:13px;border:1px solid rgba(255,255,255,.055);border-radius:14px;background:rgba(255,255,255,.018)}
+.model-budget-item b{display:block;color:#e9e5dc;font-size:10px}.model-budget-item span{display:block;margin-top:4px;color:#7d7880;font-size:9px;line-height:1.4}
+.model-footnote{padding:13px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.015);color:#706c74;font-size:9px;line-height:1.5}
+@media(max-width:470px){.model-flow,.model-budget{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
-<div class="wrap">
-  <section class="hero">
-    <div class="hero-kicker">SIGNAL · OWNER ONLY</div>
-    <div class="hero-title">Signal</div>
-    <div class="hero-actions">
-      <button class="btn secondary grow" id="refresh">Ανανέωση</button>
-      <button class="btn" id="settingsBtn">Ρυθμίσεις</button>
+<main class="app">
+
+
+<section id="welcome" class="card auth" style="text-align:center;padding:24px 20px 22px;background:rgba(255,255,255,.014)"><img src="icon.svg" alt="DreamTeamTips" style="width:88px;height:88px;border-radius:22px;margin:0 auto 13px;display:block;filter:drop-shadow(0 0 10px rgba(201,168,93,.12))"><h2 style="margin:0 0 7px;font-size:28px;letter-spacing:-.5px">DreamTeam<span style="color:#c9a85d">Tips</span></h2><div style="font-size:9px;letter-spacing:3.6px;color:#c9a85d;font-weight:700">PRIVATE MEMBERS CLUB</div></section>
+
+<section id="authView" class="card auth" style="margin-top:12px">
+  <div id="authMain">
+    <h2 id="authTitle">Είσοδος</h2>
+    <p id="authText">Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.</p>
+    <div class="tabs"><button class="tab active" id="loginTab">Σύνδεση</button><button class="tab" id="registerTab">Δωρεάν εγγραφή</button></div>
+    <div id="emailField" class="field hidden"><label class="label">Email</label><input class="input" id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
+    <div class="field"><label class="label">Όνομα χρήστη</label><input class="input" id="username" autocomplete="username" placeholder="username"></div>
+    <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <label id="rememberRow" style="display:flex;align-items:center;gap:9px;margin:9px 2px 13px;color:#bcb8c0;font-size:11px;font-weight:800;cursor:pointer">
+      <input id="rememberLogin" type="checkbox" style="width:17px;height:17px;accent-color:#c9a85d">
+      <span>Να με θυμάσαι σε αυτή τη συσκευή</span>
+    </label>
+    <button class="primary" id="authSubmit">Σύνδεση</button>
+    <button class="ghost hidden" id="haveCodeBtn" style="margin-top:9px">Έχω ήδη κωδικό</button>
+    <div class="msg" id="authMsg"></div>
+  </div>
+
+  <div id="verifyView" class="hidden">
+    <h2>Επιβεβαίωση email</h2>
+    <p id="verifyText">Σου στείλαμε 6ψήφιο κωδικό.</p>
+    <div class="field"><label class="label">Κωδικός επιβεβαίωσης</label><input class="input verify-code" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
+    <button class="primary" id="verifySubmit">Επιβεβαίωση</button>
+    <div class="actions"><button class="ghost" id="resendCode">Ξαναστείλε κωδικό</button><button class="ghost" id="backLogin">Πίσω</button></div>
+    <div class="msg" id="resendTimer"></div>
+    <div class="msg" id="verifyMsg"></div>
+  </div>
+</section>
+
+<section id="alertsView" class="hidden">
+  <section id="homePanel" class="member-panel">
+    <div class="card home-card">
+      <div class="home-kicker">Members Area</div>
+      <div class="home-title">Καλώς ήρθες στο DreamTeamTips.</div>
+      <p class="home-copy">Ό,τι χρειάζεσαι σήμερα, συγκεντρωμένο σε ένα σημείο.</p>
+
+      <div id="homeNotificationNotice" class="home-notification-notice hidden">
+        <div class="home-notification-icon">🔔</div>
+        <div class="home-notification-copy">
+          <b>Οι ειδοποιήσεις είναι απενεργοποιημένες</b>
+          <small>Ενεργοποίησέ τες για να ενημερώνεσαι όταν υπάρχει νέα επιλογή.</small>
+        </div>
+        <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
+      </div>
+
+      <div class="home-overview">
+        <button class="home-overview-card" data-go="choices">
+          <span class="home-overview-icon">◆</span>
+          <span class="home-overview-main"><b>Ενεργές επιλογές</b><small id="homeCount">Φόρτωση…</small></span>
+          <span class="home-overview-arrow">›</span>
+        </button>
+
+        <button class="home-overview-card" data-go="history" data-history-mode="team">
+          <span class="home-overview-icon">↺</span>
+          <span class="home-overview-main"><b>Ιστορικό DreamTeamTips</b><small>Όλες οι προτάσεις και τα αποτελέσματά τους</small></span>
+          <span class="home-overview-arrow">›</span>
+        </button>
+
+        <button class="home-overview-card" data-go="history" data-history-mode="mine">
+          <span class="home-overview-icon">✓</span>
+          <span class="home-overview-main"><b>Οι επιλογές μου</b><small id="homePlayedCount">Καμία επιλογή ακόμα</small></span>
+          <span class="home-overview-arrow">›</span>
+        </button>
+
+        <button class="home-overview-card" data-messages="1">
+          <span class="home-overview-icon">✦</span>
+          <span class="home-overview-main"><b>Μηνύματα</b><small id="homeMessageState">Ενημερώσεις από το DreamTeamTips</small></span>
+          <span class="home-overview-arrow">›</span>
+        </button>
+      </div>
     </div>
   </section>
-  <section class="signals-head">
-    <div class="signals-title">ΣΗΜΑΤΑ ΜΟΝΤΕΛΟΥ</div>
-    <div class="status" id="status">Σύνδεση…</div>
+
+  <section id="choicesPanel" class="member-panel active">
+    <div class="compact-status"><div class="counter" id="counter">0 ενεργές επιλογές</div><div class="status-mini" id="updatedAt">—</div></div>
+    <div id="content"><div class="loading">Φόρτωση…</div></div>
   </section>
-  <div id="cards"></div>
+
+  <section id="historyPanel" class="member-panel">
+    <div class="card history-shell">
+      <div class="history-head">
+        <div><h3>Ιστορικό</h3><p>Δες την επίσημη πορεία του DreamTeamTips ή μόνο τις επιλογές που έχεις κρατήσει εσύ.</p></div>
+      </div>
+      <div class="history-tabs">
+        <button class="history-tab active" id="historyModeTeam" data-history-mode="team">DreamTeamTips</button>
+        <button class="history-tab" id="historyModeMine" data-history-mode="mine">Οι επιλογές μου</button>
+        <button class="history-tab" id="historyModeStats" data-history-mode="stats">Στατιστικά</button>
+      </div>
+
+      <div id="officialHistoryView" class="history-view">
+        <div class="history-summary" id="officialHistorySummary">
+          <div class="stat"><b>—</b><span>ΣΥΝΟΛΟ</span></div>
+          <div class="stat"><b>—</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div>
+          <div class="stat"><b>—</b><span>ΧΑΜΕΝΕΣ</span></div>
+          <div class="stat"><b>—</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>
+        </div>
+        <div id="officialHistoryContent"><div class="history-empty">Φόρτωση ιστορικού DreamTeamTips…</div></div>
+      </div>
+
+      <div id="myHistoryView" class="history-view hidden">
+        <div class="history-head" style="margin:4px 0 12px">
+          <div><h3 style="font-size:18px">Οι επιλογές μου</h3><p>Ό,τι προσθέτεις αποθηκεύεται εδώ και ενημερώνεται με το τελικό αποτέλεσμα.</p></div>
+          <div class="history-count" id="historyCount">0 επιλογές</div>
+        </div>
+        <div id="historyContent"><div class="history-empty">Δεν έχεις προσθέσει ακόμα κάποια επιλογή.<br>Πρόσθεσε μία ενεργή επιλογή στις επιλογές σου.</div></div>
+      </div>
+
+      <div id="symbolStatsView" class="history-view hidden">
+        <div class="history-head" style="margin:4px 0 12px">
+          <div><h3 style="font-size:18px">Στατιστικά</h3><p>Η πορεία κάθε κατηγορίας ξεκινά από 0/0.</p></div>
+        </div>
+        <div class="symbol-stats-grid">
+          <div class="symbol-stat-card"><span>🔷</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>💎</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>👑</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>🎯</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>⚡</span><b>0/0</b></div>
+          <div class="symbol-stat-card"><span>💣</span><b>0/0</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modelPanel" class="member-panel">
+    <div class="model-wrap">
+      <div class="model-switch" role="tablist" aria-label="Πληροφορίες DreamTeamTips">
+        <button class="model-switch-btn active" id="aboutTabBtn" type="button">Σχετικά με εμάς</button>
+        <button class="model-switch-btn" id="howWeWorkTabBtn" type="button">Πώς δουλεύουμε</button>
+        <button class="model-switch-btn" id="symbolsTabBtn" type="button">Συμβολισμοί</button>
+      </div>
+
+      <div id="aboutView" class="model-view">
+      <div class="card model-hero">
+        <div class="model-kicker">DreamTeamTips</div>
+        <h3 class="model-title">Η φιλοσοφία μας</h3>
+        <p class="model-copy">Το DreamTeamTips βασίζεται σε κάτι πολύ απλό: καθημερινή δουλειά, υπομονή και πειθαρχία. Κάθε επιλογή που εμφανίζεται εδώ είναι αποτέλεσμα της δικής μας αξιολόγησης και της δουλειάς που κάνουμε καθημερινά.</p>
+      </div>
+
+      <div class="card model-section">
+        <h3>Ποιότητα πάνω από ποσότητα</h3>
+        <div class="model-rule">Δεν μας ενδιαφέρει να γεμίζουμε τη μέρα με επιλογές. Υπάρχουν φορές που θα δώσουμε μία, δύο ή και καμία. <b>Αν κάποιος ψάχνει δεκάδες σημεία κάθε μέρα, αυτή δεν είναι η δική μας προσέγγιση.</b> Προτιμάμε να περιμένουμε μέχρι να θεωρήσουμε ότι υπάρχει πραγματικά λόγος να κινηθούμε.</div>
+      </div>
+
+      <div class="card model-section">
+        <h3>Καμία επιλογή δεν είναι σίγουρη</h3>
+        <div class="model-rule">Δεν έχουμε «στημένα», μυστικές πληροφορίες ή σίγουρα παιχνίδια. Κάθε επιλογή που παρουσιάζουμε προκύπτει από τη δική μας δουλειά και την αξιολόγηση που κάνουμε στους αγώνες. Όσο δυνατή κι αν θεωρούμε μια περίπτωση, μπορεί πάντα να χαθεί.</div>
+      </div>
+
+      <div class="card model-section">
+        <h3>Χτίζουμε σταδιακά</h3>
+        <div class="model-rule">Δεν χρειάζονται μεγάλα λόγια. Θέλουμε αυτό που κάνουμε να έχει συνέπεια και διάρκεια, και αφήνουμε την πορεία στον χρόνο να δείξει την αξία της δουλειάς μας.</div>
+        <div class="model-rule" style="margin-top:8px"><b>Σας ευχαριστούμε που επιλέγετε να είστε μαζί μας και που μας εμπιστεύεστε σε αυτή την πορεία.</b></div>
+      </div>
+
+      <div class="model-footnote">Το DreamTeamTips παρέχει αθλητική ανάλυση και ενημερωτικό περιεχόμενο. Καμία επιλογή δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους και κάθε μέλος αποφασίζει ανεξάρτητα αν και πώς θα τη χρησιμοποιήσει.</div>
+    
+      </div>
+
+      <div id="howWeWorkView" class="model-view hidden">
+        <div class="card model-hero">
+          <div class="model-kicker">DreamTeamTips</div>
+          <h3 class="model-title">Πώς δουλεύουμε</h3>
+          <p class="model-copy">Κατά τη διάρκεια της ημέρας ξεχωρίζουμε τα παιχνίδια που θεωρούμε ότι αξίζουν μεγαλύτερη προσοχή. Η αξιολόγησή μας όμως δεν σταματά εκεί.</p>
+        </div>
+
+        <div class="card model-section">
+          <h3>Από την παρακολούθηση στην επιλογή</h3>
+          <div class="model-rule">Καθημερινά εξετάζουμε πολλές περιπτώσεις, όμως σε εσάς φτάνουν εκείνες που θεωρούμε ότι πραγματικά αξίζουν την προσοχή μας. Κάθε επιλογή που μοιραζόμαστε έχει περάσει από τη δική μας αξιολόγηση πριν φτάσει σε εσάς.</div>
+        </div>
+
+        <div class="card model-section">
+          <h3>Μέχρι την τελευταία στιγμή</h3>
+          <div class="model-rule">Η εικόνα ενός αγώνα μπορεί να αλλάξει. Γι’ αυτό παραμένουμε σε εγρήγορση μέχρι κοντά στην έναρξη, ώστε να μπορούμε να προσαρμοστούμε όταν υπάρχει ουσιαστικός λόγος.</div>
+        </div>
+
+        <div class="card model-section">
+          <h3>Όταν χρειάζεται, προσαρμοζόμαστε</h3>
+          <div class="model-rule">Αν προκύψει κάτι που αλλάζει ουσιαστικά την εικόνα ενός αγώνα, προτιμάμε να διορθώσουμε ή να αποσύρουμε μια επιλογή παρά να επιμείνουμε σε κάτι που δεν μας εκφράζει πλέον.</div>
+        </div>
+
+        <div class="card model-section">
+          <div class="model-rule"><b>Εσείς βλέπετε την επιλογή. Εμείς έχουμε ήδη κάνει τη δουλειά πίσω από αυτή — για εσάς.</b></div>
+        </div>
+
+        <div class="model-footnote">Η αξιολόγηση εξελίσσεται μέχρι κοντά στην έναρξη του αγώνα. Καμία επιλογή δεν αποτελεί εγγύηση αποτελέσματος ή κέρδους.</div>
+      </div>
+
+      <div id="symbolsView" class="model-view hidden">
+        <div class="card model-hero">
+          <div class="model-kicker">DreamTeamTips</div>
+          <h3 class="model-title">Συμβολισμοί</h3>
+          <p class="model-copy">Τα σύμβολα συνοδεύουν τις επιλογές μας και δείχνουν τη θέση που έχει κάθε επιλογή στη δική μας αξιολόγηση.</p>
+        </div>
+
+        <div class="symbol-guide">
+          <div class="symbol-guide-group">
+            <div class="symbol-guide-title">Με το φαβορί</div>
+            <div class="symbol-guide-list">
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">🔷</span><b>Επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">💎</span><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">👑</span><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+
+          <div class="symbol-guide-group">
+            <div class="symbol-guide-title">Απέναντι στο φαβορί</div>
+            <div class="symbol-guide-list">
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">🎯</span><b>Επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">⚡</span><b>Ισχυρή επιλογή</b></div>
+              <div class="symbol-guide-row"><span class="symbol-guide-icon">💣</span><b>Κορυφαία επιλογή</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-footnote">Κάθε σύμβολο εκφράζει τη δική μας αξιολόγηση και δεν αποτελεί εγγύηση αποτελέσματος.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="profilePanel" class="member-panel">
+    <div class="card profile-card">
+      <div class="profile-hero">
+        <div class="profile-identity">
+          <div class="profile-badge" id="profileInitial">DT</div>
+          <div class="profile-meta">
+            <div class="profile-name" id="currentUser"></div>
+            <div class="profile-role">Private DreamTeamTips Access</div>
+            <div class="vip-strip">VIP Member</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vip-access">
+        <div class="vip-access-top">
+          <div>
+            <div class="vip-access-kicker">VIP Πρόσβαση</div>
+            <div class="vip-access-title">Ιδιωτική πρόσβαση μέλους</div>
+            <div class="vip-access-copy">Οι επιλογές, τα μηνύματα και το ιστορικό είναι διαθέσιμα μόνο σε ενεργά μέλη.</div>
+          </div>
+          <div class="vip-status">Ενεργή</div>
+        </div>
+        <div id="subscriptionCountdown" class="subscription-countdown hidden">
+          <div class="subscription-days"><span id="subscriptionDays">—</span> <span>ημέρες απομένουν</span></div>
+          <div class="subscription-expiry" id="subscriptionExpiry"></div>
+          <div class="subscription-progress"><span id="subscriptionProgress" style="width:100%"></span></div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">VIP Περιοχή Μελών</div>
+        <button class="profile-link" id="profileMessagesBtn"><div class="profile-row"><div class="profile-row-left"><div class="profile-row-label">Μηνύματα DreamTeamTips</div><div class="profile-row-sub">Άμεσες ενημερώσεις, αλλαγές και διορθώσεις.</div></div><div class="profile-value">›</div></div></button>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Ειδοποιήσεις</div>
+        <div class="profile-row">
+          <div class="profile-row-left">
+            <div class="profile-row-label">Push ειδοποιήσεις</div>
+            <div class="profile-row-sub" id="notificationSub">Λάβε νέα επιλογή ή σημαντική ενημέρωση στο κινητό σου.</div>
+          </div>
+          <button class="notification-toggle" id="notificationToggle" type="button">Έλεγχος…</button>
+        </div>
+        <button class="notification-help-link" id="notificationHelpLink" type="button">Δεν λαμβάνεις ειδοποιήσεις; <span>Δες πώς ›</span></button>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Υποστήριξη</div>
+        <button class="profile-link" id="profileSupportBtn"><div class="profile-row"><div class="profile-row-left"><div class="profile-row-label">Επικοινωνία με υποστήριξη</div><div class="profile-row-sub">Στείλε μήνυμα για πρόσβαση, συνδρομή ή τεχνικό πρόβλημα.</div></div><div class="profile-value">›</div></div></button>
+      </div>
+
+      <div class="profile-section">
+        <button class="logout danger" id="logoutBtn">Αποσύνδεση</button>
+      </div>
+    </div>
+  </section>
+
+  <nav class="bottom-nav" aria-label="Κύρια πλοήγηση">
+    <button class="nav-btn" data-screen="home"><span class="nav-icon">⌂</span>Αρχική</button>
+    <button class="nav-btn active" data-screen="choices"><span class="nav-icon">◆</span>Επιλογές</button>
+    <button class="nav-btn" data-screen="history"><span class="nav-icon">↺</span>Ιστορικό</button>
+    <button class="nav-btn" data-screen="model"><span class="nav-icon">▤</span>Σχετικά με εμάς</button>
+    <button class="nav-btn" data-screen="profile"><span class="nav-icon">○</span>Προφίλ</button>
+  </nav>
+</section>
+
+<div id="messageCenter" class="message-center hidden">
+  <div class="message-sheet message-inbox-sheet">
+    <div class="message-head"><div><h3>Μηνύματα</h3><div class="message-head-sub">Τα τελευταία 10 μηνύματα DreamTeamTips</div></div><button class="close-msg" id="closeMessages">✕</button></div>
+    <div id="messageList" class="message-list"><div class="message-empty">Φόρτωση μηνυμάτων…</div></div>
+  </div>
 </div>
 
-<div class="overlay hidden" id="loginOverlay"><div class="panel login">
-  <div class="brand">Signal</div><div class="small" style="margin-top:6px">Βάλε τον προσωπικό κωδικό Admin. Αποθηκεύεται μόνο σε αυτή τη συσκευή.</div>
-  <input class="input" id="adminCode" type="password" placeholder="Admin code">
-  <button class="btn" id="loginBtn">Άνοιγμα</button><div class="error" id="loginError"></div>
-</div></div>
+<div id="notificationHelp" class="message-center hidden">
+  <div class="message-sheet">
+    <div class="message-head"><h3>Ειδοποιήσεις DreamTeamTips</h3><button class="close-msg" id="closeNotificationHelp">✕</button></div>
+    <div class="notification-help-copy">Αν δεν εμφανίζονται ειδοποιήσεις, έλεγξε ότι το DreamTeamTips έχει άδεια από τις ρυθμίσεις της συσκευής σου.</div>
+    <div class="notification-steps">
+      <div class="notification-step"><b>Android</b><span><strong>Ρυθμίσεις → Εφαρμογές → DreamTeamTips → Ειδοποιήσεις</strong><br>Ενεργοποίησε το «Να επιτρέπονται οι ειδοποιήσεις».</span></div>
+      <div class="notification-step"><b>iPhone</b><span><strong>Ρυθμίσεις → Ειδοποιήσεις → DreamTeamTips</strong><br>Ενεργοποίησε το «Επιτρέπονται ειδοποιήσεις».</span></div>
+      <div class="notification-step"><b>✓</b><span>Γύρνα στο DreamTeamTips και πάτησε <strong>Έλεγχος ξανά</strong>.</span></div>
+    </div>
+    <button id="notificationCheckAgain" class="primary support-send">Έλεγχος ξανά</button>
+  </div>
+</div>
 
-<div class="overlay hidden" id="settingsOverlay"><div class="panel">
-  <div class="row"><div><div class="brand" style="font-size:24px">Ρυθμίσεις</div><div class="small">Τα φίλτρα ισχύουν μόνο στο Signal και δεν αλλάζουν το Excel ή το Admin.</div></div><button class="btn secondary" id="closeSettings">Κλείσιμο</button></div>
-  <div class="section"><h3>Καμπανάκια</h3><div id="alertToggles"></div></div>
-  <div class="section"><h3>Πρωταθλήματα</h3><div id="leagueToggles"></div></div>
-</div></div>
-
+<div id="supportCenter" class="message-center hidden">
+  <div class="message-sheet support-sheet">
+    <div class="message-head"><h3>Υποστήριξη</h3><button class="close-msg" id="closeSupport">✕</button></div>
+    <div class="support-intro">Γράψε τι χρειάζεσαι και το μήνυμα θα σταλεί απευθείας στην ομάδα DreamTeamTips.</div>
+    <div class="support-field">
+      <label class="support-label" for="supportText">Πώς μπορούμε να σε βοηθήσουμε;</label>
+      <textarea id="supportText" class="support-textarea" maxlength="1200" placeholder="Περιέγραψε το θέμα σου..."></textarea>
+    </div>
+    <button id="supportSend" class="primary support-send">Αποστολή μηνύματος</button>
+    <div id="supportMsg" class="support-msg"></div>
+  </div>
+</div>
+<div id="installCenter" class="message-center hidden">
+  <div class="message-sheet install-sheet">
+    <div class="message-head"><h3>Εγκατάσταση DreamTeamTips</h3><button class="close-msg" id="closeInstallCenter">✕</button></div>
+    <div class="install-hero">
+      <img src="icon.svg" alt="DreamTeamTips">
+      <div><b>DreamTeamTips</b><span>Εγκατάστησέ το στο κινητό σου για να ανοίγει σαν κανονική εφαρμογή.</span></div>
+    </div>
+    <div class="install-copy" id="installCopy">Πάτησε «Εγκατάσταση» και επιβεβαίωσε το μήνυμα του κινητού σου.</div>
+    <button id="installAppNow" class="primary support-send" type="button">ΕΓΚΑΤΑΣΤΑΣΗ</button>
+    <div id="installStatus" class="install-status"></div>
+  </div>
+</div>
+<footer>DreamTeamTips · Members</footer>
+</main>
 <script>
-const API="https://match-alerts-api-private.onrender.com/api";
-const CODE_KEY="signal_admin_code_v1", FILTER_KEY="signal_filters_v1";
-let code=localStorage.getItem(CODE_KEY)||"", allSignals=[], filters=loadFilters();
-
-function loadFilters(){try{return JSON.parse(localStorage.getItem(FILTER_KEY)||'{"alerts":{},"leagues":{}}')}catch(_){return {alerts:{},leagues:{}}}}
-function saveFilters(){localStorage.setItem(FILTER_KEY,JSON.stringify(filters))}
-function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function enabled(kind,name){const m=filters[kind]||{};return m[name]!==false}
-function rec(v){if(!v)return"—";if(typeof v==="string")return v;const w=Number(v.wins??v.win??0),t=Number(v.total??0);return t?Math.round(w/t*100)+"% ("+w+"/"+t+")":"—"}
-function scoreText(s){const v=s.score??s.modelScore??s.signalScore??"";return v!==""?String(v).replace(".",","):""}
-function oddsText(s){const n=Number(s.customerOdds??s.odds);return Number.isFinite(n)&&n>1?" @ "+n.toFixed(2).replace(".",","):""}
-
-async function api(params){
-  const body=new URLSearchParams();Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
-  const c=new AbortController(), t=setTimeout(()=>c.abort(),25000);
-  try{const r=await fetch(API,{method:"POST",body,signal:c.signal,cache:"no-store"});return await r.json()}
-  finally{clearTimeout(t)}
+const API_URL="https://match-alerts.giannisg7828.workers.dev/api";
+const installCenter=document.getElementById("installCenter");
+const closeInstallCenter=document.getElementById("closeInstallCenter");
+const installAppNow=document.getElementById("installAppNow");
+const installCopy=document.getElementById("installCopy");
+const installStatus=document.getElementById("installStatus");
+let deferredInstallPrompt=null;
+const installRequested=new URLSearchParams(location.search).get("install")==="1";
+function isStandaloneInstall(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true}
+function showInstallCenter(){
+  installCenter.classList.remove("hidden");
+  if(isStandaloneInstall()){
+    installCopy.textContent="Το DreamTeamTips είναι ήδη εγκατεστημένο σε αυτή τη συσκευή.";
+    installAppNow.classList.add("hidden");
+    installStatus.textContent="";
+    return;
+  }
+  installAppNow.classList.remove("hidden");
+  const isiOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isiOS){
+    installCopy.textContent="Στο iPhone πάτησε Κοινή χρήση και μετά «Προσθήκη στην οθόνη αφετηρίας».";
+    installStatus.textContent="Η εγκατάσταση στο iPhone ολοκληρώνεται από το Safari.";
+  }else{
+    installCopy.textContent="Πάτησε «Εγκατάσταση» και επιβεβαίωσε το μήνυμα του κινητού σου.";
+    installStatus.textContent=deferredInstallPrompt?"Η εφαρμογή είναι έτοιμη για εγκατάσταση.":"Περιμένουμε την επιλογή εγκατάστασης από το κινητό σου…";
+  }
 }
-async function load(){
-  if(!code){loginOverlay.classList.remove("hidden");return}
-  status.textContent="Φόρτωση σημάτων…";
+function closeInstall(){
+  installCenter.classList.add("hidden");
+  const url=new URL(location.href);
+  if(url.searchParams.has("install")){url.searchParams.delete("install");history.replaceState(null,"",url.pathname+url.search+url.hash)}
+}
+closeInstallCenter.onclick=closeInstall;
+installCenter.onclick=e=>{if(e.target===installCenter)closeInstall()};
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  if(installRequested){
+    installStatus.textContent="Η εφαρμογή είναι έτοιμη για εγκατάσταση.";
+    installAppNow.classList.remove("hidden");
+  }
+});
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  installCopy.textContent="Η εφαρμογή εγκαταστάθηκε.";
+  installAppNow.classList.add("hidden");
+  installStatus.textContent="Θα βρεις το DreamTeamTips μαζί με τις υπόλοιπες εφαρμογές σου.";
+});
+installAppNow.onclick=async()=>{
+  if(isStandaloneInstall()){
+    installCopy.textContent="Το DreamTeamTips είναι ήδη εγκατεστημένο σε αυτή τη συσκευή.";
+    installAppNow.classList.add("hidden");
+    return;
+  }
+  if(deferredInstallPrompt){
+    const prompt=deferredInstallPrompt;
+    deferredInstallPrompt=null;
+    await prompt.prompt();
+    const choice=await prompt.userChoice.catch(()=>null);
+    if(choice&&choice.outcome==="accepted"){
+      installStatus.textContent="Ολοκληρώνεται η εγκατάσταση…";
+    }else{
+      installStatus.textContent="Η εγκατάσταση δεν ολοκληρώθηκε.";
+    }
+    return;
+  }
+  const isiOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isiOS){
+    installCopy.textContent="Στο Safari πάτησε Κοινή χρήση και μετά «Προσθήκη στην οθόνη αφετηρίας».";
+    installStatus.textContent="Το iPhone χρειάζεται αυτή την επιβεβαίωση από εσένα.";
+  }else{
+    installStatus.textContent="Αν δεν εμφανιστεί μήνυμα, περίμενε λίγα δευτερόλεπτα και πάτησε ξανά.";
+  }
+};
+if(installRequested)setTimeout(showInstallCenter,120);
+const DEVICE_STORAGE_KEY="dtt_device_id_v1";
+function getDeviceId(){
+  let id=localStorage.getItem(DEVICE_STORAGE_KEY)||"";
+  if(id) return id;
+  try{id=crypto.randomUUID();}catch(_){
+    id="dtt-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+  }
+  localStorage.setItem(DEVICE_STORAGE_KEY,id);
+  return id;
+}
+const deviceId=getDeviceId();
+const rememberLogin=document.getElementById("rememberLogin");
+const rememberRow=document.getElementById("rememberRow");
+let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
+let currentAlerts=[], currentSlips=[];
+let historyCache=[], historyLoadedAt=0, historyRequest=null;
+let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
+const UI_CACHE_MS=30000;
+const ALERTS_CACHE_PREFIX="dtt_public_alerts_v3::";
+const ALERTS_CACHE_MAX_MS=30*60*1000;
+const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
+
+async function apiPost(params){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),params.action==="alerts"?45000:15000);
   try{
-    const d=await api({action:"adminSignals",adminCode:code});
-    if(!d.ok){if(d.error==="ADMIN_UNAUTHORIZED"){localStorage.removeItem(CODE_KEY);code="";loginOverlay.classList.remove("hidden");loginError.textContent="Λάθος κωδικός."}throw new Error(d.error||"ERROR")}
-    allSignals=Array.isArray(d.signals)?d.signals:[];
-    render();
-    const tm=d.updatedAt?new Date(d.updatedAt).toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}):"";
-    status.textContent=allSignals.length+" ενεργά σήματα"+(tm?" · ενημέρωση "+tm:"");
-  }catch(e){status.textContent="Δεν έγινε ενημέρωση. Δοκίμασε ξανά.";if(!allSignals.length)cards.innerHTML='<div class="empty">Δεν υπάρχουν αποθηκευμένα σήματα.</div>'}
+    const body=new URLSearchParams();
+    Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
+    const res=await fetch(API_URL,{
+      method:"POST",
+      body,
+      signal:controller.signal,
+      cache:"no-store"
+    });
+    const data=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
+    if(!res.ok && !data.error) data.error="BACKEND_UNREACHABLE";
+    return data;
+  }catch(err){
+    if(err.name==="AbortError") throw new Error("TIMEOUT");
+    throw new Error("BACKEND_UNREACHABLE");
+  }finally{
+    clearTimeout(timer);
+  }
 }
-function render(){
-  const list=allSignals.filter(s=>enabled("alerts",s.internalAlert||"Άλλο")&&enabled("leagues",s.league||"Άλλο"));
-  cards.innerHTML=list.length?list.map(s=>{
-    const sc=scoreText(s), rating=s.rating?(" · "+esc(s.rating)):"";
-    const scoreLine=sc?'<div>Score: <b>'+esc(sc)+'</b></div>':"";
-    return '<div class="card"><div class="row"><div><div class="match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="league">'+esc(s.league||"")+'</div></div><div class="pick">'+esc(s.customerPick||"—")+'</div></div>'+
-      '<div class="alert">'+esc(s.internalAlert||"—")+rating+'</div><div class="lines">'+scoreLine+
-      '<div>Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div><div>Πρωτάθλημα: <b>'+esc(rec(s.leagueRecord))+'</b></div><div>ALL STATS: <b>'+esc(rec(s.allStatsRecord))+'</b></div></div>'+
-      '<div class="proposal">Πρόταση: <b>'+esc(s.customerPick||"—")+' · '+esc(s.customerTeam||"—")+esc(oddsText(s))+'</b></div></div>'
-  }).join(""):'<div class="empty">Δεν υπάρχουν ενεργά καμπανάκια με τα φίλτρα που έχεις επιλέξει.</div>';
-  renderSettings();
+function setMsg(el,text,type=""){el.textContent=text;el.className="msg"+(type?" "+type:"");}
+function mapError(code){
+  const m={
+    BAD_USERNAME:"Το όνομα χρήστη πρέπει να έχει 3–32 χαρακτήρες: λατινικά, αριθμούς, τελεία, _ ή -.",
+    BAD_EMAIL:"Το email δεν είναι σωστό.",
+    PASSWORD_TOO_SHORT:"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",
+    USER_EXISTS:"Αυτό το όνομα χρήστη υπάρχει ήδη.",
+    EMAIL_EXISTS:"Αυτό το email είναι ήδη εγγεγραμμένο.",
+    INVALID_LOGIN:"Λάθος όνομα χρήστη ή κωδικός.",
+    DEVICE_LOCKED:"Ο λογαριασμός είναι δεμένος με άλλη συσκευή. Επικοινώνησε με το DreamTeamTips για αλλαγή συσκευής.",
+    EMAIL_NOT_VERIFIED:"Το email δεν έχει επιβεβαιωθεί.",
+    EMAIL_SEND_FAILED:"Δεν στάλθηκε το email επιβεβαίωσης. Δοκίμασε ξανά σε λίγο.",
+    ACCESS_REVOKED:"Η πρόσβασή σου έχει απενεργοποιηθεί.",
+    SUBSCRIPTION_EXPIRED:"Η συνδρομή σου έχει λήξει.",
+    REGISTRATION_FULL:"Οι δωρεάν θέσεις έχουν συμπληρωθεί.",
+    BAD_CODE:"Ο κωδικός πρέπει να είναι 6 ψηφία.",
+    INVALID_CODE:"Ο κωδικός επιβεβαίωσης είναι λάθος.",
+    CODE_EXPIRED:"Ο κωδικός έληξε. Πάτησε «Ξαναστείλε κωδικό».",
+    USER_NOT_FOUND:"Ο λογαριασμός δεν βρέθηκε.",
+    SESSION_EXPIRED:"Η σύνδεση έληξε. Μπες ξανά.",
+    INVALID_SESSION:"Χρειάζεται νέα σύνδεση.",
+    ACCESS_DENIED:"Δεν υπάρχει ενεργή πρόσβαση.",
+    SHEET_READ_FAILED:"Προσωρινό πρόβλημα ανάγνωσης δεδομένων.",
+    BACKEND_UNREACHABLE:"Δεν υπάρχει σύνδεση με το σύστημα. Δοκίμασε ξανά σε λίγο.",
+    BACKEND_BAD_RESPONSE:"Το σύστημα επέστρεψε μη έγκυρη απάντηση.",
+    BAD_SELECTION:"Η επιλογή δεν είναι διαθέσιμη.",
+    SELECTION_NOT_ACTIVE:"Η επιλογή έχει ήδη κλείσει και δεν μπορεί να προστεθεί τώρα.",
+    SELECTION_LOCKED:"Ο αγώνας έχει ξεκινήσει και η επιλογή έχει κλειδώσει.",
+    KICKOFF_UNKNOWN:"Δεν βρέθηκε ασφαλής ώρα έναρξης για να αφαιρεθεί η επιλογή.",
+    TIMEOUT:"Η σύνδεση άργησε πολύ. Δοκίμασε ξανά."
+  };
+  return m[code]||("Διαγνωστικός κωδικός: "+String(code||"UNKNOWN"));
 }
-function renderSettings(){
-  const alerts=[...new Set(allSignals.map(s=>s.internalAlert||"Άλλο"))].sort();
-  const leagues=[...new Set(allSignals.map(s=>s.league||"Άλλο"))].sort();
-  alertToggles.innerHTML=alerts.map(x=>toggleHtml("alerts",x)).join("")||'<div class="small">Θα εμφανιστούν μόλις φορτωθούν σήματα.</div>';
-  leagueToggles.innerHTML=leagues.map(x=>toggleHtml("leagues",x)).join("")||'<div class="small">Θα εμφανιστούν μόλις φορτωθούν σήματα.</div>';
-  document.querySelectorAll("[data-kind]").forEach(el=>el.onchange=()=>{filters[el.dataset.kind][el.dataset.name]=el.checked;saveFilters();render()});
+function setMode(next){
+  mode=next; const reg=mode==="register";
+  loginTab.classList.toggle("active",!reg); registerTab.classList.toggle("active",reg);
+  emailField.classList.toggle("hidden",!reg);
+  authTitle.textContent=reg?"Δωρεάν εγγραφή":"Σύνδεση";
+  authText.textContent=reg?"Δημιούργησε λογαριασμό. Θα επιβεβαιώσεις το email σου με 6ψήφιο κωδικό.":"Μπες στον λογαριασμό σου για να δεις τις ενεργές επιλογές.";
+  authSubmit.textContent=reg?"Δημιουργία λογαριασμού":"Σύνδεση";
+  haveCodeBtn.classList.toggle("hidden",!reg);
+  if(rememberRow) rememberRow.classList.toggle("hidden",reg);
+  password.autocomplete=reg?"new-password":"current-password";
+  setMsg(authMsg,"");
 }
-function toggleHtml(kind,name){return '<label class="toggle"><span>'+esc(name)+'</span><input type="checkbox" data-kind="'+kind+'" data-name="'+esc(name)+'" '+(enabled(kind,name)?"checked":"")+'></label>'}
-refresh.onclick=load;settingsBtn.onclick=()=>settingsOverlay.classList.remove("hidden");closeSettings.onclick=()=>settingsOverlay.classList.add("hidden");
-loginBtn.onclick=async()=>{code=adminCode.value.trim();if(!code)return;localStorage.setItem(CODE_KEY,code);loginError.textContent="";loginOverlay.classList.add("hidden");await load()};
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{}));
-load();
+loginTab.onclick=()=>setMode("login"); registerTab.onclick=()=>setMode("register");
+haveCodeBtn.onclick=()=>{
+  const u=username.value.trim();
+  if(!u){setMsg(authMsg,"Γράψε πρώτα το όνομα χρήστη που έβαλες στην εγγραφή.","error");return;}
+  pendingUsername=u;
+  showVerify(u,"");
+};
+
+authSubmit.onclick=async()=>{
+  setMsg(authMsg,"");
+  const u=username.value.trim(), p=password.value, e=email.value.trim();
+  if(!u||!p||(mode==="register"&&!e)){setMsg(authMsg,"Συμπλήρωσε όλα τα πεδία.","error");return;}
+  const isRegister=mode==="register";
+  const idleText=isRegister?"Δημιουργία λογαριασμού":"Σύνδεση";
+  authSubmit.disabled=true;
+  authSubmit.textContent=isRegister?"Δημιουργία…":"Σύνδεση…";
+  setMsg(authMsg,isRegister?"Δημιουργούμε τον λογαριασμό σου…":"Γίνεται σύνδεση…");
+  try{
+    const r=await apiPost(isRegister?{action:"register",username:u,email:e,password:p}:{action:"login",username:u,password:p,deviceId});
+    if(!r.ok){
+      if(r.error==="EMAIL_NOT_VERIFIED"){pendingUsername=u;showVerify(u,"");return;}
+      throw new Error(r.error||"ERROR");
+    }
+    if(isRegister){
+      pendingUsername=r.username||u;
+      setVerifyExpiry(pendingUsername,15*60*1000);
+      showVerify(pendingUsername,r.emailMasked||e);
+      setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
+    }else{
+      saveSession(r);
+    }
+  }catch(err){
+    setMsg(authMsg,mapError(err.message),"error");
+  }finally{
+    authSubmit.disabled=false;
+    authSubmit.textContent=idleText;
+  }
+};
+let verifyTimerHandle=null;
+function verifyExpiryKey(u){return "ma_verify_exp_"+String(u||"").toLowerCase();}
+function setVerifyExpiry(u,ms){localStorage.setItem(verifyExpiryKey(u),String(Date.now()+ms));}
+function clearVerifyExpiry(u){localStorage.removeItem(verifyExpiryKey(u));}
+function updateVerifyTimer(){
+  if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
+  const tick=()=>{
+    const expiry=Number(localStorage.getItem(verifyExpiryKey(pendingUsername))||0);
+    const left=Math.max(0,expiry-Date.now());
+    if(left>0){
+      const t=Math.ceil(left/1000), mm=String(Math.floor(t/60)).padStart(2,"0"), ss=String(t%60).padStart(2,"0");
+      resendCode.disabled=true;
+      resendCode.textContent="Ξαναστείλε σε "+mm+":"+ss;
+      resendTimer.textContent="Ο κωδικός ισχύει για 15 λεπτά.";
+    }else{
+      resendCode.disabled=false;
+      resendCode.textContent="Ξαναστείλε κωδικό";
+      resendTimer.textContent="Ο κωδικός έληξε. Μπορείς να ζητήσεις νέο.";
+      if(verifyTimerHandle){clearInterval(verifyTimerHandle);verifyTimerHandle=null;}
+    }
+  };
+  tick();
+  if(resendCode.disabled) verifyTimerHandle=setInterval(tick,1000);
+}
+function showVerify(u,masked){
+  pendingUsername=u; authMain.classList.add("hidden"); verifyView.classList.remove("hidden");
+  verifyText.textContent=masked?"Στείλαμε 6ψήφιο κωδικό στο "+masked+".":"Βάλε τον 6ψήφιο κωδικό που έλαβες στο email.";
+  verifyCode.value=""; setMsg(verifyMsg,""); updateVerifyTimer();
+}
+verifySubmit.onclick=async()=>{
+  const code=verifyCode.value.trim(); setMsg(verifyMsg,"");
+  try{
+    const r=await apiPost({action:"verify",username:pendingUsername,code});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    clearVerifyExpiry(pendingUsername);
+    setMsg(verifyMsg,"Το email επιβεβαιώθηκε. Μπορείς τώρα να συνδεθείς.","ok");
+    setTimeout(()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");username.value=pendingUsername;password.value="";},900);
+  }catch(err){
+    if(err.message==="CODE_EXPIRED"){clearVerifyExpiry(pendingUsername);updateVerifyTimer();}
+    setMsg(verifyMsg,mapError(err.message),"error");
+  }
+};
+resendCode.onclick=async()=>{
+  const u=(pendingUsername||username.value.trim());
+  if(!u){setMsg(verifyMsg,"Δεν βρέθηκε όνομα χρήστη.","error");return;}
+  resendCode.disabled=true;
+  resendCode.textContent="Αποστολή…";
+  setMsg(verifyMsg,"Στέλνω νέο κωδικό…");
+  try{
+    const r=await apiPost({action:"resend",username:u});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    setVerifyExpiry(u,15*60*1000);
+    updateVerifyTimer();
+    setMsg(verifyMsg,"Στάλθηκε νέος 6ψήφιος κωδικός. Έλεγξε το email σου (και τα Ανεπιθύμητα).","ok");
+  }catch(err){
+    resendCode.disabled=false;
+    resendCode.textContent="Ξαναστείλε κωδικό";
+    setMsg(verifyMsg,mapError(err.message),"error");
+  }
+};
+backLogin.onclick=()=>{verifyView.classList.add("hidden");authMain.classList.remove("hidden");setMode("login");};
+
+function setHistoryMode(mode){
+  historyMode=mode==="mine"?"mine":mode==="stats"?"stats":"team";
+  document.getElementById("historyModeTeam")?.classList.toggle("active",historyMode==="team");
+  document.getElementById("historyModeMine")?.classList.toggle("active",historyMode==="mine");
+  document.getElementById("historyModeStats")?.classList.toggle("active",historyMode==="stats");
+  document.getElementById("officialHistoryView")?.classList.toggle("hidden",historyMode!=="team");
+  document.getElementById("myHistoryView")?.classList.toggle("hidden",historyMode!=="mine");
+  document.getElementById("symbolStatsView")?.classList.toggle("hidden",historyMode!=="stats");
+
+  if(!sessionToken) return;
+  if(historyMode==="team"){
+    if(officialHistoryLoadedAt) renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
+    if(!officialHistoryLoadedAt || Date.now()-officialHistoryLoadedAt>UI_CACHE_MS) loadOfficialHistory({background:true});
+  }else if(historyMode==="mine"){
+    if(historyLoadedAt) renderMyHistory(historyCache);
+    if(!historyLoadedAt || Date.now()-historyLoadedAt>UI_CACHE_MS) loadMyHistory({background:true});
+  }
+}
+function showScreen(name){
+  const map={home:"homePanel",choices:"choicesPanel",history:"historyPanel",model:"modelPanel",profile:"profilePanel"};
+  Object.values(map).forEach(id=>document.getElementById(id)?.classList.remove("active"));
+  document.getElementById(map[name]||map.choices)?.classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===name));
+  if(name==="history") setHistoryMode(historyMode);
+  window.scrollTo(0,0);
+}
+document.addEventListener("click",e=>{
+  const nav=e.target.closest("[data-screen]"); if(nav){showScreen(nav.dataset.screen);return;}
+  const historyTab=e.target.closest("[data-history-mode]:not([data-go])"); if(historyTab){setHistoryMode(historyTab.dataset.historyMode);return;}
+  const go=e.target.closest("[data-go]"); if(go){if(go.dataset.historyMode) historyMode=go.dataset.historyMode;showScreen(go.dataset.go);return;}
+  const messages=e.target.closest("[data-messages]"); if(messages){openMessages();return;}
+  const played=e.target.closest(".played-btn"); if(played){playPick(Number(played.dataset.playIndex),played);return;}
+});
+const bellMark=document.querySelector(".bell-mark");
+const messageList=document.getElementById("messageList");
+const homeMessageState=document.getElementById("homeMessageState");
+let memberMessagesCache=[], messagesLoadedAt=0, messagesRequest=null;
+
+function messageTime(value){
+  const d=new Date(value||"");
+  if(isNaN(d)) return "";
+  return d.toLocaleString("el-GR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function setUnreadState(count){
+  const n=Number(count||0);
+  if(bellMark) bellMark.classList.toggle("hidden",n<=0);
+  if(homeMessageState) homeMessageState.textContent=n>0?(n+" "+(n===1?"νέο μήνυμα":"νέα μηνύματα")):"Δεν υπάρχουν νέα μηνύματα";
+}
+function renderMemberMessages(items){
+  memberMessagesCache=Array.isArray(items)?items:[];
+  if(!memberMessagesCache.length){
+    messageList.innerHTML='<div class="message-empty">Δεν υπάρχουν μηνύματα αυτή τη στιγμή.</div>';
+    return;
+  }
+  messageList.innerHTML=memberMessagesCache.map(m=>`<button class="member-message ${m.read?"":"unread"}" data-message-id="${esc(m.id)}" aria-expanded="false"><div class="member-message-top">${m.read?"":'<span class="member-message-new" aria-label="Νέο μήνυμα"></span>'}<div class="member-message-title">${esc(m.title)}</div></div><div class="member-message-body">${esc(m.body)}</div><div class="member-message-time">${esc(messageTime(m.createdAt))}</div></button>`).join("");
+}
+async function loadMemberMessages({background=false,force=false}={}){
+  if(!sessionToken) return;
+  if(!force && messagesLoadedAt && Date.now()-messagesLoadedAt<UI_CACHE_MS){
+    renderMemberMessages(memberMessagesCache);
+    return;
+  }
+  if(messagesRequest) return messagesRequest;
+  messagesRequest=(async()=>{
+    try{
+      const r=await apiPost({action:"memberMessages",token:sessionToken});
+      if(!r.ok) throw new Error(r.error||"MESSAGE_ERROR");
+      renderMemberMessages(r.messages||[]);
+      messagesLoadedAt=Date.now();
+      setUnreadState(r.unreadCount||0);
+    }catch(_){
+      if(!background && messageCenter&&!messageCenter.classList.contains("hidden") && !messagesLoadedAt){
+        messageList.innerHTML='<div class="message-empty">Δεν έγινε φόρτωση μηνυμάτων. Δοκίμασε ξανά σε λίγο.</div>';
+      }
+    }finally{
+      messagesRequest=null;
+    }
+  })();
+  return messagesRequest;
+}
+function openMessages(){
+  messageCenter.classList.remove("hidden");
+  if(messagesLoadedAt) renderMemberMessages(memberMessagesCache);
+  loadMemberMessages({background:true});
+}
+bellBtn.onclick=openMessages;
+const notificationToggle=document.getElementById("notificationToggle");
+const notificationSub=document.getElementById("notificationSub");
+const notificationHelpLink=document.getElementById("notificationHelpLink");
+const homeNotificationNotice=document.getElementById("homeNotificationNotice");
+const homeNotificationAction=document.getElementById("homeNotificationAction");
+function setHomeNotificationNotice(show){
+  homeNotificationNotice?.classList.toggle("hidden",!show);
+}
+
+function notificationSupported(){
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+}
+function pushKeyBytes(value){
+  const padding="=".repeat((4-value.length%4)%4);
+  const base64=(value+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+}
+async function currentPushSubscription(){
+  if(!notificationSupported()) return null;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  }catch(_){return null;}
+}
+async function registerPushSubscription(sub){
+  if(!sub||!sessionToken) return false;
+  const json=sub.toJSON();
+  const r=await apiPost({
+    action:"pushSubscribe",
+    token:sessionToken,
+    endpoint:json.endpoint||sub.endpoint,
+    p256dh:json.keys&&json.keys.p256dh||"",
+    auth:json.keys&&json.keys.auth||""
+  });
+  if(!r.ok) throw new Error(r.error||"PUSH_REGISTER_FAILED");
+  localStorage.setItem("dtt_push_registered",sub.endpoint);
+  localStorage.setItem("dtt_push_synced_at",String(Date.now()));
+  return true;
+}
+async function ensurePushRegistration(sub,force=false){
+  if(!sub||!sessionToken) return false;
+  const same=localStorage.getItem("dtt_push_registered")===sub.endpoint;
+  const syncedAt=Number(localStorage.getItem("dtt_push_synced_at")||"0");
+  if(!force&&same&&Date.now()-syncedAt<10*60*1000) return true;
+  try{return await registerPushSubscription(sub);}
+  catch(_){localStorage.removeItem("dtt_push_registered");return false;}
+}
+async function refreshNotificationState(){
+  if(!notificationToggle||!notificationSub) return;
+  notificationToggle.classList.remove("active","blocked");
+  setHomeNotificationNotice(true);
+  if(!notificationSupported()){
+    notificationToggle.textContent="Μη διαθέσιμες";
+    notificationToggle.disabled=true;
+    notificationSub.textContent="Η συσκευή ή ο browser δεν υποστηρίζει push ειδοποιήσεις.";
+    return;
+  }
+  notificationToggle.disabled=false;
+  if(Notification.permission==="denied"){
+    notificationToggle.textContent="Ενεργοποίηση";
+    notificationToggle.classList.add("blocked");
+    notificationSub.textContent="Χρειάζεται άδεια από τις ρυθμίσεις της συσκευής.";
+    return;
+  }
+  if(Notification.permission!=="granted"){
+    notificationToggle.textContent="Ενεργοποίηση";
+    notificationSub.textContent="Λάβε νέα επιλογή ή σημαντική ενημέρωση στο κινητό σου.";
+    return;
+  }
+  const sub=await currentPushSubscription();
+  if(!sub){
+    notificationToggle.textContent="Ολοκλήρωση";
+    notificationSub.textContent="Η άδεια δόθηκε. Πάτησε για να ολοκληρωθεί η σύνδεση ειδοποιήσεων.";
+    return;
+  }
+  const registered=await ensurePushRegistration(sub);
+  if(registered){
+    notificationToggle.textContent="✓ Ενεργές";
+    notificationToggle.classList.add("active");
+    notificationSub.textContent="Οι push ειδοποιήσεις είναι συνδεδεμένες με το DreamTeamTips.";
+    setHomeNotificationNotice(false);
+  }else{
+    notificationToggle.textContent="Επανασύνδεση";
+    notificationSub.textContent="Η άδεια υπάρχει, αλλά η συσκευή δεν έχει συνδεθεί σωστά. Πάτησε για επανασύνδεση.";
+  }
+}
+const notificationHelp=document.getElementById("notificationHelp");
+const closeNotificationHelp=document.getElementById("closeNotificationHelp");
+const notificationCheckAgain=document.getElementById("notificationCheckAgain");
+if(notificationHelpLink) notificationHelpLink.onclick=()=>notificationHelp.classList.remove("hidden");
+if(homeNotificationAction) homeNotificationAction.onclick=()=>{
+  showScreen("profile");
+  if(Notification.permission==="denied") notificationHelp.classList.remove("hidden");
+  else notificationToggle?.click();
+};
+closeNotificationHelp.onclick=()=>notificationHelp.classList.add("hidden");
+notificationHelp.onclick=e=>{if(e.target===notificationHelp)notificationHelp.classList.add("hidden");};
+notificationCheckAgain.onclick=async()=>{
+  notificationCheckAgain.disabled=true;
+  notificationCheckAgain.textContent="Έλεγχος…";
+  await refreshNotificationState();
+  notificationCheckAgain.disabled=false;
+  notificationCheckAgain.textContent="Έλεγχος ξανά";
+  if(Notification.permission==="granted") notificationHelp.classList.add("hidden");
+};
+
+notificationToggle.onclick=async()=>{
+  if(!notificationSupported()) return;
+  if(Notification.permission==="denied"){
+    notificationHelp.classList.remove("hidden");
+    return;
+  }
+  notificationToggle.disabled=true;
+  notificationToggle.textContent="Αναμονή…";
+  try{
+    let permission=Notification.permission;
+    if(permission!=="granted") permission=await Notification.requestPermission();
+    if(permission!=="granted"){await refreshNotificationState();return;}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:pushKeyBytes(PUSH_PUBLIC_KEY)
+      });
+    }
+    await registerPushSubscription(sub);
+  }catch(err){
+    if(err.message==="INVALID_SESSION"||err.message==="SESSION_EXPIRED"){
+      notificationSub.textContent="Η σύνδεσή σου έληξε. Κάνε ξανά είσοδο.";
+    }else{
+      notificationSub.textContent="Δεν ολοκληρώθηκε η ενεργοποίηση. Δοκίμασε ξανά.";
+    }
+  }
+  await refreshNotificationState();
+};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshNotificationState();});
+window.addEventListener("focus",async()=>{await refreshNotificationState();if(Notification.permission==="granted")notificationHelp?.classList.add("hidden");});
+setTimeout(()=>refreshNotificationState(),2500);
+
+profileMessagesBtn.onclick=openMessages;
+closeMessages.onclick=()=>messageCenter.classList.add("hidden");
+messageCenter.onclick=e=>{if(e.target===messageCenter)messageCenter.classList.add("hidden");};
+messageList.addEventListener("click",async e=>{
+  const card=e.target.closest(".member-message");
+  if(!card) return;
+  const id=card.dataset.messageId||"";
+  const expanded=!card.classList.contains("expanded");
+  card.classList.toggle("expanded",expanded);
+  card.setAttribute("aria-expanded",expanded?"true":"false");
+  if(!card.classList.contains("unread")) return;
+  card.classList.remove("unread");
+  const badge=card.querySelector(".member-message-new");
+  if(badge) badge.remove();
+  const cached=memberMessagesCache.find(m=>String(m.id)===id);
+  if(cached) cached.read=true;
+  setUnreadState(memberMessagesCache.filter(m=>!m.read).length);
+  try{await apiPost({action:"memberMessageRead",token:sessionToken,id});}catch(_){}
+});
+
+const profileSupportBtn=document.getElementById("profileSupportBtn");
+const supportCenter=document.getElementById("supportCenter");
+const closeSupport=document.getElementById("closeSupport");
+const supportText=document.getElementById("supportText");
+const supportSend=document.getElementById("supportSend");
+const supportMsg=document.getElementById("supportMsg");
+profileSupportBtn.onclick=()=>{supportMsg.textContent="";supportMsg.className="support-msg";supportCenter.classList.remove("hidden");};
+closeSupport.onclick=()=>supportCenter.classList.add("hidden");
+supportCenter.onclick=e=>{if(e.target===supportCenter)supportCenter.classList.add("hidden");};
+supportSend.onclick=async()=>{
+  const message=supportText.value.trim();
+  if(message.length<10){
+    supportMsg.textContent="Γράψε λίγες περισσότερες πληροφορίες για να μπορέσουμε να σε βοηθήσουμε.";
+    supportMsg.className="support-msg error";
+    return;
+  }
+  supportSend.disabled=true;
+  supportSend.textContent="Αποστολή…";
+  supportMsg.textContent="";
+  try{
+    const r=await apiPost({action:"supportSend",token:sessionToken,topic:"Υποστήριξη",message});
+    if(!r.ok) throw new Error(r.error||"SUPPORT_ERROR");
+    supportText.value="";
+    supportMsg.textContent="Το μήνυμά σου στάλθηκε στο DreamTeamTips.";
+    supportMsg.className="support-msg ok";
+  }catch(err){
+    const m=err.message==="SUPPORT_RATE_LIMIT"
+      ?"Έχει ήδη σταλεί μήνυμα πριν λίγο. Δοκίμασε ξανά σε ένα λεπτό."
+      :(err.message==="LOGIN_REQUIRED"||err.message==="INVALID_SESSION"||err.message==="SESSION_EXPIRED"
+        ?"Η σύνδεσή σου έληξε. Κάνε ξανά είσοδο."
+        :"Δεν έγινε η αποστολή. Δοκίμασε ξανά.");
+    supportMsg.textContent=m;
+    supportMsg.className="support-msg error";
+  }finally{
+    supportSend.disabled=false;
+    supportSend.textContent="Αποστολή μηνύματος";
+  }
+};
+
+function applySubscription(endAt){
+  const box=document.getElementById("subscriptionCountdown");
+  if(!box) return;
+  if(!endAt){box.classList.add("hidden");return;}
+  const end=new Date(endAt);
+  if(isNaN(end)){box.classList.add("hidden");return;}
+  const now=new Date();
+  const days=Math.max(0,Math.ceil((end-now)/(1000*60*60*24)));
+  subscriptionDays.textContent=String(days);
+  subscriptionExpiry.textContent="Έως "+end.toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  subscriptionProgress.style.width=Math.max(0,Math.min(100,(days/30)*100))+"%";
+  box.classList.remove("hidden");
+}
+
+const aboutTabBtn=document.getElementById("aboutTabBtn");
+const howWeWorkTabBtn=document.getElementById("howWeWorkTabBtn");
+const symbolsTabBtn=document.getElementById("symbolsTabBtn");
+const aboutView=document.getElementById("aboutView");
+const howWeWorkView=document.getElementById("howWeWorkView");
+const symbolsView=document.getElementById("symbolsView");
+function setModelView(view){
+  const how=view==="how";
+  const symbols=view==="symbols";
+  const about=!how&&!symbols;
+  aboutTabBtn?.classList.toggle("active",about);
+  howWeWorkTabBtn?.classList.toggle("active",how);
+  symbolsTabBtn?.classList.toggle("active",symbols);
+  aboutView?.classList.toggle("hidden",!about);
+  howWeWorkView?.classList.toggle("hidden",!how);
+  symbolsView?.classList.toggle("hidden",!symbols);
+}
+if(aboutTabBtn) aboutTabBtn.onclick=()=>setModelView("about");
+if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
+if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
+
+function alertCacheKey(){
+  const user=String(localStorage.getItem("ma_user")||"").trim().toLowerCase();
+  return ALERTS_CACHE_PREFIX+(user||"guest");
+}
+function readAlertsCache(){
+  try{
+    const raw=localStorage.getItem(alertCacheKey());
+    if(!raw)return null;
+    const x=JSON.parse(raw);
+    const savedAt=Number(x.savedAt||0);
+    if(!savedAt||Date.now()-savedAt>ALERTS_CACHE_MAX_MS)return null;
+    return x;
+  }catch(_){return null;}
+}
+function saveAlertsCache(r){
+  try{
+    localStorage.setItem(alertCacheKey(),JSON.stringify({
+      savedAt:Date.now(),
+      updatedAt:r.updatedAt||new Date().toISOString(),
+      alerts:Array.isArray(r.alerts)?r.alerts:[],
+      slips:Array.isArray(r.slips)?r.slips:[],
+      subscriptionEndsAt:r.subscriptionEndsAt||""
+    }));
+  }catch(_){}
+}
+function showCachedAlerts(){
+  const cached=readAlertsCache();
+  if(!cached)return false;
+  renderAlerts(cached.alerts||[],cached.slips||[]);
+  const singles=currentAlerts.length, slipCount=currentSlips.length;
+  const counterText=singles+" "+(singles===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
+  counter.textContent=counterText;
+  homeCount.textContent=(singles+slipCount)?counterText:"Καμία ενεργή επιλογή";
+  const d=new Date(cached.updatedAt||cached.savedAt);
+  updatedAt.textContent=isNaN(d)?"Τελευταία διαθέσιμη εικόνα":"Τελευταία εικόνα "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"});
+  if(cached.subscriptionEndsAt)applySubscription(cached.subscriptionEndsAt);
+  return true;
+}
+
+function saveSession(r){
+  sessionToken=r.token;
+  localStorage.setItem("ma_user",r.username||"");
+  if(rememberLogin&&rememberLogin.checked){
+    localStorage.setItem("ma_token",sessionToken);
+    sessionStorage.removeItem("ma_token");
+  }else{
+    sessionStorage.setItem("ma_token",sessionToken);
+    localStorage.removeItem("ma_token");
+  }
+  authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadMemberStartupData();
+}
+logoutBtn.onclick=async()=>{
+  try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+  alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
+};
+function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+function recordLabel(v){
+  const m=String(v||"").match(/^(\d+)\/(\d+)$/); if(!m||!Number(m[2]))return v||"—";
+  return Math.round((Number(m[1])/Number(m[2]))*100)+"% ("+v+")";
+}
+function kickoffMs(a){const n=Date.parse(a.kickoff||"");return Number.isFinite(n)?n:Number.MAX_SAFE_INTEGER;}
+function kickoffStarted(a){
+  const n=kickoffMs(a);
+  return Number.isFinite(n)&&n!==Number.MAX_SAFE_INTEGER&&Date.now()>=n;
+}
+function kickoffLabel(a){
+  const n=Date.parse(a.kickoff||""); if(!Number.isFinite(n))return "Ώρα —";
+  return new Intl.DateTimeFormat("el-GR",{timeZone:"Europe/Athens",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(n));
+}
+function statBox(label,value){return `<div class="stat"><b>${label}</b><span>${esc(value)}</span></div>`;}
+function selectionSide(a){
+  const manual=String(a.customerSide||"").trim().toUpperCase();
+  if(manual==="H"||manual==="A") return manual;
+  let side=String(a.favoriteSide||"").trim().toUpperCase();
+  const alert=String(a.alert||"");
+  if(/ΚΟΝΤΡΑ|CONTRA/i.test(alert)){
+    if(side==="H") side="A";
+    else if(side==="A") side="H";
+  }
+  return side;
+}
+function selectionMark(a){
+  const manual=String(a.customerPick||"").trim().toUpperCase();
+  if(/^(1|2|1X|2X)$/.test(manual)) return manual;
+  const side=selectionSide(a);
+  const isContra=/ΚΟΝΤΡΑ|CONTRA/i.test(String(a.alert||""));
+  if(isContra){
+    return side==="H"?"1X":side==="A"?"2X":"—";
+  }
+  return side==="H"?"1":side==="A"?"2":"—";
+}
+function renderAlerts(alerts,slips=[]){
+  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
+  const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
+    const legs=Array.isArray(x&&x.legs)?x.legs:[];
+    return legs.length>0&&legs.every(l=>!kickoffStarted(l));
+  });
+  if(!list.length&&!combos.length){currentAlerts=[];currentSlips=[];content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργές επιλογές αυτή τη στιγμή.</div>';return;}
+  const rows=[...list].sort((a,b)=>kickoffMs(a)-kickoffMs(b));
+  currentAlerts=rows;currentSlips=combos;
+  const comboHtml=combos.length?'<div class="combo-list">'+combos.map(x=>{
+    const legs=Array.isArray(x.legs)?x.legs:[];
+    const total=x.totalOdds?String(x.totalOdds).replace(".",","):"—";
+    return '<div class="combo-card"><div class="combo-top"><div><div class="combo-kicker">DreamTeamTips · Δελτίο</div><div class="combo-title">'+esc(x.label||"Δελτίο")+'</div></div><div class="combo-odds"><span>Συνολική απόδοση</span><b>'+esc(total)+'</b></div></div><div class="combo-legs">'+legs.map(l=>'<div class="combo-leg"><div class="combo-leg-main"><b>'+esc(l.home||"")+' – '+esc(l.away||"")+'</b><span>'+esc(l.league||"")+' · '+esc(kickoffLabel(l))+'</span></div><div class="combo-leg-pick">'+esc(l.pick||"—")+'<small>'+esc(l.team||"")+' · @ '+esc(String(l.odds||"—").replace(".",","))+'</small></div></div>').join("")+'</div><div class="combo-note">Το δελτίο δημοσιεύτηκε ως ενιαία πρόταση DreamTeamTips.</div></div>';
+  }).join("")+'</div>':'';
+  const singleHtml=rows.map((a,idx)=>{
+    const start=kickoffMs(a);
+    const playedRow=kickoffStarted(a)?"":`<div class="played-row" data-kickoff-ms="${Number.isFinite(start)?start:""}"><button class="played-btn ${a.played?"done":""}" data-play-index="${idx}" ${a.played?"disabled":""}>${a.played?"✓ Στις επιλογές μου":"＋ Προσθήκη στις επιλογές μου"}</button></div>`;
+    const oddsNumber=Number(a.customerOdds);
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
+    return `<section class="league"><div class="league-head"><div class="league-title">${esc(a.league)}</div><div class="league-count">🕒 ${esc(kickoffLabel(a))}</div></div><div class="row"><div class="match">${esc(a.home)} – ${esc(a.away)}</div><div class="meta"><div class="side">${selectionSide(a)==="H"?esc(a.home):selectionSide(a)==="A"?esc(a.away):""}</div><div class="alert-right"><div class="badge ${badgeClass(a.alert)}">ΠΡΟΤΑΣΗ · ${esc(selectionMark(a))}${esc(oddsText)}</div><div class="stat-grid">${statBox("ΠΡΩΤΑΘΛΗΜΑ",recordLabel(a.leagueRecord))}${statBox("ALL STATS",recordLabel(a.allStatsRecord))}${statBox("POWER",a.rating||"—")}</div></div></div>${playedRow}</div></section>`;
+  }).join("");
+  content.innerHTML=comboHtml+singleHtml;
+}
+
+function withdrawnVisualResult(scoreValue,pickValue){
+  const m=String(scoreValue||"").trim().match(/^(\d+)\s*-\s*(\d+)/);
+  if(!m) return "";
+  const home=Number(m[1]), away=Number(m[2]);
+  const pick=String(pickValue||"").trim().toUpperCase().replace(/\s+/g,"");
+  if(pick==="1") return home>away?"win":"loss";
+  if(pick==="2") return away>home?"win":"loss";
+  if(pick==="1X"||pick==="X1") return home>=away?"win":"loss";
+  if(pick==="2X"||pick==="X2") return away>=home?"win":"loss";
+  return "";
+}
+
+function officialDateLabel(value){
+  const n=Date.parse(value||"");
+  if(Number.isFinite(n)){
+    return new Intl.DateTimeFormat("el-GR",{timeZone:"Europe/Athens",day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(n));
+  }
+  return String(value||"");
+}
+function renderOfficialHistory(items,summary){
+  const list=Array.isArray(items)?items:[];
+  const s=summary||{};
+  const sum=document.getElementById("officialHistorySummary");
+  if(sum){
+    sum.innerHTML='<div class="stat"><b>'+Number(s.total||0)+'</b><span>ΣΥΝΟΛΟ</span></div><div class="stat"><b>'+Number(s.wins||0)+'</b><span>ΚΕΡΔΙΣΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.losses||0)+'</b><span>ΧΑΜΕΝΕΣ</span></div><div class="stat"><b>'+Number(s.withdrawn||0)+'</b><span>ΑΠΟΣΥΡΘΗΚΑΝ</span></div>';
+  }
+  const box=document.getElementById("officialHistoryContent");
+  if(!box) return;
+  if(!list.length){
+    box.innerHTML='<div class="history-empty">Δεν υπάρχουν ακόμη ολοκληρωμένες προτάσεις στο επίσημο ιστορικό.</div>';
+    return;
+  }
+  box.innerHTML='<div class="history-list">'+list.map(a=>{
+    const status=a.status==="win"?"win":a.status==="loss"?"loss":a.status==="withdrawn"?"withdrawn":"pending";
+    const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
+    const score=a.score||"—";
+    const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.pick)||"withdrawn"):status;
+    const oddsNumber=Number(a.odds);
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
+    return '<div class="pick-card result-'+visualStatus+'"><div class="pick-top"><div><div class="pick-league">'+esc(a.league||"")+'</div><div class="pick-match">'+esc(a.home||"")+' – '+esc(a.away||"")+'</div><div class="pick-time">'+esc(officialDateLabel(a.kickoff||a.publishedAt))+'</div></div><div class="pick-status">'+statusText+'</div></div><div class="pick-bottom"><div class="pick-choice">Πρόταση DreamTeamTips<b>'+esc(a.pick||"—")+' · '+esc(a.team||"")+esc(oddsText)+'</b></div><div class="pick-score"><span>Τελικό</span><b>'+esc(score)+'</b></div></div></div>';
+  }).join("")+'</div>';
+}
+async function loadOfficialHistory({background=false,force=false}={}){
+  if(!sessionToken) return;
+  if(!force && officialHistoryLoadedAt && Date.now()-officialHistoryLoadedAt<UI_CACHE_MS){
+    renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
+    return;
+  }
+  if(officialHistoryRequest) return officialHistoryRequest;
+  const box=document.getElementById("officialHistoryContent");
+  if(!background && !officialHistoryLoadedAt && box) box.innerHTML='<div class="history-empty">Φόρτωση ιστορικού DreamTeamTips…</div>';
+  officialHistoryRequest=(async()=>{
+    try{
+      const r=await apiPost({action:"officialHistory",token:sessionToken});
+      if(!r.ok) throw new Error(r.error||"ERROR");
+      officialHistoryCache=Array.isArray(r.items)?r.items:[];
+      officialHistorySummaryCache=r.summary||{};
+      officialHistoryLoadedAt=Date.now();
+      renderOfficialHistory(officialHistoryCache,officialHistorySummaryCache);
+    }catch(err){
+      if(!officialHistoryLoadedAt && box) box.innerHTML='<div class="history-empty">'+esc(mapError(err.message))+'</div>';
+    }finally{
+      officialHistoryRequest=null;
+    }
+  })();
+  return officialHistoryRequest;
+}
+
+function pickedTeam(a){
+  const side=selectionSide(a);
+  return side==="H"?(a.home||"Γηπεδούχος"):side==="A"?(a.away||"Φιλοξενούμενος"):"Επιλογή DreamTeamTips";
+}
+function historyKickoffLabel(a){
+  const n=Date.parse(a.kickoff||"");
+  if(!Number.isFinite(n)) return "Ώρα αγώνα —";
+  return new Intl.DateTimeFormat("el-GR",{timeZone:"Europe/Athens",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(n));
+}
+function renderMyHistory(items){
+  const list=Array.isArray(items)?items:[];
+  historyCount.textContent=list.length+" "+(list.length===1?"επιλογή":"επιλογές");
+  const homePlayedCount=document.getElementById("homePlayedCount");
+  if(homePlayedCount) homePlayedCount.textContent=list.length?(list.length+" "+(list.length===1?"αποθηκευμένη επιλογή":"αποθηκευμένες επιλογές")):"Καμία επιλογή ακόμα";
+  if(!list.length){
+    historyContent.innerHTML='<div class="history-empty">Δεν έχεις προσθέσει ακόμα κάποια επιλογή.<br>Πρόσθεσε μία ενεργή επιλογή στις επιλογές σου.</div>';
+    return;
+  }
+  historyContent.innerHTML='<div class="history-list">'+list.map(a=>{
+    const status=a.status==="win"?"win":a.status==="loss"?"loss":a.status==="withdrawn"?"withdrawn":"pending";
+    const statusText=status==="win"?"✓ ΚΕΡΔΙΣΕ":status==="loss"?"✕ ΧΑΘΗΚΕ":status==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"● ΕΚΚΡΕΜΕΙ";
+    const score=a.score||"—";
+    const visualStatus=status==="withdrawn"?(withdrawnVisualResult(score,a.customerPick||selectionMark(a))||"withdrawn"):status;
+    const oddsNumber=Number(a.customerOdds);
+    const oddsText=Number.isFinite(oddsNumber)&&oddsNumber>1?(" @ "+oddsNumber.toFixed(2).replace(".",",")):"";
+    return `<div class="pick-card result-${visualStatus}"><div class="pick-top"><div><div class="pick-league">${esc(a.league)}</div><div class="pick-match">${esc(a.home)} – ${esc(a.away)}</div><div class="pick-time">${esc(historyKickoffLabel(a))}</div></div><div class="pick-status">${statusText}</div></div><div class="pick-bottom"><div class="pick-choice">Η επιλογή σου<b>${esc(selectionMark(a))} · ${esc(pickedTeam(a))}${esc(oddsText)}</b></div><div class="pick-score"><span>Τελικό</span><b>${esc(score)}</b></div></div>${a.canRemove?`<div class="pick-actions"><button class="pick-remove" data-remove-id="${esc(a.id)}">Αφαίρεση από τις επιλογές μου</button></div>`:""}</div>`;
+  }).join("")+'</div>';
+}
+async function loadMyHistory({background=false,force=false}={}){
+  if(!sessionToken) return;
+  if(!force && historyLoadedAt && Date.now()-historyLoadedAt<UI_CACHE_MS){
+    renderMyHistory(historyCache);
+    return;
+  }
+  if(historyRequest) return historyRequest;
+  if(!background && !historyLoadedAt) historyContent.innerHTML='<div class="history-empty">Φόρτωση ιστορικού…</div>';
+  historyRequest=(async()=>{
+    try{
+      const r=await apiPost({action:"playedHistory",token:sessionToken});
+      if(!r.ok) throw new Error(r.error||"ERROR");
+      historyCache=Array.isArray(r.items)?r.items:[];
+      historyLoadedAt=Date.now();
+      renderMyHistory(historyCache);
+    }catch(err){
+      if(!historyLoadedAt){
+        historyCount.textContent="—";
+        historyContent.innerHTML='<div class="history-empty">'+esc(mapError(err.message))+'</div>';
+      }
+    }finally{
+      historyRequest=null;
+    }
+  })();
+  return historyRequest;
+}
+historyContent.addEventListener("click",async e=>{
+  const button=e.target.closest(".pick-remove");
+  if(!button) return;
+  const selectionId=String(button.dataset.removeId||"").trim();
+  if(!selectionId) return;
+  const oldText=button.textContent;
+  button.disabled=true;
+  button.textContent="Αφαίρεση…";
+  try{
+    const r=await apiPost({action:"playedRemove",token:sessionToken,selectionId});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    await Promise.all([loadMyHistory(),loadAlerts()]);
+  }catch(err){
+    button.disabled=false;
+    button.textContent=oldText;
+    alert(mapError(err.message));
+    if(err.message==="SELECTION_LOCKED") loadMyHistory();
+  }
+});
+async function playPick(index,button){
+  const a=currentAlerts[index];
+  if(!a||button.disabled) return;
+  if(kickoffStarted(a)){
+    button.closest(".played-row")?.remove();
+    alert(mapError("SELECTION_LOCKED"));
+    return;
+  }
+  if(!a.selectionId){
+    const oldText=button.textContent;
+    button.textContent="Ανανέωση επιλογής…";
+    button.disabled=true;
+    try{ await loadAlerts(); }catch(_){}
+    const refreshed=currentAlerts[index];
+    if(refreshed&&refreshed.selectionId){
+      button.disabled=false;
+      button.textContent=oldText;
+      return playPick(index,button);
+    }
+    button.disabled=false;
+    button.textContent=oldText;
+    alert("Η αποθήκευση της επιλογής δεν έχει ενεργοποιηθεί ακόμη στο σύστημα. Θα ενεργοποιηθεί με την τελική ενημέρωση.");
+    return;
+  }
+  const oldText=button.textContent;
+  button.disabled=true;
+  button.textContent="Αποθήκευση…";
+  try{
+    a.played=true;
+    button.classList.add("done");
+    button.textContent="✓ Στις επιλογές μου";
+    const r=await apiPost({action:"playedAdd",token:sessionToken,selectionId:a.selectionId});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    historyLoadedAt=0;
+    loadMyHistory({background:true,force:true});
+  }catch(err){
+    a.played=false;
+    button.classList.remove("done");
+    button.disabled=false;
+    button.textContent=oldText;
+    alert(mapError(err.message));
+  }
+}
+
+async function loadAlerts({background=false}={}){
+  if(!background&&!currentAlerts.length&&!currentSlips.length){
+    content.innerHTML='<div class="loading">Φόρτωση…</div>';
+  }
+  try{
+    const r=await apiPost({action:"alerts",token:sessionToken});
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    currentUser.textContent=r.username||localStorage.getItem("ma_user")||"";
+    renderAlerts(r.alerts||[],r.slips||[]);
+    const singleCount=currentAlerts.length;
+    const slipCount=currentSlips.length;
+    const totalVisible=singleCount+slipCount;
+    const counterText=singleCount+" "+(singleCount===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
+    counter.textContent=counterText; homeCount.textContent=totalVisible?counterText:"Καμία ενεργή επιλογή";
+    const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Ενημέρωση "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
+    applySubscription(r.subscriptionEndsAt||"");
+    saveAlertsCache(r);
+  }catch(err){
+    if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
+      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+      alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
+      return;
+    }
+    const cached=readAlertsCache();
+    if(cached){
+      if(!currentAlerts.length&&!currentSlips.length)showCachedAlerts();
+      updatedAt.textContent="Τελευταία διαθέσιμη εικόνα · ανανέωση στο background";
+      return;
+    }
+    counter.textContent="—";homeCount.textContent="Η live σύνδεση δεν είναι διαθέσιμη";
+    updatedAt.textContent="Live σύνδεση εκτός";
+    content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
+  }
+}
+async function loadMemberStartupData(){
+  const hadCache=showCachedAlerts();
+  await loadAlerts({background:hadCache});
+  if(!sessionToken) return;
+  setTimeout(async()=>{
+    if(!sessionToken) return;
+    await loadMyHistory({background:true});
+    if(!sessionToken) return;
+    await loadMemberMessages({background:true});
+  },350);
+}
+if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadMemberStartupData();}
+setInterval(()=>{
+  document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
+    const start=Number(row.dataset.kickoffMs||"0");
+    if(start&&Date.now()>=start) row.remove();
+  });
+},5000);
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
+      await reg.update();
+
+    }catch(_){}
+  });
+}
 </script>
-</body>
-</html>
+</body></html>
