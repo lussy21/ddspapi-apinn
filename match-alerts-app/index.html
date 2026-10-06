@@ -156,7 +156,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <div class="tabs"><button class="tab active" id="loginTab">Σύνδεση</button><button class="tab" id="registerTab">Δωρεάν εγγραφή</button></div>
     <div id="emailField" class="field hidden"><label class="label">Email</label><input class="input" id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
     <div class="field"><label class="label">Όνομα χρήστη</label><input class="input" id="username" autocomplete="username" placeholder="username"></div>
-    <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="field"><label class="label">Κωδικός</label><input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>\n    <label id="rememberRow" style="display:flex;align-items:center;gap:9px;margin:9px 2px 13px;color:#bcb8c0;font-size:11px;font-weight:800;cursor:pointer"><input id="rememberLogin" type="checkbox" style="width:17px;height:17px;accent-color:#c9a85d"><span>Να με θυμάσαι σε αυτή τη συσκευή</span></label>
     <button class="primary" id="authSubmit">Σύνδεση</button>
     <button class="ghost hidden" id="haveCodeBtn" style="margin-top:9px">Έχω ήδη κωδικό</button>
     <div class="msg" id="authMsg"></div>
@@ -1056,12 +1056,21 @@ if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
 if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
 function saveSession(r){
-  sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
+  sessionToken=r.token;
+  const remember=!!rememberLogin?.checked;
+  localStorage.setItem("ma_user",r.username||"");
+  if(remember){
+    localStorage.setItem("ma_token",sessionToken);
+    sessionStorage.removeItem("ma_token");
+  }else{
+    sessionStorage.setItem("ma_token",sessionToken);
+    localStorage.removeItem("ma_token");
+  }
   authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadAlerts();loadMyHistory();loadMemberMessages();
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
-  localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
 function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
@@ -1323,7 +1332,7 @@ async function loadAlerts(){
     renderAlerts(r.alerts||[],r.slips||[]);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
-      localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
+      localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
       return;
     }
