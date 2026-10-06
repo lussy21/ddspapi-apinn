@@ -1,5 +1,7 @@
 import os
 import requests
+import time
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, jsonify, make_response
 
 app = Flask(__name__)
@@ -7,6 +9,11 @@ app = Flask(__name__)
 APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
 SIGNAL_ADMIN_CODE = os.environ.get("SIGNAL_ADMIN_CODE", "").strip()
 SIGNAL_GATEWAY_URL = os.environ.get("SIGNAL_GATEWAY_URL", "https://signal-gateway.onrender.com").strip()
+DASHBOARD_CACHE_TTL = 45
+FEED_META_CACHE_TTL = 45
+_dashboard_cache = {"at": 0, "data": None}
+_feed_meta_cache = {"at": 0, "levels": None, "regional": None}
+
 ALLOWED_ORIGINS = {
     x.strip() for x in os.environ.get("SIGNAL_ALLOWED_ORIGINS", "").split(",") if x.strip()
 }
@@ -86,22 +93,27 @@ def owner_dashboard():
     token = str(payload.get("token") or "").strip()
     if not token or not _check_owner_token(token):
         return jsonify(ok=False, error="ACCESS_DENIED"), 403
+    now = time.time()
+    cached = _dashboard_cache.get("data")
+    if cached and now - float(_dashboard_cache.get("at") or 0) < DASHBOARD_CACHE_TTL:
+        return jsonify(cached), 200
+    def _post_action(action):
+        return requests.post(
+            APPS_SCRIPT_URL,
+            data={"action":action,"adminCode":SIGNAL_ADMIN_CODE},
+            timeout=(4,35), allow_redirects=True
+        ).json()
     try:
-        leagues_r = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action":"adminLeagueSettings","adminCode":SIGNAL_ADMIN_CODE},
-            timeout=(4,35), allow_redirects=True
-        ).json()
-        levels_r = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action":"adminAlertLevels","adminCode":SIGNAL_ADMIN_CODE},
-            timeout=(4,35), allow_redirects=True
-        ).json()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_leagues = pool.submit(_post_action, "adminLeagueSettings")
+            f_levels = pool.submit(_post_action, "adminAlertLevels")
+            leagues_r = f_leagues.result()
+            levels_r = f_levels.result()
     except requests.RequestException:
         return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
     except Exception:
         return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
-    return jsonify(
+    payload_out = dict(
         ok=True,
         leagues=(leagues_r.get("leagues") if isinstance(leagues_r,dict) and leagues_r.get("ok") else []),
         leagueSummary={
@@ -110,7 +122,10 @@ def owner_dashboard():
             "disabled": int(leagues_r.get("disabledCount") or 0) if isinstance(leagues_r,dict) else 0,
         },
         levels=(levels_r.get("levels") if isinstance(levels_r,dict) and levels_r.get("ok") else [])
-    ),200
+    )
+    _dashboard_cache["at"] = now
+    _dashboard_cache["data"] = payload_out
+    return jsonify(payload_out),200
 
 @app.post("/owner-league-toggle")
 def owner_league_toggle():
@@ -137,6 +152,8 @@ def owner_league_toggle():
         return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
     except Exception:
         return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
+    _dashboard_cache["at"] = 0
+    _dashboard_cache["data"] = None
     return jsonify(data),200
 
 @app.post("/owner-feed")
@@ -165,27 +182,34 @@ def owner_feed():
         return jsonify(ok=False, error="OWNER_FEED_NOT_CONFIGURED"), 503
 
     try:
-        upstream = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action": "adminSignals", "adminCode": SIGNAL_ADMIN_CODE},
-            timeout=(4, 35),
-            allow_redirects=True,
+        def _feed_action(action):
+            return requests.post(
+                APPS_SCRIPT_URL,
+                data={"action": action, "adminCode": SIGNAL_ADMIN_CODE},
+                timeout=(4, 35),
+                allow_redirects=True,
+            ).json()
+        now = time.time()
+        meta_fresh = (
+            _feed_meta_cache.get("levels") is not None
+            and _feed_meta_cache.get("regional") is not None
+            and now - float(_feed_meta_cache.get("at") or 0) < FEED_META_CACHE_TTL
         )
-        data = upstream.json()
-        levels_upstream = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action": "adminAlertLevels", "adminCode": SIGNAL_ADMIN_CODE},
-            timeout=(4, 35),
-            allow_redirects=True,
-        )
-        levels_data = levels_upstream.json()
-        regional_upstream = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action": "adminSignalStats", "adminCode": SIGNAL_ADMIN_CODE},
-            timeout=(4, 35),
-            allow_redirects=True,
-        )
-        regional_data = regional_upstream.json()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_signals = pool.submit(_feed_action, "adminSignals")
+            if meta_fresh:
+                data = f_signals.result()
+                levels_data = _feed_meta_cache["levels"]
+                regional_data = _feed_meta_cache["regional"]
+            else:
+                f_levels = pool.submit(_feed_action, "adminAlertLevels")
+                f_regional = pool.submit(_feed_action, "adminSignalStats")
+                data = f_signals.result()
+                levels_data = f_levels.result()
+                regional_data = f_regional.result()
+                _feed_meta_cache["at"] = now
+                _feed_meta_cache["levels"] = levels_data
+                _feed_meta_cache["regional"] = regional_data
     except requests.RequestException:
         return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
     except ValueError:
