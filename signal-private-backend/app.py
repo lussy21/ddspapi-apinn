@@ -29,6 +29,47 @@ def add_headers(resp):
 def health():
     return jsonify(ok=True, service="signal-private-backend")
 
+
+
+@app.post("/owner-push-subscribe")
+def owner_push_subscribe():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    endpoint = str(payload.get("endpoint") or "").strip()
+    p256dh = str(payload.get("p256dh") or "").strip()
+    auth_key = str(payload.get("auth") or "").strip()
+    if not token or not endpoint or not p256dh or not auth_key:
+        return jsonify(ok=False, error="BAD_PUSH_SUBSCRIPTION"), 400
+
+    try:
+        check = requests.post(
+            SIGNAL_GATEWAY_URL.rstrip("/") + "/check",
+            json={"token": token}, timeout=(4, 10)
+        ).json()
+    except Exception:
+        return jsonify(ok=False, error="AUTH_UNREACHABLE"), 502
+    if not check.get("ok"):
+        return jsonify(ok=False, error="ACCESS_DENIED"), 403
+
+    try:
+        upstream = requests.post(
+            APPS_SCRIPT_URL,
+            data={
+                "action": "adminOwnerPushSubscribe",
+                "adminCode": SIGNAL_ADMIN_CODE,
+                "endpoint": endpoint,
+                "p256dh": p256dh,
+                "auth": auth_key,
+            },
+            timeout=(4, 15), allow_redirects=True
+        )
+        data = upstream.json()
+    except requests.RequestException:
+        return jsonify(ok=False, error="BACKEND_UNREACHABLE"), 502
+    except Exception:
+        return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
+    return jsonify(data), 200
+
 @app.post("/owner-feed")
 def owner_feed():
     origin = request.headers.get("Origin", "")
