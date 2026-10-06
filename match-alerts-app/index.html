@@ -567,6 +567,8 @@ let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
+const ALERTS_CACHE_PREFIX="dtt_public_alerts_v3::";
+const ALERTS_CACHE_MAX_MS=12*60*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 
 async function apiPost(params){
@@ -1055,6 +1057,45 @@ if(aboutTabBtn) aboutTabBtn.onclick=()=>setModelView("about");
 if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
 if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
+function alertCacheKey(){
+  const user=String(localStorage.getItem("ma_user")||"").trim().toLowerCase();
+  return ALERTS_CACHE_PREFIX+(user||"guest");
+}
+function readAlertsCache(){
+  try{
+    const raw=localStorage.getItem(alertCacheKey());
+    if(!raw)return null;
+    const x=JSON.parse(raw);
+    const savedAt=Number(x.savedAt||0);
+    if(!savedAt||Date.now()-savedAt>ALERTS_CACHE_MAX_MS)return null;
+    return x;
+  }catch(_){return null;}
+}
+function saveAlertsCache(r){
+  try{
+    localStorage.setItem(alertCacheKey(),JSON.stringify({
+      savedAt:Date.now(),
+      updatedAt:r.updatedAt||new Date().toISOString(),
+      alerts:Array.isArray(r.alerts)?r.alerts:[],
+      slips:Array.isArray(r.slips)?r.slips:[],
+      subscriptionEndsAt:r.subscriptionEndsAt||""
+    }));
+  }catch(_){}
+}
+function showCachedAlerts(){
+  const cached=readAlertsCache();
+  if(!cached)return false;
+  renderAlerts(cached.alerts||[],cached.slips||[]);
+  const singles=currentAlerts.length, slipCount=currentSlips.length;
+  const counterText=singles+" "+(singles===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
+  counter.textContent=counterText;
+  homeCount.textContent=(singles+slipCount)?counterText:"Καμία ενεργή επιλογή";
+  const d=new Date(cached.updatedAt||cached.savedAt);
+  updatedAt.textContent=isNaN(d)?"Τελευταία διαθέσιμη εικόνα":"Τελευταία εικόνα "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"});
+  if(cached.subscriptionEndsAt)applySubscription(cached.subscriptionEndsAt);
+  return true;
+}
+
 function saveSession(r){
   sessionToken=r.token; localStorage.setItem("ma_token",sessionToken); localStorage.setItem("ma_user",r.username||"");
   authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=r.username||"";profileInitial.textContent=(r.username||"DT").slice(0,2).toUpperCase();applySubscription(r.subscriptionEndsAt||"");showScreen("choices");loadMemberStartupData();
@@ -1102,8 +1143,11 @@ function selectionMark(a){
   return side==="H"?"1":side==="A"?"2":"—";
 }
 function renderAlerts(alerts,slips=[]){
-  const list=Array.isArray(alerts)?alerts:[];
-  const combos=Array.isArray(slips)?slips:[];
+  const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
+  const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
+    const legs=Array.isArray(x&&x.legs)?x.legs:[];
+    return legs.length>0&&legs.every(l=>!kickoffStarted(l));
+  });
   if(!list.length&&!combos.length){currentAlerts=[];currentSlips=[];content.innerHTML='<div class="empty">Δεν υπάρχουν ενεργές επιλογές αυτή τη στιγμή.</div>';return;}
   const rows=[...list].sort((a,b)=>kickoffMs(a)-kickoffMs(b));
   currentAlerts=rows;currentSlips=combos;
@@ -1307,24 +1351,33 @@ async function playPick(index,button){
   }
 }
 
-async function loadAlerts(){
-  content.innerHTML='<div class="loading">Φόρτωση…</div>';
+async function loadAlerts({background=false}={}){
+  if(!background&&!currentAlerts.length&&!currentSlips.length){
+    content.innerHTML='<div class="loading">Φόρτωση…</div>';
+  }
   try{
     const r=await apiPost({action:"alerts",token:sessionToken});
     if(!r.ok) throw new Error(r.error||"ERROR");
     currentUser.textContent=r.username||localStorage.getItem("ma_user")||"";
-    const slipCount=Array.isArray(r.slips)?r.slips.length:0;
-    const singleCount=Number(r.count||0);
+    renderAlerts(r.alerts||[],r.slips||[]);
+    const singleCount=currentAlerts.length;
+    const slipCount=currentSlips.length;
     const totalVisible=singleCount+slipCount;
     const counterText=singleCount+" "+(singleCount===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
     counter.textContent=counterText; homeCount.textContent=totalVisible?counterText:"Καμία ενεργή επιλογή";
     const d=new Date(r.updatedAt);updatedAt.textContent=isNaN(d)?"":("Ενημέρωση "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
     applySubscription(r.subscriptionEndsAt||"");
-    renderAlerts(r.alerts||[],r.slips||[]);
+    saveAlertsCache(r);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
       localStorage.removeItem("ma_token");localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
+      return;
+    }
+    const cached=readAlertsCache();
+    if(cached){
+      if(!currentAlerts.length&&!currentSlips.length)showCachedAlerts();
+      updatedAt.textContent="Τελευταία διαθέσιμη εικόνα · ανανέωση στο background";
       return;
     }
     counter.textContent="—";homeCount.textContent="Η live σύνδεση δεν είναι διαθέσιμη";
@@ -1333,7 +1386,8 @@ async function loadAlerts(){
   }
 }
 async function loadMemberStartupData(){
-  await loadAlerts();
+  const hadCache=showCachedAlerts();
+  await loadAlerts({background:hadCache});
   if(!sessionToken) return;
   setTimeout(async()=>{
     if(!sessionToken) return;
