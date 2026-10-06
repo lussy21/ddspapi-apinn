@@ -615,10 +615,85 @@ async function clearRememberedSession(){
     db.close();
   }catch(_){}
 }
+async function idbGetRememberValue(key){
+  try{
+    const db=await openRememberDb();
+    const value=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(REMEMBER_DB_STORE,"readonly");
+      const req=tx.objectStore(REMEMBER_DB_STORE).get(key);
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error||new Error("IDB_READ"));
+    });
+    db.close();
+    return value;
+  }catch(_){return null;}
+}
+async function idbPutRememberValue(key,value){
+  const db=await openRememberDb();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
+    tx.objectStore(REMEMBER_DB_STORE).put(value,key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error||new Error("IDB_WRITE"));
+  });
+  db.close();
+}
+async function getRememberCryptoKey(create){
+  let key=await idbGetRememberValue("credentialKey");
+  if(key||!create||!window.crypto||!crypto.subtle)return key||null;
+  try{
+    key=await crypto.subtle.generateKey({name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+    await idbPutRememberValue("credentialKey",key);
+    return key;
+  }catch(_){return null;}
+}
+async function saveRememberedCredentials(user,pass){
+  try{
+    const key=await getRememberCryptoKey(true);
+    if(!key)return;
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const plain=new TextEncoder().encode(String(pass||""));
+    const cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plain);
+    await idbPutRememberValue("credentials",{
+      user:String(user||""),
+      iv:Array.from(iv),
+      data:Array.from(new Uint8Array(cipher))
+    });
+  }catch(_){}
+}
+async function readRememberedCredentials(){
+  try{
+    const rec=await idbGetRememberValue("credentials");
+    const key=await getRememberCryptoKey(false);
+    if(!rec||!key||!Array.isArray(rec.iv)||!Array.isArray(rec.data))return null;
+    const plain=await crypto.subtle.decrypt(
+      {name:"AES-GCM",iv:new Uint8Array(rec.iv)},
+      key,
+      new Uint8Array(rec.data)
+    );
+    return {username:String(rec.user||""),password:new TextDecoder().decode(plain)};
+  }catch(_){return null;}
+}
+async function clearRememberedAuth(){
+  try{
+    const db=await openRememberDb();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(REMEMBER_DB_STORE,"readwrite");
+      const store=tx.objectStore(REMEMBER_DB_STORE);
+      store.delete("current");
+      store.delete("credentials");
+      store.delete("credentialKey");
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error||new Error("IDB_DELETE"));
+    });
+    db.close();
+  }catch(_){}
+}
 const rememberPreference=localStorage.getItem(REMEMBER_LOGIN_KEY)==="1";
 if(rememberLogin) rememberLogin.checked=rememberPreference;
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
 let currentAlerts=[], currentSlips=[];
+let rememberRecoveryAttempted=false;
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
@@ -719,7 +794,8 @@ authSubmit.onclick=async()=>{
       showVerify(pendingUsername,r.emailMasked||e);
       setMsg(verifyMsg,"Ο λογαριασμός δημιουργήθηκε. Στάλθηκε 6ψήφιος κωδικός στο email σου.","ok");
     }else{
-      saveSession(r);
+      rememberRecoveryAttempted=false;
+      await saveSession(r,{username:u,password:p});
     }
   }catch(err){
     setMsg(authMsg,mapError(err.message),"error");
@@ -1111,7 +1187,7 @@ if(aboutTabBtn) aboutTabBtn.onclick=()=>setModelView("about");
 if(howWeWorkTabBtn) howWeWorkTabBtn.onclick=()=>setModelView("how");
 if(symbolsTabBtn) symbolsTabBtn.onclick=()=>setModelView("symbols");
 
-function saveSession(r){
+async function saveSession(r,credentials){
   sessionToken=r.token;
   const remember=!!(rememberLogin&&rememberLogin.checked);
   localStorage.setItem("ma_user",r.username||"");
@@ -1119,10 +1195,11 @@ function saveSession(r){
     localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
     localStorage.setItem("ma_token",sessionToken);
     sessionStorage.removeItem("ma_token");
-    saveRememberedSession(sessionToken,r.username||"");
+    await saveRememberedSession(sessionToken,r.username||"");
+    if(credentials&&credentials.password) await saveRememberedCredentials(credentials.username||r.username||"",credentials.password);
   }else{
     localStorage.removeItem(REMEMBER_LOGIN_KEY);
-    clearRememberedSession();
+    await clearRememberedAuth();
     sessionStorage.setItem("ma_token",sessionToken);
     localStorage.removeItem("ma_token");
   }
@@ -1130,7 +1207,7 @@ function saveSession(r){
 }
 logoutBtn.onclick=async()=>{
   try{if(sessionToken)await apiPost({action:"logout",token:sessionToken});}catch(_){}
-  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");clearRememberedSession();sessionToken="";
+  localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");await clearRememberedAuth();sessionToken="";
   alertsView.classList.add("hidden");bellBtn.classList.add("hidden");messageCenter.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");authMain.classList.remove("hidden");verifyView.classList.add("hidden");setMode("login");
 };
 function badgeClass(a){return /WATCH/i.test(a)?"watch":(/ΔΥΝΑΤΟ|🔥/i.test(a)?"strong":"");}
@@ -1376,6 +1453,22 @@ async function playPick(index,button){
   }
 }
 
+async function tryRememberedLogin(){
+  if(rememberRecoveryAttempted)return false;
+  rememberRecoveryAttempted=true;
+  const creds=await readRememberedCredentials();
+  if(!creds||!creds.username||!creds.password)return false;
+  try{
+    const r=await apiPost({action:"login",username:creds.username,password:creds.password,deviceId});
+    if(!r.ok)return false;
+    if(rememberLogin)rememberLogin.checked=true;
+    await saveSession(r,creds);
+    return true;
+  }catch(_){
+    return false;
+  }
+}
+
 async function loadAlerts(){
   content.innerHTML='<div class="loading">Φόρτωση…</div>';
   try{
@@ -1392,6 +1485,7 @@ async function loadAlerts(){
     renderAlerts(r.alerts||[],r.slips||[]);
   }catch(err){
     if(["INVALID_SESSION","SESSION_EXPIRED","LOGIN_REQUIRED","ACCESS_DENIED","SUBSCRIPTION_EXPIRED"].includes(err.message)){
+      if(localStorage.getItem(REMEMBER_LOGIN_KEY)==="1" && await tryRememberedLogin()) return;
       localStorage.removeItem("ma_token");sessionStorage.removeItem("ma_token");localStorage.removeItem(REMEMBER_LOGIN_KEY);localStorage.removeItem("ma_user");sessionToken="";
       alertsView.classList.add("hidden");authView.classList.remove("hidden");welcome.classList.remove("hidden");setMsg(authMsg,mapError(err.message),"error");
       return;
@@ -1418,7 +1512,13 @@ async function bootstrapMemberSession(){
       if(rememberLogin)rememberLogin.checked=true;
     }
   }
-  if(sessionToken)openRememberedMemberSession();
+  if(sessionToken){
+    openRememberedMemberSession();
+    return;
+  }
+  if(localStorage.getItem(REMEMBER_LOGIN_KEY)==="1"){
+    await tryRememberedLogin();
+  }
 }
 bootstrapMemberSession();
 setInterval(()=>{
