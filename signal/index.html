@@ -584,6 +584,8 @@ const UI_CACHE_MS=30000;
 const ALERTS_CACHE_PREFIX="dtt_public_alerts_v3::";
 const ALERTS_CACHE_MAX_MS=30*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
+const PRIVATE_OWNER_MODE=true;
+const OWNER_FEED_URL="https://signal-private-backend.onrender.com/owner-feed";
 
 async function apiPost(params){
   const controller=new AbortController();
@@ -1375,7 +1377,51 @@ async function playPick(index,button){
   }
 }
 
+async function loadOwnerAlerts({background=false}={}){
+  if(!background&&!currentAlerts.length&&!currentSlips.length){
+    content.innerHTML='<div class="loading">Φόρτωση…</div>';
+  }
+  try{
+    const token=localStorage.getItem("signal_private_access_v1")||"";
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),45000);
+    const res=await fetch(OWNER_FEED_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token}),
+      signal:controller.signal,
+      cache:"no-store"
+    });
+    clearTimeout(timer);
+    const r=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
+    if(!r.ok) throw new Error(r.error||"ERROR");
+    currentUser.textContent="Signal";
+    renderAlerts(r.alerts||[],r.slips||[]);
+    const singleCount=currentAlerts.length;
+    const slipCount=currentSlips.length;
+    const totalVisible=singleCount+slipCount;
+    const counterText=singleCount+" "+(singleCount===1?"ενεργή επιλογή":"ενεργές επιλογές")+(slipCount?(" · "+slipCount+" "+(slipCount===1?"δελτίο":"δελτία")):"");
+    counter.textContent=counterText;
+    homeCount.textContent=totalVisible?counterText:"Καμία ενεργή επιλογή";
+    const d=new Date(r.updatedAt);
+    updatedAt.textContent=isNaN(d)?"":("Ενημέρωση "+d.toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"}));
+    saveAlertsCache(r);
+    return r;
+  }catch(err){
+    const cached=readAlertsCache();
+    if(cached){
+      if(!currentAlerts.length&&!currentSlips.length) showCachedAlerts();
+      updatedAt.textContent="Τελευταία διαθέσιμη εικόνα";
+      return cached;
+    }
+    counter.textContent="—";
+    homeCount.textContent="Η live σύνδεση δεν είναι διαθέσιμη";
+    content.innerHTML='<div class="empty">'+esc(mapError(err.message))+'<br><br><button class="ghost" style="width:auto" onclick="loadAlerts()">Δοκίμασε ξανά</button></div>';
+  }
+}
+
 async function loadAlerts({background=false}={}){
+  if(PRIVATE_OWNER_MODE){return loadOwnerAlerts({background});}
   if(!background&&!currentAlerts.length&&!currentSlips.length){
     content.innerHTML='<div class="loading">Φόρτωση…</div>';
   }
@@ -1420,7 +1466,7 @@ async function loadMemberStartupData(){
     await loadMemberMessages({background:true});
   },350);
 }
-if(sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadMemberStartupData();}
+if(!PRIVATE_OWNER_MODE&&sessionToken){authView.classList.add("hidden");welcome.classList.add("hidden");alertsView.classList.remove("hidden");bellBtn.classList.remove("hidden");currentUser.textContent=localStorage.getItem("ma_user")||"";profileInitial.textContent=(localStorage.getItem("ma_user")||"DT").slice(0,2).toUpperCase();applySubscription("");showScreen("choices");loadMemberStartupData();}
 setInterval(()=>{
   document.querySelectorAll(".played-row[data-kickoff-ms]").forEach(row=>{
     const start=Number(row.dataset.kickoffMs||"0");
@@ -1438,6 +1484,20 @@ if("serviceWorker" in navigator){
   });
 }
 </script>
+<script>
+function bootPrivateOwner(){
+  try{
+    if(typeof authView!=="undefined") authView.classList.add("hidden");
+    if(typeof welcome!=="undefined") welcome.classList.add("hidden");
+    if(typeof alertsView!=="undefined") alertsView.classList.remove("hidden");
+    if(typeof bellBtn!=="undefined") bellBtn.classList.add("hidden");
+    if(typeof currentUser!=="undefined") currentUser.textContent="Signal";
+    if(typeof profileInitial!=="undefined") profileInitial.textContent="SG";
+    if(typeof showScreen==="function") showScreen("choices");
+    if(typeof loadAlerts==="function") loadAlerts();
+  }catch(_){}
+}
+</script>
 <script id="signalPrivateGateScript">
 (()=>{
  const GATE_URL="https://signal-gateway.onrender.com";
@@ -1446,7 +1506,7 @@ if("serviceWorker" in navigator){
  const code=document.getElementById("signalPrivateCode");
  const btn=document.getElementById("signalPrivateEnter");
  const msg=document.getElementById("signalPrivateMsg");
- const open=()=>{gate.style.display="none";};
+ const open=()=>{gate.style.display="none"; if(typeof bootPrivateOwner==="function") bootPrivateOwner();};
  async function check(){
    const token=localStorage.getItem(KEY)||"";
    if(!token) return;
