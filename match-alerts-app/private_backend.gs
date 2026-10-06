@@ -131,7 +131,7 @@ function register_(p) {
 
   // We do not consume a seat until email verification succeeds.
   const salt = Utilities.getUuid();
-  const verifyToken = verificationToken_();
+  const code = verificationCode_();
   const record = {
     username: username,
     email: email,
@@ -140,12 +140,17 @@ function register_(p) {
     verified: false,
     revoked: false,
     createdAt: new Date().toISOString(),
-    verifyHash: hashVerification_(verifyToken, email),
+    verifyHash: hashVerification_(code, email),
     verifyExpiresAt: Date.now() + VERIFY_MINUTES * 60 * 1000
   };
 
   props.setProperty(userKey_(username), JSON.stringify(record));
-  sendVerificationEmail_(email, username, verifyToken);
+  try {
+    sendVerificationEmail_(email, username, code);
+  } catch (_) {
+    props.deleteProperty(userKey_(username));
+    return {ok:false,error:"EMAIL_SEND_FAILED"};
+  }
 
   return {
     ok:true,
@@ -160,10 +165,8 @@ function verify_(p) {
   cleanupPending_();
 
   const username = normalizeUsername_(p.username);
-  const code = String(p.token || p.code || "").trim();
-  const tokenOk = /^[A-Za-z0-9_-]{32,160}$/.test(code);
-  const legacyCodeOk = /^\d{6}$/.test(code);
-  if (!tokenOk && !legacyCodeOk) return {ok:false,error:"BAD_CODE"};
+  const code = String(p.code || "").trim();
+  if (!/^\d{6}$/.test(code)) return {ok:false,error:"BAD_CODE"};
 
   const props = PropertiesService.getScriptProperties();
   const key = userKey_(username);
@@ -216,11 +219,20 @@ function resend_(p) {
   const u = JSON.parse(raw);
   if (u.verified) return {ok:false,error:"ALREADY_VERIFIED"};
 
-  const verifyToken = verificationToken_();
-  u.verifyHash = hashVerification_(verifyToken, u.email);
+  const code = verificationCode_();
+  const previousHash = u.verifyHash;
+  const previousExpiresAt = u.verifyExpiresAt;
+  u.verifyHash = hashVerification_(code, u.email);
   u.verifyExpiresAt = Date.now() + VERIFY_MINUTES * 60 * 1000;
   props.setProperty(key, JSON.stringify(u));
-  sendVerificationEmail_(u.email, u.username, verifyToken);
+  try {
+    sendVerificationEmail_(u.email, u.username, code);
+  } catch (_) {
+    u.verifyHash = previousHash;
+    u.verifyExpiresAt = previousExpiresAt;
+    props.setProperty(key, JSON.stringify(u));
+    return {ok:false,error:"EMAIL_SEND_FAILED"};
+  }
 
   return {
     ok:true,
@@ -2171,18 +2183,13 @@ function invalidateSessionsForUser_(username) {
   });
 }
 
-function sendVerificationEmail_(email, username, token) {
-  const subject = "DreamTeamTips - Επιβεβαίωση email";
-  const verifyUrl =
-    VERIFY_SITE_URL +
-    "#verify_user=" + encodeURIComponent(username) +
-    "&verify_token=" + encodeURIComponent(token);
-
+function sendVerificationEmail_(email, username, code) {
+  const subject = "DreamTeamTips - Κωδικός επιβεβαίωσης";
   const body =
     "Γεια σου " + username + ",\n\n" +
-    "Επιβεβαίωσε το email σου για το DreamTeamTips ανοίγοντας τον παρακάτω σύνδεσμο:\n\n" +
-    verifyUrl + "\n\n" +
-    "Ο σύνδεσμος λήγει σε " + VERIFY_MINUTES + " λεπτά.\n\n" +
+    "Ο 6ψήφιος κωδικός επιβεβαίωσης για το DreamTeamTips είναι:\n\n" +
+    code + "\n\n" +
+    "Ο κωδικός λήγει σε " + VERIFY_MINUTES + " λεπτά.\n\n" +
     "Αν δεν έκανες εσύ την εγγραφή, αγνόησε αυτό το email.";
 
   const htmlBody =
@@ -2191,9 +2198,9 @@ function sendVerificationEmail_(email, username, token) {
         "<div style='font-family:Georgia,serif;font-size:30px;font-weight:700;color:#e9bd58;margin-bottom:4px'>DreamTeam<span style='color:#f6f1e8'>Tips</span></div>" +
         "<div style='font-size:10px;letter-spacing:2.5px;color:#9d8d6e;margin-bottom:28px'>PRIVATE MEMBERS CLUB</div>" +
         "<div style='font-family:Georgia,serif;font-size:24px;color:#f6f1e8;margin-bottom:12px'>Επιβεβαίωση email</div>" +
-        "<div style='font-size:14px;line-height:1.7;color:#c9c1b6;margin-bottom:24px'>Γεια σου <b style='color:#f3d17c'>" + escapeHtml_(username) + "</b>.<br>Πάτησε το κουμπί για να ολοκληρώσεις την επιβεβαίωση του λογαριασμού σου.</div>" +
-        "<a href='" + escapeHtml_(verifyUrl) + "' style='display:inline-block;padding:15px 26px;border-radius:12px;background:linear-gradient(135deg,#b97818,#efbd4f,#ffe298);color:#090909;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:.5px'>ΕΠΙΒΕΒΑΙΩΣΗ EMAIL</a>" +
-        "<div style='margin-top:22px;font-size:11px;line-height:1.6;color:#7f786f'>Ο σύνδεσμος λήγει σε " + VERIFY_MINUTES + " λεπτά.<br>Αν δεν έκανες εσύ την εγγραφή, αγνόησε αυτό το email.</div>" +
+        "<div style='font-size:14px;line-height:1.7;color:#c9c1b6;margin-bottom:18px'>Γεια σου <b style='color:#f3d17c'>" + escapeHtml_(username) + "</b>.<br>Βάλε τον παρακάτω 6ψήφιο κωδικό στην εφαρμογή.</div>" +
+        "<div style='display:inline-block;padding:16px 24px;border-radius:12px;background:#17130b;border:1px solid #8b6a2a;color:#f3d17c;font-size:32px;font-weight:800;letter-spacing:8px'>" + escapeHtml_(code) + "</div>" +
+        "<div style='margin-top:22px;font-size:11px;line-height:1.6;color:#7f786f'>Ο κωδικός λήγει σε " + VERIFY_MINUTES + " λεπτά.<br>Αν δεν έκανες εσύ την εγγραφή, αγνόησε αυτό το email.</div>" +
       "</div>" +
     "</div>";
 
