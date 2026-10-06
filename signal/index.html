@@ -502,7 +502,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <div id="installStatus" class="install-status"></div>
   </div>
 </div>
-<footer>DreamTeamTips · Members</footer>
+<footer>SIGNAL · PRIVATE</footer>
 </main>
 <script>
 const API_URL="https://signal-private-backend.onrender.com/api";
@@ -782,8 +782,8 @@ function showScreen(name){
   document.getElementById(map[name]||map.choices)?.classList.add("active");
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===name));
   if(name==="history") setHistoryMode(historyMode);
-  if(name==="bells") loadSignalOwnerDashboard();
-  if(name==="leagues") loadSignalOwnerDashboard();
+  if(name==="bells"){const x=document.getElementById("signalBellList");if(x&&!signalOwnerDashboardCache)x.innerHTML='<div class="loading">Φόρτωση…</div>';loadSignalOwnerDashboard();}
+  if(name==="leagues"){const x=document.getElementById("signalLeagueList");if(x&&!signalOwnerDashboardCache)x.innerHTML='<div class="loading">Φόρτωση…</div>';loadSignalOwnerDashboard();}
   window.scrollTo(0,0);
 }
 document.addEventListener("click",e=>{
@@ -1492,13 +1492,18 @@ document.addEventListener("click",async e=>{
   const lg=e.target.closest("[data-signal-league]");
   if(lg){
     lg.disabled=true;
+    const oldText=lg.textContent;
+    lg.textContent="ΑΠΟΘΗΚΕΥΣΗ…";
     const token=localStorage.getItem("signal_private_access_v1")||"";
     const enabled=lg.dataset.enabled!=="1";
     try{
       const res=await fetch(OWNER_LEAGUE_TOGGLE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,league:lg.dataset.signalLeague,enabled}),cache:"no-store"});
       const r=await res.json();if(!r.ok)throw new Error(r.error||"ERROR");
       signalOwnerDashboardCache=null;await loadSignalOwnerDashboard(true);
-    }catch(_){lg.disabled=false;}
+    }catch(_){
+      lg.disabled=false;
+      lg.textContent=oldText;
+    }
     return;
   }
 });
@@ -1713,7 +1718,21 @@ function bootPrivateOwner(){
     if(typeof bellBtn!=="undefined") bellBtn.classList.add("hidden");
     if(typeof currentUser!=="undefined") currentUser.textContent="Signal";
     if(typeof profileInitial!=="undefined") profileInitial.textContent="SG";
-    if(typeof showScreen==="function") showScreen("choices");
+    const legacyMsg=document.getElementById("profileMessagesBtn")?.closest(".profile-section");
+    const legacySupport=document.getElementById("profileSupportBtn")?.closest(".profile-section");
+    const legacyVip=document.querySelector("#profilePanel .vip-access");
+    if(legacyMsg) legacyMsg.classList.add("hidden");
+    if(legacySupport) legacySupport.classList.add("hidden");
+    if(legacyVip) legacyVip.classList.add("hidden");
+    const role=document.querySelector("#profilePanel .profile-role");
+    const strip=document.querySelector("#profilePanel .vip-strip");
+    if(role) role.textContent="Signal Owner";
+    if(strip) strip.textContent="PRIVATE";
+    if(typeof logoutBtn!=="undefined") logoutBtn.onclick=()=>{
+      localStorage.removeItem("signal_private_access_v1");
+      location.reload();
+    };
+    if(typeof showScreen==="function") showScreen("home");
     if(typeof loadAlerts==="function") loadAlerts();
   }catch(_){}
 }
