@@ -146,8 +146,6 @@ const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const ALERT_PREFS_KEY="dtt_admin_alert_prefs_v1";
-const SIGNAL_SNAPSHOT_KEY="dtt_admin_signals_snapshot_v1";
-const SIGNAL_SNAPSHOT_MAX_AGE=15*60*1000;
 const ALERT_CATALOG=[
   {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",w:33,t:40,mainW:19,mainT:21,otherW:7,otherT:8,nationalW:5,nationalT:7,americaW:2,americaT:4},
   {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)",w:2,t:4,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:0,nationalT:1,americaW:0,americaT:0},
@@ -172,30 +170,6 @@ let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={}, leagueSettings=
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
 let signalsLoadPromise=null;
-let showingSignalSnapshot=false;
-function saveSignalSnapshot(arr){
-  try{
-    localStorage.setItem(SIGNAL_SNAPSHOT_KEY,JSON.stringify({savedAt:Date.now(),signals:Array.isArray(arr)?arr:[]}));
-  }catch(_){}
-}
-function loadSignalSnapshot(){
-  try{
-    const raw=JSON.parse(localStorage.getItem(SIGNAL_SNAPSHOT_KEY)||"null");
-    if(!raw||!Array.isArray(raw.signals)||!Number(raw.savedAt)) return null;
-    const age=Date.now()-raw.savedAt;
-    if(age<0||age>SIGNAL_SNAPSHOT_MAX_AGE) return null;
-    return raw;
-  }catch(_){return null;}
-}
-function showSignalSnapshotIfFresh(){
-  const snap=loadSignalSnapshot();
-  if(!snap) return false;
-  showingSignalSnapshot=true;
-  renderSignals(snap.signals);
-  const mins=Math.max(0,Math.floor((Date.now()-snap.savedAt)/60000));
-  msg.textContent="Προσωρινή εικόνα από πριν "+(mins===0?"λιγότερο από 1 λεπτό":mins+" λεπτά")+" · γίνεται φρέσκια ενημέρωση…";
-  return true;
-}
 function setSignalsLoading(){
   if(typeof dailySelectionsCount!=="undefined") dailySelectionsCount.textContent="φόρτωση…";
   if(typeof dailySelectionsLaunchCount!=="undefined") dailySelectionsLaunchCount.textContent="…";
@@ -210,11 +184,7 @@ async function loadSignalsFresh(){
       try{
         const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
         if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
-        const freshSignals=sig.signals||[];
-        renderSignals(freshSignals);
-        saveSignalSnapshot(freshSignals);
-        showingSignalSnapshot=false;
-        if(msg.textContent.includes("Προσωρινή εικόνα")) msg.textContent="";
+        renderSignals(sig.signals||[]);
         return sig;
       }catch(e){
         lastErr=e;
@@ -1011,8 +981,7 @@ if(adminSecret){
   adminCode.value=adminSecret;
   lock.classList.add("hidden");
   dash.classList.remove("hidden");
-  const hadSnapshot=showSignalSnapshotIfFresh();
-  if(!hadSnapshot) msg.textContent="Ενημέρωση…";
+  msg.textContent="Ενημέρωση…";
   setTimeout(async()=>{
     try{
       await warmBackend();
