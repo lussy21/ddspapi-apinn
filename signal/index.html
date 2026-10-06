@@ -167,6 +167,25 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .owner-signal-bottom{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.045);display:flex;gap:7px;flex-wrap:wrap}
 .owner-signal-chip{padding:6px 8px;border-radius:10px;border:1px solid rgba(217,177,87,.16);background:rgba(217,177,87,.03);color:#d8d1c4;font-size:9px;font-weight:800}
 @media(max-width:520px){.owner-signal-card{padding:13px 14px;border-radius:15px}.owner-signal-match{font-size:13px}.owner-signal-line{font-size:10px}.owner-signal-pick{font-size:11px}}
+</style><style id="signalOwnerHomeStyle">
+.owner-home{padding:20px}
+.owner-home-kicker{font-size:10px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#a29da5}
+.owner-home-title{font:500 31px/1.02 Georgia,serif;margin:7px 0 7px;color:#f3eee5}
+.owner-home-copy{margin:0;color:#8d8891;font-size:11px;line-height:1.5}
+.owner-home-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px}
+.owner-home-stat{padding:16px 14px;border:1px solid rgba(217,177,87,.15);border-radius:17px;background:rgba(255,255,255,.018);text-align:center}
+.owner-home-stat b{display:block;font-size:25px;color:#f3eee5}
+.owner-home-stat span{display:block;margin-top:5px;color:#8a858e;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.owner-home-section{margin-top:19px}
+.owner-home-section-title{font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#77727c;margin-bottom:9px}
+.owner-home-grid{display:grid;gap:9px}
+.owner-home-card{width:100%;display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(217,177,87,.14);border-radius:17px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.012));color:#eee9df;text-align:left}
+.owner-home-card-icon{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(217,177,87,.18);background:rgba(217,177,87,.045);font-size:15px}
+.owner-home-card-main{min-width:0;flex:1}
+.owner-home-card-main b{display:block;font-size:13px}
+.owner-home-card-main small{display:block;margin-top:4px;color:#817c85;font-size:9px;line-height:1.4}
+.owner-home-card-value{font-size:18px;font-weight:900;color:#f0dfac}
+.owner-home-card-arrow{font-size:21px;color:#7d786d}
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
@@ -204,40 +223,51 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
 <section id="alertsView" class="hidden">
   <section id="homePanel" class="member-panel">
-    <div class="card home-card">
-      <div class="home-kicker">Members Area</div>
-      <div class="home-title">Καλώς ήρθες στο DreamTeamTips.</div>
-      <p class="home-copy">Ό,τι χρειάζεσαι σήμερα, συγκεντρωμένο σε ένα σημείο.</p>
+    <div class="card owner-home">
+      <div class="owner-home-kicker">Signal · Owner overview</div>
+      <div class="owner-home-title">Κέντρο Ελέγχου</div>
+      <p class="owner-home-copy">Η ζωντανή εικόνα των σημάτων, των πρωταθλημάτων και των ενεργών επιλογών σε ένα σημείο.</p>
 
       <div id="homeNotificationNotice" class="home-notification-notice hidden">
         <div class="home-notification-icon">🔔</div>
         <div class="home-notification-copy">
           <b>Οι ειδοποιήσεις είναι απενεργοποιημένες</b>
-          <small>Ενεργοποίησέ τες για να ενημερώνεσαι όταν υπάρχει νέα επιλογή.</small>
+          <small>Ενεργοποίησέ τες για νέο ή αφαιρεμένο καμπανάκι.</small>
         </div>
         <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
       </div>
 
-      <div class="home-overview">
-        <button class="home-overview-card" data-go="choices">
-          <span class="home-overview-icon">◆</span>
-          <span class="home-overview-main"><b>Ενεργές επιλογές</b><small id="homeCount">Φόρτωση…</small></span>
-          <span class="home-overview-arrow">›</span>
-        </button>
+      <div class="owner-home-summary">
+        <div class="owner-home-stat"><b id="ownerHomeSelections">0</b><span>Ενεργές επιλογές</span></div>
+        <div class="owner-home-stat"><b id="ownerHomeLeagues">0</b><span>Πρωταθλήματα</span></div>
+        <div class="owner-home-stat"><b id="ownerHomeBells">0</b><span>Καμπανάκια</span></div>
+        <div class="owner-home-stat"><b>6</b><span>Κατηγορίες</span></div>
+      </div>
 
-        <button class="home-overview-card" data-go="history" data-history-mode="stats">
-          <span class="home-overview-icon">↺</span>
-          <span class="home-overview-main"><b>Στατιστικά</b><small>Σύνοψη ανά σύμβολο</small></span>
-          <span class="home-overview-arrow">›</span>
-        </button>
-
-        
-
-        <button class="home-overview-card" data-messages="1">
-          <span class="home-overview-icon">✦</span>
-          <span class="home-overview-main"><b>Μηνύματα</b><small id="homeMessageState">Ενημερώσεις από το DreamTeamTips</small></span>
-          <span class="home-overview-arrow">›</span>
-        </button>
+      <div class="owner-home-section">
+        <div class="owner-home-section-title">Ζωντανός έλεγχος</div>
+        <div class="owner-home-grid">
+          <button class="owner-home-card" data-go="choices">
+            <span class="owner-home-card-icon">◆</span>
+            <span class="owner-home-card-main"><b>Ενεργές επιλογές</b><small id="homeCount">Φόρτωση…</small></span>
+            <span class="owner-home-card-arrow">›</span>
+          </button>
+          <button class="owner-home-card" data-go="choices">
+            <span class="owner-home-card-icon">◫</span>
+            <span class="owner-home-card-main"><b>Πρωταθλήματα με alert</b><small id="ownerHomeLeagueText">Καμία ενεργή λίγκα</small></span>
+            <span class="owner-home-card-value" id="ownerHomeLeagueValue">0</span>
+          </button>
+          <button class="owner-home-card" data-go="choices">
+            <span class="owner-home-card-icon">🔔</span>
+            <span class="owner-home-card-main"><b>Καμπανάκια με alert</b><small id="ownerHomeBellText">Κανένα ενεργό καμπανάκι</small></span>
+            <span class="owner-home-card-value" id="ownerHomeBellValue">0</span>
+          </button>
+          <button class="owner-home-card" data-go="history" data-history-mode="stats">
+            <span class="owner-home-card-icon">↺</span>
+            <span class="owner-home-card-main"><b>Στατιστικά</b><small>Σύνοψη ανά σύμβολο</small></span>
+            <span class="owner-home-card-arrow">›</span>
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -1100,7 +1130,21 @@ function selectionMark(a){
   }
   return side==="H"?"1":side==="A"?"2":"—";
 }
+function updateOwnerHome(alerts){
+  const list=Array.isArray(alerts)?alerts:[];
+  const leagues=[...new Set(list.map(a=>String(a.league||"").trim()).filter(Boolean))];
+  const bells=list.filter(a=>String(a.internalAlert||a.alert||"").trim());
+  const byId=id=>document.getElementById(id);
+  if(byId("ownerHomeSelections")) byId("ownerHomeSelections").textContent=String(list.length);
+  if(byId("ownerHomeLeagues")) byId("ownerHomeLeagues").textContent=String(leagues.length);
+  if(byId("ownerHomeBells")) byId("ownerHomeBells").textContent=String(bells.length);
+  if(byId("ownerHomeLeagueValue")) byId("ownerHomeLeagueValue").textContent=String(leagues.length);
+  if(byId("ownerHomeBellValue")) byId("ownerHomeBellValue").textContent=String(bells.length);
+  if(byId("ownerHomeLeagueText")) byId("ownerHomeLeagueText").textContent=leagues.length?leagues.slice(0,3).join(" · ")+(leagues.length>3?" +"+(leagues.length-3):""):"Καμία ενεργή λίγκα";
+  if(byId("ownerHomeBellText")) byId("ownerHomeBellText").textContent=bells.length?(bells.length+" ενεργά σήματα αυτή τη στιγμή"):"Κανένα ενεργό καμπανάκι";
+}
 function renderAlerts(alerts,slips=[]){
+  updateOwnerHome(alerts);
   const list=(Array.isArray(alerts)?alerts:[]).filter(a=>!kickoffStarted(a));
   const combos=(Array.isArray(slips)?slips:[]).filter(x=>{
     const legs=Array.isArray(x&&x.legs)?x.legs:[];
