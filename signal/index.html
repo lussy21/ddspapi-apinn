@@ -10,17 +10,28 @@
 <style>
 :root{--bg:#070708;--card:#101013;--line:rgba(255,255,255,.08);--gold:#d9b157;--gold2:#f3d98d;--text:#f7f5ef;--muted:#98939c}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(800px 440px at 50% -120px,rgba(217,177,87,.13),transparent 60%),#070708;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-.wrap{width:min(100%,620px);margin:auto;padding:18px 14px 90px}.top{display:flex;align-items:center;gap:12px;margin:8px 0 18px}.logo{width:52px;height:52px;border-radius:15px}.brand{font:600 29px/1 Georgia,serif}.sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+.wrap{width:min(100%,620px);margin:auto;padding:20px 14px 90px}.brand{font:600 29px/1 Georgia,serif}.sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+.hero{overflow:hidden;border:1px solid rgba(217,177,87,.22);border-radius:28px;background:linear-gradient(160deg,#111114,#080809);box-shadow:0 24px 70px rgba(0,0,0,.42);margin:10px 0 22px}.hero-kicker{padding:28px 28px 8px;color:#b8b3bb;font-size:11px;letter-spacing:3px}.hero-title{padding:0 28px 28px;font:500 54px/1 Georgia,serif}.hero-actions{display:flex;gap:9px;padding:18px 22px;border-top:1px solid rgba(255,255,255,.07)}
+.signals-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 2px 10px}.signals-title{font-size:15px;font-weight:900;letter-spacing:1px;color:#f2d486}.signals-head .status{margin:0;text-align:right}
 .bar{display:flex;gap:8px;margin-bottom:14px}.btn{border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.08);color:#ffe8a2;border-radius:13px;padding:11px 13px;font-weight:800}.btn.secondary{border-color:var(--line);background:rgba(255,255,255,.035);color:#ddd}.grow{flex:1}.status{font-size:11px;color:var(--muted);margin:0 2px 12px}
-.card{background:linear-gradient(145deg,#111114,#0a0a0c);border:1px solid rgba(217,177,87,.17);border-radius:20px;padding:15px;margin:10px 0;box-shadow:0 18px 55px rgba(0,0,0,.25)}.match{font-size:17px;font-weight:900}.league{font-size:10px;color:#858089;margin-top:4px}.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.pick{padding:8px 11px;border-radius:999px;border:1px solid rgba(217,177,87,.28);background:rgba(217,177,87,.08);font-weight:900;color:#ffe39a;white-space:nowrap}.alert{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);font-size:12px;color:#ffcf8a;font-weight:900}.lines{display:grid;gap:6px;margin-top:9px;font-size:11px;color:#aaa5ad}.lines b{color:#eee8dc}.proposal{margin-top:11px;padding:11px;border-radius:14px;background:rgba(217,177,87,.06);border:1px solid rgba(217,177,87,.14);font-size:13px}.proposal b{color:#fff0bd}.empty{padding:32px 18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px}
+.card{background:radial-gradient(420px 220px at 92% 4%,rgba(217,177,87,.08),transparent 70%),linear-gradient(145deg,#111114,#09090b);border:1px solid rgba(217,177,87,.28);border-radius:24px;padding:18px;margin:12px 0;box-shadow:0 18px 55px rgba(0,0,0,.28)}.match{font-size:18px;line-height:1.16;font-weight:900}.league{font-size:11px;color:#817d85;margin-top:6px}.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.pick{min-width:50px;text-align:center;padding:10px 12px;border-radius:999px;border:1px solid rgba(217,177,87,.34);background:rgba(217,177,87,.08);font-weight:900;color:#ffe39a;white-space:nowrap}.alert{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;line-height:1.35;color:#ffcf8a;font-weight:900}.lines{display:grid;gap:7px;margin-top:10px;font-size:12px;color:#aaa5ad}.lines b{color:#eee8dc}.proposal{margin-top:14px;padding:13px 14px;border-radius:15px;background:rgba(217,177,87,.055);border:1px solid rgba(217,177,87,.18);font-size:13px}.proposal b{color:#fff0bd}.empty{padding:32px 18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:10;padding:16px;overflow:auto}.panel{width:min(100%,620px);margin:18px auto;background:#0d0d10;border:1px solid rgba(217,177,87,.22);border-radius:22px;padding:18px}.hidden{display:none!important}.input{width:100%;padding:13px 14px;border-radius:13px;border:1px solid var(--line);background:#08080a;color:#fff;margin:8px 0 10px}.section{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.section h3{font-size:12px;color:var(--gold2);text-transform:uppercase;letter-spacing:.9px;margin:0 0 10px}.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.045);font-size:12px}.toggle input{width:20px;height:20px;accent-color:var(--gold)}.small{font-size:10px;color:var(--muted);line-height:1.45}.login{margin-top:110px}.error{color:#ffb7bd;font-size:11px;margin-top:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><img class="logo" src="./icon.svg"><div><div class="brand">Signal</div><div class="sub">Private monitor</div></div></div>
-  <div class="bar"><button class="btn secondary grow" id="refresh">Ανανέωση</button><button class="btn" id="settingsBtn">Ρυθμίσεις</button></div>
-  <div class="status" id="status">Σύνδεση…</div>
+  <section class="hero">
+    <div class="hero-kicker">SIGNAL · OWNER ONLY</div>
+    <div class="hero-title">Signal</div>
+    <div class="hero-actions">
+      <button class="btn secondary grow" id="refresh">Ανανέωση</button>
+      <button class="btn" id="settingsBtn">Ρυθμίσεις</button>
+    </div>
+  </section>
+  <section class="signals-head">
+    <div class="signals-title">ΣΗΜΑΤΑ ΜΟΝΤΕΛΟΥ</div>
+    <div class="status" id="status">Σύνδεση…</div>
+  </section>
   <div id="cards"></div>
 </div>
 
@@ -71,7 +82,7 @@ function render(){
   const list=allSignals.filter(s=>enabled("alerts",s.internalAlert||"Άλλο")&&enabled("leagues",s.league||"Άλλο"));
   cards.innerHTML=list.length?list.map(s=>{
     const sc=scoreText(s), rating=s.rating?(" · "+esc(s.rating)):"";
-    const scoreLine=sc?'<div>Δύναμη σήματος: <b>'+esc(sc)+'</b></div>':"";
+    const scoreLine=sc?'<div>Score: <b>'+esc(sc)+'</b></div>':"";
     return '<div class="card"><div class="row"><div><div class="match">'+esc(s.home)+' – '+esc(s.away)+'</div><div class="league">'+esc(s.league||"")+'</div></div><div class="pick">'+esc(s.customerPick||"—")+'</div></div>'+
       '<div class="alert">'+esc(s.internalAlert||"—")+rating+'</div><div class="lines">'+scoreLine+
       '<div>Φαβορί: <b>'+esc(s.favoriteTeam||"—")+'</b></div><div>Πρωτάθλημα: <b>'+esc(rec(s.leagueRecord))+'</b></div><div>ALL STATS: <b>'+esc(rec(s.allStatsRecord))+'</b></div></div>'+
