@@ -193,6 +193,20 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 .signal-stats-filter-btn{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.018);color:#77727c;border-radius:12px;padding:10px 10px;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}.signal-stats-filter-btn .region-state{font-size:7px;letter-spacing:.7px;border-radius:999px;padding:5px 7px;border:1px solid rgba(255,255,255,.08);color:#77727c;white-space:nowrap}.signal-stats-filter-btn.active .region-state{border-color:rgba(217,177,87,.30);background:rgba(217,177,87,.10);color:#f3df9d}
 .signal-stats-filter-btn.active{border-color:rgba(217,177,87,.28);background:rgba(217,177,87,.075);color:#f3e2ae}
 .signal-stats-filter-note{margin-top:9px;color:#6f6a72;font-size:8px;line-height:1.4}
+</style><style id="signalAdminHomeStyle">
+.signal-admin-home{border:1px solid rgba(217,177,87,.25);border-radius:26px;overflow:hidden;background:linear-gradient(180deg,rgba(217,177,87,.025),rgba(255,255,255,.012));box-shadow:0 22px 60px rgba(0,0,0,.22)}
+.signal-admin-head{padding:28px 28px 24px;border-bottom:1px solid rgba(255,255,255,.07)}
+.signal-admin-sub{font-size:9px;letter-spacing:2.2px;font-weight:900;color:#aaa4ad}
+.signal-admin-title{margin-top:8px;font:500 33px/1 Georgia,serif;color:#f3eee5}
+.signal-admin-body{padding:20px}
+.signal-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.signal-admin-launch{width:100%;min-height:118px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 14px;border:1px solid rgba(217,177,87,.28);border-radius:18px;background:linear-gradient(145deg,rgba(217,177,87,.13),rgba(217,177,87,.045));color:#fff;text-align:left}
+.signal-admin-main{display:flex;align-items:center;gap:11px;min-width:0}.signal-admin-icon{font-size:24px}.signal-admin-label{font-size:14px;font-weight:900;color:#fff1c8;line-height:1.15}.signal-admin-desc{margin-top:4px;font-size:9px;color:#9f998f;line-height:1.25}
+.signal-admin-count{flex:0 0 auto;min-width:34px;text-align:center;padding:5px 8px;border-radius:999px;border:1px solid rgba(217,177,87,.2);background:rgba(217,177,87,.07);color:#ffe49d;font-size:9px;font-weight:900}
+.signal-admin-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0 0}.signal-admin-mini>div{padding:14px 6px;border:1px solid rgba(255,255,255,.07);border-radius:16px;background:rgba(255,255,255,.018);text-align:center}.signal-admin-mini b{display:block;font-size:26px;color:#f1ede7}.signal-admin-mini span{display:block;margin-top:6px;font-size:8px;letter-spacing:1px;color:#8d8891;font-weight:800}
+.signal-admin-section{margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07)}.signal-admin-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.signal-admin-section-head h3{margin:0;color:#efd38b;font-size:12px;letter-spacing:.9px}.signal-admin-section-head span{font-size:9px;color:#aaa4ad}
+.signal-admin-live{margin-top:10px;width:100%;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:space-between;text-align:left;color:#fff}.signal-admin-live b{display:block;font-size:12px}.signal-admin-live small{display:block;margin-top:4px;color:#8e8992;font-size:9px}.signal-admin-live>span{font-size:22px;color:#8f8a92}.signal-admin-foot{margin-top:8px;color:#7f7a82;font-size:9px}
+@media(max-width:390px){.signal-admin-head{padding:24px 22px 20px}.signal-admin-body{padding:16px}.signal-admin-launch{min-height:108px;padding:13px 11px}.signal-admin-label{font-size:13px}.signal-admin-icon{font-size:21px}}
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
@@ -230,51 +244,57 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 
 <section id="alertsView" class="hidden">
   <section id="homePanel" class="member-panel">
-    <div class="card owner-home">
-      <div class="owner-home-kicker">Signal · Owner overview</div>
-      <div class="owner-home-title">Κέντρο Ελέγχου</div>
-      <p class="owner-home-copy">Η ζωντανή εικόνα των σημάτων, των πρωταθλημάτων και των ενεργών επιλογών σε ένα σημείο.</p>
+    <div class="signal-admin-home">
+      <div class="signal-admin-head">
+        <div class="signal-admin-sub">SIGNAL · OWNER ONLY</div>
+        <div class="signal-admin-title">Signal Panel</div>
+      </div>
 
-      <div id="homeNotificationNotice" class="home-notification-notice hidden">
-        <div class="home-notification-icon">🔔</div>
-        <div class="home-notification-copy">
-          <b>Οι ειδοποιήσεις είναι απενεργοποιημένες</b>
-          <small>Ενεργοποίησέ τες για νέο ή αφαιρεμένο καμπανάκι.</small>
+      <div class="signal-admin-body">
+        <div id="homeNotificationNotice" class="home-notification-notice hidden">
+          <div class="home-notification-icon">🔔</div>
+          <div class="home-notification-copy">
+            <b>Οι ειδοποιήσεις είναι απενεργοποιημένες</b>
+            <small>Ενεργοποίησέ τες για νέο ή αφαιρεμένο καμπανάκι.</small>
+          </div>
+          <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
         </div>
-        <button id="homeNotificationAction" class="home-notification-action" type="button">Ενεργοποίηση</button>
-      </div>
 
-      <div class="owner-home-livebar">
-        <span><b id="ownerHomeSelections">0</b> επιλογές</span>
-        <i></i>
-        <span><b id="ownerHomeLeagues">0</b> πρωταθλήματα</span>
-        <i></i>
-        <span><b id="ownerHomeBells">0</b> καμπανάκια</span>
-      </div>
+        <div class="signal-admin-grid">
+          <button class="signal-admin-launch" data-go="choices">
+            <div class="signal-admin-main"><span class="signal-admin-icon">◆</span><div><div class="signal-admin-label">Επιλογές</div><div class="signal-admin-desc">Ενεργά σήματα</div></div></div>
+            <span class="signal-admin-count" id="ownerHomeSelections">0</span>
+          </button>
 
-      <div class="owner-home-section">
-        <div class="owner-home-section-title">Ζωντανός έλεγχος</div>
-        <div class="owner-home-grid">
-          <button class="owner-home-card" data-go="choices">
-            <span class="owner-home-card-icon">◆</span>
-            <span class="owner-home-card-main"><b>Ενεργές επιλογές</b><small id="homeCount">Φόρτωση…</small></span>
-            <span class="owner-home-card-arrow">›</span>
+          <button class="signal-admin-launch" data-go="choices">
+            <div class="signal-admin-main"><span class="signal-admin-icon">🔔</span><div><div class="signal-admin-label">Καμπανάκια</div><div class="signal-admin-desc">Alerts αυτή τη στιγμή</div></div></div>
+            <span class="signal-admin-count" id="ownerHomeBellValue">0</span>
           </button>
-          <button class="owner-home-card" data-go="choices">
-            <span class="owner-home-card-icon">◫</span>
-            <span class="owner-home-card-main"><b>Πρωταθλήματα με alert</b><small id="ownerHomeLeagueText">Καμία ενεργή λίγκα</small></span>
-            <span class="owner-home-card-value" id="ownerHomeLeagueValue">0</span>
+
+          <button class="signal-admin-launch" data-go="choices">
+            <div class="signal-admin-main"><span class="signal-admin-icon">🏆</span><div><div class="signal-admin-label">Πρωταθλήματα</div><div class="signal-admin-desc">Με ενεργό alert</div></div></div>
+            <span class="signal-admin-count" id="ownerHomeLeagueValue">0</span>
           </button>
-          <button class="owner-home-card" data-go="choices">
-            <span class="owner-home-card-icon">🔔</span>
-            <span class="owner-home-card-main"><b>Καμπανάκια με alert</b><small id="ownerHomeBellText">Κανένα ενεργό καμπανάκι</small></span>
-            <span class="owner-home-card-value" id="ownerHomeBellValue">0</span>
+
+          <button class="signal-admin-launch" data-go="history" data-history-mode="stats">
+            <div class="signal-admin-main"><span class="signal-admin-icon">↺</span><div><div class="signal-admin-label">Στατιστικά</div><div class="signal-admin-desc">Ανά σύμβολο</div></div></div>
+            <span class="signal-admin-count">6</span>
           </button>
-          <button class="owner-home-card" data-go="history" data-history-mode="stats">
-            <span class="owner-home-card-icon">↺</span>
-            <span class="owner-home-card-main"><b>Στατιστικά</b><small>Σύνοψη ανά σύμβολο</small></span>
-            <span class="owner-home-card-arrow">›</span>
+        </div>
+
+        <div class="signal-admin-mini">
+          <div><b id="ownerHomeSelectionsMini">0</b><span>ΕΝΕΡΓΑ</span></div>
+          <div><b id="ownerHomeLeagues">0</b><span>ΛΙΓΚΕΣ</span></div>
+          <div><b id="ownerHomeBells">0</b><span>ALERTS</span></div>
+        </div>
+
+        <div class="signal-admin-section">
+          <div class="signal-admin-section-head"><h3>ΖΩΝΤΑΝΑ ΣΗΜΑΤΑ</h3><span id="homeCount">Φόρτωση…</span></div>
+          <button class="signal-admin-live" data-go="choices">
+            <div><b>Άνοιγμα ενεργών επιλογών</b><small id="ownerHomeLeagueText">Καμία ενεργή λίγκα</small></div>
+            <span>›</span>
           </button>
+          <div class="signal-admin-foot" id="ownerHomeBellText">Κανένα ενεργό καμπανάκι</div>
         </div>
       </div>
     </div>
@@ -408,7 +428,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
   <nav class="bottom-nav" aria-label="Κύρια πλοήγηση">
     <button class="nav-btn" data-screen="home"><span class="nav-icon">⌂</span>Αρχική</button>
     <button class="nav-btn active" data-screen="choices"><span class="nav-icon">◆</span>Επιλογές</button>
-    <button class="nav-btn" data-screen="history"><span class="nav-icon">↺</span>Ιστορικό</button>
+    <button class="nav-btn" data-screen="history"><span class="nav-icon">↺</span>Στατιστικά</button>
     <button class="nav-btn" data-screen="model"><span class="nav-icon">▤</span>Συμβολισμοί</button>
     <button class="nav-btn" data-screen="profile"><span class="nav-icon">○</span>Προφίλ</button>
   </nav>
