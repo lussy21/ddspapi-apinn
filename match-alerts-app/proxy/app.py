@@ -623,6 +623,22 @@ def internal_alerts_push():
     ), 200
 
 
+@app.route("/download/DreamTeamTips.apk", methods=["GET"])
+def download_dreamteamtips_apk():
+    apk_url = "https://github.com/lussy21/ddspapi-apinn/releases/download/app-v1/DreamTeamTips.apk"
+    try:
+        upstream = requests.get(apk_url, timeout=(5, 30), allow_redirects=True)
+        upstream.raise_for_status()
+    except requests.RequestException:
+        return ("Download temporarily unavailable", 502)
+    response = make_response(upstream.content)
+    response.headers["Content-Type"] = "application/vnd.android.package-archive"
+    response.headers["Content-Disposition"] = 'attachment; filename="DreamTeamTips.apk"'
+    response.headers["Content-Length"] = str(len(upstream.content))
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @app.route("/api", methods=["POST", "OPTIONS"])
 def api():
     if request.method == "OPTIONS":
