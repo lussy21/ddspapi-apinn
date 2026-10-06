@@ -224,17 +224,18 @@ def push_to_all_active_users(admin_code, title, body, tag):
 
 
 def push_owner_new_alerts(alerts):
-    """Send model-open notifications only to the owner/admin push targets."""
-    new_alerts = [
+    """Send owner push when a model bell opens or disappears."""
+    owner_alerts = [
         item for item in (alerts or [])
-        if isinstance(item, dict) and str(item.get("event") or "").strip() == "ΑΝΟΙΞΕ"
+        if isinstance(item, dict)
+        and str(item.get("event") or "").strip() in {"ΑΝΟΙΞΕ", "ΕΦΥΓΕ"}
     ]
-    if not new_alerts:
+    if not owner_alerts:
         return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": 0}
 
     vapid_private_key = get_vapid_private_key()
     if not vapid_private_key:
-        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "PUSH_NOT_CONFIGURED"}
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(owner_alerts), "error": "PUSH_NOT_CONFIGURED"}
 
     try:
         target_data = upstream_post_direct(
@@ -242,9 +243,9 @@ def push_owner_new_alerts(alerts):
             timeout=(4, 15),
         )
     except requests.RequestException:
-        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "BACKEND_UNREACHABLE"}
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(owner_alerts), "error": "BACKEND_UNREACHABLE"}
     except RuntimeError:
-        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(new_alerts), "error": "BACKEND_BAD_RESPONSE"}
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0, "alerts": len(owner_alerts), "error": "BACKEND_BAD_RESPONSE"}
 
     if not target_data.get("ok"):
         return {
@@ -252,7 +253,7 @@ def push_owner_new_alerts(alerts):
             "failed": 0,
             "removed": 0,
             "total": 0,
-            "alerts": len(new_alerts),
+            "alerts": len(owner_alerts),
             "error": str(target_data.get("error") or "OWNER_PUSH_TARGETS_FAILED"),
         }
 
@@ -262,11 +263,11 @@ def push_owner_new_alerts(alerts):
         if str(value or "").strip()
     }
     if disabled_leagues:
-        new_alerts = [
-            item for item in new_alerts
+        owner_alerts = [
+            item for item in owner_alerts
             if str(item.get("league") or "").strip() not in disabled_leagues
         ]
-    if not new_alerts:
+    if not owner_alerts:
         return {
             "sent": 0,
             "failed": 0,
@@ -282,21 +283,26 @@ def push_owner_new_alerts(alerts):
     removed = 0
     failure_codes = {}
 
-    for item in new_alerts:
+    for item in owner_alerts:
+        event = str(item.get("event") or "").strip()
         match_name = str(item.get("match") or "").strip().replace(" - ", " – ")
         alert_name = str(item.get("alert") or "").strip()
-        body = match_name or "Νέο alert DreamTeamTips"
+        body = match_name or ("Alert άνοιξε" if event == "ΑΝΟΙΞΕ" else "Alert έφυγε")
         if alert_name:
             body += " · " + alert_name
-        target_url = (
-            APP_ORIGIN
-            + "/admin/?daily=1&match="
-            + requests.utils.quote(str(item.get("match") or "").strip())
-        )
-        tag = "dreamteamtips-owner-new-" + str(item.get("key") or "alert")
+
+        if event == "ΑΝΟΙΞΕ":
+            title = "🔔 Νέο καμπανάκι"
+            tag_prefix = "dreamteamtips-owner-new-"
+        else:
+            title = "🔕 Έφυγε καμπανάκι"
+            tag_prefix = "dreamteamtips-owner-removed-"
+
+        target_url = SIGNAL_ORIGIN + "/"
+        tag = tag_prefix + str(item.get("key") or "alert")
         message = json.dumps(
             {
-                "title": "🔔 Νέο καμπανάκι",
+                "title": title,
                 "body": body[:220],
                 "url": target_url,
                 "tag": tag,
@@ -349,10 +355,9 @@ def push_owner_new_alerts(alerts):
         "failed": failed,
         "removed": removed,
         "total": int(target_data.get("count") or 0),
-        "alerts": len(new_alerts),
+        "alerts": len(owner_alerts),
         "failureCodes": failure_codes,
     }
-
 
 
 def microsoft_sender_configured():
