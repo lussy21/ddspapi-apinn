@@ -56,12 +56,12 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 </style></head>
 <body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal Clone</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <div class="wrap"><section class="panel">
-<div class="head"><div class="sub">DreamTeamTips · Owner only</div><div class="title">Admin Panel</div></div>
+<div class="head"><div class="sub">Private · Read only</div><div class="title">Signal Clone</div></div>
 <div class="body">
 <div id="lock">
-<div class="note">Βάλε τον προσωπικό admin κωδικό σου.</div>
+<div class="note">Βάλε μία φορά τον admin κωδικό για να διαβάζει τα εσωτερικά δεδομένα.</div>
 <input class="input" id="adminCode" type="password" placeholder="Admin code" autocomplete="off">
-<div class="actions"><button class="btn" id="unlock">Άνοιγμα Admin</button></div>
+<div class="actions"><button class="btn" id="unlock">Άνοιγμα Signal Clone</button></div>
 <div class="msg" id="lockMsg"></div>
 </div>
 <div id="dash" class="hidden">
@@ -79,22 +79,13 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   <div class="push-hint" id="ownerPushStatus">Μόνο εσύ θα λαμβάνεις ειδοποίηση όταν ανοίγει νέο καμπανάκι. Οι πελάτες δεν ειδοποιούνται πριν το Publish.</div>
 </div>
 <div class="section hidden" id="signalsSection"><div class="signals-head"><h3>Σήματα μοντέλου</h3><span class="signals-count" id="signalsCount">0 ενεργά</span></div><div id="signals"><div class="note">Φόρτωση σημάτων…</div></div></div>
-<div class="section"><h3>Όριο εγγραφών</h3><input class="number" id="maxInput" type="number" min="0" step="1" value="2"><div class="actions"><button class="btn" id="saveMax">Αποθήκευση ορίου</button><button class="btn secondary" id="refresh">Ανανέωση</button></div></div>
+<div class="section hidden"><h3>Όριο εγγραφών</h3></div>
 <div class="section hidden" id="subscriptionBulk">
   <h3>Μαζική παράταση συνδρομών</h3>
   <div class="bulk-line"><input class="number" id="bulkDays" type="number" min="1" max="3650" step="1" value="2"><button class="btn" id="addDaysAll">Προσθήκη ημερών σε όλους</button></div>
   <div class="push-hint">Για περίπτωση διακοπής ή προβλήματος. Προσθέτει τις ημέρες πάνω στην υπάρχουσα λήξη όλων των ενεργών συνδρομών.</div>
 </div>
-<div class="section">
-  <h3>Μήνυμα προς όλους</h3>
-  <input class="input" id="pushTitle" maxlength="80" placeholder="Τίτλος, π.χ. Νέα επιλογή διαθέσιμη">
-  <textarea class="push-textarea" id="pushBody" maxlength="220" placeholder="Το μήνυμα που θα δουν στην εφαρμογή και στο κινητό"></textarea>
-  <div class="actions"><button class="btn" id="sendPush">Αποστολή σε όλους</button></div>
-  <div class="push-hint">Το μήνυμα αποθηκεύεται σε όλους μέσα στην εφαρμογή. Push λαμβάνουν όσοι έχουν ενεργοποιήσει ειδοποιήσεις.</div>
-</div>
-<div class="section"><h3>Μηνύματα υποστήριξης <span class="support-count" id="supportNew">0</span></h3><div id="supportInbox"><div class="note">Δεν υπάρχουν μηνύματα υποστήριξης.</div></div></div>
-<div class="msg" id="msg"></div>
-</div>
+<div class="section hidden"><div class="msg" id="msg"></div></div>
 <div id="usersAdminView" class="hidden"><div class="admin-view-head"><button class="admin-view-back" id="usersBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Χρήστες</div><div class="admin-view-sub">Admin · μέλη & συνδρομές</div></div></div><div class="section" style="margin-top:0;padding-top:0;border-top:0"><div class="signals-head"><h3>👥 Εγγεγραμμένοι χρήστες</h3><span class="signals-count" id="usersViewCount">0 μέλη</span></div><div id="users"><div class="note">Φόρτωση χρηστών…</div></div></div></div>
 <div id="dailyAdminView" class="hidden">
   <div class="admin-view-head"><button class="admin-view-back" id="dailyBack" type="button" aria-label="Πίσω">‹</button><div><div class="admin-view-title">Επιλογές της ημέρας</div><div class="admin-view-sub">Admin · προς δημοσίευση</div></div></div>
@@ -237,22 +228,20 @@ async function apiPost(params){
 async function loadAdmin(){
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
-  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
-  internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive); alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
-  memberHistoryLive=settings.memberHistory===true;
-  publicationControlsLive=settings.publicationControls===true;
-  slipBuilderLive=settings.slipBuilder===true;
-  slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
-  leagueControlsLive=settings.leagueControls===true;
-  leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
-  if(!settings.autoPushConfigured){
-    apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
-  }
 
-  const jobs=[];
+  internalSignalsLive=settings.internalSignals===true;
+  signalsSection.classList.toggle("hidden",!internalSignalsLive);
+  dailySelectionsSection.classList.toggle("hidden",true);
+  dailySelectionsLaunch.classList.add("hidden");
+  alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
+  leagueManagerLaunch.classList.add("hidden");
+  usersLaunch.classList.add("hidden");
+
+  // Signal Clone is read-only and intentionally avoids the heavy
+  // users/support/subscription/write calls on startup.
   if(internalSignalsLive){
-    jobs.push(loadSignalsFresh().catch(()=>{}));
-    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
+    await loadSignalsFresh().catch(()=>{});
+    apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
       if(!r.ok)return;
       adminLevelCatalog={};
       (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
@@ -261,38 +250,9 @@ async function loadAdmin(){
       });
       renderAlertManager();
       renderSignals(adminSignalsCache);
-    }).catch(()=>{}));
+    }).catch(()=>{});
   }
-  if(leagueControlsLive){
-    jobs.push(loadLeagueSettings().catch(()=>{}));
-  }
-  if(slipBuilderLive){
-    jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
-      if(r.ok) renderAdminSlips(r.slips||[]);
-    }).catch(()=>{}));
-  }
-
-  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret}).then(list=>{
-    if(list.ok) renderUsers(list.users||[]);
-    else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }).catch(()=>{
-    users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }));
-
-  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret}).then(support=>{
-    if(support.ok){
-      supportNew.textContent=String(support.newCount||0);
-      renderSupport(support.messages||[]);
-    }else{
-      supportNew.textContent="0";
-      supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
-    }
-  }).catch(()=>{
-    supportNew.textContent="0";
-    supportInbox.innerHTML='<div class="note">Η υποστήριξη δεν είναι διαθέσιμη προσωρινά.</div>';
-  }));
-
-  await Promise.all(jobs);
+  return settings;
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
