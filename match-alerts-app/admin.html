@@ -225,48 +225,52 @@ async function apiPost(params){
     clearTimeout(timer);
   }
 }
-let adminDetailsRun=0;
+async function loadAdmin(){
+  const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
+  if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
+  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
+  internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive); alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
+  memberHistoryLive=settings.memberHistory===true;
+  publicationControlsLive=settings.publicationControls===true;
+  slipBuilderLive=settings.slipBuilder===true;
+  slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
+  leagueControlsLive=settings.leagueControls===true;
+  leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
+  if(!settings.autoPushConfigured){
+    apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
+  }
 
-async function loadAdminDetails(runId){
+  const jobs=[];
   if(internalSignalsLive){
-    try{
-      await loadSignalsFresh();
-    }catch(_){}
-    if(runId!==adminDetailsRun) return;
-
-    try{
-      const r=await apiPost({action:"adminAlertLevels",adminCode:adminSecret});
-      if(runId!==adminDetailsRun) return;
-      if(r.ok){
-        adminLevelCatalog={};
-        (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
-          const key=alertBaseKey(x.alert);
-          if(key)adminLevelCatalog[key]=x;
-        });
-        renderAlertManager();
-        renderSignals(adminSignalsCache);
-      }
-    }catch(_){}
+    jobs.push(loadSignalsFresh().catch(()=>{}));
+    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
+      if(!r.ok)return;
+      adminLevelCatalog={};
+      (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
+        const key=alertBaseKey(x.alert);
+        if(key)adminLevelCatalog[key]=x;
+      });
+      renderAlertManager();
+      renderSignals(adminSignalsCache);
+    }).catch(()=>{}));
   }
-
   if(leagueControlsLive){
-    try{await loadLeagueSettings();}catch(_){}
-    if(runId!==adminDetailsRun) return;
+    jobs.push(loadLeagueSettings().catch(()=>{}));
+  }
+  if(slipBuilderLive){
+    jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
+      if(r.ok) renderAdminSlips(r.slips||[]);
+    }).catch(()=>{}));
   }
 
-  try{
-    const list=await apiPost({action:"adminUsers",adminCode:adminSecret});
-    if(runId!==adminDetailsRun) return;
+  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret}).then(list=>{
     if(list.ok) renderUsers(list.users||[]);
     else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }catch(_){
-    if(runId!==adminDetailsRun) return;
+  }).catch(()=>{
     users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
-  }
+  }));
 
-  try{
-    const support=await apiPost({action:"adminSupport",adminCode:adminSecret});
-    if(runId!==adminDetailsRun) return;
+  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret}).then(support=>{
     if(support.ok){
       supportNew.textContent=String(support.newCount||0);
       renderSupport(support.messages||[]);
@@ -274,50 +278,12 @@ async function loadAdminDetails(runId){
       supportNew.textContent="0";
       supportInbox.innerHTML='<div class="note">Η υποστήριξη θα εμφανιστεί μόλις ενημερωθεί το backend.</div>';
     }
-  }catch(_){
-    if(runId!==adminDetailsRun) return;
+  }).catch(()=>{
     supportNew.textContent="0";
     supportInbox.innerHTML='<div class="note">Η υποστήριξη δεν είναι διαθέσιμη προσωρινά.</div>';
-  }
+  }));
 
-  if(slipBuilderLive){
-    try{
-      const r=await apiPost({action:"adminSlips",adminCode:adminSecret});
-      if(runId!==adminDetailsRun) return;
-      if(r.ok) renderAdminSlips(r.slips||[]);
-    }catch(_){}
-  }
-}
-
-async function loadAdmin(){
-  const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
-  if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
-
-  used.textContent=settings.usedUsers;
-  max.textContent=settings.maxUsers;
-  free.textContent=settings.freeSlots;
-  maxInput.value=settings.maxUsers;
-  adminFreeSlots=Number(settings.freeSlots||0);
-  subscriptionFeatureLive=settings.subscriptionDays===true;
-  subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
-  internalSignalsLive=settings.internalSignals===true;
-  signalsSection.classList.toggle("hidden",!internalSignalsLive);
-  dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive);
-  dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive);
-  alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
-  memberHistoryLive=settings.memberHistory===true;
-  publicationControlsLive=settings.publicationControls===true;
-  slipBuilderLive=settings.slipBuilder===true;
-  slipBuilderSection.classList.toggle("hidden",!slipBuilderLive);
-  leagueControlsLive=settings.leagueControls===true;
-  leagueManagerLaunch.classList.toggle("hidden",!leagueControlsLive);
-
-  if(!settings.autoPushConfigured){
-    apiPost({action:"adminAutomationSetup",adminCode:adminSecret}).catch(()=>{});
-  }
-
-  const runId=++adminDetailsRun;
-  setTimeout(()=>loadAdminDetails(runId),0);
+  await Promise.all(jobs);
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function safe(v){return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
