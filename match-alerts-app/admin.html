@@ -216,7 +216,7 @@ warmBackend();
 async function apiPost(params){
   if(!API_URL) throw new Error("BACKEND_NOT_CONNECTED");
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),65000);
+  const timer=setTimeout(()=>controller.abort(),20000);
   try{
     const body=new URLSearchParams();
     Object.entries(params).forEach(([k,v])=>body.append(k,String(v??"")));
@@ -241,7 +241,7 @@ async function loadAdmin(){
   // Everything else is fetched only when its view is opened.
   const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
-  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
+  used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; if(typeof maxInput!=="undefined"&&maxInput) maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
   internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive); alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
   memberHistoryLive=settings.memberHistory===true;
   publicationControlsLive=false;
@@ -935,7 +935,7 @@ unlock.onclick=async()=>{
     unlock.textContent="Άνοιγμα Admin";
   }
 };
-sendPush.onclick=async()=>{
+if(typeof sendPush!=="undefined"&&sendPush) sendPush.onclick=async()=>{
   const title=pushTitle.value.trim(), body=pushBody.value.trim();
   if(!title||!body){msg.textContent="Γράψε τίτλο και μήνυμα ειδοποίησης.";return;}
   sendPush.disabled=true;
@@ -960,7 +960,7 @@ sendPush.onclick=async()=>{
   }
 };
 refresh.onclick=()=>loadAdmin().catch(e=>msg.textContent="Σφάλμα: "+e.message);
-addDaysAll.onclick=async()=>{
+if(typeof addDaysAll!=="undefined"&&addDaysAll) addDaysAll.onclick=async()=>{
   const days=parseInt(bulkDays.value||"0",10);
   if(!Number.isInteger(days)||days<1||days>3650){msg.textContent="Βάλε έγκυρο αριθμό ημερών.";return;}
   if(!confirm("Να προστεθούν "+days+" μέρες σε όλες τις ενεργές συνδρομές;")) return;
@@ -976,8 +976,34 @@ addDaysAll.onclick=async()=>{
     addDaysAll.disabled=false;
   }
 };
-saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
-if(adminSecret){adminCode.value=adminSecret;setTimeout(()=>unlock.click(),0);}
+if(typeof saveMax!=="undefined"&&saveMax) saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
+if(adminSecret){
+  adminCode.value=adminSecret;
+  lock.classList.add("hidden");
+  dash.classList.remove("hidden");
+  msg.textContent="Ενημέρωση…";
+  setTimeout(async()=>{
+    try{
+      await warmBackend();
+      await loadAdmin();
+      msg.textContent="";
+      refreshOwnerPushState().catch(()=>{});
+      if(new URLSearchParams(location.search).get("daily")==="1") showDailyAdmin();
+    }catch(e){
+      if(e.message==="ADMIN_UNAUTHORIZED"){
+        localStorage.removeItem(ADMIN_STORAGE_KEY);
+        adminSecret="";
+        dash.classList.add("hidden");
+        lock.classList.remove("hidden");
+        adminCode.value="";
+        lockMsg.textContent="Λάθος admin code.";
+      }else{
+        msg.textContent="Το Admin άνοιξε. Η ενημέρωση δεδομένων καθυστερεί — θα ξαναδοκιμάσει αυτόματα.";
+        setTimeout(()=>loadAdmin().then(()=>{msg.textContent="";}).catch(()=>{}),4000);
+      }
+    }
+  },0);
+}
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
