@@ -142,8 +142,16 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
 @media(max-width:470px){.model-flow,.model-budget{grid-template-columns:1fr}}
 
 </style>
-</head>
-<body>
+<style id="signalPrivateGateStyle">
+#signalPrivateGate{position:fixed;inset:0;z-index:2147483647;background:#070708;display:flex;align-items:center;justify-content:center;padding:22px;font-family:Arial,sans-serif}
+#signalPrivateGateBox{width:min(92vw,390px);border:1px solid rgba(217,177,87,.28);border-radius:24px;padding:26px 22px;background:#0d0d0f;box-shadow:0 24px 70px rgba(0,0,0,.5)}
+#signalPrivateGateBox h2{margin:0 0 8px;color:#f6f1e8;font-size:28px}
+#signalPrivateGateBox p{margin:0 0 18px;color:#9f9aa3;font-size:13px;line-height:1.5}
+#signalPrivateCode{width:100%;box-sizing:border-box;border:1px solid rgba(217,177,87,.25);background:#08080a;color:#fff;border-radius:14px;padding:14px;font-size:20px;letter-spacing:5px;text-align:center;outline:none}
+#signalPrivateEnter{width:100%;margin-top:12px;border:1px solid rgba(217,177,87,.35);background:rgba(217,177,87,.14);color:#f6d98c;border-radius:14px;padding:13px;font-weight:800}
+#signalPrivateMsg{min-height:18px;margin-top:10px;color:#ff9b9b;font-size:12px;text-align:center}
+</style></head>
+<body><div id="signalPrivateGate"><div id="signalPrivateGateBox"><h2>Signal</h2><p>Βάλε τον προσωπικό κωδικό πρόσβασης.</p><input id="signalPrivateCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"><button id="signalPrivateEnter" type="button">Είσοδος</button><div id="signalPrivateMsg"></div></div></div>
 <main class="app">
 
 
@@ -1430,4 +1438,38 @@ if("serviceWorker" in navigator){
   });
 }
 </script>
-</body></html>
+<script id="signalPrivateGateScript">
+(()=>{
+ const GATE_URL="https://signal-gateway.onrender.com";
+ const KEY="signal_private_access_v1";
+ const gate=document.getElementById("signalPrivateGate");
+ const code=document.getElementById("signalPrivateCode");
+ const btn=document.getElementById("signalPrivateEnter");
+ const msg=document.getElementById("signalPrivateMsg");
+ const open=()=>{gate.style.display="none";};
+ async function check(){
+   const token=localStorage.getItem(KEY)||"";
+   if(!token) return;
+   try{
+     const r=await fetch(GATE_URL+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
+     if(r.ok){open();return;}
+   }catch(_){}
+   localStorage.removeItem(KEY);
+ }
+ async function login(){
+   const v=(code.value||"").trim();
+   if(!v){msg.textContent="Βάλε τον κωδικό.";return;}
+   btn.disabled=true; msg.textContent="";
+   try{
+     const r=await fetch(GATE_URL+"/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:v})});
+     const j=await r.json();
+     if(r.ok&&j.ok&&j.token){localStorage.setItem(KEY,j.token);open();return;}
+     msg.textContent="Λάθος κωδικός.";
+   }catch(_){msg.textContent="Δεν υπάρχει σύνδεση αυτή τη στιγμή.";}
+   finally{btn.disabled=false;}
+ }
+ btn.addEventListener("click",login);
+ code.addEventListener("keydown",e=>{if(e.key==="Enter") login();});
+ check();
+})();
+</script></body></html>
