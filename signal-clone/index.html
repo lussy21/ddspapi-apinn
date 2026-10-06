@@ -131,7 +131,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   </div>
 </div>
 <script>
-const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
+const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://signal-private-backend.onrender.com/api");
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const OWNER_PUSH_ENABLED_KEY="dtt_owner_push_enabled_v1";
@@ -198,7 +198,7 @@ async function loadLeagueSettings(){
 }
 function warmBackend(){
   if(backendWarmPromise) return backendWarmPromise;
-  const health=(location.hostname==="match-alerts-api-private.onrender.com"?"/health":"https://match-alerts-api-private.onrender.com/health");
+  const health=(location.hostname==="match-alerts-api-private.onrender.com"?"/health":"https://signal-private-backend.onrender.com/health");
   backendWarmPromise=fetch(health,{cache:"no-store"}).catch(()=>null);
   return backendWarmPromise;
 }
