@@ -70,6 +70,75 @@ def owner_push_subscribe():
         return jsonify(ok=False, error="BACKEND_BAD_RESPONSE"), 502
     return jsonify(data), 200
 
+def _check_owner_token(token):
+    try:
+        check = requests.post(
+            SIGNAL_GATEWAY_URL.rstrip("/") + "/check",
+            json={"token": token}, timeout=(4, 10)
+        )
+        return check.status_code == 200 and bool(check.json().get("ok"))
+    except Exception:
+        return False
+
+@app.post("/owner-dashboard")
+def owner_dashboard():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    if not token or not _check_owner_token(token):
+        return jsonify(ok=False, error="ACCESS_DENIED"), 403
+    try:
+        leagues_r = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action":"adminLeagueSettings","adminCode":SIGNAL_ADMIN_CODE},
+            timeout=(4,35), allow_redirects=True
+        ).json()
+        levels_r = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action":"adminAlertLevels","adminCode":SIGNAL_ADMIN_CODE},
+            timeout=(4,35), allow_redirects=True
+        ).json()
+    except requests.RequestException:
+        return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
+    except Exception:
+        return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
+    return jsonify(
+        ok=True,
+        leagues=(leagues_r.get("leagues") if isinstance(leagues_r,dict) and leagues_r.get("ok") else []),
+        leagueSummary={
+            "total": int(leagues_r.get("total") or 0) if isinstance(leagues_r,dict) else 0,
+            "enabled": int(leagues_r.get("enabledCount") or 0) if isinstance(leagues_r,dict) else 0,
+            "disabled": int(leagues_r.get("disabledCount") or 0) if isinstance(leagues_r,dict) else 0,
+        },
+        levels=(levels_r.get("levels") if isinstance(levels_r,dict) and levels_r.get("ok") else [])
+    ),200
+
+@app.post("/owner-league-toggle")
+def owner_league_toggle():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    league = str(payload.get("league") or "").strip()
+    enabled = bool(payload.get("enabled"))
+    if not token or not _check_owner_token(token):
+        return jsonify(ok=False,error="ACCESS_DENIED"),403
+    if not league:
+        return jsonify(ok=False,error="BAD_LEAGUE"),400
+    try:
+        data = requests.post(
+            APPS_SCRIPT_URL,
+            data={
+                "action":"adminSetLeagueEnabled",
+                "adminCode":SIGNAL_ADMIN_CODE,
+                "league":league,
+                "enabled":"true" if enabled else "false"
+            },
+            timeout=(4,35), allow_redirects=True
+        ).json()
+    except requests.RequestException:
+        return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
+    except Exception:
+        return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
+    return jsonify(data),200
+
 @app.post("/owner-feed")
 def owner_feed():
     origin = request.headers.get("Origin", "")
