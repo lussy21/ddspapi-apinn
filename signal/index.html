@@ -300,7 +300,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
             <button class="signal-stats-filter-btn" data-stats-region="NATIONAL">Εθνικές</button>
             <button class="signal-stats-filter-btn" data-stats-region="AMERICA">Αμερική</button>
           </div>
-          <div class="signal-stats-filter-note">Τα ματς εμφανίζονται πάντα κανονικά. Εδώ επιλέγεις μόνο αν θα μετράνε στα 0/0.</div>
+          <div class="signal-stats-filter-note">Τα αποτελέσματα καταγράφονται πάντα. Εδώ επιλέγεις μόνο αν θα εμφανίζονται στο συνολικό 0/0.</div>
         </div>
         <div class="symbol-stats-grid">
           <div class="symbol-stat-card"><span>🔷</span><b id="signalStat0">0/0</b></div>
@@ -1424,15 +1424,9 @@ function setSignalRegionEnabled(region,on){
   prefs[region]=!!on;
   saveSignalStatsPrefs(prefs);
 
-  if(lastRegionalSymbolStats){
-    const baseline=readSignalRegionBaseline();
-    baseline[region]=baseline[region]||{};
-    SIGNAL_STATS_SYMBOLS.forEach(sym=>{
-      const cur=(lastRegionalSymbolStats[region]&&lastRegionalSymbolStats[region][sym])||{};
-      baseline[region][sym]={wins:Number(cur.wins||0),total:Number(cur.total||0)};
-    });
-    saveSignalRegionBaseline(baseline);
-  }
+  // Turning a region off only hides it from the combined counters.
+  // Its results keep accumulating in the source data. When turned back on,
+  // all results since the Signal baseline are included automatically.
   renderSignalStatsFilter();
   updateSignalStats(lastRegionalSymbolStats||{});
 }
