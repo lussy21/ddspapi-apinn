@@ -1408,12 +1408,14 @@ function openRememberedMemberSession(){
   applySubscription("");showScreen("choices");loadAlerts();loadOfficialHistory({background:true});loadMyHistory({background:true});loadMemberMessages({background:true});
 }
 async function bootstrapMemberSession(){
-  if(!sessionToken && localStorage.getItem(REMEMBER_LOGIN_KEY)==="1"){
+  if(!sessionToken){
     const saved=await readRememberedSession();
     if(saved&&saved.token){
       sessionToken=String(saved.token);
+      localStorage.setItem(REMEMBER_LOGIN_KEY,"1");
       localStorage.setItem("ma_token",sessionToken);
       if(saved.user)localStorage.setItem("ma_user",String(saved.user));
+      if(rememberLogin)rememberLogin.checked=true;
     }
   }
   if(sessionToken)openRememberedMemberSession();
