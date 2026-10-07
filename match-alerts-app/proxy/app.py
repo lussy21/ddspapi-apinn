@@ -38,10 +38,11 @@ MS_GRAPH_SEND_URL = "https://graph.microsoft.com/v1.0/me/sendMail"
 # Apps Script executions without changing any stored data or alert logic.
 READ_CACHE = {}
 READ_CACHE_TTLS = {
-    "adminSettings": 10,
-    "adminUsers": 10,
-    "adminSignals": 3,
-    "adminAlertLevels": 30,
+    "adminSettings": 600,
+    "adminUsers": 600,
+    "adminSignals": 600,
+    "adminAlertLevels": 600,
+    "adminLeagueSettings": 600,
 }
 
 def _admin_cache_key(payload):
