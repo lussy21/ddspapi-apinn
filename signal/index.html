@@ -594,6 +594,7 @@ const deviceId=getDeviceId();
 const rememberLogin=document.getElementById("rememberLogin");
 const rememberRow=document.getElementById("rememberRow");
 let mode="login", pendingUsername="", sessionToken=localStorage.getItem("ma_token")||sessionStorage.getItem("ma_token")||"";
+let signalOwnerRawAlerts=[];
 let currentAlerts=[], currentSlips=[];
 let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
@@ -1207,7 +1208,6 @@ function updateOwnerHome(alerts){
   if(byId("ownerHomeLeagueText")) byId("ownerHomeLeagueText").textContent=leagues.length?leagues.slice(0,3).join(" · ")+(leagues.length>3?" +"+(leagues.length-3):""):"Καμία ενεργή λίγκα";
   if(byId("ownerHomeBellText")) byId("ownerHomeBellText").textContent=bells.length?(bells.length+" ενεργά σήματα αυτή τη στιγμή"):"Κανένα ενεργό καμπανάκι";
 }
-let signalOwnerRawAlerts=[];
 function renderAlerts(alerts,slips=[]){
   const source=(Array.isArray(alerts)?alerts:[]);
   const filtered=(PRIVATE_OWNER_MODE&&typeof signalBellOn==="function")?source.filter(a=>signalBellOn(a.internalAlert||a.alert||"")):source;
