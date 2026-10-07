@@ -156,6 +156,74 @@ def owner_league_toggle():
     _dashboard_cache["data"] = None
     return jsonify(data),200
 
+@app.post("/owner-lite-feed")
+def owner_lite_feed():
+    origin = request.headers.get("Origin", "")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return jsonify(ok=False, error="ORIGIN_DENIED"), 403
+
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    if not token:
+        return jsonify(ok=False, error="LOGIN_REQUIRED"), 401
+    if not _check_owner_token(token):
+        return jsonify(ok=False, error="ACCESS_DENIED"), 403
+    if not APPS_SCRIPT_URL or not SIGNAL_ADMIN_CODE:
+        return jsonify(ok=False, error="OWNER_FEED_NOT_CONFIGURED"), 503
+
+    try:
+        upstream = requests.post(
+            APPS_SCRIPT_URL,
+            data={"action":"adminSignals","adminCode":SIGNAL_ADMIN_CODE},
+            timeout=(3,18),
+            allow_redirects=True
+        )
+        data = upstream.json()
+    except requests.RequestException:
+        return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
+    except Exception:
+        return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
+
+    if not isinstance(data,dict) or not data.get("ok"):
+        return jsonify(data if isinstance(data,dict) else {"ok":False,"error":"BACKEND_BAD_RESPONSE"}),200
+
+    alerts=[]
+    for s in data.get("signals") or []:
+        if str(s.get("publicationStatus") or "") == "withdrawn":
+            continue
+        alerts.append({
+            "league": s.get("league") or "",
+            "home": s.get("home") or "",
+            "away": s.get("away") or "",
+            "favoriteSide": s.get("favoriteSide") or "",
+            "favoriteTeam": s.get("favoriteTeam") or "",
+            "alert": s.get("publicAlert") or s.get("internalAlert") or "",
+            "internalAlert": s.get("internalAlert") or "",
+            "publicAlert": s.get("publicAlert") or "",
+            "publicSymbol": s.get("publicSymbol") or "",
+            "leagueRecord": s.get("leagueRecord") or "",
+            "allStatsRecord": s.get("allStatsRecord") or "",
+            "kickoff": s.get("kickoff") or "",
+            "selectionId": s.get("selectionId") or "",
+            "controlId": s.get("controlId") or "",
+            "customerPick": s.get("customerPick") or "",
+            "customerTeam": s.get("customerTeam") or "",
+            "customerOdds": s.get("customerOdds") or 0,
+            "publicationStatus": s.get("publicationStatus") or "waiting",
+            "published": bool(s.get("published")),
+            "canEdit": bool(s.get("canEdit")),
+            "played": False,
+        })
+
+    return jsonify(
+        ok=True,
+        username="Admin Lite",
+        alerts=alerts,
+        slips=[],
+        count=len(alerts),
+        updatedAt=data.get("updatedAt"),
+    ),200
+
 @app.post("/owner-feed")
 def owner_feed():
     origin = request.headers.get("Origin", "")
