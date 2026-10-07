@@ -1773,11 +1773,16 @@ function bootPrivateOwner(){
  async function check(){
    const token=localStorage.getItem(KEY)||"";
    if(!token) return;
+   // Open instantly from the stored device session. Validate silently afterwards.
+   open();
    try{
-     const r=await fetch(GATE_URL+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
-     if(r.ok){open();return;}
-   }catch(_){}
-   localStorage.removeItem(KEY);
+     const r=await fetch(GATE_URL+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token}),cache:"no-store"});
+     if(r.ok) return;
+     localStorage.removeItem(KEY);
+     gate.style.display="flex";
+   }catch(_){
+     // Keep the app usable from its cached snapshot while temporarily offline.
+   }
  }
  async function login(){
    const v=(code.value||"").trim();
