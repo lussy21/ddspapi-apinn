@@ -159,7 +159,7 @@ function setSignalsLoading(){
   if(typeof dailySelectionsCount!=="undefined") dailySelectionsCount.textContent="φόρτωση…";
   if(typeof dailySelectionsLaunchCount!=="undefined") dailySelectionsLaunchCount.textContent="…";
 }
-async function loadSignalsFresh(){
+async function loadSignalsFresh(fresh=false){
   if(!internalSignalsLive) return null;
   if(signalsLoadPromise) return signalsLoadPromise;
   setSignalsLoading();
@@ -167,7 +167,7 @@ async function loadSignalsFresh(){
     let lastErr=null;
     for(let attempt=0;attempt<2;attempt++){
       try{
-        const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
+        const sig=await apiPost({action:"adminSignals",adminCode:adminSecret},{fresh});
         if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
         renderSignals(sig.signals||[]);
         return sig;
@@ -183,9 +183,9 @@ async function loadSignalsFresh(){
   })().finally(()=>{signalsLoadPromise=null;});
   return signalsLoadPromise;
 }
-async function loadLeagueSettings(){
+async function loadLeagueSettings(fresh=false){
   if(!leagueControlsLive) return null;
-  const r=await apiPost({action:"adminLeagueSettings",adminCode:adminSecret});
+  const r=await apiPost({action:"adminLeagueSettings",adminCode:adminSecret},{fresh});
   if(!r.ok) throw new Error(r.error||"ADMIN_ERROR");
   leagueSettings=Array.isArray(r.leagues)?r.leagues:[];
   renderLeagueManager();
@@ -198,7 +198,22 @@ function warmBackend(){
   return backendWarmPromise;
 }
 warmBackend();
-async function apiPost(params){
+const FAST_ADMIN_CACHE_TTL=10*60*1000;
+const FAST_ADMIN_CACHE_ACTIONS=new Set(["adminSettings","adminSignals","adminAlertLevels","adminLeagueSettings","adminUsers","adminSupport","adminSlips"]);
+function fastAdminCacheKey(action){return "fast_admin_cache_v1::"+String(action||"");}
+function readFastAdminCache(action){
+  try{
+    const x=JSON.parse(localStorage.getItem(fastAdminCacheKey(action))||"null");
+    if(!x||!x.data||Date.now()-Number(x.at||0)>FAST_ADMIN_CACHE_TTL)return null;
+    return x.data;
+  }catch(_){return null;}
+}
+function writeFastAdminCache(action,data){
+  if(!FAST_ADMIN_CACHE_ACTIONS.has(action)||!data||data.ok!==true)return;
+  try{localStorage.setItem(fastAdminCacheKey(action),JSON.stringify({at:Date.now(),data}));}catch(_){}
+}
+async function apiPost(params,opts={}){
+
   if(!API_URL) throw new Error("BACKEND_NOT_CONNECTED");
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),65000);
@@ -213,6 +228,7 @@ async function apiPost(params){
     });
     const data=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
     if(!res.ok && !data.error) data.error="BACKEND_UNREACHABLE";
+    writeFastAdminCache(action,data);
     return data;
   }catch(err){
     if(err.name==="AbortError") throw new Error("TIMEOUT");
@@ -221,8 +237,8 @@ async function apiPost(params){
     clearTimeout(timer);
   }
 }
-async function loadAdmin(){
-  const settings=await apiPost({action:"adminSettings",adminCode:adminSecret});
+async function loadAdmin(fresh=false){
+  const settings=await apiPost({action:"adminSettings",adminCode:adminSecret},{fresh});
   if(!settings.ok) throw new Error(settings.error||"ADMIN_ERROR");
   used.textContent=settings.usedUsers; max.textContent=settings.maxUsers; free.textContent=settings.freeSlots; maxInput.value=settings.maxUsers; adminFreeSlots=Number(settings.freeSlots||0); subscriptionFeatureLive=settings.subscriptionDays===true; subscriptionBulk.classList.toggle("hidden",!subscriptionFeatureLive);
   internalSignalsLive=settings.internalSignals===true; signalsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsSection.classList.toggle("hidden",!internalSignalsLive); dailySelectionsLaunch.classList.toggle("hidden",!internalSignalsLive); alertManagerLaunch.classList.toggle("hidden",!internalSignalsLive);
@@ -238,8 +254,8 @@ async function loadAdmin(){
 
   const jobs=[];
   if(internalSignalsLive){
-    jobs.push(loadSignalsFresh().catch(()=>{}));
-    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
+    jobs.push(loadSignalsFresh(fresh).catch(()=>{}));
+    jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret},{fresh}).then(r=>{
       if(!r.ok)return;
       adminLevelCatalog={};
       (Array.isArray(r.levels)?r.levels:[]).forEach(x=>{
@@ -251,22 +267,22 @@ async function loadAdmin(){
     }).catch(()=>{}));
   }
   if(leagueControlsLive){
-    jobs.push(loadLeagueSettings().catch(()=>{}));
+    jobs.push(loadLeagueSettings(fresh).catch(()=>{}));
   }
   if(slipBuilderLive){
-    jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret}).then(r=>{
+    jobs.push(apiPost({action:"adminSlips",adminCode:adminSecret},{fresh}).then(r=>{
       if(r.ok) renderAdminSlips(r.slips||[]);
     }).catch(()=>{}));
   }
 
-  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret}).then(list=>{
+  jobs.push(apiPost({action:"adminUsers",adminCode:adminSecret},{fresh}).then(list=>{
     if(list.ok) renderUsers(list.users||[]);
     else users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
   }).catch(()=>{
     users.innerHTML='<div class="note">Οι χρήστες δεν είναι διαθέσιμοι προσωρινά.</div>';
   }));
 
-  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret}).then(support=>{
+  jobs.push(apiPost({action:"adminSupport",adminCode:adminSecret},{fresh}).then(support=>{
     if(support.ok){
       supportNew.textContent=String(support.newCount||0);
       renderSupport(support.messages||[]);
@@ -929,6 +945,7 @@ unlock.onclick=async()=>{
       }else throw e;
     }
     localStorage.setItem(ADMIN_STORAGE_KEY,adminSecret);
+    setTimeout(()=>loadAdmin(true).catch(()=>{}),250);
     lock.classList.add("hidden");
     dash.classList.remove("hidden");
     lockMsg.textContent="";
@@ -970,7 +987,7 @@ sendPush.onclick=async()=>{
     sendPush.textContent="Αποστολή σε όλους";
   }
 };
-refresh.onclick=()=>loadAdmin().catch(e=>msg.textContent="Σφάλμα: "+e.message);
+refresh.onclick=()=>loadAdmin(true).catch(e=>msg.textContent="Σφάλμα: "+e.message);
 addDaysAll.onclick=async()=>{
   const days=parseInt(bulkDays.value||"0",10);
   if(!Number.isInteger(days)||days<1||days>3650){msg.textContent="Βάλε έγκυρο αριθμό ημερών.";return;}
@@ -988,7 +1005,15 @@ addDaysAll.onclick=async()=>{
   }
 };
 saveMax.onclick=async()=>{const n=Math.max(0,parseInt(maxInput.value||"0",10));try{const r=await apiPost({action:"adminSetMaxUsers",adminCode:adminSecret,maxUsers:n});if(!r.ok)throw new Error(r.error||"ADMIN_ERROR");await loadAdmin();msg.textContent="Το όριο άλλαξε σε "+n+".";}catch(e){msg.textContent="Σφάλμα: "+e.message;}};
-if(adminSecret){adminCode.value=adminSecret;setTimeout(()=>unlock.click(),0);}
+if(adminSecret){
+  adminCode.value=adminSecret;
+  lock.classList.add("hidden");
+  dash.classList.remove("hidden");
+  // Instant cached paint, then silent fresh sync.
+  loadAdmin(false).catch(()=>{});
+  setTimeout(()=>loadAdmin(true).catch(()=>{}),300);
+  refreshOwnerPushState().catch(()=>{});
+}
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
