@@ -4,17 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070708">
-<script>
-if(location.hostname!=="match-alerts-api-private.onrender.com"){
-  location.replace("https://match-alerts-api-private.onrender.com/admin/");
-}
-</script>
-<link rel="icon" href="./dreamteamtips-icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.json">
-<meta name="application-name" content="DreamTeamTips Admin">
+<meta name="application-name" content="DreamTeamTips Fast Admin">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="DTT Admin">
-<title>DreamTeamTips Admin</title>
+<meta name="apple-mobile-web-app-title" content="Fast Admin">
+<title>DreamTeamTips Fast Admin</title>
 <style>
 :root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075)}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
@@ -131,7 +126,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
   </div>
 </div>
 <script>
-const API_URL=(location.hostname==="match-alerts-api-private.onrender.com"?"/api":"https://match-alerts-api-private.onrender.com/api");
+const API_URL="/api";
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const OWNER_PUSH_ENABLED_KEY="dtt_owner_push_enabled_v1";
