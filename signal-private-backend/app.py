@@ -9,6 +9,7 @@ app = Flask(__name__)
 APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
 SIGNAL_ADMIN_CODE = os.environ.get("SIGNAL_ADMIN_CODE", "").strip()
 SIGNAL_GATEWAY_URL = os.environ.get("SIGNAL_GATEWAY_URL", "https://signal-gateway.onrender.com").strip()
+PROD_ADMIN_API_URL = os.environ.get("PROD_ADMIN_API_URL", "https://match-alerts-api-private.onrender.com/api").strip()
 DASHBOARD_CACHE_TTL = 45
 FEED_META_CACHE_TTL = 45
 _dashboard_cache = {"at": 0, "data": None}
@@ -37,6 +38,18 @@ def health():
     return jsonify(ok=True, service="signal-private-backend")
 
 
+
+def _admin_source_action(action):
+    payload={"action":action,"adminCode":SIGNAL_ADMIN_CODE}
+    try:
+        r=requests.post(PROD_ADMIN_API_URL,data=payload,timeout=(3,20),allow_redirects=True)
+        data=r.json()
+        if isinstance(data,dict) and data.get("ok"):
+            return data
+    except Exception:
+        pass
+    r=requests.post(APPS_SCRIPT_URL,data=payload,timeout=(3,20),allow_redirects=True)
+    return r.json()
 
 @app.post("/owner-push-subscribe")
 def owner_push_subscribe():
@@ -98,11 +111,7 @@ def owner_dashboard():
     if cached and now - float(_dashboard_cache.get("at") or 0) < DASHBOARD_CACHE_TTL:
         return jsonify(cached), 200
     def _post_action(action):
-        return requests.post(
-            APPS_SCRIPT_URL,
-            data={"action":action,"adminCode":SIGNAL_ADMIN_CODE},
-            timeout=(4,35), allow_redirects=True
-        ).json()
+        return _admin_source_action(action)
     try:
         with ThreadPoolExecutor(max_workers=2) as pool:
             f_leagues = pool.submit(_post_action, "adminLeagueSettings")
@@ -172,13 +181,7 @@ def owner_lite_feed():
         return jsonify(ok=False, error="OWNER_FEED_NOT_CONFIGURED"), 503
 
     try:
-        upstream = requests.post(
-            APPS_SCRIPT_URL,
-            data={"action":"adminSignals","adminCode":SIGNAL_ADMIN_CODE},
-            timeout=(3,18),
-            allow_redirects=True
-        )
-        data = upstream.json()
+        data = _admin_source_action("adminSignals")
     except requests.RequestException:
         return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
     except Exception:
