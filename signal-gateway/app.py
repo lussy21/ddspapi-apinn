@@ -23,8 +23,8 @@ def headers(resp): return cors(resp)
 @app.route("/",methods=["OPTIONS"])
 def options(path=""): return ("",204)
 
-def make_token(code):
-    exp=int(time.time())+30*24*60*60
+def make_token(code, ttl_days=30):
+    exp=int(time.time())+int(ttl_days)*24*60*60
     body=f"{code}:{exp}"
     sig=hmac.new(AUTH_SECRET.encode(),body.encode(),hashlib.sha256).hexdigest()
     return base64.urlsafe_b64encode(f"{body}:{sig}".encode()).decode().rstrip("=")
@@ -51,6 +51,16 @@ def login():
     if code not in ACCESS_CODES:
         return jsonify(ok=False,error="INVALID_CODE"),401
     return jsonify(ok=True,token=make_token(code))
+
+@app.post("/login-lite")
+def login_lite():
+    data=request.get_json(silent=True) or {}
+    code=str(data.get("code") or "").strip()
+    if not AUTH_SECRET:
+        return jsonify(ok=False,error="NOT_CONFIGURED"),500
+    if code not in ACCESS_CODES:
+        return jsonify(ok=False,error="INVALID_CODE"),401
+    return jsonify(ok=True,token=make_token(code, 1825))
 
 @app.post("/check")
 def check():
