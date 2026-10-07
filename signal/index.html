@@ -599,10 +599,10 @@ let historyCache=[], historyLoadedAt=0, historyRequest=null;
 let officialHistoryCache=[], officialHistorySummaryCache={}, officialHistoryLoadedAt=0, officialHistoryRequest=null, historyMode="team";
 const UI_CACHE_MS=30000;
 const ALERTS_CACHE_PREFIX="dtt_public_alerts_v3::";
-const ALERTS_CACHE_MAX_MS=30*60*1000;
+const ALERTS_CACHE_MAX_MS=7*24*60*60*1000;
 const PUSH_PUBLIC_KEY="BETnFhNkj0jI-jEswqwRkk1cKEUq2MLB0ookGBvhWZ9c3YRbXlVyPImfxW5gapS4NvyrRbbxTc-Ea7YP1_6Gy-k";
 const PRIVATE_OWNER_MODE=true;
-const OWNER_FEED_URL="https://signal-private-backend.onrender.com/owner-feed";
+const OWNER_FEED_URL="https://signal-private-backend.onrender.com/owner-lite-feed";
 const OWNER_PUSH_URL="https://signal-private-backend.onrender.com/owner-push-subscribe";
 
 async function apiPost(params){
@@ -1755,7 +1755,8 @@ function bootPrivateOwner(){
       location.reload();
     };
     if(typeof showScreen==="function") showScreen("home");
-    if(typeof loadAlerts==="function") loadAlerts();
+    if(typeof showCachedAlerts==="function") showCachedAlerts();
+    if(typeof loadAlerts==="function") loadAlerts({background:true});
     setTimeout(()=>{if(typeof loadSignalOwnerDashboard==="function")loadSignalOwnerDashboard();},120);
   }catch(_){}
 }
