@@ -1,7 +1,7 @@
 {
-  "name": "Signal",
-  "short_name": "Signal",
-  "id": "./signal-owner-v1",
+  "name": "Admin Lite",
+  "short_name": "Admin Lite",
+  "id": "./admin-lite-v1",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#070708",
