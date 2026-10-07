@@ -10,8 +10,10 @@ APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
 SIGNAL_ADMIN_CODE = os.environ.get("SIGNAL_ADMIN_CODE", "").strip()
 SIGNAL_GATEWAY_URL = os.environ.get("SIGNAL_GATEWAY_URL", "https://signal-gateway.onrender.com").strip()
 PROD_ADMIN_API_URL = os.environ.get("PROD_ADMIN_API_URL", "https://match-alerts-api-private.onrender.com/api").strip()
-DASHBOARD_CACHE_TTL = 45
-FEED_META_CACHE_TTL = 45
+DASHBOARD_CACHE_TTL = 600
+FEED_META_CACHE_TTL = 600
+LITE_FEED_TTL = 600
+_lite_feed_cache = {"at": 0, "data": None}
 _dashboard_cache = {"at": 0, "data": None}
 _feed_meta_cache = {"at": 0, "levels": None, "regional": None}
 
@@ -42,7 +44,7 @@ def health():
 def _admin_source_action(action):
     payload={"action":action,"adminCode":SIGNAL_ADMIN_CODE}
     try:
-        r=requests.post(PROD_ADMIN_API_URL,data=payload,timeout=(3,20),allow_redirects=True)
+        r=requests.post(PROD_ADMIN_API_URL,data=payload,timeout=(3,12),allow_redirects=True)
         data=r.json()
         if isinstance(data,dict) and data.get("ok"):
             return data
@@ -119,8 +121,12 @@ def owner_dashboard():
             leagues_r = f_leagues.result()
             levels_r = f_levels.result()
     except requests.RequestException:
+        if cached:
+            return jsonify(cached),200
         return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
     except Exception:
+        if cached:
+            return jsonify(cached),200
         return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
     payload_out = dict(
         ok=True,
@@ -180,11 +186,20 @@ def owner_lite_feed():
     if not APPS_SCRIPT_URL or not SIGNAL_ADMIN_CODE:
         return jsonify(ok=False, error="OWNER_FEED_NOT_CONFIGURED"), 503
 
+    now = time.time()
+    cached_lite = _lite_feed_cache.get("data")
+    if cached_lite and now - float(_lite_feed_cache.get("at") or 0) < LITE_FEED_TTL:
+        return jsonify(cached_lite),200
+
     try:
         data = _admin_source_action("adminSignals")
     except requests.RequestException:
+        if cached_lite:
+            return jsonify(cached_lite),200
         return jsonify(ok=False,error="BACKEND_UNREACHABLE"),502
     except Exception:
+        if cached_lite:
+            return jsonify(cached_lite),200
         return jsonify(ok=False,error="BACKEND_BAD_RESPONSE"),502
 
     if not isinstance(data,dict) or not data.get("ok"):
@@ -218,14 +233,17 @@ def owner_lite_feed():
             "played": False,
         })
 
-    return jsonify(
+    payload_out = dict(
         ok=True,
         username="Admin Lite",
         alerts=alerts,
         slips=[],
         count=len(alerts),
         updatedAt=data.get("updatedAt"),
-    ),200
+    )
+    _lite_feed_cache["at"] = time.time()
+    _lite_feed_cache["data"] = payload_out
+    return jsonify(payload_out),200
 
 @app.post("/owner-feed")
 def owner_feed():
