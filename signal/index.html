@@ -7,7 +7,7 @@
 <meta name="description" content="DreamTeamTips — Football Data & Smart Alerts">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="dreamteamtips-icon.svg" type="image/svg+xml">
-<title>Signal</title>
+<title>Admin Lite</title>
 <style>
 :root{--bg:#070708;--text:#f7f6f1;--muted:#9c99a1;--gold:#d9b157;--gold2:#f1d78e;--line:rgba(255,255,255,.075);--danger:#ff8d98}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
@@ -251,8 +251,8 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
   <section id="homePanel" class="member-panel">
     <div class="signal-admin-home">
       <div class="signal-admin-head">
-        <div class="signal-admin-sub">SIGNAL · OWNER ONLY</div>
-        <div class="signal-admin-title">Signal Panel</div>
+        <div class="signal-admin-sub">DREAMTEAMTIPS · OWNER VIEW</div>
+        <div class="signal-admin-title">Admin Lite</div>
       </div>
 
       <div class="signal-admin-body">
@@ -453,8 +453,8 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <button class="nav-btn" data-screen="home"><span class="nav-icon">⌂</span>Αρχική</button>
     <button class="nav-btn active" data-screen="choices"><span class="nav-icon">◆</span>Επιλογές</button>
     <button class="nav-btn" data-screen="history"><span class="nav-icon">↺</span>Στατιστικά</button>
-    <button class="nav-btn" data-screen="model"><span class="nav-icon">▤</span>Συμβολισμοί</button>
-    <button class="nav-btn" data-screen="profile"><span class="nav-icon">○</span>Προφίλ</button>
+    
+    
   </nav>
 </section>
 
@@ -502,7 +502,7 @@ linear-gradient(145deg,rgba(217,177,87,.065),rgba(255,255,255,.012));border-bott
     <div id="installStatus" class="install-status"></div>
   </div>
 </div>
-<footer>SIGNAL · PRIVATE</footer>
+<footer>ADMIN LITE · PRIVATE</footer>
 </main>
 <script>
 const API_URL="https://signal-private-backend.onrender.com/api";
@@ -1641,7 +1641,7 @@ async function loadOwnerAlerts({background=false}={}){
     const r=await res.json().catch(()=>({ok:false,error:"BACKEND_BAD_RESPONSE"}));
     if(r&&r.regionalSymbolStats&&Object.keys(r.regionalSymbolStats).length) updateSignalStats(r.regionalSymbolStats);
     if(!r.ok) throw new Error(r.error||"ERROR");
-    currentUser.textContent="Signal";
+    currentUser.textContent="Admin Lite";
     signalOwnerRawAlerts=Array.isArray(r.alerts)?r.alerts:[];
     renderAlerts(signalOwnerRawAlerts,r.slips||[]);
     const singleCount=currentAlerts.length;
@@ -1739,7 +1739,7 @@ function bootPrivateOwner(){
     if(typeof alertsView!=="undefined") alertsView.classList.remove("hidden");
     if(typeof bellBtn!=="undefined") bellBtn.classList.add("hidden");
     if(typeof currentUser!=="undefined") currentUser.textContent="Signal";
-    if(typeof profileInitial!=="undefined") profileInitial.textContent="SG";
+    if(typeof profileInitial!=="undefined") profileInitial.textContent="AL";
     const legacyMsg=document.getElementById("profileMessagesBtn")?.closest(".profile-section");
     const legacySupport=document.getElementById("profileSupportBtn")?.closest(".profile-section");
     const legacyVip=document.querySelector("#profilePanel .vip-access");
@@ -1748,10 +1748,10 @@ function bootPrivateOwner(){
     if(legacyVip) legacyVip.classList.add("hidden");
     const role=document.querySelector("#profilePanel .profile-role");
     const strip=document.querySelector("#profilePanel .vip-strip");
-    if(role) role.textContent="Signal Owner";
+    if(role) role.textContent="Admin Lite";
     if(strip) strip.textContent="PRIVATE";
     if(typeof logoutBtn!=="undefined") logoutBtn.onclick=()=>{
-      localStorage.removeItem("signal_private_access_v1");
+      localStorage.removeItem("admin_lite_access_v1");
       location.reload();
     };
     if(typeof showScreen==="function") showScreen("home");
@@ -1763,7 +1763,7 @@ function bootPrivateOwner(){
 <script id="signalPrivateGateScript">
 (()=>{
  const GATE_URL="https://signal-gateway.onrender.com";
- const KEY="signal_private_access_v1";
+ const KEY="admin_lite_access_v1";
  const gate=document.getElementById("signalPrivateGate");
  const code=document.getElementById("signalPrivateCode");
  const btn=document.getElementById("signalPrivateEnter");
@@ -1783,7 +1783,7 @@ function bootPrivateOwner(){
    if(!v){msg.textContent="Βάλε τον κωδικό.";return;}
    btn.disabled=true; msg.textContent="";
    try{
-     const r=await fetch(GATE_URL+"/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:v})});
+     const r=await fetch(GATE_URL+"/login-lite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:v})});
      const j=await r.json();
      if(r.ok&&j.ok&&j.token){localStorage.setItem(KEY,j.token);open();return;}
      msg.textContent="Λάθος κωδικός.";
