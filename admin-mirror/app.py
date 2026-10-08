@@ -40,9 +40,19 @@ def signals():
         if data is not None and now-cache["at"]<TTL: return jsonify(ok=True,signals=data["signals"],updatedAt=data.get("updatedAt"),cachedAt=data["cachedAt"],fromCache=True)
         try:
             result=requests.post(SOURCE,data={"action":"adminSignals","adminCode":SOURCE_CODE},timeout=(4,28),allow_redirects=True)
-            result.raise_for_status()
-            raw=result.json()
-            if not isinstance(raw,dict) or not raw.get("ok") or not isinstance(raw.get("signals"),list): raise ValueError("BAD_SOURCE_RESPONSE")
+            if result.status_code >= 400:
+                return jsonify(ok=False,error="SOURCE_HTTP_ERROR",upstreamStatus=result.status_code),502
+            try:
+                raw=result.json()
+            except ValueError:
+                return jsonify(ok=False,error="SOURCE_NON_JSON"),502
+            if not isinstance(raw,dict):
+                return jsonify(ok=False,error="SOURCE_BAD_FORMAT"),502
+            if not raw.get("ok"):
+                # Avoid relaying arbitrary backend strings, secrets, or private data.
+                return jsonify(ok=False,error="SOURCE_REJECTED"),502
+            if not isinstance(raw.get("signals"),list):
+                return jsonify(ok=False,error="SOURCE_MISSING_SIGNALS"),502
             # Read-only projection, retains computed scores and source attributes without recalculation.
             projected=[dict(s) for s in raw["signals"] if isinstance(s,dict)]
             data={"signals":projected,"updatedAt":raw.get("updatedAt"),"cachedAt":datetime.now(timezone.utc).isoformat()}
