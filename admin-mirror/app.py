@@ -7,9 +7,51 @@ ACCESS=os.getenv("MIRROR_ACCESS_CODE","")
 SECRET=os.getenv("MIRROR_SESSION_SECRET","")
 SOURCE=os.getenv("MIRROR_SOURCE_URL","")
 SOURCE_CODE=os.getenv("MIRROR_SOURCE_ADMIN_CODE","")
+# Only this independent service polls the original read-only Admin endpoint.
+# Clients read a precomputed snapshot; they never trigger upstream work.
 TTL=600
-cache={"at":0,"data":None,"last_error":None}
+cache={"at":0,"data":None,"last_error":"WAITING_FOR_FIRST_SYNC","last_attempt":None}
 lock=threading.Lock()
+def refresh_snapshot():
+    with lock:
+        cache["last_attempt"]=datetime.now(timezone.utc).isoformat()
+    if not SOURCE or not SOURCE_CODE:
+        with lock: cache["last_error"]="SOURCE_NOT_CONFIGURED"
+        return
+    try:
+        response=requests.post(SOURCE,data={"action":"adminSignals","adminCode":SOURCE_CODE},timeout=(4,80),allow_redirects=True)
+        if response.status_code>=400: raise ValueError("SOURCE_HTTP_ERROR")
+        try: raw=response.json()
+        except ValueError: raise ValueError("SOURCE_NON_JSON")
+        if not isinstance(raw,dict): raise ValueError("SOURCE_BAD_FORMAT")
+        if not raw.get("ok"):
+            # Only expose safe backend error categories; never any credentials or payload.
+            allowed={"INVALID_ADMIN_CODE","ADMIN_DENIED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE"}
+            reason=str(raw.get("error") or "")
+            raise ValueError(reason if reason in allowed else "SOURCE_REJECTED")
+        if not isinstance(raw.get("signals"),list): raise ValueError("SOURCE_MISSING_SIGNALS")
+        projected=[dict(item) for item in raw["signals"] if isinstance(item,dict)]
+        snapshot={"signals":projected,"updatedAt":raw.get("updatedAt"),"cachedAt":datetime.now(timezone.utc).isoformat()}
+        with lock: cache.update(data=snapshot,at=time.monotonic(),last_error=None)
+    except (requests.RequestException,ValueError) as exc:
+        with lock: cache["last_error"]=str(exc) if isinstance(exc,ValueError) else "SOURCE_UNAVAILABLE"
+
+def poll_loop():
+    # A single gunicorn worker is configured for this small free service.
+    while True:
+        refresh_snapshot()
+        time.sleep(TTL)
+
+@app.before_request
+def initialize_poller():
+    global poller_started
+    if not poller_started:
+        with poller_start_lock:
+            if not poller_started:
+                threading.Thread(target=poll_loop,daemon=True,name="mirror-snapshot-poller").start()
+                poller_started=True
+poller_started=False
+poller_start_lock=threading.Lock()
 @app.get("/")
 def index(): return send_from_directory("web","index.html")
 @app.get("/<path:name>")
@@ -17,7 +59,9 @@ def asset(name):
     if name not in ("style.css","app.js"): return ("Not Found",404)
     return send_from_directory("web",name)
 @app.get("/health")
-def health(): return jsonify(ok=True,service="admin-mirror",configured=bool(ACCESS and SECRET and SOURCE and SOURCE_CODE))
+def health():
+    with lock: ready=cache["data"] is not None
+    return jsonify(ok=True,service="admin-mirror",configured=bool(ACCESS and SECRET and SOURCE and SOURCE_CODE),snapshotReady=ready)
 def authorized():
     if not ACCESS or not SECRET: return False
     token=request.headers.get("Authorization","").removeprefix("Bearer ").strip()
@@ -33,34 +77,14 @@ def login():
 @app.post("/api/signals")
 def signals():
     if not authorized(): return jsonify(ok=False,error="ACCESS_DENIED"),401
-    if not SOURCE or not SOURCE_CODE: return jsonify(ok=False,error="SOURCE_NOT_CONFIGURED"),503
-    now=time.monotonic()
     with lock:
         data=cache["data"]
-        if data is not None and now-cache["at"]<TTL: return jsonify(ok=True,signals=data["signals"],updatedAt=data.get("updatedAt"),cachedAt=data["cachedAt"],fromCache=True)
-        try:
-            result=requests.post(SOURCE,data={"action":"adminSignals","adminCode":SOURCE_CODE},timeout=(4,28),allow_redirects=True)
-            if result.status_code >= 400:
-                return jsonify(ok=False,error="SOURCE_HTTP_ERROR",upstreamStatus=result.status_code),502
-            try:
-                raw=result.json()
-            except ValueError:
-                return jsonify(ok=False,error="SOURCE_NON_JSON"),502
-            if not isinstance(raw,dict):
-                return jsonify(ok=False,error="SOURCE_BAD_FORMAT"),502
-            if not raw.get("ok"):
-                # Avoid relaying arbitrary backend strings, secrets, or private data.
-                return jsonify(ok=False,error="SOURCE_REJECTED"),502
-            if not isinstance(raw.get("signals"),list):
-                return jsonify(ok=False,error="SOURCE_MISSING_SIGNALS"),502
-            # Read-only projection, retains computed scores and source attributes without recalculation.
-            projected=[dict(s) for s in raw["signals"] if isinstance(s,dict)]
-            data={"signals":projected,"updatedAt":raw.get("updatedAt"),"cachedAt":datetime.now(timezone.utc).isoformat()}
-            cache.update(data=data,at=time.monotonic(),last_error=None)
-            return jsonify(ok=True,**data,fromCache=False)
-        except (requests.RequestException,ValueError):
-            if data is not None: return jsonify(ok=True,**data,stale=True,lastError="SOURCE_UNAVAILABLE")
-            return jsonify(ok=False,error="SOURCE_UNAVAILABLE"),502
+        error=cache["last_error"]
+        attempted=cache["last_attempt"]
+        age=max(0,int(time.monotonic()-cache["at"])) if data else None
+    if data is None:
+        return jsonify(ok=False,error=error or "SYNC_PENDING",lastAttempt=attempted),503
+    return jsonify(ok=True,**data,fromCache=True,stale=bool(error),lastError=error,snapshotAgeSeconds=age,lastAttempt=attempted)
 @app.after_request
 def headers(r):
     r.headers["Cache-Control"]="no-store"
