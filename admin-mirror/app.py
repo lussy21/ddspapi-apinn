@@ -1,8 +1,7 @@
-import os,time,threading,hmac,requests
+import os,time,threading,requests
 from datetime import datetime, timezone
 from flask import Flask,request,jsonify,send_from_directory
 app=Flask(__name__,static_folder="web")
-ACCESS=os.getenv("MIRROR_ACCESS_CODE","")
 SOURCE=os.getenv("MIRROR_SOURCE_URL","")
 SOURCE_CODE=os.getenv("MIRROR_SOURCE_ADMIN_CODE","")
 TTL=600
@@ -15,12 +14,9 @@ def asset(name):
     if name not in ("style.css","app.js"): return ("Not Found",404)
     return send_from_directory("web",name)
 @app.get("/health")
-def health(): return jsonify(ok=True,service="admin-mirror",configured=bool(ACCESS and SOURCE and SOURCE_CODE))
+def health(): return jsonify(ok=True,service="admin-mirror",configured=bool(SOURCE and SOURCE_CODE))
 @app.post("/api/signals")
 def signals():
-    code=str((request.get_json(silent=True) or {}).get("code") or "")
-    if not ACCESS: return jsonify(ok=False,error="MIRROR_LOGIN_NOT_CONFIGURED"),503
-    if not hmac.compare_digest(code,ACCESS): return jsonify(ok=False,error="ACCESS_DENIED"),403
     if not SOURCE or not SOURCE_CODE: return jsonify(ok=False,error="SOURCE_NOT_CONFIGURED"),503
     now=time.monotonic()
     with lock:
