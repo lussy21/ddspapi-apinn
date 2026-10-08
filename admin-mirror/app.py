@@ -1,7 +1,10 @@
-import os,time,threading,requests
+import os,time,threading,hmac,requests
+from itsdangerous import URLSafeTimedSerializer,BadSignature,SignatureExpired
 from datetime import datetime, timezone
 from flask import Flask,request,jsonify,send_from_directory
 app=Flask(__name__,static_folder="web")
+ACCESS=os.getenv("MIRROR_ACCESS_CODE","")
+SECRET=os.getenv("MIRROR_SESSION_SECRET","")
 SOURCE=os.getenv("MIRROR_SOURCE_URL","")
 SOURCE_CODE=os.getenv("MIRROR_SOURCE_ADMIN_CODE","")
 TTL=600
@@ -14,9 +17,22 @@ def asset(name):
     if name not in ("style.css","app.js"): return ("Not Found",404)
     return send_from_directory("web",name)
 @app.get("/health")
-def health(): return jsonify(ok=True,service="admin-mirror",configured=bool(SOURCE and SOURCE_CODE))
+def health(): return jsonify(ok=True,service="admin-mirror",configured=bool(ACCESS and SECRET and SOURCE and SOURCE_CODE))
+def authorized():
+    if not ACCESS or not SECRET: return False
+    token=request.headers.get("Authorization","").removeprefix("Bearer ").strip()
+    if not token:return False
+    try:return URLSafeTimedSerializer(SECRET,salt="dtt-admin-mirror").loads(token,max_age=365*86400)=="mirror"
+    except (BadSignature,SignatureExpired):return False
+@app.post("/api/login")
+def login():
+    if not ACCESS or not SECRET:return jsonify(ok=False,error="LOGIN_NOT_CONFIGURED"),503
+    code=str((request.get_json(silent=True) or {}).get("code") or "")
+    if not hmac.compare_digest(code,ACCESS):return jsonify(ok=False,error="ACCESS_DENIED"),403
+    return jsonify(ok=True,token=URLSafeTimedSerializer(SECRET,salt="dtt-admin-mirror").dumps("mirror"))
 @app.post("/api/signals")
 def signals():
+    if not authorized(): return jsonify(ok=False,error="ACCESS_DENIED"),401
     if not SOURCE or not SOURCE_CODE: return jsonify(ok=False,error="SOURCE_NOT_CONFIGURED"),503
     now=time.monotonic()
     with lock:
