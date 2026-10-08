@@ -1,4 +1,4 @@
-import os,time,threading,hmac,requests
+import os,time,threading,hmac,requests,re
 from itsdangerous import URLSafeTimedSerializer,BadSignature,SignatureExpired
 from datetime import datetime, timezone
 from flask import Flask,request,jsonify,send_from_directory
@@ -26,9 +26,11 @@ def refresh_snapshot():
         if not isinstance(raw,dict): raise ValueError("SOURCE_BAD_FORMAT")
         if not raw.get("ok"):
             # Only expose safe backend error categories; never any credentials or payload.
-            allowed={"INVALID_ADMIN_CODE","ADMIN_DENIED","BACKEND_UNREACHABLE","BACKEND_BAD_RESPONSE"}
-            reason=str(raw.get("error") or "")
-            raise ValueError(reason if reason in allowed else "SOURCE_REJECTED")
+            reason=raw.get("error")
+            # Relay only machine-readable error identifiers. Never forward free text or values.
+            if isinstance(reason,str) and re.fullmatch(r"[A-Z][A-Z_]{2,48}",reason):
+                raise ValueError("UPSTREAM_"+reason)
+            raise ValueError("SOURCE_REJECTED")
         if not isinstance(raw.get("signals"),list): raise ValueError("SOURCE_MISSING_SIGNALS")
         projected=[dict(item) for item in raw["signals"] if isinstance(item,dict)]
         snapshot={"signals":projected,"updatedAt":raw.get("updatedAt"),"cachedAt":datetime.now(timezone.utc).isoformat()}
