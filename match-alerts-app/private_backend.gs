@@ -1699,6 +1699,101 @@ function signalStatsRegion_(leagueRaw) {
   return "OTHER_EUROPE";
 }
 
+
+/**
+ * Read-only score-band history for the owner Admin cards.
+ * One settled match counts once in its highest public-symbol group and /10 band.
+ * Do not reuse these numbers to trigger alerts, publish picks or change Level scores.
+ */
+function adminScoreBand_(value) {
+  const m = String(value || "").match(/([0-9]+(?:[.,][0-9]+)?)\s*\/\s*10/);
+  if (!m) return null;
+  const n = Number(m[1].replace(",", "."));
+  if (!isFinite(n) || n < 0 || n > 10) return null;
+  return n === 10 ? 10 : Math.floor(n);
+}
+
+function adminScoreScope_(leagueRaw) {
+  const league = String(leagueRaw || "").trim();
+  if (!league) return null;
+  if (isIsolatedSecondDivision_(league)) {
+    return {firstKey:"SECOND::" + league, firstLabel:league, totalKey:"", totalLabel:""};
+  }
+  const region = signalStatsRegion_(league);
+  if (region === "MAIN") {
+    return {firstKey:"MAIN",firstLabel:"Μεγάλα Πρωταθλήματα",totalKey:"EUROPE",totalLabel:"Σύνολο Ευρώπης"};
+  }
+  if (region === "OTHER_EUROPE") {
+    return {firstKey:"OTHER_EUROPE",firstLabel:"Λοιπή Ευρώπη",totalKey:"EUROPE",totalLabel:"Σύνολο Ευρώπης"};
+  }
+  if (region === "AMERICA") {
+    const country = league.split(" - ")[0].trim().toUpperCase();
+    const known = {USA:"ΗΠΑ",BRAZIL:"Βραζιλία",ARGENTINA:"Αργεντινή"};
+    if (!known[country]) return null;
+    return {firstKey:"AMERICA::"+country,firstLabel:known[country],totalKey:"AMERICA",totalLabel:"Σύνολο Αμερικής"};
+  }
+  if (region === "NATIONAL") {
+    return {firstKey:"NATIONAL",firstLabel:"Εθνικές",totalKey:"",totalLabel:""};
+  }
+  return null;
+}
+
+function adminScoreHistoryKey_(group, band, scope) {
+  return group + "||" + String(band) + "||" + scope;
+}
+
+function adminScoreHistoryBuckets_(rows, alertLists, finalRatings, levelCatalog) {
+  const buckets = {};
+  function add(group, band, key, success) {
+    const id = adminScoreHistoryKey_(group, band, key);
+    if (!buckets[id]) buckets[id] = {wins:0,total:0};
+    buckets[id].total++;
+    if (success) buckets[id].wins++;
+  }
+  rows.forEach(function(row, idx) {
+    const visible = normalizeAlertName_(row[14]);
+    if (!visible || !row[15]) return; // Only completed matches with a result
+    const finalValue = String((finalRatings[idx] && finalRatings[idx][0]) || "");
+    let band = adminScoreBand_(finalValue);
+    if (band === null) band = adminScoreBand_(row[14]);
+    if (band === null) return;
+    const scope = adminScoreScope_(row[0]);
+    if (!scope) return;
+    const listText = String((alertLists[idx] && alertLists[idx][0]) || "");
+    const selected = highestPublicAlert_(sourceAlertsForRow_(visible, listText), visible, levelCatalog);
+    const group = selected && selected.symbol
+      ? String(selected.symbol)
+      : "ALERT::" + canonicalAlertKey_(visible);
+    const success = alertSuccess_(row, selected ? selected.alert : visible);
+    if (success === null) return;
+    add(group, band, scope.firstKey, success);
+    if (scope.totalKey && scope.totalKey !== scope.firstKey) {
+      add(group, band, scope.totalKey, success);
+    }
+  });
+  return buckets;
+}
+
+function adminScoreHistoryFor_(buckets, league, rating, publicSymbol, internalAlert) {
+  const band = adminScoreBand_(rating);
+  const scope = adminScoreScope_(league);
+  if (band === null || !scope) return null;
+  const group = publicSymbol
+    ? String(publicSymbol)
+    : "ALERT::" + canonicalAlertKey_(internalAlert);
+  function record(key, label) {
+    const b = buckets[adminScoreHistoryKey_(group, band, key)] || {wins:0,total:0};
+    return {label:label,wins:b.wins,total:b.total};
+  }
+  return {
+    bandLabel:band === 10 ? "10,0" : String(band) + ",0–" + String(band) + ",9",
+    first:record(scope.firstKey,scope.firstLabel),
+    second:scope.totalKey && scope.totalKey !== scope.firstKey
+      ? record(scope.totalKey,scope.totalLabel) : null,
+    smallSampleLimit:5
+  };
+}
+
 function adminSignalStats_(p) {
   if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
 
@@ -1762,8 +1857,10 @@ function adminSignals_(p) {
 
   const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
-  const kickoffRows = pin.getRange(3, 77, pinLast - 2, 1).getDisplayValues();
+  // BX contains the saved /10 rating; BY remains the unchanged kickoff source.
+  const ratingAndKickoffRows = pin.getRange(3, 76, pinLast - 2, 2).getDisplayValues();
   const levelCatalog = publicLevelCatalog_(ss);
+  const scoreHistoryBuckets = adminScoreHistoryBuckets_(rows, alertListRows, ratingAndKickoffRows, levelCatalog);
   const disabledLeagues = disabledAlertLeagues_();
   const signals = [];
 
@@ -1780,7 +1877,7 @@ function adminSignals_(p) {
     if (!leagueAlertsEnabled_(league, disabledLeagues)) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
-    const kickoff = String((kickoffRows[idx] && kickoffRows[idx][0]) || "").trim();
+    const kickoff = String((ratingAndKickoffRows[idx] && ratingAndKickoffRows[idx][1]) || "").trim();
     const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
     const sourceAlerts = sourceAlertsForRow_(alert, listText);
     const selectedPublic = highestPublicAlert_(sourceAlerts, alert, levelCatalog);
@@ -1818,6 +1915,7 @@ function adminSignals_(p) {
       reviewState:selectedPublic ? selectedPublic.reviewState : "",
       rawAlert:rawAlert,
       rating:alertRating_(rawAlert),
+      scoreHistory:adminScoreHistoryFor_(scoreHistoryBuckets, league, alertRating_(rawAlert), selectedPublic ? selectedPublic.symbol : "", alert),
       leagueRecord:records.leagueRecord,
       allStatsRecord:records.allStatsRecord,
       customerPick:customer.pick,
