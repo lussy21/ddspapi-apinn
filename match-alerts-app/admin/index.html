@@ -444,7 +444,7 @@ function adminMatchRating(s){
 }
 function signalCardHtml(s){
   const matchRating=adminMatchRating(s);
-  const matchRatingLine='<div class="signal-line signal-match-score">Εκτίμηση παρόμοιων αγώνων: <b>'+(matchRating?esc(matchRating):"Μη διαθέσιμη")+'</b></div>';
+  const matchRatingLine='<div class="signal-line signal-match-score">Εκτίμηση παρόμοιων ματς: <b>'+(matchRating?esc(matchRating):"Μη διαθέσιμη")+'</b></div>';
   const li=levelInfoFor(s.internalAlert);
   const levelSymbol=String(s.publicSymbol||(li&&li.symbol)||publicSignalSymbol(s.internalAlert)||"");
   const levelScore=Number(s.levelScore||(li&&li.score)||0);
@@ -454,8 +454,8 @@ function signalCardHtml(s){
   const reviewState=String(s.reviewState||(li&&li.reviewState)||"");
   const suggestedSymbol=String(s.suggestedSymbol||(li&&li.suggestedSymbol)||"");
   const levelLine=levelSymbol
-    ? '<div class="signal-line">Δημόσιο Level: <b>'+esc(levelSymbol)+' · Score '+esc(levelScore.toFixed(1).replace(".",","))+(levelTotal?(" · "+esc(String(levelWins)+"/"+String(levelTotal))):"")+(levelNext?(" · review "+esc(levelNext)):"")+(reviewState&&reviewState!=="STAY"?(" · "+esc(reviewState)+(suggestedSymbol?(" "+esc(suggestedSymbol)):"")):"")+'</b></div>'
-    : '<div class="signal-line">Δημόσιο Level: <b>TEST / ADMIN ONLY</b></div>';
+    ? '<div class="signal-line">Αξιολόγηση καμπανακιού: <b>'+esc(levelSymbol)+' · Score '+esc(levelScore.toFixed(1).replace(".",","))+(levelTotal?(" · "+esc(String(levelWins)+"/"+String(levelTotal))):"")+(levelNext?(" · review "+esc(levelNext)):"")+(reviewState&&reviewState!=="STAY"?(" · "+esc(reviewState)+(suggestedSymbol?(" "+esc(suggestedSymbol)):"")):"")+'</b></div>'
+    : '<div class="signal-line">Αξιολόγηση καμπανακιού: <b>TEST / ADMIN ONLY</b></div>';
   const stats=(s.leagueRecord||s.allStatsRecord)
     ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div><div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
     : '';
