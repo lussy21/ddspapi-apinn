@@ -346,11 +346,13 @@ function alerts_(p) {
           const success = alertSuccess_(row, alertName);
           if (success === null) return;
 
-          if (!allStats[alertName]) allStats[alertName] = {wins:0,total:0};
-          allStats[alertName].total++;
-          if (success) allStats[alertName].wins++;
-
           const league = String(row[0] || "").trim();
+          if (!isIsolatedSecondDivision_(league)) {
+            if (!allStats[alertName]) allStats[alertName] = {wins:0,total:0};
+            allStats[alertName].total++;
+            if (success) allStats[alertName].wins++;
+          }
+
           const leagueKey = league + "||" + alertName;
           if (!leagueStats[leagueKey]) leagueStats[leagueKey] = {wins:0,total:0};
           leagueStats[leagueKey].total++;
@@ -993,6 +995,15 @@ function playedHistory_(p) {
   return {ok:true,items:items.slice(0,250),count:items.length,username:auth.username};
 }
 
+// These competitions retain their own league records but must never change
+// combined main/other-Europe statistics or public symbol results.
+function isIsolatedSecondDivision_(league) {
+  const name = String(league || "").trim();
+  return name === "Greece - Super League 2" ||
+    name === "Germany - Bundesliga 2" ||
+    name === "Belgium - Challenger Pro League";
+}
+
 function normalizeAlertName_(value) {
   const text = String(value || "").trim();
   const marker = " · ";
@@ -1045,10 +1056,13 @@ function alertRecords_(rows, league, alertName) {
     const success = alertSuccess_(row, alertName);
     if (success === null) return;
 
-    allTotal++;
-    if (success) allWins++;
+    const rowLeague = String(row[0] || "").trim();
+    if (!isIsolatedSecondDivision_(rowLeague)) {
+      allTotal++;
+      if (success) allWins++;
+    }
 
-    if (String(row[0] || "").trim() === league) {
+    if (rowLeague === league) {
       leagueTotal++;
       if (success) leagueWins++;
     }
@@ -1714,6 +1728,7 @@ function adminSignalStats_(p) {
     const alert = normalizeAlertName_(rawAlert);
     const result = String(row[15] || "").trim();
     if (!league || !alert || !result) return;
+    if (isIsolatedSecondDivision_(league)) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
     const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
