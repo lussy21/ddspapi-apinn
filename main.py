@@ -1165,7 +1165,7 @@ def strong_contra_bg_guard_formula(row_number):
     """
     r = row_number
     return (
-        f'=IF(NOT(AND(ISNUMBER($L{r});ISNUMBER($N{r})));"";
+        f'=IF(NOT(AND(ISNUMBER($L{r});ISNUMBER($N{r})));"";'
         f'IFS(AND(OR($CD{r}=1;AND(ISNUMBER($J{r});$J{r}<=2,4));'
         f'ISNUMBER($E{r});$E{r}>=1,5;$E{r}<=2,4;$L{r}<60;$N{r}>=50);'
         '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ";'
