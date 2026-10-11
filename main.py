@@ -132,6 +132,18 @@ def turnover_90_percentile(
     return percentile_rank_inc(values, current)
 
 
+# These competitions keep independent results; they never train the main selector.
+SECOND_DIVISION_LEAGUES = frozenset({
+    "Greece - Super League 2",
+    "Germany - Bundesliga 2",
+    "Belgium - Challenger Pro League",
+})
+
+def _selector_second_division(row):
+    league = str(row[0] or "").strip() if row else ""
+    return league if league in SECOND_DIVISION_LEAGUES else None
+
+
 SELECTOR_COL = "BX"
 SELECTOR_FAV_TOKENS = {
     "STRONG_FAV", "FAV", "WATCH_FAV", "FAV_TURN",
@@ -507,6 +519,7 @@ def _selector_live_stage(row):
 def _selector_backfill_strengths(all_rows):
     """Walk forward through finished rows and score each one only from earlier rows."""
     prior_history = []
+    isolated_history = {league: [] for league in SECOND_DIVISION_LEAGUES}
     updates = []
 
     for row_number, row in enumerate(all_rows[2:], start=3):
@@ -524,7 +537,12 @@ def _selector_backfill_strengths(all_rows):
             continue
 
         existing = str(row[75]).strip() if len(row) > 75 else ""
-        if "/10" not in existing and prior_history:
+        isolated_league = _selector_second_division(row)
+        eligible_history = (
+            isolated_history[isolated_league] if isolated_league
+            else prior_history
+        )
+        if "/10" not in existing and eligible_history:
             candidate = {
                 "row": row_number,
                 "features": _selector_features(row),
@@ -532,7 +550,7 @@ def _selector_backfill_strengths(all_rows):
                 "league_bucket": _selector_league_bucket(row),
                 "side": side,
             }
-            score, _ = _selector_score(candidate, prior_history)
+            score, _ = _selector_score(candidate, eligible_history)
             strength = _selector_strength_text(score, "FINAL")
             if strength:
                 updates.append({
@@ -540,13 +558,17 @@ def _selector_backfill_strengths(all_rows):
                     "values": [[strength]],
                 })
 
-        prior_history.append({
+        history_record = {
             "row": row_number,
             "features": _selector_features(row),
             "tokens": tokens,
             "league_bucket": _selector_league_bucket(row),
             "fav_won": fav_won,
-        })
+        }
+        if isolated_league:
+            isolated_history[isolated_league].append(history_record)
+        else:
+            prior_history.append(history_record)
 
     return updates
 
@@ -554,6 +576,7 @@ def _selector_backfill_strengths(all_rows):
 def update_selector_ranking(sheet, all_rows, matches, now):
     """Show each live alert's own model strength instead of a relative daily rank."""
     historical = []
+    isolated_historical = {league: [] for league in SECOND_DIVISION_LEAGUES}
     for row_number, row in enumerate(all_rows[2:], start=3):
         fav_won = _selector_favorite_won(row)
         if fav_won is None:
@@ -561,13 +584,18 @@ def update_selector_ranking(sheet, all_rows, matches, now):
         tokens = _selector_signature(row, prefer_visible=False)
         if not tokens:
             continue
-        historical.append({
+        history_record = {
             "row": row_number,
             "features": _selector_features(row),
             "tokens": tokens,
             "league_bucket": _selector_league_bucket(row),
             "fav_won": fav_won,
-        })
+        }
+        isolated_league = _selector_second_division(row)
+        if isolated_league:
+            isolated_historical[isolated_league].append(history_record)
+        else:
+            historical.append(history_record)
 
     row_by_event = {}
     for row_number, row in enumerate(all_rows, start=1):
@@ -621,7 +649,12 @@ def update_selector_ranking(sheet, all_rows, matches, now):
             "league_bucket": _selector_league_bucket(row),
             "side": side,
         }
-        score, avg_distance = _selector_score(candidate, historical)
+        isolated_league = _selector_second_division(row)
+        eligible_history = (
+            isolated_historical[isolated_league] if isolated_league
+            else historical
+        )
+        score, avg_distance = _selector_score(candidate, eligible_history)
         stage = _selector_live_stage(row)
         strength = _selector_strength_text(score, stage)
 
