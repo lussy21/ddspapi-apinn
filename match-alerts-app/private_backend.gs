@@ -1048,6 +1048,13 @@ function alertRecords_(rows, league, alertName) {
   let leagueTotal = 0;
   let allWins = 0;
   let allTotal = 0;
+  let groupWins = 0;
+  let groupTotal = 0;
+  let regionWins = 0;
+  let regionTotal = 0;
+  // Reuse the same geographic classification as the /10 history, but
+  // count ALL final scores for the general statistics (no score-band filter).
+  const scope = adminScoreScope_(league);
 
   rows.forEach(function(row) {
     const rowAlert = normalizeAlertName_(row[14]);
@@ -1060,6 +1067,22 @@ function alertRecords_(rows, league, alertName) {
     if (!isIsolatedSecondDivision_(rowLeague)) {
       allTotal++;
       if (success) allWins++;
+
+      // Second divisions never contribute to the main/other Europe or
+      // continental totals. Other regions stay strictly separate.
+      if (scope && (scope.group || scope.region)) {
+        const rowScope = adminScoreScope_(rowLeague);
+        if (rowScope && scope.group && rowScope.group &&
+            rowScope.group.key === scope.group.key) {
+          groupTotal++;
+          if (success) groupWins++;
+        }
+        if (rowScope && scope.region && rowScope.region &&
+            rowScope.region.key === scope.region.key) {
+          regionTotal++;
+          if (success) regionWins++;
+        }
+      }
     }
 
     if (rowLeague === league) {
@@ -1070,6 +1093,10 @@ function alertRecords_(rows, league, alertName) {
 
   return {
     leagueRecord:String(leagueWins) + "/" + String(leagueTotal),
+    groupLabel:scope && scope.group ? scope.group.label : "",
+    groupRecord:scope && scope.group ? String(groupWins) + "/" + String(groupTotal) : "",
+    regionLabel:scope && scope.region ? scope.region.label : "",
+    regionRecord:scope && scope.region ? String(regionWins) + "/" + String(regionTotal) : "",
     allStatsRecord:String(allWins) + "/" + String(allTotal)
   };
 }
@@ -1936,6 +1963,10 @@ function adminSignals_(p) {
       rating:alertRating_(rawAlert),
       scoreHistory:adminScoreHistoryFor_(scoreHistoryBuckets, league, alertRating_(rawAlert), selectedPublic ? selectedPublic.symbol : "", alert),
       leagueRecord:records.leagueRecord,
+      groupLabel:records.groupLabel,
+      groupRecord:records.groupRecord,
+      regionLabel:records.regionLabel,
+      regionRecord:records.regionRecord,
       allStatsRecord:records.allStatsRecord,
       customerPick:customer.pick,
       customerTeam:customer.side === "H" ? home : away,
