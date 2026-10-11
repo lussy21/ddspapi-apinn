@@ -382,20 +382,24 @@ def run_level_review_if_due(spreadsheet, force=False):
             else:
                 state = "STAY" if target > 0 else "TEST"
 
-        # Metrics F:K, review dates L:M, suggestions P:R.
-        values = [
-            round(m["score"], 1),
-            m["wins"],
-            m["total"],
-            round(m["hit"], 4),
-            round(m["avg_odds"], 4),
-            round(m["roi"], 4),
-            today.isoformat(),
-            next_date.isoformat(),
-        ]
+        # The public category score and review dates update only on review day.
+        # G:H (live wins/total) and I (live hit rate) now contain formulas
+        # anchored to the 2026-10-04 review snapshot. Never overwrite them
+        # during the 15-day review: doing so would freeze the Admin's live
+        # record again. Review classification still uses the full _metrics().
         levels.update(
-            range_name=f"F{sheet_row}:M{sheet_row}",
-            values=[values],
+            range_name=f"F{sheet_row}",
+            values=[[round(m["score"], 1)]],
+            raw=True,
+        )
+        levels.update(
+            range_name=f"J{sheet_row}:M{sheet_row}",
+            values=[[
+                round(m["avg_odds"], 4),
+                round(m["roi"], 4),
+                today.isoformat(),
+                next_date.isoformat(),
+            ]],
             raw=True,
         )
         levels.update(
