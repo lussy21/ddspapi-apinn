@@ -1716,24 +1716,39 @@ function adminScoreBand_(value) {
 function adminScoreScope_(leagueRaw) {
   const league = String(leagueRaw || "").trim();
   if (!league) return null;
+  // Exact competition always comes first. Second divisions stay isolated:
+  // their results must never contribute to the main European aggregates.
+  const exact = {key:"LEAGUE::" + league,label:league};
   if (isIsolatedSecondDivision_(league)) {
-    return {firstKey:"SECOND::" + league, firstLabel:league, totalKey:"", totalLabel:""};
+    return {league:exact,group:null,region:null};
   }
   const region = signalStatsRegion_(league);
   if (region === "MAIN") {
-    return {firstKey:"MAIN",firstLabel:"Μεγάλα Πρωταθλήματα",totalKey:"EUROPE",totalLabel:"Σύνολο Ευρώπης"};
+    return {
+      league:exact,
+      group:{key:"MAIN",label:"Μεγάλα Πρωταθλήματα"},
+      region:{key:"EUROPE",label:"Σύνολο Ευρώπης"}
+    };
   }
   if (region === "OTHER_EUROPE") {
-    return {firstKey:"OTHER_EUROPE",firstLabel:"Λοιπή Ευρώπη",totalKey:"EUROPE",totalLabel:"Σύνολο Ευρώπης"};
+    return {
+      league:exact,
+      group:{key:"OTHER_EUROPE",label:"Λοιπή Ευρώπη"},
+      region:{key:"EUROPE",label:"Σύνολο Ευρώπης"}
+    };
   }
   if (region === "AMERICA") {
     const country = league.split(" - ")[0].trim().toUpperCase();
     const known = {USA:"ΗΠΑ",BRAZIL:"Βραζιλία",ARGENTINA:"Αργεντινή"};
     if (!known[country]) return null;
-    return {firstKey:"AMERICA::"+country,firstLabel:known[country],totalKey:"AMERICA",totalLabel:"Σύνολο Αμερικής"};
+    return {
+      league:exact,
+      group:{key:"AMERICA::"+country,label:known[country]},
+      region:{key:"AMERICA",label:"Σύνολο Αμερικής"}
+    };
   }
   if (region === "NATIONAL") {
-    return {firstKey:"NATIONAL",firstLabel:"Εθνικές",totalKey:"",totalLabel:""};
+    return {league:exact,group:{key:"NATIONAL",label:"Σύνολο Εθνικών"},region:null};
   }
   return null;
 }
@@ -1766,10 +1781,14 @@ function adminScoreHistoryBuckets_(rows, alertLists, finalRatings, levelCatalog)
       : "ALERT::" + canonicalAlertKey_(visible);
     const success = alertSuccess_(row, selected ? selected.alert : visible);
     if (success === null) return;
-    add(group, band, scope.firstKey, success);
-    if (scope.totalKey && scope.totalKey !== scope.firstKey) {
-      add(group, band, scope.totalKey, success);
-    }
+    // Add once to each distinct scope; the continental total is calculated
+    // independently (not by adding the already combined group to the league).
+    const seen = {};
+    [scope.league, scope.group, scope.region].forEach(function(item) {
+      if (!item || seen[item.key]) return;
+      seen[item.key] = true;
+      add(group, band, item.key, success);
+    });
   });
   return buckets;
 }
@@ -1787,9 +1806,9 @@ function adminScoreHistoryFor_(buckets, league, rating, publicSymbol, internalAl
   }
   return {
     bandLabel:band === 10 ? "10,0" : String(band) + ",0–" + String(band) + ",9",
-    first:record(scope.firstKey,scope.firstLabel),
-    second:scope.totalKey && scope.totalKey !== scope.firstKey
-      ? record(scope.totalKey,scope.totalLabel) : null,
+    league:record(scope.league.key,scope.league.label),
+    group:scope.group ? record(scope.group.key,scope.group.label) : null,
+    region:scope.region ? record(scope.region.key,scope.region.label) : null,
     smallSampleLimit:5
   };
 }
