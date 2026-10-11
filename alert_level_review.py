@@ -6,6 +6,12 @@ LEVELS_SHEET = "ALERT LEVELS"
 PINNACLE_SHEET = "PINNACLE"
 ATHENS = ZoneInfo("Europe/Athens")
 REVIEW_DAYS = 15
+# Independently tracked: never include these three competitions in public levels.
+SECOND_DIVISION_LEAGUES = frozenset({
+    "Greece - Super League 2",
+    "Germany - Bundesliga 2",
+    "Belgium - Challenger Pro League",
+})
 
 # Current live-rule exclusions for the three older data-driven alerts.
 OLDER_DATA_ALERT_EXCLUDED_PREFIXES = (
@@ -46,14 +52,14 @@ def _allowed_scope(league):
         return False
     if league.startswith("ΕΘΝΙΚΕΣ - "):
         return False
-    if league == "Greece - Super League 2":
+    if league in SECOND_DIVISION_LEAGUES:
         return False
     return True
 
 
 def _older_data_rule_scope(league):
     league = str(league or "").strip()
-    return not league.startswith(OLDER_DATA_ALERT_EXCLUDED_PREFIXES)
+    return league not in SECOND_DIVISION_LEAGUES and not league.startswith(OLDER_DATA_ALERT_EXCLUDED_PREFIXES)
 
 
 def _favorite_won(row):
