@@ -33,7 +33,7 @@ body{min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-
 .push-textarea{width:100%;min-height:96px;resize:vertical;background:#0a0a0c;border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#fff;padding:13px 14px;font:inherit;outline:none;margin-top:8px}.push-textarea:focus{border-color:rgba(217,177,87,.55)}.push-hint{margin-top:7px;color:#77727f;font-size:10px;line-height:1.4}.user{align-items:flex-start;flex-wrap:wrap}.user-main{flex:1;min-width:180px}.expiry{margin-top:5px;font-size:10px;color:#c8b987}.extend-line{width:100%;display:flex;align-items:center;gap:7px;margin-top:9px}.extend-line .number{width:88px;margin:0}.bulk-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bulk-line .number{width:100px;margin:0}.signals-grid{display:grid;gap:9px}.signal-card{padding:13px 14px;border:1px solid rgba(217,177,87,.16);border-radius:15px;background:linear-gradient(145deg,rgba(217,177,87,.045),rgba(255,255,255,.015))}.signal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.signal-match{font-size:13px;font-weight:900;color:#f2eadc}.signal-league{margin-top:4px;color:#7f7a83;font-size:9px}.signal-pick{flex:0 0 auto;padding:6px 9px;border-radius:999px;border:1px solid rgba(217,177,87,.24);background:rgba(217,177,87,.07);color:#ffe39a;font-size:11px;font-weight:900}.signal-lines{display:grid;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.045)}.signal-line{font-size:10px;color:#98939b}.signal-line b{color:#e8e3d9}
 .signal-score-history{margin:3px 0 4px;padding:8px 9px;border:1px solid rgba(217,177,87,.17);border-radius:10px;background:rgba(217,177,87,.025)}
 .signal-score-title{font-size:10px;font-weight:800;color:#e5c987;margin-bottom:6px}
-.signal-score-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:10px;color:#b5b0b8;padding:3px 0}
+.signal-score-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:10px;color:#b5b0b8;padding:3px 0}.signal-score-row span{flex:1;min-width:0;overflow-wrap:anywhere}
 .signal-score-row b{color:#f0e8d6;font-size:10px;white-space:nowrap}
 .signal-score-small{font-size:9px;color:#b9955a;padding-top:4px}
 .signal-score-unavailable{color:#878189;font-size:9px}
@@ -461,12 +461,14 @@ function signalScoreRecordLabel(record){
 function signalScoreHistoryHtml(s, matchRating){
   if(!matchRating)return "";
   const history=s&&s.scoreHistory;
-  if(!history||!history.bandLabel||!history.first){
-    // Older Apps Script deployments do not yet return scoreHistory.
+  if(!history||!history.bandLabel||!history.league){
+    // The older deployed Apps Script does not expose these records yet.
     return '<div class="signal-line signal-score-unavailable">Επιτυχία ίδιας βαθμολογίας: <b>αναμονή ενημέρωσης</b></div>';
   }
-  const parts=[history.first];
-  if(history.second&&history.second.label!==history.first.label)parts.push(history.second);
+  // Three independent levels: the exact league, its region/group and its
+  // continental total. National teams and isolated second divisions have
+  // fewer levels by design, with no invented aggregate.
+  const parts=[history.league,history.group,history.region].filter(Boolean);
   const rowHtml=parts.map(item=>
     '<div class="signal-score-row"><span>'+esc(item.label||"—")+'</span><b>'+esc(signalScoreRecordLabel(item))+'</b></div>'
   ).join("");
