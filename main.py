@@ -1156,6 +1156,27 @@ for duplicate_id, preferred_id in event_aliases.items():
             "| ids:", duplicate_id, preferred_id,
         )
 
+def strong_contra_bg_guard_formula(row_number):
+    """Only NEW strong-contra signals require live +0.5 odds <= 2.40.
+
+    CD is a one-way authorization snapshot. It lets an already opened strong
+    contra remain visible when the market moves above 2.40. Other BG rules
+    keep their original criteria and priority.
+    """
+    r = row_number
+    return (
+        f'=IF(NOT(AND(ISNUMBER($L{r});ISNUMBER($N{r})));"";
+        f'IFS(AND(OR($CD{r}=1;AND(ISNUMBER($J{r});$J{r}<=2,4));'
+        f'ISNUMBER($E{r});$E{r}>=1,5;$E{r}<=2,4;$L{r}<60;$N{r}>=50);'
+        '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ";'
+        f'AND(ISNUMBER($E{r});$E{r}>=1,7;$E{r}<=2,4;'
+        f'$L{r}<=70;$N{r}>=50;$N{r}-$L{r}>=10);'
+        '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)";'
+        f'AND(ISNUMBER($E{r});$E{r}>=1,25;$E{r}<=1,9;'
+        f'$L{r}>=90;$N{r}>=82);'
+        '"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ";TRUE;""))'
+    )
+
 # Create today's/upcoming rows even when Pinnacle has not published both
 # moneyline sides yet. Odds/favorite fields are filled on later runs.
 for match in matches:
@@ -1339,6 +1360,27 @@ for match in matches:
         print("SHEET ROW CREATED:", row_number, home, "vs", away)
 
     current_row = sheet_rows[row_number - 1] if row_number <= len(sheet_rows) else []
+    # Latch the previously visible strong-contra signal BEFORE replacing J with
+    # the next Pinnacle price. The live BG rule then cannot retract the signal
+    # merely because its double-chance price later crosses 2.40.
+    prior_alert = str(current_row[14]).split(" · ", 1)[0].strip() if len(current_row) > 14 else ""
+    prior_result = str(current_row[15]).strip() if len(current_row) > 15 else ""
+    prior_contra = _selector_num(current_row[9]) if len(current_row) > 9 else None
+    already_authorized = str(current_row[81]).strip() == "1" if len(current_row) > 81 else False
+    if (
+        not already_authorized and not prior_result
+        and prior_alert == "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+        and prior_contra is not None and prior_contra <= 2.40
+    ):
+        updates.append({"range": f"CD{row_number}", "values": [[1]]})
+        print("STRONG CONTRA CAP LATCHED:", home, "vs", away, "| at:", prior_contra)
+
+    # BG is the only strong-contra entry point. Keep existing helper priorities
+    # and thresholds, but reject NEW strong contra above 2.40 at the current J.
+    updates.append({
+        "range": f"BG{row_number}",
+        "values": [[strong_contra_bg_guard_formula(row_number)]],
+    })
     # Internal app metadata only: BY stores kickoff in Greek local ISO time.
     # Existing visible/core columns, including Q comments and R event id, stay unchanged.
     updates.append({
