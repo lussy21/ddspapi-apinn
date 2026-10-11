@@ -491,11 +491,12 @@ function signalCardHtml(s){
   const levelLine=levelSymbol
     ? '<div class="signal-line">Αξιολόγηση καμπανακιού: <b>'+esc(levelSymbol)+' · Score '+esc(levelScore.toFixed(1).replace(".",","))+(levelTotal?(" · "+esc(String(levelWins)+"/"+String(levelTotal))):"")+(levelNext?(" · review "+esc(levelNext)):"")+(reviewState&&reviewState!=="STAY"?(" · "+esc(reviewState)+(suggestedSymbol?(" "+esc(suggestedSymbol)):"")):"")+'</b></div>'
     : '<div class="signal-line">Αξιολόγηση καμπανακιού: <b>TEST / ADMIN ONLY</b></div>';
-  const stats=(s.leagueRecord||s.allStatsRecord)
+  // Show only the current match's geographic scopes, never the
+  // cross-continent ALL STATS aggregate. The backend keeps that data unchanged.
+  const stats=(s.leagueRecord||s.groupRecord||s.regionRecord)
     ? '<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div>'
       +(s.groupLabel&&s.groupRecord?'<div class="signal-line">'+esc(s.groupLabel)+': <b>'+esc(signalRecordLabel(s.groupRecord))+'</b></div>':'')
       +(s.regionLabel&&s.regionRecord?'<div class="signal-line">'+esc(s.regionLabel)+': <b>'+esc(signalRecordLabel(s.regionRecord))+'</b></div>':'')
-      +'<div class="signal-line">ALL STATS: <b>'+esc(signalRecordLabel(s.allStatsRecord))+'</b></div>'
     : '';
   const publicationStatus=String(s.publicationStatus||"waiting");
   const state=publicationStatus==="published";
