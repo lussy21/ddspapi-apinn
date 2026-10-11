@@ -444,7 +444,7 @@ function adminMatchRating(s){
 }
 function signalCardHtml(s){
   const matchRating=adminMatchRating(s);
-  const matchRatingLine='<div class="signal-line signal-match-score">Βαθμολογία αγώνα: <b>'+(matchRating?esc(matchRating):"Μη διαθέσιμη")+'</b></div>';
+  const matchRatingLine='<div class="signal-line signal-match-score">Εκτίμηση παρόμοιων αγώνων: <b>'+(matchRating?esc(matchRating):"Μη διαθέσιμη")+'</b></div>';
   const li=levelInfoFor(s.internalAlert);
   const levelSymbol=String(s.publicSymbol||(li&&li.symbol)||publicSignalSymbol(s.internalAlert)||"");
   const levelScore=Number(s.levelScore||(li&&li.score)||0);
