@@ -761,10 +761,11 @@ def main():
         alert = normalize_display_alert(
             row[14]
         )
-        # Suppress alerts with missing/too-low opening favorite odds.
-        # Preserve all original results and past log entries; an already-active
-        # low-odds alert will close through the normal state machine.
-        if not opening_odds_eligible(row):
+        # Apply this NEW minimum only to matches not yet settled.
+        # Old settled match records and their audit log must remain untouched.
+        # For an active low-price match, this passes an empty alert to the
+        # existing state machine so its active baseline is closed normally.
+        if not str(row[15]).strip() and not opening_odds_eligible(row):
             alert = ""
 
         event_id = str(
