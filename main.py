@@ -203,6 +203,15 @@ def _selector_result(value):
     return None
 
 
+MIN_OPEN_FAVORITE_ODDS = 1.39
+
+
+def _selector_open_eligible(row):
+    """Apply the immutable OPEN favorite quote, never later market movement."""
+    opening = _selector_num(row[4]) if len(row) > 4 else None
+    return opening is not None and opening >= MIN_OPEN_FAVORITE_ODDS
+
+
 def _selector_favorite_won(row):
     if len(row) <= 15:
         return None
@@ -523,6 +532,8 @@ def _selector_backfill_strengths(all_rows):
     updates = []
 
     for row_number, row in enumerate(all_rows[2:], start=3):
+        if not _selector_open_eligible(row):
+            continue
         fav_won = _selector_favorite_won(row)
         if fav_won is None:
             continue
@@ -578,6 +589,8 @@ def update_selector_ranking(sheet, all_rows, matches, now):
     historical = []
     isolated_historical = {league: [] for league in SECOND_DIVISION_LEAGUES}
     for row_number, row in enumerate(all_rows[2:], start=3):
+        if not _selector_open_eligible(row):
+            continue
         fav_won = _selector_favorite_won(row)
         if fav_won is None:
             continue
@@ -625,6 +638,13 @@ def update_selector_ranking(sheet, all_rows, matches, now):
 
     for row_number in sorted(set(upcoming_rows)):
         row = all_rows[row_number - 1]
+        # Below the initial odds floor the pick is excluded from rankings.
+        if not _selector_open_eligible(row):
+            selector_updates.append({
+                "range": f"{SELECTOR_COL}{row_number}",
+                "values": [[""]],
+            })
+            continue
         alert_text = _selector_visible_alert_text(row)
         if not alert_text or alert_text.startswith("#"):
             selector_updates.append({
@@ -1572,9 +1592,9 @@ for match in matches:
     # O is the visual "at a glance" column: primary alert + selector strength.
     # The real alert state still lives in the helper columns; BX keeps the full score/stage.
     alert_formula = (
-        f'=LET(pa;{primary_alert_expr};'
+        f'=IF(AND(ISNUMBER($E{row_number});$E{row_number}>=1,39);LET(pa;{primary_alert_expr};'
         f'IF(pa<>"";pa&IF(AND($BX{row_number}<>"";REGEXMATCH(TO_TEXT($BX{row_number});"/10"));'
-        f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");""))'
+        f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");"")))'
     )
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
