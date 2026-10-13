@@ -42,7 +42,6 @@ READ_CACHE_TTLS = {
     "adminUsers": 10,
     "adminSignals": 3,
     "adminAlertLevels": 30,
-    "adminSignalStats": 30,
 }
 
 def _admin_cache_key(payload):
@@ -1021,13 +1020,13 @@ def api():
     if cached is not None:
         return jsonify(cached), 200
 
-    slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "adminSignalStats", "officialHistory", "adminPlayedHistory", "adminSignalKeep", "adminUsers", "adminSettings"}
+    slow_actions = {"alerts", "adminSignals", "adminAlertLevels", "officialHistory", "adminPlayedHistory", "adminSignalKeep", "adminUsers", "adminSettings"}
     timeout = (4, 35) if action in slow_actions else (4, 10)
 
     # Read-only requests are safe to retry once. This protects the customer/admin
     # UI from a transient Apps Script timeout without ever repeating a write.
     retryable_read_actions = {
-        "alerts", "adminSignals", "adminAlertLevels", "adminSignalStats", "officialHistory",
+        "alerts", "adminSignals", "adminAlertLevels", "officialHistory",
         "adminPlayedHistory", "adminUsers", "adminSettings"
     }
     attempts = 2 if action in retryable_read_actions else 1
