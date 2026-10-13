@@ -185,6 +185,7 @@ async function loadSignalsFresh(){
         if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
         applyLiveAlertStats(sig.byAlert,sig.updatedAt);
         renderSignals(sig.signals||[]);
+        if(!alertManagerView.classList.contains("hidden"))renderAlertManager();
         return sig;
       }catch(e){
         lastErr=e;
