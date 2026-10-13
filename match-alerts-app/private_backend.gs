@@ -326,7 +326,7 @@ function alerts_(p) {
         const away = String(row[2] || "").trim();
         const currentAlert = normalizeAlertName_(row[14]);
         const result = String(row[15] || "").trim();
-        if (league && home && away && currentAlert && !result) activeIndexes.push(idx);
+        if (league && home && away && currentAlert && !result && openingOddsEligible_(row)) activeIndexes.push(idx);
       });
 
       if (!activeIndexes.length) {
@@ -341,6 +341,7 @@ function alerts_(p) {
         const allStats = {};
         const leagueStats = {};
         pinRows.forEach(function(row) {
+          if (!openingOddsEligible_(row)) return;
           const alertName = normalizeAlertName_(row[14]);
           if (!alertName) return;
           const success = alertSuccess_(row, alertName);
@@ -1043,6 +1044,15 @@ function alertSuccess_(row, alertName) {
   return null;
 }
 
+// One immutable price floor shared by public alerts, Admin signals, history
+// aggregates and score-band statistics. Missing/open odds are NOT eligible.
+const MIN_OPEN_FAVORITE_ODDS_ = 1.39;
+function openingOddsEligible_(row) {
+  const raw = String(row && row.length > 4 ? row[4] : "").trim().replace(",", ".");
+  const value = raw === "" ? NaN : Number(raw);
+  return Number.isFinite(value) && value >= MIN_OPEN_FAVORITE_ODDS_;
+}
+
 function alertRecords_(rows, league, alertName) {
   let leagueWins = 0;
   let leagueTotal = 0;
@@ -1057,6 +1067,7 @@ function alertRecords_(rows, league, alertName) {
   const scope = adminScoreScope_(league);
 
   rows.forEach(function(row) {
+    if (!openingOddsEligible_(row)) return;
     const rowAlert = normalizeAlertName_(row[14]);
     if (rowAlert !== alertName) return;
 
@@ -1793,6 +1804,7 @@ function adminScoreHistoryBuckets_(rows, alertLists, finalRatings, levelCatalog)
     if (success) buckets[id].wins++;
   }
   rows.forEach(function(row, idx) {
+    if (!openingOddsEligible_(row)) return;
     const visible = normalizeAlertName_(row[14]);
     if (!visible || !row[15]) return; // Only completed matches with a result
     const finalValue = String((finalRatings[idx] && finalRatings[idx][0]) || "");
@@ -1863,6 +1875,7 @@ function adminSignalStats_(p) {
   const levelCatalog = publicLevelCatalog_(ss);
 
   rows.forEach(function(row, idx){
+    if (!openingOddsEligible_(row)) return;
     const league = String(row[0] || "").trim();
     const favoriteSide = String(row[3] || "").trim().toUpperCase();
     const rawAlert = String(row[14] || "").trim();
@@ -1895,6 +1908,7 @@ function adminSignalStats_(p) {
 function adminHistoricalAlertStats_(rows) {
   const byAlert={};
   rows.forEach(function(row){
+    if(!openingOddsEligible_(row))return;
     const league=String(row[0]||"").trim();
     const raw=normalizeAlertName_(row[14]);
     const alert=canonicalAlertKey_(raw);
@@ -1937,6 +1951,7 @@ function adminSignals_(p) {
   const signals = [];
 
   rows.forEach(function(row, idx) {
+    if (!openingOddsEligible_(row)) return;
     const league = String(row[0] || "").trim();
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
