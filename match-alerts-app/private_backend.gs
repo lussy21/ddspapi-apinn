@@ -1851,16 +1851,12 @@ function adminSignalStats_(p) {
   const regions = ["MAIN","OTHER_EUROPE","NATIONAL","AMERICA"];
   const symbols = ["🔷","💎","👑","🎯","⚡","💣"];
   const out = {};
-  // All Admin statistics use this single, read-only historical pass.
-  // Keep the existing public symbol statistics unchanged. The new per-alert
-  // totals use the SAME primary-alert and W/L rules as adminSignals_.
-  const byAlert = {};
   regions.forEach(function(r){
     out[r] = {};
     symbols.forEach(function(s){ out[r][s] = {wins:0,total:0}; });
   });
 
-  if (last < 3) return {ok:true,regions:out,byAlert:byAlert,updatedAt:new Date().toISOString()};
+  if (last < 3) return {ok:true,regions:out,updatedAt:new Date().toISOString()};
 
   const rows = pin.getRange(3, 1, last - 2, 16).getDisplayValues();
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, last - 2, 1).getDisplayValues();
@@ -1876,25 +1872,6 @@ function adminSignalStats_(p) {
     if (isIsolatedSecondDivision_(league)) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
-    // Live per-alert statistics: MAIN / OTHER_EUROPE / NATIONAL / AMERICA,
-    // plus EUROPE and ALL. Every settled primary alert contributes once.
-    // Do not change the existing public symbol statistics below.
-    const resultForAlert = alertSuccess_(row, alert);
-    if (resultForAlert !== null) {
-      const key = canonicalAlertKey_(alert);
-      if (key) {
-        if (!byAlert[key]) byAlert[key] = {};
-        const regionKey = signalStatsRegion_(league);
-        const scopes = ["ALL", regionKey];
-        if (regionKey === "MAIN" || regionKey === "OTHER_EUROPE") scopes.push("EUROPE");
-        scopes.forEach(function(scope) {
-          if (!byAlert[key][scope]) byAlert[key][scope] = {wins:0,total:0};
-          byAlert[key][scope].total++;
-          if (resultForAlert) byAlert[key][scope].wins++;
-        });
-      }
-    }
-
     const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
     const sourceAlerts = sourceAlertsForRow_(alert, listText);
     const selectedPublic = highestPublicAlert_(sourceAlerts, alert, levelCatalog);
@@ -1909,7 +1886,32 @@ function adminSignalStats_(p) {
     if (won === true) bucket.wins++;
   });
 
-  return {ok:true,regions:out,byAlert:byAlert,updatedAt:new Date().toISOString()};
+  return {ok:true,regions:out,updatedAt:new Date().toISOString()};
+}
+
+
+// Historic outcomes are calculated ONCE from the same PINNACLE rows already
+// loaded by adminSignals_. They are read-only and NEVER trigger alerts or picks.
+function adminHistoricalAlertStats_(rows) {
+  const byAlert={};
+  rows.forEach(function(row){
+    const league=String(row[0]||"").trim();
+    const raw=normalizeAlertName_(row[14]);
+    const alert=canonicalAlertKey_(raw);
+    if(!league||!alert||isIsolatedSecondDivision_(league))return;
+    const won=alertSuccess_(row,raw);
+    if(won===null)return;
+    const region=signalStatsRegion_(league);
+    const scopes=["ALL",region];
+    if(region==="MAIN"||region==="OTHER_EUROPE")scopes.push("EUROPE");
+    const target=byAlert[alert]||(byAlert[alert]={});
+    scopes.forEach(function(scope){
+      const b=target[scope]||(target[scope]={wins:0,total:0});
+      b.total++;
+      if(won)b.wins++;
+    });
+  });
+  return byAlert;
 }
 
 function adminSignals_(p) {
@@ -1921,10 +1923,11 @@ function adminSignals_(p) {
 
   const pinLast = pin.getLastRow();
   if (pinLast < 3) {
-    return {ok:true,count:0,signals:[],updatedAt:new Date().toISOString()};
+    return {ok:true,count:0,signals:[],byAlert:{},updatedAt:new Date().toISOString()};
   }
 
   const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const byAlert = adminHistoricalAlertStats_(rows);
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
   // BX contains the saved /10 rating; BY remains the unchanged kickoff source.
   const ratingAndKickoffRows = pin.getRange(3, 76, pinLast - 2, 2).getDisplayValues();
@@ -2012,6 +2015,7 @@ function adminSignals_(p) {
     ok:true,
     count:signals.length,
     signals:signals,
+    byAlert:byAlert,
     updatedAt:new Date().toISOString()
   };
 }
