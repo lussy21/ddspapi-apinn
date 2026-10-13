@@ -165,7 +165,7 @@ const ALERT_CATALOG=[
 let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, leagueControlsLive=false, profileCurrentUsername="";
 let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={}, leagueSettings=[];
 let adminLiveStatsByKey={},adminLiveStatsReady=false,adminLiveStatsUpdatedAt="";
-let adminStatsLoadPromise=null,adminStatsLastLoadAt=0;
+let adminStatsLastLoadAt=0;
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
 let signalsLoadPromise=null;
@@ -183,6 +183,7 @@ async function loadSignalsFresh(){
       try{
         const sig=await apiPost({action:"adminSignals",adminCode:adminSecret});
         if(!sig.ok) throw new Error(sig.error||"ADMIN_ERROR");
+        applyLiveAlertStats(sig.byAlert,sig.updatedAt);
         renderSignals(sig.signals||[]);
         return sig;
       }catch(e){
@@ -253,7 +254,6 @@ async function loadAdmin(){
   const jobs=[];
   if(internalSignalsLive){
     jobs.push(loadSignalsFresh().catch(()=>{}));
-    jobs.push(loadLiveAlertStats(true).catch(()=>{}));
     jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
       if(!r.ok)return;
       adminLevelCatalog={};
@@ -384,40 +384,29 @@ function signalLiveRecord(s,scope,fallback){
   const stats=liveAlertStatsFor(s.internalAlert),r=stats&&stats[scope];
   return r?String(r.wins)+"/"+String(r.total):fallback;
 }
-// One authenticated historical read for both screens, not a query per match.
-async function loadLiveAlertStats(force=false){
-  if(!internalSignalsLive)return null;
-  if(adminStatsLoadPromise)return adminStatsLoadPromise;
-  if(!force&&adminLiveStatsReady&&Date.now()-adminStatsLastLoadAt<30000)return null;
-  adminStatsLoadPromise=(async()=>{
-    const r=await apiPost({action:"adminSignalStats",adminCode:adminSecret});
-    if(!r.ok||!r.byAlert||typeof r.byAlert!=="object"||Array.isArray(r.byAlert))
-      throw new Error("LIVE_ALERT_STATS_UNAVAILABLE");
-    const next={};
-    Object.entries(r.byAlert).forEach(([key,scopes])=>{
-      if(!scopes||typeof scopes!=="object")return;
-      const valid={};
-      ["ALL","MAIN","OTHER_EUROPE","NATIONAL","AMERICA","EUROPE"].forEach(scope=>{
-        const x=scopes[scope],w=Number(x&&x.wins),t=Number(x&&x.total);
-        if(x&&Number.isInteger(w)&&Number.isInteger(t)&&w>=0&&t>=0&&w<=t)
-          valid[scope]={wins:w,total:t};
-      });
-      next[alertBaseKey(key)]=valid;
-    });
-    adminLiveStatsByKey=next;
-    adminLiveStatsReady=true;
-    adminLiveStatsUpdatedAt=String(r.updatedAt||"");
-    adminStatsLastLoadAt=Date.now();
-    renderSignals(adminSignalsCache);
-    return r;
-  })().catch(e=>{
-    // An upstream outage must not silently resurrect frozen historic numbers.
-    adminLiveStatsByKey={};
+// The existing adminSignals response is the ONLY read required for live W/L.
+// This function never requests data, edits Sheets, or changes alert decisions.
+function applyLiveAlertStats(byAlert,updatedAt){
+  if(!byAlert||typeof byAlert!=="object"||Array.isArray(byAlert)){
     adminLiveStatsReady=false;
-    renderSignals(adminSignalsCache);
-    throw e;
-  }).finally(()=>{adminStatsLoadPromise=null;});
-  return adminStatsLoadPromise;
+    adminLiveStatsByKey={};
+    return;
+  }
+  const next={};
+  Object.entries(byAlert).forEach(([key,scopes])=>{
+    if(!scopes||typeof scopes!=="object")return;
+    const valid={};
+    ["ALL","MAIN","OTHER_EUROPE","NATIONAL","AMERICA","EUROPE"].forEach(scope=>{
+      const x=scopes[scope],w=Number(x&&x.wins),t=Number(x&&x.total);
+      if(x&&Number.isInteger(w)&&Number.isInteger(t)&&w>=0&&t>=0&&w<=t)
+        valid[scope]={wins:w,total:t};
+    });
+    next[alertBaseKey(key)]=valid;
+  });
+  adminLiveStatsByKey=next;
+  adminLiveStatsReady=true;
+  adminLiveStatsUpdatedAt=String(updatedAt||"");
+  adminStatsLastLoadAt=Date.now();
 }
 function renderAlertManager(){
   const items=ALERT_CATALOG.map(x=>({...x,levelInfo:levelInfoFor(x.name)}));
@@ -685,10 +674,7 @@ window.withdrawSlip=async function(id,btn){
 
 async function reloadSignals(){
   if(!internalSignalsLive)return;
-  const out=await loadSignalsFresh();
-  // Never surface a successful publication as a failure if stats are offline.
-  loadLiveAlertStats().catch(()=>{});
-  return out;
+  return loadSignalsFresh();
 }
 window.signalToggle=async(action,controlId,btn)=>{
   if(!publicationControlsLive||!controlId) return;
@@ -759,7 +745,7 @@ function showAlertManager(){
   hideAdminViews();
   alertManagerView.classList.remove("hidden");
   renderAlertManager();
-  loadLiveAlertStats().catch(()=>{});
+  if(Date.now()-adminStatsLastLoadAt>30000)reloadSignals().catch(()=>{});
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showLeagueManager(){
