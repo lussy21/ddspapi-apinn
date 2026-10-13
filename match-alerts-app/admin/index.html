@@ -144,26 +144,28 @@ const ADMIN_STORAGE_KEY="dtt_admin_code_v1";
 const OWNER_PUSH_ENABLED_KEY="dtt_owner_push_enabled_v1";
 const ALERT_PREFS_KEY="dtt_admin_alert_prefs_v1";
 const ALERT_CATALOG=[
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ",w:33,t:40,mainW:19,mainT:21,otherW:7,otherT:8,nationalW:5,nationalT:7,americaW:2,americaT:4},
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)",w:2,t:4,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:0,nationalT:1,americaW:0,americaT:0},
-  {name:"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ",w:8,t:9,mainW:5,mainT:6,otherW:1,otherT:1,nationalW:1,nationalT:1,americaW:1,americaT:1},
-  {name:"🔔 ΚΟΝΤΡΑ",w:11,t:16,mainW:3,mainT:5,otherW:4,otherT:6,nationalW:3,nationalT:4,americaW:1,americaT:1},
-  {name:"🔔 ΦΑΒΟΡΙ",w:13,t:20,mainW:10,mainT:12,otherW:0,otherT:1,nationalW:2,nationalT:6,americaW:1,americaT:1},
-  {name:"👀 WATCH ΚΟΝΤΡΑ",w:4,t:13,mainW:2,mainT:8,otherW:0,otherT:2,nationalW:1,nationalT:2,americaW:1,americaT:1},
-  {name:"👀 WATCH ΦΑΒΟΡΙ",w:29,t:48,mainW:15,mainT:27,otherW:4,otherT:7,nationalW:8,nationalT:10,americaW:2,americaT:4},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X",w:15,t:24,mainW:12,mainT:14,otherW:1,otherT:5,nationalW:2,nationalT:5,americaW:0,americaT:0},
-  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+3X",w:19,t:26,mainW:11,mainT:13,otherW:3,otherT:6,nationalW:4,nationalT:6,americaW:1,americaT:1},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%",w:14,t:17,mainW:10,mainT:11,otherW:0,otherT:1,nationalW:4,nationalT:5,americaW:0,americaT:0},
-  {name:"🔔🧪 ΦΑΒΟΡΙ 84+P60",w:11,t:15,mainW:7,mainT:10,otherW:1,otherT:1,nationalW:3,nationalT:4,americaW:0,americaT:0},
-  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ",w:11,t:16,mainW:1,mainT:1,otherW:0,otherT:0,nationalW:10,nationalT:15,americaW:0,americaT:0},
-  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ",w:6,t:11,mainW:1,mainT:2,otherW:0,otherT:0,nationalW:5,nationalT:9,americaW:0,americaT:0},
-  {name:"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ",w:2,t:2,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:2,nationalT:2,americaW:0,americaT:0},
-  {name:"🔔 ΦΑΒ 60+",w:23,t:35,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:19,nationalT:28,americaW:2,americaT:4},
-  {name:"🔔 ΦΑΒ 75+",w:22,t:34,mainW:2,mainT:3,otherW:0,otherT:0,nationalW:18,nationalT:27,americaW:2,americaT:4},
-  {name:"🔔 ΤΖΙΡΟΣ ↑",w:0,t:0,mainW:0,mainT:0,otherW:0,otherT:0,nationalW:0,nationalT:0,americaW:0,americaT:0}
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"},
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)"},
+  {name:"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ"},
+  {name:"🔔 ΚΟΝΤΡΑ"},
+  {name:"🔔 ΦΑΒΟΡΙ"},
+  {name:"👀 WATCH ΚΟΝΤΡΑ"},
+  {name:"👀 WATCH ΦΑΒΟΡΙ"},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X"},
+  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+3X"},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2%"},
+  {name:"🔔🧪 ΦΑΒΟΡΙ 84+P60"},
+  {name:"🔔💎 ΦΑΒΟΡΙ ΤΖΙΡΟΥ"},
+  {name:"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ"},
+  {name:"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ"},
+  {name:"🔔 ΦΑΒ 60+"},
+  {name:"🔔 ΦΑΒ 75+"},
+  {name:"🔔 ΤΖΙΡΟΣ ↑"}
 ];
 let adminSecret=localStorage.getItem(ADMIN_STORAGE_KEY)||"", adminFreeSlots=0, subscriptionFeatureLive=false, internalSignalsLive=false, memberHistoryLive=false, publicationControlsLive=false, slipBuilderLive=false, leagueControlsLive=false, profileCurrentUsername="";
 let adminSignalsCache=[], slipDraftIds=[], adminLevelCatalog={}, leagueSettings=[];
+let adminLiveStatsByKey={},adminLiveStatsReady=false,adminLiveStatsUpdatedAt="";
+let adminStatsLoadPromise=null,adminStatsLastLoadAt=0;
 let alertPrefs=(()=>{try{return JSON.parse(localStorage.getItem(ALERT_PREFS_KEY)||"{}")||{};}catch(_){return {};}})();
 let backendWarmPromise=null;
 let signalsLoadPromise=null;
@@ -251,6 +253,7 @@ async function loadAdmin(){
   const jobs=[];
   if(internalSignalsLive){
     jobs.push(loadSignalsFresh().catch(()=>{}));
+    jobs.push(loadLiveAlertStats(true).catch(()=>{}));
     jobs.push(apiPost({action:"adminAlertLevels",adminCode:adminSecret}).then(r=>{
       if(!r.ok)return;
       adminLevelCatalog={};
@@ -368,18 +371,56 @@ function alertStatsPair(w,t){
 function alertStatsText(item){
   return alertStatsPair(item.w,item.t);
 }
+
+function liveAlertStatsFor(value){
+  return adminLiveStatsReady?(adminLiveStatsByKey[alertBaseKey(value)]||null):null;
+}
+function liveAlertStatsText(value,scope){
+  if(!adminLiveStatsReady)return "αναμονή ενημέρωσης";
+  const stats=liveAlertStatsFor(value),r=stats&&stats[scope];
+  return r?alertStatsPair(r.wins,r.total):"—";
+}
+function signalLiveRecord(s,scope,fallback){
+  const stats=liveAlertStatsFor(s.internalAlert),r=stats&&stats[scope];
+  return r?String(r.wins)+"/"+String(r.total):fallback;
+}
+// One authenticated historical read for both screens, not a query per match.
+async function loadLiveAlertStats(force=false){
+  if(!internalSignalsLive)return null;
+  if(adminStatsLoadPromise)return adminStatsLoadPromise;
+  if(!force&&adminLiveStatsReady&&Date.now()-adminStatsLastLoadAt<30000)return null;
+  adminStatsLoadPromise=(async()=>{
+    const r=await apiPost({action:"adminSignalStats",adminCode:adminSecret});
+    if(!r.ok||!r.byAlert||typeof r.byAlert!=="object"||Array.isArray(r.byAlert))
+      throw new Error("LIVE_ALERT_STATS_UNAVAILABLE");
+    const next={};
+    Object.entries(r.byAlert).forEach(([key,scopes])=>{
+      if(!scopes||typeof scopes!=="object")return;
+      const valid={};
+      ["ALL","MAIN","OTHER_EUROPE","NATIONAL","AMERICA","EUROPE"].forEach(scope=>{
+        const x=scopes[scope],w=Number(x&&x.wins),t=Number(x&&x.total);
+        if(x&&Number.isInteger(w)&&Number.isInteger(t)&&w>=0&&t>=0&&w<=t)
+          valid[scope]={wins:w,total:t};
+      });
+      next[alertBaseKey(key)]=valid;
+    });
+    adminLiveStatsByKey=next;
+    adminLiveStatsReady=true;
+    adminLiveStatsUpdatedAt=String(r.updatedAt||"");
+    adminStatsLastLoadAt=Date.now();
+    renderSignals(adminSignalsCache);
+    return r;
+  })().catch(e=>{
+    // An upstream outage must not silently resurrect frozen historic numbers.
+    adminLiveStatsByKey={};
+    adminLiveStatsReady=false;
+    renderSignals(adminSignalsCache);
+    throw e;
+  }).finally(()=>{adminStatsLoadPromise=null;});
+  return adminStatsLoadPromise;
+}
 function renderAlertManager(){
-  const liveStats={};
-  adminSignalsCache.forEach(s=>{
-    const n=normalizeAlertName(s.internalAlert);
-    const m=String(s.allStatsRecord||"").match(/^(\d+)\/(\d+)$/);
-    if(n&&m)liveStats[n]={w:Number(m[1]),t:Number(m[2])};
-  });
-  const items=ALERT_CATALOG.map(x=>{
-    const item=Object.assign({},x,liveStats[x.name]||{});
-    item.levelInfo=levelInfoFor(x.name);
-    return item;
-  });
+  const items=ALERT_CATALOG.map(x=>({...x,levelInfo:levelInfoFor(x.name)}));
   const enabled=items.filter(x=>alertEnabled(x.name)).length;
   alertManagerLaunchCount.textContent=enabled+"/"+items.length;
   alertManagerSummary.innerHTML='<div class="stat"><b>'+items.length+'</b><span>Σύνολο</span></div><div class="stat"><b>'+enabled+'</b><span>Ενεργά</span></div><div class="stat"><b>'+(items.length-enabled)+'</b><span>Κλειστά</span></div>';
@@ -391,7 +432,7 @@ function renderAlertManager(){
       ? '<div class="alert-manager-stats">LEVEL: <b>'+esc(symbol||"TEST")+' · '+esc(pctText(li.hit))+' · '+esc(String(li.wins||0)+"/"+String(li.total||0))+' · ROI '+esc(roiText(li.roi))+' · Score '+esc(String(li.score||0).replace(".",","))+'</b></div>'+
         '<div class="alert-manager-stats">Review: <b>'+esc(li.nextReview||"—")+(li.reviewState&&li.reviewState!=="STAY"?(" · "+esc(li.reviewState)+(li.suggestedSymbol?(" "+esc(li.suggestedSymbol)):"")):"")+'</b></div>'
       : '';
-    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(symbol?esc(symbol)+" · ":"")+esc(x.name)+'</div>'+levelStats+'<div class="alert-manager-stats">ALL STATS: <b>'+esc(alertStatsText(x))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(alertStatsPair(x.mainW,x.mainT))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(alertStatsPair(x.otherW,x.otherT))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(alertStatsPair(x.nationalW,x.nationalT))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(alertStatsPair(x.americaW,x.americaT))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
+    return '<div class="alert-manager-card '+(on?'':'off')+'"><div class="alert-manager-main"><div class="alert-manager-name">'+(symbol?esc(symbol)+" · ":"")+esc(x.name)+'</div>'+levelStats+'<div class="alert-manager-stats">ALL STATS: <b>'+esc(liveAlertStatsText(x.name,"ALL"))+'</b></div><div class="alert-manager-stats">Μεγάλα Πρωταθλήματα: <b>'+esc(liveAlertStatsText(x.name,"MAIN"))+'</b></div><div class="alert-manager-stats">Λοιπή Ευρώπη: <b>'+esc(liveAlertStatsText(x.name,"OTHER_EUROPE"))+'</b></div><div class="alert-manager-stats">Εθνικές: <b>'+esc(liveAlertStatsText(x.name,"NATIONAL"))+'</b></div><div class="alert-manager-stats">Αμερική: <b>'+esc(liveAlertStatsText(x.name,"AMERICA"))+'</b></div></div><button class="alert-toggle '+(on?'':'off')+'" data-alert-toggle="'+esc(x.name)+'">'+(on?'ΕΝΕΡΓΟ':'ΑΝΕΝΕΡΓΟ')+'</button></div>';
   }).join("");
 }
 function renderLeagueManager(){
@@ -518,9 +559,13 @@ function signalCardHtml(s){
   // Apps Script deployment has not started returning groupRecord/regionRecord.
   // Never substitute a fake 0/0 for stats that have not arrived from the API.
   const statsScope=signalLeagueStatsScope(s.league);
+  const g=statsScope.groupLabel==="Μεγάλα Πρωταθλήματα"?"MAIN":statsScope.groupLabel==="Λοιπή Ευρώπη"?"OTHER_EUROPE":statsScope.groupLabel==="Σύνολο Εθνικών"?"NATIONAL":"";
+  const r=statsScope.regionLabel==="Σύνολο Ευρώπης"?"EUROPE":statsScope.regionLabel==="Σύνολο Αμερικής"?"AMERICA":"";
+  const groupRecord=g?signalLiveRecord(s,g,s.groupRecord):s.groupRecord;
+  const regionRecord=r?signalLiveRecord(s,r,s.regionRecord):s.regionRecord;
   const stats='<div class="signal-line">Πρωτάθλημα: <b>'+esc(signalRecordLabel(s.leagueRecord))+'</b></div>'
-    +(statsScope.groupLabel?'<div class="signal-line">'+esc(statsScope.groupLabel)+': <b>'+esc(signalAvailableRecord(s.groupRecord))+'</b></div>':'')
-    +(statsScope.regionLabel?'<div class="signal-line">'+esc(statsScope.regionLabel)+': <b>'+esc(signalAvailableRecord(s.regionRecord))+'</b></div>':'');
+    +(statsScope.groupLabel?'<div class="signal-line">'+esc(statsScope.groupLabel)+': <b>'+esc(signalAvailableRecord(groupRecord))+'</b></div>':'')
+    +(statsScope.regionLabel?'<div class="signal-line">'+esc(statsScope.regionLabel)+': <b>'+esc(signalAvailableRecord(regionRecord))+'</b></div>':'');
   const publicationStatus=String(s.publicationStatus||"waiting");
   const state=publicationStatus==="published";
   const stateText=state?"ΔΗΜΟΣΙΕΥΜΕΝΗ":publicationStatus==="withdrawn"?"ΑΠΟΣΥΡΘΗΚΕ":"ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ";
@@ -639,8 +684,11 @@ window.withdrawSlip=async function(id,btn){
 };
 
 async function reloadSignals(){
-  if(!internalSignalsLive) return;
-  return loadSignalsFresh();
+  if(!internalSignalsLive)return;
+  const out=await loadSignalsFresh();
+  // Never surface a successful publication as a failure if stats are offline.
+  loadLiveAlertStats().catch(()=>{});
+  return out;
 }
 window.signalToggle=async(action,controlId,btn)=>{
   if(!publicationControlsLive||!controlId) return;
@@ -711,6 +759,7 @@ function showAlertManager(){
   hideAdminViews();
   alertManagerView.classList.remove("hidden");
   renderAlertManager();
+  loadLiveAlertStats().catch(()=>{});
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showLeagueManager(){
