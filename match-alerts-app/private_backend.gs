@@ -1851,12 +1851,16 @@ function adminSignalStats_(p) {
   const regions = ["MAIN","OTHER_EUROPE","NATIONAL","AMERICA"];
   const symbols = ["🔷","💎","👑","🎯","⚡","💣"];
   const out = {};
+  // All Admin statistics use this single, read-only historical pass.
+  // Keep the existing public symbol statistics unchanged. The new per-alert
+  // totals use the SAME primary-alert and W/L rules as adminSignals_.
+  const byAlert = {};
   regions.forEach(function(r){
     out[r] = {};
     symbols.forEach(function(s){ out[r][s] = {wins:0,total:0}; });
   });
 
-  if (last < 3) return {ok:true,regions:out,updatedAt:new Date().toISOString()};
+  if (last < 3) return {ok:true,regions:out,byAlert:byAlert,updatedAt:new Date().toISOString()};
 
   const rows = pin.getRange(3, 1, last - 2, 16).getDisplayValues();
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, last - 2, 1).getDisplayValues();
@@ -1872,6 +1876,25 @@ function adminSignalStats_(p) {
     if (isIsolatedSecondDivision_(league)) return;
     if (favoriteSide !== "H" && favoriteSide !== "A") return;
 
+    // Live per-alert statistics: MAIN / OTHER_EUROPE / NATIONAL / AMERICA,
+    // plus EUROPE and ALL. Every settled primary alert contributes once.
+    // Do not change the existing public symbol statistics below.
+    const resultForAlert = alertSuccess_(row, alert);
+    if (resultForAlert !== null) {
+      const key = canonicalAlertKey_(alert);
+      if (key) {
+        if (!byAlert[key]) byAlert[key] = {};
+        const regionKey = signalStatsRegion_(league);
+        const scopes = ["ALL", regionKey];
+        if (regionKey === "MAIN" || regionKey === "OTHER_EUROPE") scopes.push("EUROPE");
+        scopes.forEach(function(scope) {
+          if (!byAlert[key][scope]) byAlert[key][scope] = {wins:0,total:0};
+          byAlert[key][scope].total++;
+          if (resultForAlert) byAlert[key][scope].wins++;
+        });
+      }
+    }
+
     const listText = String((alertListRows[idx] && alertListRows[idx][0]) || "");
     const sourceAlerts = sourceAlertsForRow_(alert, listText);
     const selectedPublic = highestPublicAlert_(sourceAlerts, alert, levelCatalog);
@@ -1886,7 +1909,7 @@ function adminSignalStats_(p) {
     if (won === true) bucket.wins++;
   });
 
-  return {ok:true,regions:out,updatedAt:new Date().toISOString()};
+  return {ok:true,regions:out,byAlert:byAlert,updatedAt:new Date().toISOString()};
 }
 
 function adminSignals_(p) {
