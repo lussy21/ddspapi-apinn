@@ -660,6 +660,18 @@ def load_baselines(log_ws):
 # -------------------------------------------------
 
 
+MIN_OPEN_FAVORITE_ODDS = 1.39
+
+
+def opening_odds_eligible(row):
+    """Only the original favorite quote in PINNACLE!E is authoritative."""
+    raw = str(row[4]).strip().replace(",", ".") if len(row) > 4 else ""
+    try:
+        return float(raw) >= MIN_OPEN_FAVORITE_ODDS
+    except ValueError:
+        return False
+
+
 def normalize_display_alert(value):
     """Remove the visual selector score suffix from column O for history logic."""
     text = str(value or "").strip()
@@ -749,6 +761,10 @@ def main():
         alert = normalize_display_alert(
             row[14]
         )
+        # Suppress alerts with missing/too-low opening favorite odds.
+        # Leave the historical sheet and ALERT LOG unchanged.
+        if not opening_odds_eligible(row):
+            alert = ""
 
         event_id = str(
             row[17]
