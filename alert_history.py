@@ -762,7 +762,8 @@ def main():
             row[14]
         )
         # Suppress alerts with missing/too-low opening favorite odds.
-        # Leave the historical sheet and ALERT LOG unchanged.
+        # Preserve all original results and past log entries; an already-active
+        # low-odds alert will close through the normal state machine.
         if not opening_odds_eligible(row):
             alert = ""
 
