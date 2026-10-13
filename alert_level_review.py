@@ -6,6 +6,7 @@ LEVELS_SHEET = "ALERT LEVELS"
 PINNACLE_SHEET = "PINNACLE"
 ATHENS = ZoneInfo("Europe/Athens")
 REVIEW_DAYS = 15
+MIN_OPEN_FAVORITE_ODDS = 1.39
 # Independently tracked: never include these three competitions in public levels.
 SECOND_DIVISION_LEAGUES = frozenset({
     "Greece - Super League 2",
@@ -213,6 +214,11 @@ def _metrics(alert, rows):
 
     for row in rows:
         if not row or not _allowed_scope(row[0] if row else ""):
+            continue
+        # The opening favorite price, not 90-minute or final odds, controls
+        # eligibility for historical Level score / ROI / suggested status.
+        opening = _num(row[4]) if len(row) > 4 else None
+        if opening is None or opening < MIN_OPEN_FAVORITE_ODDS:
             continue
         fav_won = _favorite_won(row)
         if fav_won is None or not _matches(alert, row):

@@ -660,6 +660,18 @@ def load_baselines(log_ws):
 # -------------------------------------------------
 
 
+MIN_OPEN_FAVORITE_ODDS = 1.39
+
+
+def opening_odds_eligible(row):
+    """Only the original favorite quote in PINNACLE!E is authoritative."""
+    raw = str(row[4]).strip().replace(",", ".") if len(row) > 4 else ""
+    try:
+        return float(raw) >= MIN_OPEN_FAVORITE_ODDS
+    except ValueError:
+        return False
+
+
 def normalize_display_alert(value):
     """Remove the visual selector score suffix from column O for history logic."""
     text = str(value or "").strip()
@@ -749,6 +761,12 @@ def main():
         alert = normalize_display_alert(
             row[14]
         )
+        # Apply this NEW minimum only to matches not yet settled.
+        # Old settled match records and their audit log must remain untouched.
+        # For an active low-price match, this passes an empty alert to the
+        # existing state machine so its active baseline is closed normally.
+        if not str(row[15]).strip() and not opening_odds_eligible(row):
+            alert = ""
 
         event_id = str(
             row[17]
