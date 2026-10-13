@@ -1591,10 +1591,17 @@ for match in matches:
     )
     # O is the visual "at a glance" column: primary alert + selector strength.
     # The real alert state still lives in the helper columns; BX keeps the full score/stage.
-    alert_formula = (
-        f'=IF(AND(ISNUMBER($E{row_number});$E{row_number}>=1,39);LET(pa;{primary_alert_expr};'
+    # Keep the existing working LET expression unmodified, and wrap it
+    # with an explicit empty-string fallback for sub-1.39 opening odds.
+    # Without an explicit IF false branch Google Sheets displays FALSE.
+    original_alert_formula = (
+        f'=LET(pa;{primary_alert_expr};'
         f'IF(pa<>"";pa&IF(AND($BX{row_number}<>"";REGEXMATCH(TO_TEXT($BX{row_number});"/10"));'
-        f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");"")))'
+        f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");""))'
+    )
+    alert_formula = (
+        f'=IF(AND(ISNUMBER($E{row_number});$E{row_number}>=1,39);'
+        f'{original_alert_formula[1:]};"")'
     )
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
