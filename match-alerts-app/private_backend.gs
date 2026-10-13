@@ -326,7 +326,7 @@ function alerts_(p) {
         const away = String(row[2] || "").trim();
         const currentAlert = normalizeAlertName_(row[14]);
         const result = String(row[15] || "").trim();
-        if (league && home && away && currentAlert && !result) activeIndexes.push(idx);
+        if (league && home && away && currentAlert && !result && openingOddsEligible_(row)) activeIndexes.push(idx);
       });
 
       if (!activeIndexes.length) {
@@ -341,6 +341,7 @@ function alerts_(p) {
         const allStats = {};
         const leagueStats = {};
         pinRows.forEach(function(row) {
+          if (!openingOddsEligible_(row)) return;
           const alertName = normalizeAlertName_(row[14]);
           if (!alertName) return;
           const success = alertSuccess_(row, alertName);
@@ -1043,6 +1044,15 @@ function alertSuccess_(row, alertName) {
   return null;
 }
 
+// One immutable price floor shared by public alerts, Admin signals, history
+// aggregates and score-band statistics. Missing/open odds are NOT eligible.
+const MIN_OPEN_FAVORITE_ODDS_ = 1.39;
+function openingOddsEligible_(row) {
+  const raw = String(row && row.length > 4 ? row[4] : "").trim().replace(",", ".");
+  const value = raw === "" ? NaN : Number(raw);
+  return Number.isFinite(value) && value >= MIN_OPEN_FAVORITE_ODDS_;
+}
+
 function alertRecords_(rows, league, alertName) {
   let leagueWins = 0;
   let leagueTotal = 0;
@@ -1057,6 +1067,7 @@ function alertRecords_(rows, league, alertName) {
   const scope = adminScoreScope_(league);
 
   rows.forEach(function(row) {
+    if (!openingOddsEligible_(row)) return;
     const rowAlert = normalizeAlertName_(row[14]);
     if (rowAlert !== alertName) return;
 
@@ -1793,6 +1804,7 @@ function adminScoreHistoryBuckets_(rows, alertLists, finalRatings, levelCatalog)
     if (success) buckets[id].wins++;
   }
   rows.forEach(function(row, idx) {
+    if (!openingOddsEligible_(row)) return;
     const visible = normalizeAlertName_(row[14]);
     if (!visible || !row[15]) return; // Only completed matches with a result
     const finalValue = String((finalRatings[idx] && finalRatings[idx][0]) || "");
@@ -1863,6 +1875,7 @@ function adminSignalStats_(p) {
   const levelCatalog = publicLevelCatalog_(ss);
 
   rows.forEach(function(row, idx){
+    if (!openingOddsEligible_(row)) return;
     const league = String(row[0] || "").trim();
     const favoriteSide = String(row[3] || "").trim().toUpperCase();
     const rawAlert = String(row[14] || "").trim();
@@ -1889,6 +1902,32 @@ function adminSignalStats_(p) {
   return {ok:true,regions:out,updatedAt:new Date().toISOString()};
 }
 
+
+// Historic outcomes are calculated ONCE from the same PINNACLE rows already
+// loaded by adminSignals_. They are read-only and NEVER trigger alerts or picks.
+function adminHistoricalAlertStats_(rows) {
+  const byAlert={};
+  rows.forEach(function(row){
+    if(!openingOddsEligible_(row))return;
+    const league=String(row[0]||"").trim();
+    const raw=normalizeAlertName_(row[14]);
+    const alert=canonicalAlertKey_(raw);
+    if(!league||!alert||isIsolatedSecondDivision_(league))return;
+    const won=alertSuccess_(row,raw);
+    if(won===null)return;
+    const region=signalStatsRegion_(league);
+    const scopes=["ALL",region];
+    if(region==="MAIN"||region==="OTHER_EUROPE")scopes.push("EUROPE");
+    const target=byAlert[alert]||(byAlert[alert]={});
+    scopes.forEach(function(scope){
+      const b=target[scope]||(target[scope]={wins:0,total:0});
+      b.total++;
+      if(won)b.wins++;
+    });
+  });
+  return byAlert;
+}
+
 function adminSignals_(p) {
   if (!isAdmin_(p.adminCode)) return {ok:false,error:"ADMIN_UNAUTHORIZED"};
 
@@ -1898,10 +1937,11 @@ function adminSignals_(p) {
 
   const pinLast = pin.getLastRow();
   if (pinLast < 3) {
-    return {ok:true,count:0,signals:[],updatedAt:new Date().toISOString()};
+    return {ok:true,count:0,signals:[],byAlert:{},updatedAt:new Date().toISOString()};
   }
 
   const rows = pin.getRange(3, 1, pinLast - 2, 16).getDisplayValues();
+  const byAlert = adminHistoricalAlertStats_(rows);
   const alertListRows = pin.getRange(3, ALERT_LIST_COLUMN, pinLast - 2, 1).getDisplayValues();
   // BX contains the saved /10 rating; BY remains the unchanged kickoff source.
   const ratingAndKickoffRows = pin.getRange(3, 76, pinLast - 2, 2).getDisplayValues();
@@ -1911,6 +1951,7 @@ function adminSignals_(p) {
   const signals = [];
 
   rows.forEach(function(row, idx) {
+    if (!openingOddsEligible_(row)) return;
     const league = String(row[0] || "").trim();
     const home = String(row[1] || "").trim();
     const away = String(row[2] || "").trim();
@@ -1989,6 +2030,7 @@ function adminSignals_(p) {
     ok:true,
     count:signals.length,
     signals:signals,
+    byAlert:byAlert,
     updatedAt:new Date().toISOString()
   };
 }
