@@ -113,7 +113,9 @@ def get_sheet_data():
     url = urlparse(FEED_URL)
     if url.scheme != "https" or url.hostname not in {"script.google.com", "script.googleusercontent.com"}:
         raise ValueError("FEED_URL must be a Google Apps Script HTTPS URL")
-    resp = requests.get(FEED_URL, params={"key": FEED_KEY}, timeout=(5, 28), allow_redirects=True)
+    app.logger.warning("Sheet feed fetch started")
+    resp = requests.get(FEED_URL, params={"key": FEED_KEY}, timeout=(5, 18), allow_redirects=True)
+    app.logger.warning("Sheet feed HTTP response received status=%s length=%s", resp.status_code, len(resp.content))
     destination = urlparse(resp.url).hostname or "unknown"
     media = resp.headers.get("Content-Type", "").split(";")[0].lower()
     app.logger.info("Feed response status=%s host=%s mime=%s redirects=%s bytes=%s",
@@ -218,6 +220,7 @@ def _ensure_refresh():
             return False
         cache["last_attempt"] = now
         cache["refreshing"] = True
+    app.logger.warning("Sheet feed refresh worker launched")
     worker = threading.Thread(target=_refresh_sheet_in_background, daemon=True)
     worker.start()
     return True
