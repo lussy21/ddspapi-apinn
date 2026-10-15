@@ -140,14 +140,29 @@ def get_sheet_data():
     if not isinstance(val.get("rows"), list):
         raise ValueError("FEED_MISSING_ROWS")
     out=[]
-    for row in val["rows"][:4500]:
-        if not isinstance(row, list) or len(row) < 24:
+    out_formats=[]
+    source_formats=val.get("formats")
+    # Accept only source-cell color pairs, not arbitrary CSS or HTML.
+    color_columns={"10","11","12","13","14","15","20","21","22","23","24"}
+    for i, row in enumerate(val["rows"][:4500]):
+        if not isinstance(row, list) or len(row) < 25:
             continue
         if not str(row[1]).strip() or not str(row[2]).strip() or str(row[3]).strip() not in ("H","A"):
             continue
-        out.append(row[:25])
+        out.append(row[:82])
+        src=source_formats[i] if isinstance(source_formats,list) and i<len(source_formats) else None
+        clean={}
+        if isinstance(src,dict):
+            for k,v in src.items():
+                if k not in color_columns or not isinstance(v,list):
+                    continue
+                if len(v)>=2 and all(isinstance(c,str) and (not c or (len(c)==7 and c[0]=="#" and all(x in "0123456789abcdefABCDEF" for x in c[1:]))) for c in v[:2]):
+                    clean[k]=v[:2]
+        out_formats.append(clean)
     return {
         "ok": True, "state":"live", "rows":out,
+        "formats":out_formats,
+        "formatError": val.get("formatError") if isinstance(val.get("formatError"),str) else None,
         "sourceUpdatedAt":val.get("updatedAt"),
         "serverFetchedAt":datetime.now(timezone.utc).isoformat(),
         "count":len(out)
