@@ -146,6 +146,18 @@ def get_sheet_data():
         "count":len(out)
     }
 
+def _probe_feed_once():
+    try:
+        payload = get_sheet_data()
+        app.logger.info("Startup feed check: ok=%s rows=%s state=%s",
+            payload.get("ok"), payload.get("count", 0), payload.get("state"))
+    except Exception as exc:
+        # Safe metadata already logged by get_sheet_data; never include the secret or URL.
+        app.logger.warning("Startup feed check failed: %s", type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:48])
+
+if FEED_URL and FEED_KEY:
+    threading.Thread(target=_probe_feed_once, daemon=True).start()
+
 @app.get("/api/matches")
 def matches():
     if not _private():
