@@ -190,7 +190,7 @@ def _refresh_sheet_in_background():
                 cache["last_error"] = None
             else:
                 cache["last_error"] = "FEED_NOT_CONFIGURED"
-        app.logger.info("Feed refresh ok=%s rows=%s duration_s=%.1f",
+        app.logger.warning("Feed refresh completed: ok=%s rows=%s duration_s=%.1f",
             payload.get("ok"), payload.get("count", 0), time.monotonic() - started)
     except Exception as exc:
         error_code = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
@@ -225,9 +225,10 @@ def _ensure_refresh():
     worker.start()
     return True
 
-if FEED_URL and FEED_KEY:
-    _ensure_refresh()
-
+# Do not start background threads at module import: Gunicorn may import this
+# module in its master before forking workers. Forking while refreshing=True
+# strands child workers permanently in a "loading" state.
+# Let the first /api/matches request start the refresh inside the web worker.
 @app.get("/api/matches")
 def matches():
     if not _private():
