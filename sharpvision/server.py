@@ -4,6 +4,7 @@ import hmac
 import time
 import secrets
 import threading
+import gzip
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from flask import Flask, jsonify, request, session, send_from_directory, make_response
@@ -22,7 +23,9 @@ VIEW_PASSWORD = os.getenv("SV_VIEW_PASSWORD", "").strip()
 FEED_URL = os.getenv("SV_FEED_URL", "").strip()
 FEED_KEY = os.getenv("SV_FEED_KEY", "").strip()
 CACHE_TTL = 540
-cache = {"time": 0.0, "payload": None}
+# A slow Google Sheets read must never block a browser request.
+# The cache holds last good data and a background worker refreshes it.
+cache = {"time": 0.0, "payload": None, "refreshing": False, "last_attempt": 0.0, "last_error": None}
 lock = threading.Lock()
 failures = {}
 
@@ -34,6 +37,11 @@ def _response(payload, status=200):
     resp.status_code = status
     resp.headers["Cache-Control"] = "no-store, private"
     resp.headers["X-Content-Type-Options"] = "nosniff"
+    # The full Excel response is large; gzip helps mobile connections.
+    if len(resp.get_data()) > 4096 and "gzip" in request.headers.get("Accept-Encoding", "").lower():
+        resp.set_data(gzip.compress(resp.get_data(), compresslevel=4))
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Vary"] = "Accept-Encoding"
     return resp
 
 @app.after_request
@@ -168,46 +176,85 @@ def get_sheet_data():
         "count":len(out)
     }
 
-def _probe_feed_once():
+def _refresh_sheet_in_background():
+    """Refresh only in a worker. Never hold the mutex while making a network call."""
+    started = time.monotonic()
     try:
         payload = get_sheet_data()
-        app.logger.info("Startup feed check: ok=%s rows=%s state=%s",
-            payload.get("ok"), payload.get("count", 0), payload.get("state"))
+        with lock:
+            if payload.get("ok"):
+                cache["payload"] = payload
+                cache["time"] = time.monotonic()
+                cache["last_error"] = None
+            else:
+                cache["last_error"] = "FEED_NOT_CONFIGURED"
+        app.logger.info("Feed refresh ok=%s rows=%s duration_s=%.1f",
+            payload.get("ok"), payload.get("count", 0), time.monotonic() - started)
     except Exception as exc:
-        # Safe metadata already logged by get_sheet_data; never include the secret or URL.
-        app.logger.warning("Startup feed check failed: %s", type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:48])
+        error_code = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+        if error_code not in {"GOOGLE_AUTH_REQUIRED", "GOOGLE_SCRIPT_HTML",
+                "GOOGLE_HTML_RESPONSE", "FEED_NOT_JSON", "FEED_TOO_LARGE",
+                "FEED_INVALID_OBJECT", "FEED_UNAUTHORIZED", "FEED_SHEET_NOT_FOUND",
+                "FEED_SHEETS_API_ERROR", "FEED_SHEET_READ_FAILED",
+                "FEED_MISSING_ROWS", "ReadTimeout", "ConnectTimeout"}:
+            error_code = type(exc).__name__
+        with lock:
+            cache["last_error"] = error_code
+        app.logger.warning("Background feed refresh failed after %.1fs: %s",
+            time.monotonic() - started, error_code)
+    finally:
+        with lock:
+            cache["refreshing"] = False
+
+def _ensure_refresh():
+    if not FEED_URL or not FEED_KEY:
+        return False
+    now = time.monotonic()
+    with lock:
+        if cache["refreshing"]:
+            return True
+        # Throttle retries if Apps Script / Sheets is slow or inaccessible.
+        if now - cache["last_attempt"] < 15:
+            return False
+        cache["last_attempt"] = now
+        cache["refreshing"] = True
+    worker = threading.Thread(target=_refresh_sheet_in_background, daemon=True)
+    worker.start()
+    return True
 
 if FEED_URL and FEED_KEY:
-    threading.Thread(target=_probe_feed_once, daemon=True).start()
+    _ensure_refresh()
 
 @app.get("/api/matches")
 def matches():
     if not _private():
-        return _response({"ok": False, "error":"login_required"},401)
-    now=time.monotonic()
+        return _response({"ok": False, "error": "login_required"}, 401)
     with lock:
-        if cache["payload"] and now-cache["time"]<CACHE_TTL:
-            payload=dict(cache["payload"])
-            payload["cached"]=True
-            return _response(payload)
-        try:
-            payload=get_sheet_data()
-        except Exception as exc:
-            error_code = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
-            if error_code not in {"GOOGLE_AUTH_REQUIRED", "GOOGLE_SCRIPT_HTML", "GOOGLE_HTML_RESPONSE",
-                                  "FEED_NOT_JSON", "FEED_TOO_LARGE", "FEED_INVALID_OBJECT",
-                                  "FEED_UNAUTHORIZED", "FEED_SHEET_NOT_FOUND", "FEED_SHEETS_API_ERROR",
-                                  "FEED_SHEET_READ_FAILED", "FEED_MISSING_ROWS"}:
-                error_code = type(exc).__name__
-            app.logger.warning("Sheet read failed: %s", error_code)
-            if cache["payload"] and cache["payload"].get("ok"):
-                payload=dict(cache["payload"])
-                payload["stale"]=True
-                payload["state"]="stale"
-                return _response(payload)
-            return _response({"ok":False,"state":"feed_error","rows":[],"diagnostic":error_code,"message":"Αδυναμία ανάγνωσης Excel. Ελέγξτε τη σύνδεση."},502)
-        cache.update({"time":now,"payload":payload})
-        return _response(payload)
+        payload = cache["payload"]
+        age = time.monotonic() - cache["time"]
+        refreshing = cache["refreshing"]
+        error = cache["last_error"]
+    if payload and payload.get("ok"):
+        if age >= CACHE_TTL and not refreshing:
+            _ensure_refresh()
+        out = dict(payload)
+        out["cached"] = True
+        if age >= CACHE_TTL:
+            out["stale"] = True
+            out["state"] = "stale"
+        return _response(out)
+    if not FEED_URL or not FEED_KEY:
+        return _response({"ok": False, "state": "not_connected", "rows": []})
+    if not refreshing and not error:
+        _ensure_refresh()
+    if error and not refreshing:
+        # Explicit error, never a fake "zero matches" or a hanging request.
+        _ensure_refresh()
+        return _response({"ok": False, "state": "feed_error",
+            "diagnostic": error, "rows": [],
+            "message": "Δεν ολοκληρώθηκε η ενημέρωση του Excel."}, 502)
+    return _response({"ok": False, "state": "loading", "rows": [],
+        "retryAfterSeconds": 3, "message": "Γίνεται ασφαλής ανάκτηση του Excel."})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT","10000")))
