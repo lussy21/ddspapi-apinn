@@ -1,6 +1,6 @@
 /**
  * SharpVision read-only Sheet bridge.
- * Bind this script to the user's private spreadsheet (Extensions > Apps Script).
+ * Create a NEW standalone Apps Script project. Never modify the existing automation project.
  * Store a long random SHARPVISION_FEED_KEY under Project Settings > Script Properties.
  * Deploy as Web app: Execute as Me; Access: Anyone.
  * The key MUST stay secret; it is passed server-to-server, never to browser users.
@@ -13,7 +13,7 @@ function doGet(e) {
     if (!configuredKey || !presentedKey || configuredKey !== presentedKey) {
       return json_({ok:false,error:'UNAUTHORIZED'});
     }
-    var workbook = SpreadsheetApp.getActiveSpreadsheet();
+    var workbook = SpreadsheetApp.openById('1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM');
     var sheet = workbook.getSheetByName('PINNACLE');
     if (!sheet) return json_({ok:false,error:'SHEET_NOT_FOUND'});
     var lastRow = sheet.getLastRow();
