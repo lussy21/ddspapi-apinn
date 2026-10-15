@@ -212,9 +212,65 @@ function paintHistory(){
  '<div class="histrow"><div><b>'+safe(name(z))+'</b><small>'+safe(z.lg)+' · Δείκτης ομοιότητας '+z.similarity+'/100 · '+z.features+' στοιχεία · '+(z.f==="H"?"Φαβορί εντός":"Φαβορί εκτός")+'</small></div><div style="text-align:right;white-space:nowrap"><b class="'+(won(z)?"good":"bad")+'">'+safe(z.r)+'</b><small>'+(won(z)?"Φαβορί":"Κόντρα +0,5")+'</small></div></div>'
  ).join(""):'<div class="empty">Δεν υπάρχουν παρόμοιοι αγώνες σε αυτή την αναζήτηση.</div>';
 }
-function opinion(){if(!current)return;let a=history.all,s=history.side,wins=a.filter(x=>won(x)).length,sideWins=s.filter(x=>won(x)).length,pick="Αποχή",reason;if(a.length<8||s.length<5){reason="Τα κοντινά ιστορικά παιχνίδια είναι λίγα ("+a.length+" συνολικά, "+s.length+" ίδιας έδρας). Θα προτιμούσα αποχή."}else{let share=(wins/a.length+sideWins/s.length)/2,market=current.l?1/current.l:null,contra=current.cl?1/current.cl:null;if(share>=.68&&market!==null&&share>market+.08){pick="Νίκη φαβορί";reason="Το ιστορικό δείχνει περισσότερες νίκες φαβορί, αλλά η σύγκριση δεν δίνει πιστοποιημένη πιθανότητα."}else if(share<=.38&&contra!==null&&1-share>contra+.08){pick="Κόντρα +0,5";reason="Στα κοντινά ιστορικά δείγματα το φαβορί δεν κέρδιζε συχνά. Παραμένει περιορισμένο δείγμα."}else reason="Δεν προκύπτει αρκετά καθαρό πλεονέκτημα έναντι των αποδόσεων. Θα προτιμούσα αποχή."}
-lastOpinion={key:key(current),match:name(current),pick,reason,created:new Date().toISOString(),id:current.id,odds:pick==="Νίκη φαβορί"?current.l:pick==="Κόντρα +0,5"?current.cl:null,historyAll:a.length,historySide:s.length};$("opinionText").textContent="Εκτίμηση: "+pick+". "+reason;$("opinionText").classList.remove("hide")}
-function renderArchive(){let entries=journal.map(j=>{let x=matches.find(m=>key(m)===j.key&&finished(m));let txt=x?(j.pick==="Αποχή"?"Αποχή":j.pick==="Νίκη φαβορί"?(won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε"):(!won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε")):"Αναμονή σκορ";return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+" · "+safe(new Date(j.created).toLocaleString("el-GR"))+'</small></div><div class="tiny">'+safe(txt)+'</div></div>'});$("archiveRows").innerHTML=entries.join("")||"Δεν υπάρχουν αποθηκευμένες εκτιμήσεις."}
+// Give an interpretable historical lean without treating frequencies as calibrated
+// probabilities. "Strength" describes sample size/consistency, not bet confidence.
+function opinion(){
+  if(!current)return;
+  const a=history.all,s=history.side;
+  const n=a.length,ns=s.length;
+  const wins=a.filter(x=>won(x)===true).length;
+  const sideWins=s.filter(x=>won(x)===true).length;
+  const p=n?wins/n:null, ps=ns?sideWins/ns:null;
+  const blended=p===null?null:ps===null?p:p+0.25*(ps-p);
+  const conflict=p!==null&&ps!==null&&Math.abs(p-.5)>.08&&Math.abs(ps-.5)>.08&&(p-.5)*(ps-.5)<0;
+  const nearlyEven=blended!==null&&Math.abs(blended-.5)<.065;
+  let pick="Αποχή",trend="Ανεπαρκή στοιχεία",strength="Ανεπαρκής",note="";
+  if(n>=5&&blended!==null){
+    if(nearlyEven){trend="Ισορροπημένο ιστορικό";strength="Αδύναμη";}
+    else{
+      pick=blended>.5?"Νίκη φαβορί":"Κόντρα +0,5";
+      trend=blended>.5?"Προς φαβορί":"Προς κόντρα +0,5";
+      const separation=Math.abs(blended-.5);
+      strength=!conflict&&n>=25&&ns>=10&&separation>=.20?"Ισχυρή":
+        !conflict&&n>=12&&ns>=5&&separation>=.12?"Μέτρια":"Αδύναμη";
+      if(conflict)strength="Αδύναμη — αντικρουόμενα δείγματα";
+    }
+  }
+  const stats=n
+    ? "Συνολικά "+wins+"/"+n+" νίκες φαβορί ("+nf(100*p,0)+"%). "+
+      (ns?"Ίδια έδρα "+sideWins+"/"+ns+" ("+nf(100*ps,0)+"%).":"Δεν υπάρχουν παρόμοια ίδιας έδρας.")
+    : "Δεν βρέθηκαν παρόμοια ολοκληρωμένα παιχνίδια.";
+  if(n<5)note="Το δείγμα είναι υπερβολικά μικρό για κατεύθυνση.";
+  else if(conflict)note="Το συνολικό ιστορικό και η ίδια έδρα δείχνουν αντίθετες κατευθύνσεις. Μην το διαβάζεις ως καθαρό σημείο.";
+  else if(nearlyEven)note="Οι ιστορικές συχνότητες είναι πολύ κοντά, χωρίς ξεκάθαρη πλευρά.";
+  else if(n<12||ns<5)note="Υπάρχει κατεύθυνση, αλλά το δείγμα είναι μικρό. Χαμηλή βαρύτητα.";
+  else note="Η τάση στηρίζεται στα ιστορικά αποτελέσματα, όχι σε επιβεβαιωμένη πιθανότητα.";
+  const chosenPrice=pick==="Νίκη φαβορί"?current.l:pick==="Κόντρα +0,5"?current.cl:null;
+  let oddsNote="Χωρίς στοιχηματική επιβεβαίωση: το ιστορικό δεν αποτελεί υπολογισμό αξίας της απόδοσης.";
+  if(pick!=="Αποχή"){
+    if(chosenPrice===null||chosenPrice<=1)
+      oddsNote="Δεν υπάρχει διαθέσιμη αντίστοιχη απόδοση για έλεγχο. Η τάση δεν είναι πρόταση πονταρίσματος.";
+    else{
+      const historyShare=pick==="Νίκη φαβορί"?p:1-p;
+      const breakEven=1/chosenPrice;
+      if(historyShare<breakEven)
+        oddsNote="Προσοχή στην απόδοση "+price(chosenPrice)+": το ακατέργαστο ιστορικό ποσοστό είναι χαμηλότερο από το απαιτούμενο "+nf(100*breakEven,0)+"% της απόδοσης. Δεν προκύπτει αξία.";
+      else
+        oddsNote="Η απόδοση είναι "+price(chosenPrice)+", αλλά η ιστορική συχνότητα από μόνη της δεν αποδεικνύει πλεονέκτημα.";
+    }
+  }
+  const provisional=(!usable(current.m)||!usable(current.co)||!usable(current.cl))?" Η σύγκριση είναι προσωρινή, επειδή λείπουν αποδόσεις 90′ ή κόντρας.":"";
+  const reason=stats+" "+note+" "+oddsNote+provisional;
+  lastOpinion={
+    key:key(current),match:name(current),pick,reason,created:new Date().toISOString(),
+    id:current.id,odds:chosenPrice,historyAll:n,historySide:ns,
+    trend,strength,analysisOnly:true
+  };
+  $("opinionText").textContent="Ιστορική τάση: "+trend+"\nΙσχύς ένδειξης: "+strength+
+    "\n"+stats+"\n"+note+"\n"+oddsNote+provisional;
+  $("opinionText").classList.remove("hide");
+}
+function renderArchive(){let entries=journal.map(j=>{let x=matches.find(m=>key(m)===j.key&&finished(m));let txt=x?(j.pick==="Αποχή"?"Αποχή (καμία τάση)":j.pick==="Νίκη φαβορί"?(won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση"):(!won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση")):"Αναμονή σκορ";return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+" · "+safe(new Date(j.created).toLocaleString("el-GR"))+'</small></div><div class="tiny">'+safe(txt)+'</div></div>'});$("archiveRows").innerHTML=entries.join("")||"Δεν υπάρχουν αποθηκευμένες εκτιμήσεις."}
 async function getJSON(url,opt){let r=await fetch(url,{credentials:"same-origin",cache:"no-store",...opt});let d=await r.json();if(r.status===401&&url!=="/api/login"){$("app").classList.add("hide");$("login").classList.remove("hide");throw Error("Χρειάζεται σύνδεση.")}return d}
 async function refresh(){let status=$("feedStatus");status.textContent="Ενημέρωση…";status.className="status";try{let d=await getJSON("/api/matches");if(!d.ok){matches=[];current=null;listMatches();status.textContent=d.state==="not_connected"?"Αναμονή σύνδεσης Excel":"Σφάλμα ενημέρωσης";status.className="status warn";$("matchTitle").textContent="Περιμένουμε τη σύνδεση με το Excel";$("insight").textContent="Η εφαρμογή ανέβηκε online, αλλά δεν έχει συνδεθεί ακόμη η ασφαλής ανάγνωση του Google Sheet.";return}let selectedKey=current?key(current):null;matches=d.rows.map((r,i)=>{const x=parseRow(r,i);x.formats=Array.isArray(d.formats)&&d.formats[i]&&typeof d.formats[i]==="object"?d.formats[i]:{};return x}).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));setupRanks();setupLeagues();fillLeagueFilter();status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";status.className=d.stale?"status warn":"status live";$("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");current=matches.find(x=>key(x)===selectedKey)||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;if(current)render();else $("matchTitle").textContent="Δεν υπάρχουν αγώνες στο Excel";listMatches()}catch(e){status.textContent="Αδυναμία σύνδεσης";status.className="status warn";$("insight").textContent="Δεν ήταν διαθέσιμα τα δεδομένα. Δοκίμασε ξανά αργότερα."}}
 async function boot(){try{let d=await getJSON("/api/session");if(d.authenticated){$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}else{$("login").classList.remove("hide")}}catch(e){$("login").classList.remove("hide")}}
