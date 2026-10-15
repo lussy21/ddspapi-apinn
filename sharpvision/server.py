@@ -52,7 +52,9 @@ def index():
 
 @app.get("/app.js")
 def app_script():
-    return send_from_directory(os.path.dirname(__file__), "app.js")
+    resp = make_response(send_from_directory(os.path.dirname(__file__), "app.js", conditional=False))
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
 
 @app.get("/manifest.webmanifest")
 def manifest():
