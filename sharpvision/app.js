@@ -332,7 +332,69 @@ function opinion(){
 
 function renderArchive(){let entries=journal.map(j=>{let x=matches.find(m=>key(m)===j.key&&finished(m));let txt=x?(j.pick==="Αποχή"?"Αποχή (καμία τάση)":j.pick==="Νίκη φαβορί"?(won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση"):(!won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση")):"Αναμονή σκορ";return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+" · "+safe(new Date(j.created).toLocaleString("el-GR"))+'</small></div><div class="tiny">'+safe(txt)+'</div></div>'});$("archiveRows").innerHTML=entries.join("")||"Δεν υπάρχουν αποθηκευμένες εκτιμήσεις."}
 async function getJSON(url,opt){let r=await fetch(url,{credentials:"same-origin",cache:"no-store",...opt});let d=await r.json();if(r.status===401&&url!=="/api/login"){$("app").classList.add("hide");$("login").classList.remove("hide");throw Error("Χρειάζεται σύνδεση.")}return d}
-async function refresh(){let status=$("feedStatus");status.textContent="Ενημέρωση…";status.className="status";try{let d=await getJSON("/api/matches");if(!d.ok){matches=[];current=null;listMatches();status.textContent=d.state==="not_connected"?"Αναμονή σύνδεσης Excel":"Σφάλμα ενημέρωσης";status.className="status warn";$("matchTitle").textContent="Περιμένουμε τη σύνδεση με το Excel";$("insight").textContent="Η εφαρμογή ανέβηκε online, αλλά δεν έχει συνδεθεί ακόμη η ασφαλής ανάγνωση του Google Sheet.";return}let selectedKey=current?key(current):null;matches=d.rows.map((r,i)=>{const x=parseRow(r,i);x.formats=Array.isArray(d.formats)&&d.formats[i]&&typeof d.formats[i]==="object"?d.formats[i]:{};return x}).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));setupRanks();setupLeagues();fillLeagueFilter();status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";status.className=d.stale?"status warn":"status live";$("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");current=matches.find(x=>key(x)===selectedKey)||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;if(current&&key(current)!==selectedKey){histMarket="fav";clearOpinion()}if(current)render();else $("matchTitle").textContent="Δεν υπάρχουν αγώνες στο Excel";listMatches()}catch(e){status.textContent="Αδυναμία σύνδεσης";status.className="status warn";$("insight").textContent="Δεν ήταν διαθέσιμα τα δεδομένα. Δοκίμασε ξανά αργότερα."}}
+let refreshInFlight=false,feedRetryTimer=null,feedRetryCount=0;
+function scheduleFeedRetry(){
+  if(feedRetryTimer!==null)return;
+  const wait=feedRetryCount<8?3000:8000;
+  feedRetryCount++;
+  feedRetryTimer=setTimeout(()=>{
+    feedRetryTimer=null;
+    if(!$("app").classList.contains("hide"))refresh();
+  },wait);
+}
+async function refresh(){
+  if(refreshInFlight)return;
+  refreshInFlight=true;
+  const status=$("feedStatus");
+  if(!matches.length){status.textContent="Σύνδεση με Excel…";status.className="status";}
+  try{
+    const d=await getJSON("/api/matches");
+    if(!d.ok){
+      if(d.state==="loading"){
+        status.textContent=feedRetryCount>=8?"Το Excel αργεί — προσπάθεια…":"Ανάκτηση Excel…";
+        status.className="status";
+        if(!matches.length){
+          $("matchTitle").textContent="Φορτώνουμε τους αγώνες…";
+          $("insight").textContent="Η σύνδεση λειτουργεί. Η ανάγνωση του Excel γίνεται στο παρασκήνιο, χωρίς να μπλοκάρει την εφαρμογή.";
+        }
+        scheduleFeedRetry();
+        return;
+      }
+      status.textContent=d.state==="not_connected"?"Αναμονή σύνδεσης Excel":"Πρόβλημα ενημέρωσης";
+      status.className="status warn";
+      if(!matches.length){
+        $("matchTitle").textContent="Αναμονή δεδομένων Excel";
+        $("insight").textContent="Δεν ολοκληρώθηκε ακόμη η ανάκτηση. Θα προσπαθήσουμε ξανά αυτόματα.";
+      }
+      if(d.state!=="not_connected")scheduleFeedRetry();
+      return;
+    }
+    feedRetryCount=0;
+    if(feedRetryTimer!==null){clearTimeout(feedRetryTimer);feedRetryTimer=null}
+    const selectedKey=current?key(current):null;
+    matches=d.rows.map((r,i)=>{
+      const x=parseRow(r,i);
+      x.formats=Array.isArray(d.formats)&&d.formats[i]&&typeof d.formats[i]==="object"?d.formats[i]:{};
+      return x;
+    }).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));
+    setupRanks();setupLeagues();fillLeagueFilter();
+    status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";
+    status.className=d.stale?"status warn":"status live";
+    $("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");
+    current=matches.find(x=>key(x)===selectedKey)
+      ||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;
+    if(current&&key(current)!==selectedKey){histMarket="fav";clearOpinion()}
+    if(current)render();else $("matchTitle").textContent="Δεν υπάρχουν αγώνες στο Excel";
+    listMatches();
+  }catch(e){
+    status.textContent="Διακοπή σύνδεσης — επανάληψη…";
+    status.className="status warn";
+    if(!matches.length)$("insight").textContent="Η σύνδεση καθυστερεί. Η εφαρμογή θα ξαναδοκιμάσει χωρίς να χρειάζεται να την κλείσεις.";
+    scheduleFeedRetry();
+  }finally{
+    refreshInFlight=false;
+  }
+}
 async function boot(){try{let d=await getJSON("/api/session");if(d.authenticated){$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}else{$("login").classList.remove("hide")}}catch(e){$("login").classList.remove("hide")}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginError").textContent="Σύνδεση…";try{let d=await getJSON("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("password").value})});if(!d.ok){$("loginError").textContent=d.error==="not_configured"?"Η πρόσβαση δεν έχει ενεργοποιηθεί ακόμα.":d.error==="too_many_attempts"?"Πολλές προσπάθειες. Δοκίμασε σε 10 λεπτά.":"Λάθος κωδικός.";return}$("password").value="";$("loginError").textContent="";$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}catch(e){$("loginError").textContent="Δεν ήταν δυνατή η σύνδεση."}});
 $("logout").addEventListener("click",async()=>{await fetch("/api/logout",{method:"POST",credentials:"same-origin"});$("app").classList.add("hide");$("login").classList.remove("hide")});
