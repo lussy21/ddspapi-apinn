@@ -14,16 +14,40 @@ const name=x=>x.h+" – "+x.a, fave=x=>x.f==="H"?x.h:x.a, key=x=>[x.lg,x.h,x.a].
 const parsedScore=x=>{let m=String(x.r||"").match(/^\s*(\d+)\s*[-:]\s*(\d+)\s*$/);return m?[+m[1],+m[2]]:null};
 const finished=x=>parsedScore(x)!==null;
 function won(x){let s=parsedScore(x);return s?(x.f==="H"?s[0]>s[1]:s[1]>s[0]):null}
-function parseRow(r,i){return {id:i+3,lg:String(r[0]||""),h:String(r[1]||""),a:String(r[2]||""),f:r[3],o:num(r[4],4),m:num(r[5],5),l:num(r[6],6),co:num(r[7],7),cm:num(r[8],8),cl:num(r[9],9),v:num(r[10],10),p:num(r[11],11),contra:num(r[12],12),s:num(r[13],13),r:String(r[15]||""),v0:num(r[19],19),p0:num(r[20],20),v90:num(r[22],22),p90:num(r[23],23),rank:null}}
+function parseRow(r,i){
+  const display={
+    o:r[4],m:r[5],l:r[6],co:r[7],cm:r[8],cl:r[9],
+    v:r[10],p:r[11],contra:r[12],s:r[13],r:r[15],
+    v0:r[19],p0:r[20],contra0:r[21],
+    v90:r[22],p90:r[23],contra90:r[24],
+    percentile90:r[63],percentile:r[64]
+  };
+  return {
+    id:i+3, lg:String(r[0]||""),h:String(r[1]||""),a:String(r[2]||""),f:r[3],
+    o:num(r[4],4),m:num(r[5],5),l:num(r[6],6),
+    co:num(r[7],7),cm:num(r[8],8),cl:num(r[9],9),
+    v:num(r[10],10),p:num(r[11],11),contra:num(r[12],12),
+    s:num(r[13],13),alert:String(r[14]||""),r:String(r[15]||""),
+    v0:num(r[19],19),p0:num(r[20],20),contra0:num(r[21],21),
+    v90:num(r[22],22),p90:num(r[23],23),contra90:num(r[24],24),
+    sourceRank:num(r[64],64),source90Rank:num(r[63],63),
+    rank:null,rankEstimated:false,formats:{},display
+  };
+}
+function excelValue(x,key){const v=x.display&&x.display[key];return v!==undefined&&v!==null&&String(v).trim()!==""?String(v):"—"}
 // Identical turnover league-relative percentile formula and breakpoints to PINNACLE column K.
 // Excel counts ALL numeric K values in the same league, including unfinished fixtures.
 function setupRanks(){
+  // BM/BL are the actual Excel percentile cells. Recompute only while the
+  // older 25-column bridge is still active and label the result estimated.
   const pools={};
   for(const x of matches)if(Number.isFinite(x.v)&&x.v>=0)(pools[x.lg]??=[]).push(x.v);
   for(const x of matches){
     const pool=pools[x.lg]||[];
     x.leagueN=pool.length;
-    x.rank=Number.isFinite(x.v)&&x.v>=0 ? 100*(pool.filter(n=>n<=x.v).length-1)/Math.max(1,pool.length-1) : null;
+    x.rankEstimated=!Number.isFinite(x.sourceRank);
+    x.rank=Number.isFinite(x.sourceRank)?x.sourceRank:
+      Number.isFinite(x.v)&&x.v>=0 ? 100*(pool.filter(n=>n<=x.v).length-1)/Math.max(1,pool.length-1) : null;
   }
 }
 function band(v){if(v===null||!Number.isFinite(v))return 0;return v<=35?1:v<=75?2:v<=87?3:4}
@@ -33,7 +57,30 @@ function pband(v,type){
   if(type==="sofa")return v>=82?4:v>=75?3:0;
   return v>=82?4:v>=75?2:0;
 }
-function color(id,level,type){$(id).className="metric"+(level?" excel-"+type+"-"+level:"")}
+function color(id,level,type,sourceStyle){
+  const target=$(id);
+  target.className="metric"+(level?" excel-"+type+"-"+level:"");
+  target.style.backgroundColor="";
+  target.style.color="";
+  if(!Array.isArray(sourceStyle))return;
+  const bg=sourceStyle[0],fg=sourceStyle[1];
+  if(typeof bg!=="string"||!/^#[0-9a-f]{6}$/i.test(bg)||bg.toLowerCase()==="#ffffff")return;
+  target.className="metric excel-source";
+  target.style.backgroundColor=bg;
+  const hex=bg.slice(1);
+  const rgb=[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+  const bright=rgb[0]*.299+rgb[1]*.587+rgb[2]*.114;
+  target.style.color=typeof fg==="string"&&/^#[0-9a-f]{6}$/i.test(fg)?fg:(bright>.57?"#1e1e1e":"#ffffff");
+}
+function snapColor(id,level,type,format){
+  const el=$(id);el.className="snapcell"+(level?" excel-snap-"+type+"-"+level:"");
+  el.style.backgroundColor="";el.style.color="";
+  if(Array.isArray(format)&&/^#[0-9a-f]{6}$/i.test(format[0]||"")&&format[0].toLowerCase()!=="#ffffff"){
+    el.className="snapcell excel-snap-source";
+    el.style.backgroundColor=format[0];
+    el.style.color=/^#[0-9a-f]{6}$/i.test(format[1]||"")?format[1]:"#1e1e1e";
+  }
+}
 function allLeagues(){return [...new Set(matches.map(x=>x.lg))].filter(Boolean).sort((a,b)=>a.localeCompare(b))}
 function setupLeagues(){let names=allLeagues();leaguesSelected=Array.isArray(savedLeagues)?savedLeagues.filter(n=>names.includes(n)):names.filter(n=>!excluded.test(n));paintSettings()}
 function paintSettings(){$("checks").innerHTML=allLeagues().map((l,i)=>'<label><input type="checkbox" data-league="'+safe(l)+'" '+(leaguesSelected.includes(l)?"checked":"")+'> '+safe(l)+'</label>').join("");$("checks").querySelectorAll("input").forEach(i=>i.addEventListener("change",()=>{leaguesSelected=i.checked?[...leaguesSelected,i.dataset.league]:leaguesSelected.filter(l=>l!==i.dataset.league);savedLeagues=leaguesSelected;store("sv_live_leagues",savedLeagues);renderHistory()}))}
@@ -41,7 +88,55 @@ function activeList(){let q=norm($("search").value);let aliases={αστον:"ast
 function fillLeagueFilter(){let old=$("leagueFilter").value;$("leagueFilter").innerHTML='<option value="">Όλα τα πρωταθλήματα</option>'+allLeagues().map(x=>'<option value="'+safe(x)+'">'+safe(x)+'</option>').join("");$("leagueFilter").value=allLeagues().includes(old)?old:""}
 function listMatches(){let v=activeList();$("matchCount").textContent=v.length+(v.length>=80?"+":"")+" αγώνες";$("matchList").innerHTML=v.length?v.map(x=>'<div class="matchitem '+(current&&x.id===current.id?"active":"")+'"><button class="star '+(favorites.includes(key(x))?"on":"")+'" data-star="'+x.id+'" aria-label="Αγαπημένο">★</button><button class="matchtext" data-match="'+x.id+'" style="background:none;border:0;padding:0;text-align:left"><b>'+safe(name(x))+'</b><small>'+safe(x.lg)+(finished(x)?" · "+safe(x.r):" · Χωρίς τελικό σκορ")+'</small></button></div>').join(""):'<div class="empty">Δεν βρέθηκαν αγώνες. Δοκίμασε άλλη αναζήτηση ή καρτέλα.</div>';document.querySelectorAll("[data-match]").forEach(b=>b.addEventListener("click",()=>select(+b.dataset.match)));document.querySelectorAll("[data-star]").forEach(b=>b.addEventListener("click",()=>{let x=matches.find(z=>z.id===+b.dataset.star),k=key(x);favorites=favorites.includes(k)?favorites.filter(z=>z!==k):[...favorites,k];store("sv_live_faves",favorites);listMatches()}))}
 function select(id){current=matches.find(x=>x.id===id);lastOpinion=null;$("opinionText").classList.add("hide");listMatches();render()}
-function render(){if(!current)return;$("matchLeague").textContent=current.lg;$("matchTitle").textContent=name(current);$("favLabel").textContent="Φαβορί: "+fave(current)+" · "+(current.f==="H"?"Εντός":"Εκτός");$("result").textContent=finished(current)?"Τελικό "+current.r:"Χωρίς τελικό σκορ";$("turnover").textContent=money(current.v);const rankBand=band(current.rank);$("turnHint").textContent=current.rank===null?"Χωρίς τιμή τζίρου":"Στάδιο "+rankBand+"/4 · "+nf(current.rank,1)+"ο εκατοστημόριο · "+current.leagueN+" ματς λίγκας";color("turnBox",rankBand,"turn");$("favPercent").textContent=per(current.p);color("favBox",pband(current.p,"fav"),"fav");const cp=current.contra!==null?current.contra:(current.p===null?null:100-current.p);$("contraPercent").textContent=per(cp);color("contraBox",pband(cp,"contra"),"contra");$("sofa").textContent=per(current.s);color("sofaBox",pband(current.s,"sofa"),"sofa");for(let k of ["o","m","l","co","cm","cl"])$(k).textContent=price(current[k]);renderHistory();renderArchive()}
+function render(){
+  if(!current)return;
+  const x=current,styles=x.formats||{};
+  $("matchLeague").textContent=x.lg;$("matchTitle").textContent=name(x);
+  $("favLabel").textContent="Φαβορί: "+fave(x)+" · "+(x.f==="H"?"Εντός":"Εκτός");
+  const result=$("result");
+  result.textContent=finished(x)?"Τελικό "+x.r:"Χωρίς τελικό σκορ";
+  result.style.backgroundColor="";
+  result.style.color="";
+  if(finished(x)&&Array.isArray(styles["15"])){
+    const pair=styles["15"];
+    if(/^#[0-9a-f]{6}$/i.test(pair[0]||"")&&pair[0].toLowerCase()!=="#ffffff"){
+      result.style.backgroundColor=pair[0];result.style.color=pair[1]||"#1e1e1e";
+    }
+  }
+  $("turnover").textContent=excelValue(x,"v");
+  const rankBand=band(x.rank);
+  $("turnHint").textContent=x.rank===null?"Χωρίς κατάταξη τζίρου":
+    "Στάδιο "+rankBand+"/4 · "+(x.rankEstimated?"εκτίμηση ":"")+"εκατοστημόριο "+(x.rankEstimated?nf(x.rank,1):excelValue(x,"percentile"));
+  color("turnBox",rankBand,"turn",styles["10"]);
+  $("favPercent").textContent=excelValue(x,"p");
+  color("favBox",pband(x.p,"fav"),"fav",styles["11"]);
+  $("contraPercent").textContent=excelValue(x,"contra");
+  color("contraBox",pband(x.contra,"contra"),"contra",styles["12"]);
+  $("sofa").textContent=excelValue(x,"s");
+  color("sofaBox",pband(x.s,"sofa"),"sofa",styles["13"]);
+  for(const k of ["o","m","l","co","cm","cl"])$(k).textContent=excelValue(x,k);
+  $("v0snap").textContent=excelValue(x,"v0");
+  $("v90snap").textContent=excelValue(x,"v90");
+  $("vsnap").textContent=excelValue(x,"v");
+  $("p0snap").textContent=excelValue(x,"p0");
+  $("p90snap").textContent=excelValue(x,"p90");
+  $("psnap").textContent=excelValue(x,"p");
+  $("contra0snap").textContent=excelValue(x,"contra0");
+  $("contra90snap").textContent=excelValue(x,"contra90");
+  $("contrasnap").textContent=excelValue(x,"contra");
+  snapColor("v90snap",band(x.source90Rank),"turn",styles["22"]);
+  snapColor("vsnap",rankBand,"turn",styles["10"]);
+  snapColor("p0snap",pband(x.p0,"fav"),"fav",styles["20"]);
+  snapColor("p90snap",pband(x.p90,"fav"),"fav",styles["23"]);
+  snapColor("psnap",pband(x.p,"fav"),"fav",styles["11"]);
+  snapColor("contra0snap",pband(x.contra0,"contra"),"contra",styles["21"]);
+  snapColor("contra90snap",pband(x.contra90,"contra"),"contra",styles["24"]);
+  snapColor("contrasnap",pband(x.contra,"contra"),"contra",styles["12"]);
+  const alertBox=$("excelAlert");
+  alertBox.classList.toggle("hide",!x.alert);
+  alertBox.textContent=x.alert?"Σήμανση Excel: "+x.alert:"";
+  renderHistory();renderArchive();
+}
 const change=(a,b)=>a!==null&&b!==null&&a>0?(b/a-1)*100:null;
 // Every comparison uses all shared available market signals; never make up missing
 // 90-minute or contra odds. Require a candidate to provide all signals the target has.
@@ -115,7 +210,7 @@ function opinion(){if(!current)return;let a=history.all,s=history.side,wins=a.fi
 lastOpinion={key:key(current),match:name(current),pick,reason,created:new Date().toISOString(),id:current.id,odds:pick==="Νίκη φαβορί"?current.l:pick==="Κόντρα +0,5"?current.cl:null,historyAll:a.length,historySide:s.length};$("opinionText").textContent="Εκτίμηση: "+pick+". "+reason;$("opinionText").classList.remove("hide")}
 function renderArchive(){let entries=journal.map(j=>{let x=matches.find(m=>key(m)===j.key&&finished(m));let txt=x?(j.pick==="Αποχή"?"Αποχή":j.pick==="Νίκη φαβορί"?(won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε"):(!won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε")):"Αναμονή σκορ";return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+" · "+safe(new Date(j.created).toLocaleString("el-GR"))+'</small></div><div class="tiny">'+safe(txt)+'</div></div>'});$("archiveRows").innerHTML=entries.join("")||"Δεν υπάρχουν αποθηκευμένες εκτιμήσεις."}
 async function getJSON(url,opt){let r=await fetch(url,{credentials:"same-origin",cache:"no-store",...opt});let d=await r.json();if(r.status===401&&url!=="/api/login"){$("app").classList.add("hide");$("login").classList.remove("hide");throw Error("Χρειάζεται σύνδεση.")}return d}
-async function refresh(){let status=$("feedStatus");status.textContent="Ενημέρωση…";status.className="status";try{let d=await getJSON("/api/matches");if(!d.ok){matches=[];current=null;listMatches();status.textContent=d.state==="not_connected"?"Αναμονή σύνδεσης Excel":"Σφάλμα ενημέρωσης";status.className="status warn";$("matchTitle").textContent="Περιμένουμε τη σύνδεση με το Excel";$("insight").textContent="Η εφαρμογή ανέβηκε online, αλλά δεν έχει συνδεθεί ακόμη η ασφαλής ανάγνωση του Google Sheet.";return}let selectedKey=current?key(current):null;matches=d.rows.map((r,i)=>parseRow(r,i)).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));setupRanks();setupLeagues();fillLeagueFilter();status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";status.className=d.stale?"status warn":"status live";$("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");current=matches.find(x=>key(x)===selectedKey)||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;if(current)render();else $("matchTitle").textContent="Δεν υπάρχουν αγώνες στο Excel";listMatches()}catch(e){status.textContent="Αδυναμία σύνδεσης";status.className="status warn";$("insight").textContent="Δεν ήταν διαθέσιμα τα δεδομένα. Δοκίμασε ξανά αργότερα."}}
+async function refresh(){let status=$("feedStatus");status.textContent="Ενημέρωση…";status.className="status";try{let d=await getJSON("/api/matches");if(!d.ok){matches=[];current=null;listMatches();status.textContent=d.state==="not_connected"?"Αναμονή σύνδεσης Excel":"Σφάλμα ενημέρωσης";status.className="status warn";$("matchTitle").textContent="Περιμένουμε τη σύνδεση με το Excel";$("insight").textContent="Η εφαρμογή ανέβηκε online, αλλά δεν έχει συνδεθεί ακόμη η ασφαλής ανάγνωση του Google Sheet.";return}let selectedKey=current?key(current):null;matches=d.rows.map((r,i)=>{const x=parseRow(r,i);x.formats=Array.isArray(d.formats)&&d.formats[i]&&typeof d.formats[i]==="object"?d.formats[i]:{};return x}).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));setupRanks();setupLeagues();fillLeagueFilter();status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";status.className=d.stale?"status warn":"status live";$("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");current=matches.find(x=>key(x)===selectedKey)||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;if(current)render();else $("matchTitle").textContent="Δεν υπάρχουν αγώνες στο Excel";listMatches()}catch(e){status.textContent="Αδυναμία σύνδεσης";status.className="status warn";$("insight").textContent="Δεν ήταν διαθέσιμα τα δεδομένα. Δοκίμασε ξανά αργότερα."}}
 async function boot(){try{let d=await getJSON("/api/session");if(d.authenticated){$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}else{$("login").classList.remove("hide")}}catch(e){$("login").classList.remove("hide")}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginError").textContent="Σύνδεση…";try{let d=await getJSON("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("password").value})});if(!d.ok){$("loginError").textContent=d.error==="not_configured"?"Η πρόσβαση δεν έχει ενεργοποιηθεί ακόμα.":d.error==="too_many_attempts"?"Πολλές προσπάθειες. Δοκίμασε σε 10 λεπτά.":"Λάθος κωδικός.";return}$("password").value="";$("loginError").textContent="";$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}catch(e){$("loginError").textContent="Δεν ήταν δυνατή η σύνδεση."}});
 $("logout").addEventListener("click",async()=>{await fetch("/api/logout",{method:"POST",credentials:"same-origin"});$("app").classList.add("hide");$("login").classList.remove("hide")});
@@ -128,6 +223,11 @@ $("viewHistory").addEventListener("click",()=>{$("historyDetails").classList.tog
 document.querySelectorAll("[data-history]").forEach(b=>b.addEventListener("click",()=>{historyTab=b.dataset.history;document.querySelectorAll("[data-history]").forEach(z=>z.classList.toggle("active",z===b));paintHistory()}));
 $("opinion").addEventListener("click",opinion);
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
+$("snapToggle").addEventListener("click",()=>{
+  const shown=$("snapDetails").classList.toggle("hide");
+  $("snapToggle").setAttribute("aria-expanded",String(!shown));
+  $("snapToggle").textContent=shown?"Δες τα 3 στάδια του Excel ▾":"Κρύψε τα 3 στάδια ▴";
+});
 $("saveOpinion").addEventListener("click",()=>{if(!current||finished(current)){alert("Δεν αποθηκεύουμε εκτίμηση αφού βγει τελικό σκορ.");return}if(!lastOpinion||lastOpinion.key!==key(current)){alert("Πάτησε πρώτα «Εσύ τι θα επέλεγες;»");return}journal=[lastOpinion,...journal].slice(0,250);store("sv_live_journal",journal);renderArchive();alert("Αποθηκεύτηκε στη συσκευή.")});
 boot();
 setInterval(()=>{if(!$("app").classList.contains("hide"))refresh()},600000);
