@@ -129,6 +129,11 @@ def get_sheet_data():
         raise ValueError("FEED_INVALID_OBJECT")
     if val.get("ok") is not True:
         code = "".join(ch for ch in str(val.get("error") or "UNKNOWN") if ch.isascii() and (ch.isupper() or ch == "_"))[:45]
+        try:
+            status = int(val.get("status") or 0)
+        except (TypeError, ValueError):
+            status = 0
+        app.logger.warning("Feed returned upstream error=%s http_status=%s", code, status)
         raise ValueError("FEED_" + code)
     if not isinstance(val.get("rows"), list):
         raise ValueError("FEED_MISSING_ROWS")
