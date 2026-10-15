@@ -50,6 +50,10 @@ def index():
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
+@app.get("/app.js")
+def app_script():
+    return send_from_directory(os.path.dirname(__file__), "app.js")
+
 @app.get("/manifest.webmanifest")
 def manifest():
     return send_from_directory(os.path.dirname(__file__), "manifest.webmanifest")
