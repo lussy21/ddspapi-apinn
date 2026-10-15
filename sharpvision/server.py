@@ -54,6 +54,12 @@ def security_headers(resp):
 
 @app.get("/")
 def index():
+    # Begin one read inside the serving worker as the page opens, rather than
+    # during module import, so the match data can be ready before JS asks for it.
+    with lock:
+        needs_warmup = cache["payload"] is None and not cache["refreshing"]
+    if needs_warmup:
+        _ensure_refresh()
     resp = make_response(send_from_directory(os.path.dirname(__file__), "index.html"))
     resp.headers["Cache-Control"] = "no-store"
     return resp
