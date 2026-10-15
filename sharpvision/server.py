@@ -104,12 +104,34 @@ def get_sheet_data():
     if url.scheme != "https" or url.hostname not in {"script.google.com", "script.googleusercontent.com"}:
         raise ValueError("FEED_URL must be a Google Apps Script HTTPS URL")
     resp = requests.get(FEED_URL, params={"key": FEED_KEY}, timeout=(5, 28), allow_redirects=True)
+    destination = urlparse(resp.url).hostname or "unknown"
+    media = resp.headers.get("Content-Type", "").split(";")[0].lower()
+    app.logger.info("Feed response status=%s host=%s mime=%s redirects=%s bytes=%s",
+        resp.status_code, destination, media, len(resp.history), len(resp.content))
     resp.raise_for_status()
     if len(resp.content) > 4_500_000:
-        raise ValueError("Feed too large")
-    val = resp.json()
-    if not isinstance(val, dict) or val.get("ok") is not True or not isinstance(val.get("rows"), list):
-        raise ValueError("Invalid feed or access key")
+        raise ValueError("FEED_TOO_LARGE")
+    try:
+        val = resp.json()
+    except ValueError:
+        # Only log safe metadata; never log response body, token or query string.
+        if destination in {"accounts.google.com", "accounts.googleusercontent.com"}:
+            reason = "GOOGLE_AUTH_REQUIRED"
+        elif destination == "script.google.com" and "html" in media:
+            reason = "GOOGLE_SCRIPT_HTML"
+        elif "html" in media:
+            reason = "GOOGLE_HTML_RESPONSE"
+        else:
+            reason = "FEED_NOT_JSON"
+        app.logger.warning("Feed format error: %s", reason)
+        raise ValueError(reason)
+    if not isinstance(val, dict):
+        raise ValueError("FEED_INVALID_OBJECT")
+    if val.get("ok") is not True:
+        code = "".join(ch for ch in str(val.get("error") or "UNKNOWN") if ch.isascii() and (ch.isupper() or ch == "_"))[:45]
+        raise ValueError("FEED_" + code)
+    if not isinstance(val.get("rows"), list):
+        raise ValueError("FEED_MISSING_ROWS")
     out=[]
     for row in val["rows"][:4500]:
         if not isinstance(row, list) or len(row) < 24:
@@ -137,13 +159,19 @@ def matches():
         try:
             payload=get_sheet_data()
         except Exception as exc:
-            app.logger.warning("Sheet read failed: %s", type(exc).__name__)
+            error_code = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+            if error_code not in {"GOOGLE_AUTH_REQUIRED", "GOOGLE_SCRIPT_HTML", "GOOGLE_HTML_RESPONSE",
+                                  "FEED_NOT_JSON", "FEED_TOO_LARGE", "FEED_INVALID_OBJECT",
+                                  "FEED_UNAUTHORIZED", "FEED_SHEET_NOT_FOUND", "FEED_SHEETS_API_ERROR",
+                                  "FEED_SHEET_READ_FAILED", "FEED_MISSING_ROWS"}:
+                error_code = type(exc).__name__
+            app.logger.warning("Sheet read failed: %s", error_code)
             if cache["payload"] and cache["payload"].get("ok"):
                 payload=dict(cache["payload"])
                 payload["stale"]=True
                 payload["state"]="stale"
                 return _response(payload)
-            return _response({"ok":False,"state":"feed_error","rows":[],"message":"Αδυναμία ανάγνωσης Excel. Ελέγξτε τη σύνδεση."},502)
+            return _response({"ok":False,"state":"feed_error","rows":[],"diagnostic":error_code,"message":"Αδυναμία ανάγνωσης Excel. Ελέγξτε τη σύνδεση."},502)
         cache.update({"time":now,"payload":payload})
         return _response(payload)
 
