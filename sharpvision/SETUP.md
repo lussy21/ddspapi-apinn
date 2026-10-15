@@ -16,8 +16,8 @@ Render settings:
 
 ## Connect the existing private PINNACLE sheet
 
-1. Open existing Google Spreadsheet > **Extensions > Apps Script**.
-2. Create a separate named file \`SharpVisionFeed.gs\` in the existing Apps Script project (or a new bound Apps Script project). Paste the contents of \`SheetFeed.gs\`. Do not replace the existing cron scripts or the Sheet formulas.
+1. Open https://script.google.com/home/projects/create and create a **NEW, standalone** Apps Script project for SharpVision.
+2. Paste the contents of \`SheetFeed.gs\` into the new standalone project. **Do not add it to any existing Apps Script project**, which may contain a separate doGet handler or scheduled automation.
 3. Project Settings > Script Properties > add \`SHARPVISION_FEED_KEY\` containing exactly the Render \`SV_FEED_KEY\`.
 4. Deploy > **New deployment > Web app**, run as the spreadsheet owner, access **Anyone**. Only a request with the secret key returns data; other requests receive an unauthorized response. Treat the /exec URL and secret as sensitive.
 5. Set Render environment \`SV_FEED_URL\` to the deployed /exec URL. Wait for redeploy. The app will then read new PINNACLE values with a 9-minute backend cache (source updates separately every 10 min).
