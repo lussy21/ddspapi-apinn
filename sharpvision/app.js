@@ -135,6 +135,12 @@ function render(){
   const alertBox=$("excelAlert");
   alertBox.classList.toggle("hide",!x.alert);
   alertBox.textContent=x.alert?"Σήμανση Excel: "+x.alert:"";
+  alertBox.style.backgroundColor="";
+  alertBox.style.color="";
+  const af=styles["14"];
+  if(x.alert&&Array.isArray(af)&&/^#[0-9a-f]{6}$/i.test(af[0]||"")&&af[0].toLowerCase()!=="#ffffff"){
+    alertBox.style.backgroundColor=af[0];alertBox.style.color=/^#[0-9a-f]{6}$/i.test(af[1]||"")?af[1]:"#1e1e1e";
+  }
   renderHistory();renderArchive();
 }
 const change=(a,b)=>a!==null&&b!==null&&a>0?(b/a-1)*100:null;
