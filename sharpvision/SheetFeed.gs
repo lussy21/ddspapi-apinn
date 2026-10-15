@@ -84,7 +84,9 @@ function doGet(e) {
                 var fmt = (cell || {}).effectiveFormat || {};
                 var bg = svRgb_(fmt.backgroundColor);
                 var fg = svRgb_((fmt.textFormat || {}).foregroundColor);
-                if (bg) rec[String(colStart + j)] = [bg, fg];
+                // White/no-color cells use the neutral mobile theme.
+                // Keep only Excel conditional fills to reduce feed size.
+                if (bg && bg.toLowerCase() !== "#ffffff") rec[String(colStart + j)] = [bg, fg];
               });
               formats[target] = rec;
             });
