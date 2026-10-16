@@ -256,9 +256,9 @@ function svMoneyCases(target,prior){
   const broad=rec=>Math.abs(Math.log(rec.c.price/pattern.price))<=Math.log(1.62)&&
     Math.abs(rec.c.rank-pattern.rank)<=55;
   const caseMatches=regime.filter(rec=>rec.c.priceState===pattern.priceState);
-  let peers=caseMatches.filter(comparable),scope="παρόμοιες αποδόσεις και τζίρος";
+  let peers=caseMatches.filter(comparable),scope="παρόμοιες αποδόσεις και επίπεδο τζίρου";
   if(peers.length<12){
-    peers=caseMatches.filter(broad);scope="διευρυμένες αποδόσεις και τζίρος";
+    peers=caseMatches.filter(broad);scope="διευρυμένη περιοχή αποδόσεων και τζίρου";
   }
   const score=rec=>
     Math.abs(Math.log(rec.c.price/pattern.price))*3.0+
@@ -388,13 +388,14 @@ function autoOutcome(entry){
  const winner=won(x);
  return entry.pick==="fav"?(winner?"win":"lose"):(winner?"lose":"win");
 }
-function renderCasebook(book){
+function renderCasebook(book,retrospective=false){
  const panel=$("casebookPanel"),teaser=$("casebookTeaser"),
    table=$("casebookStates"),examples=$("casebookExamples");
  if(!book){panel.classList.add("hide");teaser.textContent="";table.innerHTML="";examples.innerHTML="";return}
  const a=book.profile||{},base=book.baseline||{},n=a.n||0;
  const f=(x)=>x===null||x===undefined?"—":nf(x,0)+"%";
  teaser.textContent=
+   (retrospective?"Αναδρομική σύγκριση, ΟΧΙ καταγεγραμμένη πρόβλεψη πριν τη σέντρα.\n":"")+
    "Παρόμοιες περιπτώσεις: "+(n?a.wins+"/"+n+" νίκες φαβορί ("+f(a.winPct)+")":"Καμία")+
    "\nΑπό αυτές, "+(a.priceN||0)+" είχαν και τις δύο τιμές για έλεγχο με τις τότε αποδόσεις."+
    (a.priceN>=6?" Η αγορά αντιστοιχούσε σε "+f(a.expectedPct)+
@@ -450,6 +451,19 @@ function renderAutoCard(){
    set(1,"1/3 · Χωρίς εγγραφή","Δεν καταγράφηκε πριν τη σέντρα",
      "Αυτός ο αγώνας δεν είχε προ-αγωνιστική καταγραφή σε αυτή τη συσκευή. Δεν συμπληρώνουμε εκτιμήσεις μετά τη σέντρα.",
      "Έναρξη: "+kickoffLabel(x));
+   // Show observed historical cases for past fixtures WITHOUT manufacturing
+   // a pre-match prediction or counting this fixture's final score as evidence.
+   const past=matches.filter(z=>z.id<x.id&&finished(z)&&
+     (kickoffMs(z)===null||t===null||kickoffMs(z)<t));
+   const view=svMoneyCases(x,past);
+   if(view){
+     const cases={
+       label:svCashLabels[view.pattern.moneyState]+" × "+svPriceLabels[view.pattern.priceState],
+       profile:view.profile,baseline:view.baseline,states:view.states,
+       examples:view.examples,scope:view.scope,historical:view.totalHistorical
+     };
+     renderCasebook(cases,true);
+   }
  }else{
    // A changing interpretation is displayed at any pregame time; only the
    // first eligible reading in the T-75..T-2 minute window is saved immutably.
