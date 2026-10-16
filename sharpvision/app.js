@@ -349,13 +349,29 @@ function automaticOpinion(x,prior){
       (level===3?" Τρεις ανεξάρτητες ενδείξεις με ισχυρή συμφωνία.":
       level===2?" Αρκετή συνοχή, όχι όμως πλήρης επιβεβαίωση.":" Υπάρχουν ενδείξεις αλλά και ουσιαστική αβεβαιότητα.");
   }
-  const lines=[summary,...details,...cautions.map(z=>"ΠΡΟΣΟΧΗ: "+z),
+  // Give each fixture an interpretable behavioral profile rather than
+  // another opaque similarity threshold. Interpret patterns, not motives.
+  let mood="Η αγορά δεν δίνει καθαρό κοινό σήμα.";
+  if(moneyPriceConflict)
+    mood="Διχασμένη αγορά: οι νέες τοποθετήσεις και οι τιμές δείχνουν διαφορετικές κατευθύνσεις.";
+  else if(priceDir!==0&&priceDir===moneyDir)
+    mood="Συντονισμένη πίεση προς "+svWord(priceDir)+": χρήματα και αποδόσεις κινούνται μαζί.";
+  else if(priceDir!==0&&moneyDir===0)
+    mood="Οι αποδόσεις στρέφονται προς "+svWord(priceDir)+", χωρίς αντίστοιχη επιβεβαίωση από αλλαγή χρημάτων.";
+  else if(priceDir===0&&moneyDir!==0)
+    mood="Μετακινείται η ροή χρημάτων προς "+svWord(moneyDir)+", αλλά οι αποδόσεις δεν έχουν δώσει καθαρή απάντηση.";
+  else if(priceDir!==0&&histDir===priceDir)
+    mood="Η πρόσφατη συμπεριφορά αποδόσεων συμφωνεί με την ιστορική εικόνα.";
+  if(cautions.some(z=>z.includes("συγκέντρωση χρημάτων")||z.includes("Λίγα χρήματα στο φαβορί")))
+    mood="Ασυμφωνία δημοφιλίας και τιμής: η κατανομή χρημάτων δεν εξηγεί μόνη της την αντίδραση της αγοράς.";
+  const lines=["ΚΛΙΜΑ ΑΓΟΡΑΣ: "+mood,summary,...details,
+    ...cautions.map(z=>"ΠΡΟΣΟΧΗ: "+z),
     "Οι ενδείξεις περιγράφουν συμπεριφορά της αγοράς, όχι προθέσεις παικτών ή βεβαιότητα αποτελέσματος."];
   return {
     pick,level,source:"sharpvision_market_psychology",version:"v3",
     sample:history.n,sameVenue:history.same,similarityAvg:history.avg?Math.round(history.avg):0,
     nFav:history.views.fav,nContra:history.views.contra,
-    marketScore:Math.round(total*100),evidence:details,cautions,
+    marketScore:Math.round(total*100),mood,evidence:details,cautions,
     reason:lines.join("\n")
   };
 }
