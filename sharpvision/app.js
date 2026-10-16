@@ -435,12 +435,25 @@ function showHistoricalCompare(id){
    }
    return String(v);
  };
+ // Exact displayed values from the user's Excel whenever that cell exists.
+ const excelKeys={
+   "Αρχική απόδοση φαβορί":"o","90′ φαβορί":"m","Τελευταία φαβορί":"l",
+   "Αρχική κόντρα +0,5":"co","90′ κόντρα +0,5":"cm","Τελευταία κόντρα +0,5":"cl",
+   "Τζίρος":"v","Τζίρος % μέσα στη λίγκα":"percentile",
+   "11:00 χρήματα φαβορί":"p0","90′ χρήματα φαβορί":"p90","Τελευταία χρήματα φαβορί":"p",
+   "11:00 χρήματα κόντρας":"contra0","90′ χρήματα κόντρας":"contra90",
+   "Τελευταία χρήματα κόντρας":"contra","SofaScore":"s"
+ };
+ const displayCell=(label,z,value,type)=>{
+   const k=excelKeys[label];
+   return k&&z.display?excelValue(z,k):format(value,type);
+ };
  const rows=definitions.map(([label,fn,tol,type])=>{
    const a=fn(x),b=fn(other);
    const matched=tol!==null&&typeof a==="number"&&Number.isFinite(a)&&typeof b==="number"&&Number.isFinite(b);
    const cls=matched?(Math.abs(a-b)<=tol?"same":"far"):"not-comparable";
-   return '<tr><td>'+safe(label)+'</td><td>'+safe(format(a,type))+'</td>'+
-     '<td class="'+cls+'">'+safe(format(b,type))+'</td></tr>';
+   return '<tr><td>'+safe(label)+'</td><td>'+safe(displayCell(label,x,a,type))+'</td>'+
+     '<td class="'+cls+'">'+safe(displayCell(label,other,b,type))+'</td></tr>';
  }).join("");
  $("compareBody").innerHTML='<table class="compare-table"><thead><tr><th>Στοιχείο</th><th>Επιλεγμένος</th><th>Ιστορικός</th></tr></thead><tbody>'+
     rows+'</tbody></table>';
