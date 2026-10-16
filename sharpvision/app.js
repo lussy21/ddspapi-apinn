@@ -547,7 +547,7 @@ function renderMarketObservation(){
    return;
  }
  status.textContent="90′ → τελευταία ενημέρωση";
- body.textContent=o.title+"\n"+o.details;
+ body.textContent=o.title; // Numeric market figures already appear above in the chart and main data.
  history.textContent=o.historyText+" "+o.frequencyText;
 }
 // Empirical anomaly explorer. Unlike the Analyst's named money/odds patterns,
