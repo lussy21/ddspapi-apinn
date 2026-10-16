@@ -462,11 +462,12 @@ function renderMarketHunter(){
        "Δεν είναι πιθανότητα νίκης.";
    return '<button type="button" class="market-watch-item" data-hunter-id="'+o.x.id+'">'+
      '<b>'+safe(name(o.x))+'</b><small>'+safe(o.x.lg)+" · "+safe(kickoffLabel(o.x))+'</small>'+
-     '<span class="watch-pattern">Ασυνήθιστος συνδυασμός: '+safe(o.percentile)+
-       '/100 ως ιστορική κατάταξη διαφοροποίησης</span>'+
+     '<span class="watch-pattern">Ιστορική διαφοροποίηση: '+safe(o.percentile)+
+       '/100 (όχι πιθανότητα αποτελέσματος)</span>'+
      '<span class="market-hunter-reason">'+safe(o.explanation)+'</span>'+
      '<small>'+safe(rare)+'</small>'+
-     '<span class="market-hunter-observed">Πιο κοντινές παλιές περιπτώσεις: '+safe(examples)+'</span></button>';
+     '<span class="market-hunter-observed">Πιο κοντινές παλιές περιπτώσεις: '+safe(examples)+'</span>'+
+     '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
  }).join("")+
  (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
  '<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>';
@@ -517,7 +518,8 @@ function renderMarketWatch(){
      '<b>'+safe(name(x))+'</b><small>'+safe(x.lg)+" · "+safe(kickoffLabel(x))+'</small>'+
      '<span class="watch-pattern">'+safe(o.title)+'</span>'+
      '<span class="watch-facts">'+safe(o.details)+'</span>'+
-     '<small>'+safe(o.historyText+" "+o.frequencyText)+'</small></button>';
+     '<small>'+safe(o.historyText+" "+o.frequencyText)+'</small>'+
+     '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
  }).join("")+
    (n>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+n+' παρατηρήσεις.</p>':""):
    '<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>';
