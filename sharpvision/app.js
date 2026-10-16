@@ -9,7 +9,7 @@ let favorites=read("sv_live_faves",[]),journal=read("sv_live_journal",[]),savedL
 let histMarket="fav";
 let autoLedger=read("sv_prelock_v4",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
 let compareMatchId=null;
-let marketWatchItems=[];
+let marketWatchItems=[],marketHunterItems=[],marketToolTab="analyst";
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
 const price=v=>nf(v,3),per=v=>v===null?"—":nf(v,1)+"%",money=v=>v===null?"—":new Intl.NumberFormat("el-GR",{maximumFractionDigits:0}).format(v)+" €";
@@ -346,15 +346,165 @@ function renderMarketObservation(){
  body.textContent=o.title+"\n"+o.details;
  history.textContent=o.historyText+" "+o.frequencyText;
 }
+// Empirical anomaly explorer. Unlike the Analyst's named money/odds patterns,
+// Hunter ranks the unusual COMBINATION of continuous observed characteristics.
+// This score never selects favorite/contra and never interprets bettor motives.
+const hunterScales=[
+ {key:"share",label:"κατανομή νέων χρημάτων",scale:.20,weight:1.15},
+ {key:"lateMove",label:"κίνηση απόδοσης στα 90′",scale:.78,weight:1.18},
+ {key:"growth",label:"ρυθμός αύξησης τζίρου",scale:.56,weight:.82},
+ {key:"price",label:"επίπεδο απόδοσης",scale:.23,weight:.73},
+ {key:"rank",label:"σχετικός τζίρος λίγκας",scale:30,weight:.70},
+ {key:"previousMove",label:"κίνηση απόδοσης πριν τα 90′",scale:.85,weight:.66},
+ {key:"contraMove",label:"κίνηση απόδοσης κόντρας",scale:.82,weight:.70},
+ {key:"prevCash",label:"κατανομή χρημάτων στα 90′",scale:.17,weight:.38}
+];
+function hunterFeatures(x){
+ const c=svCase(x);
+ if(!c)return null;
+ const features={
+   share:c.favShare,
+   lateMove:Math.asinh(c.oddsMove/3.5),
+   growth:Math.log1p(c.growth),
+   price:Math.log(c.price),
+   rank:c.rank,
+   prevCash:x.p90/100
+ };
+ if(usable(x.o)&&x.o>1.01)
+   features.previousMove=Math.asinh(((x.m/x.o)-1)*100/4);
+ if(usable(x.cm)&&x.cm>1.01&&usable(x.cl)&&x.cl>1.01)
+   features.contraMove=Math.asinh(((x.cl/x.cm)-1)*100/4);
+ return {x,case:c,values:features};
+}
+function hunterDistance(a,b){
+ let sum=0,weight=0,compared=0;
+ for(const f of hunterScales){
+   const av=a.values[f.key],bv=b.values[f.key];
+   if(!Number.isFinite(av)||!Number.isFinite(bv))continue;
+   const delta=Math.abs(av-bv)/f.scale;
+   sum+=f.weight*Math.min(16,delta*delta);
+   weight+=f.weight;compared++;
+ }
+ if(compared<5||weight<=0)return null;
+ return Math.sqrt(sum/weight);
+}
+function hunterNearest(feature,history,k=5,exclude=null){
+ const candidates=[];
+ for(const old of history){
+   if(exclude!==null&&old.x.id===exclude)continue;
+   const dist=hunterDistance(feature,old);
+   if(dist===null)continue;
+   if(candidates.length<k){candidates.push({old,dist});candidates.sort((a,b)=>a.dist-b.dist);}
+   else if(dist<candidates[candidates.length-1].dist){
+     candidates.pop();candidates.push({old,dist});candidates.sort((a,b)=>a.dist-b.dist);
+   }
+ }
+ return candidates;
+}
+function hunterUnusualDetails(feature,history){
+ const deviations=[];
+ for(const spec of hunterScales){
+   const v=feature.values[spec.key];
+   if(!Number.isFinite(v))continue;
+   const peers=history.map(h=>h.values[spec.key]).filter(Number.isFinite);
+   if(peers.length<20)continue;
+   const percentile=peers.filter(x=>x<=v).length/peers.length;
+   const tail=Math.min(percentile,1-percentile);
+   deviations.push({label:spec.label,tail});
+ }
+ deviations.sort((a,b)=>a.tail-b.tail);
+ const notable=deviations.filter(z=>z.tail<=.16).slice(0,3);
+ return notable.length
+   ?"Ξεχωρίζουν σε σχέση με το ιστορικό: "+notable.map(z=>z.label).join(", ")+"."
+   :"Ο συνδυασμός πολλών κινήσεων διαφέρει από παλιότερα παιχνίδια· κανένας μόνος δείκτης δεν αρκεί για εξήγηση.";
+}
+function buildMarketHunter(upcoming,past){
+ const historical=past.map(hunterFeatures).filter(Boolean);
+ marketHunterItems=[];
+ $("marketHunterCount").textContent="0";
+ if(historical.length<15)return;
+ // For comparison, establish the historical leave-one-out nearest-neighbor
+ // distance. Percentile is unusualness of a profile, NOT a win likelihood.
+ const historicalScores=historical.map(h=>{
+   const nearest=hunterNearest(h,historical,5,h.x.id);
+   return nearest.length>=3?nearest.reduce((a,z)=>a+z.dist,0)/nearest.length:null;
+ }).filter(Number.isFinite);
+ if(historicalScores.length<15)return;
+ marketHunterItems=upcoming.map(x=>{
+   const feature=hunterFeatures(x);
+   if(!feature)return null;
+   const neighbors=hunterNearest(feature,historical,5);
+   if(neighbors.length<3)return null;
+   const distance=neighbors.reduce((v,z)=>v+z.dist,0)/neighbors.length;
+   const percentile=Math.round(100*historicalScores.filter(z=>z<=distance).length/historicalScores.length);
+   return {x,distance,percentile,historySize:historical.length,
+     explanation:hunterUnusualDetails(feature,historical),
+     nearest:neighbors.slice(0,3).map(z=>({
+       match:name(z.old.x),score:z.old.x.r,matchDistance:z.dist
+     })),
+     feature
+   };
+ }).filter(Boolean).sort((a,b)=>b.percentile-a.percentile||b.distance-a.distance||
+   kickoffMs(a.x)-kickoffMs(b.x));
+ $("marketHunterCount").textContent=String(marketHunterItems.length);
+}
+function renderMarketHunter(){
+ const count=marketHunterItems.length;
+ $("marketHunterSummary").textContent=count
+  ?"Ο Κυνηγός συνέκρινε "+count+" προσεχείς αγώνες με τα ιστορικά προφίλ χρημάτων, "+
+   "μεταβολής αποδόσεων, τζίρου και αρχικής συμπεριφοράς. Η σειρά προκύπτει από "+
+   "τη συνολική απόσταση από προηγούμενες καταστάσεις, όχι από την έκβαση τους."
+  :"Δεν υπάρχουν ακόμη αρκετά ολοκληρωμένα παιχνίδια και προσεχείς αγώνες με πλήρη στιγμιότυπα για τον Κυνηγό.";
+ $("marketHunterRows").innerHTML=count?marketHunterItems.slice(0,30).map(o=>{
+   const examples=o.nearest.map(z=>z.match+" ("+z.score+")").join(" · ");
+   const rare="Η συμπεριφορά διαφέρει περισσότερο από του "+o.percentile+
+       "% των ιστορικών παιχνιδιών ως προς τον συνδυασμό μετρήσεων. "+
+       "Δεν είναι πιθανότητα νίκης.";
+   return '<button type="button" class="market-watch-item" data-hunter-id="'+o.x.id+'">'+
+     '<b>'+safe(name(o.x))+'</b><small>'+safe(o.x.lg)+" · "+safe(kickoffLabel(o.x))+'</small>'+
+     '<span class="watch-pattern">Ασυνήθιστος συνδυασμός: '+safe(o.percentile)+
+       '/100 ως ιστορική κατάταξη διαφοροποίησης</span>'+
+     '<span class="market-hunter-reason">'+safe(o.explanation)+'</span>'+
+     '<small>'+safe(rare)+'</small>'+
+     '<span class="market-hunter-observed">Πιο κοντινές παλιές περιπτώσεις: '+safe(examples)+'</span></button>';
+ }).join("")+
+ (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
+ '<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>';
+ $("marketHunterRows").querySelectorAll("[data-hunter-id]").forEach(b=>b.addEventListener("click",()=>{
+   const id=Number(b.dataset.hunterId);
+   if(!matches.some(z=>z.id===id))return;
+   closeMarketWatch();select(id);
+   const title=$("matchTitle");
+   if(title&&typeof title.scrollIntoView==="function")
+     title.scrollIntoView({behavior:"smooth",block:"start"});
+ }));
+}
+function renderMarketTools(){
+ const analyst=marketToolTab==="analyst";
+ $("marketAnalystView").classList.toggle("hide",!analyst);
+ $("marketHunterView").classList.toggle("hide",analyst);
+ for(const [id,selected] of [["marketToolAnalyst",analyst],["marketToolHunter",!analyst]]){
+   const button=$(id);
+   button.classList.toggle("active",selected);
+   button.setAttribute("aria-pressed",String(selected));
+ }
+ if(analyst)renderMarketWatch();else renderMarketHunter();
+}
+function selectMarketTool(value){
+ marketToolTab=value==="hunter"?"hunter":"analyst";
+ renderMarketTools();
+}
+
 function buildMarketWatch(){
  const now=Date.now();
  const past=matches.filter(z=>finished(z)&&(kickoffMs(z)===null||kickoffMs(z)<now));
- marketWatchItems=matches.filter(x=>!finished(x)&&kickoffMs(x)!==null&&kickoffMs(x)>now&&svCase(x)!==null)
-   .map(x=>svMarketObservation(x,past.filter(z=>z.id!==x.id&&(kickoffMs(z)!==null||z.id<x.id))))
+ const upcoming=matches.filter(x=>!finished(x)&&kickoffMs(x)!==null&&kickoffMs(x)>now&&svCase(x)!==null);
+ marketWatchItems=upcoming.map(x=>svMarketObservation(x,past.filter(z=>z.id!==x.id&&(kickoffMs(z)!==null||z.id<x.id))))
    .filter(Boolean)
    .sort((a,b)=>b.rank-a.rank||kickoffMs(a.x)-kickoffMs(b.x));
  $("marketWatchCount").textContent=String(marketWatchItems.length);
- if(!$("marketWatchPanel").classList.contains("hide"))renderMarketWatch();
+ buildMarketHunter(upcoming,past);
+ if(!$("marketWatchPanel").classList.contains("hide"))renderMarketTools();
 }
 function renderMarketWatch(){
  const n=marketWatchItems.length;
@@ -390,7 +540,7 @@ function toggleMarketWatch(){
  if(!panel.classList.contains("hide")){closeMarketWatch();return}
  panel.classList.remove("hide");
  $("marketWatchToggle").setAttribute("aria-expanded","true");
- renderMarketWatch();
+ renderMarketTools();
  if(typeof panel.scrollIntoView==="function")
    panel.scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -965,6 +1115,8 @@ document.querySelectorAll("[data-history]").forEach(b=>b.addEventListener("click
 $("opinion").addEventListener("click",opinion);
 $("marketWatchToggle").addEventListener("click",toggleMarketWatch);
 $("marketWatchClose").addEventListener("click",closeMarketWatch);
+$("marketToolAnalyst").addEventListener("click",()=>selectMarketTool("analyst"));
+$("marketToolHunter").addEventListener("click",()=>selectMarketTool("hunter"));
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
 $("snapToggle").addEventListener("click",()=>{
   const shown=$("snapDetails").classList.toggle("hide");
