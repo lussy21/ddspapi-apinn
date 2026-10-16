@@ -9,6 +9,7 @@ let favorites=read("sv_live_faves",[]),journal=read("sv_live_journal",[]),savedL
 let histMarket="fav";
 let autoLedger=read("sv_prelock_v4",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
 let compareMatchId=null;
+let marketWatchItems=[];
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
 const price=v=>nf(v,3),per=v=>v===null?"—":nf(v,1)+"%",money=v=>v===null?"—":new Intl.NumberFormat("el-GR",{maximumFractionDigits:0}).format(v)+" €";
@@ -146,7 +147,7 @@ function render(){
   if(x.alert&&Array.isArray(af)&&/^#[0-9a-f]{6}$/i.test(af[0]||"")&&af[0].toLowerCase()!=="#ffffff"){
     alertBox.style.backgroundColor=af[0];alertBox.style.color=/^#[0-9a-f]{6}$/i.test(af[1]||"")?af[1]:"#1e1e1e";
   }
-  renderAutoCard();renderHistory();renderArchive();
+  renderMarketObservation();renderAutoCard();renderHistory();renderArchive();
 }
 const change=(a,b)=>a!==null&&b!==null&&a>0?(b/a-1)*100:null;
 // Every comparison uses all shared available market signals; never make up missing
@@ -290,6 +291,110 @@ function svMoneyCases(target,prior){
     sameVenue:peers.filter(rec=>rec.x.f===target.f).length,
     sameVenueStats:svProfile(pattern,peers.filter(rec=>rec.x.f===target.f))};
 }
+// Factual discovery from past market cases; never a wager recommendation.
+function svObservationHistory(x){
+ const now=Date.now(),start=kickoffMs(x);
+ return matches.filter(z=>{
+   if(z.id===x.id||!finished(z))return false;
+   const previous=kickoffMs(z);
+   if(finished(x))return z.id<x.id&&(start===null||previous===null||previous<start);
+   return previous===null?z.id<x.id:previous<now;
+ });
+}
+function svMarketObservation(x,prior){
+ const res=svMoneyCases(x,prior);
+ if(!res)return null;
+ const p=res.pattern,h=res.profile,states=res.states||[];
+ const selected=states.find(z=>z.state===p.priceState);
+ const total=states.reduce((n,z)=>n+z.n,0),matching=selected?selected.n:0;
+ const frequency=total>=12?Math.round(matching/total*100):null;
+ const rarity=frequency===null?null:100-frequency;
+ const direction=p.priceState==="flat"?"έμεινε σχεδόν σταθερή":p.priceState==="down"?"έπεσε":"ανέβηκε";
+ const flow=p.moneyState==="fav"?"Νέα χρήματα κυρίως στο φαβορί":
+   p.moneyState==="contra"?"Νέα χρήματα κυρίως στην κόντρα":"Μικτή νέα ροή χρημάτων";
+ const title=flow+" · η απόδοση του φαβορί "+direction;
+ const details="Νέος τζίρος "+money(p.newTurnover)+" · στο φαβορί ≈"+
+   money(p.favorAdded)+" ("+nf(100*p.favShare,1)+"%) · στην κόντρα ≈"+
+   money(p.contraAdded)+" · απόδοση φαβορί "+price(x.m)+" → "+price(x.l)+
+   " ("+(p.oddsMove>0?"+":"")+nf(p.oddsMove,2)+"%).";
+ const historyText=h.n?
+   "Σε "+h.n+" ιστορικούς αγώνες του ίδιου συνδυασμού: "+h.wins+
+   " νίκες φαβορί και "+(h.n-h.wins)+" αποτελέσματα κόντρα +0,5.":
+   "Δεν υπάρχουν ακόμη αρκετές συγκρίσιμες ιστορικές περιπτώσεις.";
+ const frequencyText=frequency===null?
+   "Μικρό συγκρίσιμο δείγμα για τη συχνότητα της κίνησης.":
+   "Η ίδια μεταβολή απόδοσης εμφανίστηκε σε "+matching+"/"+total+
+   " περιπτώσεις αντίστοιχης νέας ροής ("+frequency+"%).";
+ const magnitude=Math.min(1,Math.abs(p.oddsMove)/4),concentration=2*Math.abs(p.favShare-.5);
+ // Sorting measures distinctiveness, not the probability of an outcome.
+ const rank=(rarity===null?35:rarity)*.7+magnitude*18+concentration*12;
+ return {x,pattern:p,title,details,historyText,frequencyText,
+   rank,rarity,compared:total,frequency};
+}
+function renderMarketObservation(){
+ if(!current)return;
+ const o=svMarketObservation(current,svObservationHistory(current));
+ const status=$("marketObservationStatus"),body=$("marketObservationBody"),
+   history=$("marketObservationHistory");
+ if(!o){
+   status.textContent="Αναμονή στιγμιοτύπων";
+   body.textContent="Χρειάζονται πραγματικά στιγμιότυπα 90′ και τελευταίας ενημέρωσης για αποδόσεις, τζίρο και χρήματα. Δεν συμπληρώνουμε κενά με υποθέσεις.";
+   history.textContent="";
+   return;
+ }
+ status.textContent="90′ → τελευταία ενημέρωση";
+ body.textContent=o.title+"\n"+o.details;
+ history.textContent=o.historyText+" "+o.frequencyText;
+}
+function buildMarketWatch(){
+ const now=Date.now();
+ const past=matches.filter(z=>finished(z)&&(kickoffMs(z)===null||kickoffMs(z)<now));
+ marketWatchItems=matches.filter(x=>!finished(x)&&kickoffMs(x)!==null&&kickoffMs(x)>now&&svCase(x)!==null)
+   .map(x=>svMarketObservation(x,past.filter(z=>z.id!==x.id&&(kickoffMs(z)!==null||z.id<x.id))))
+   .filter(Boolean)
+   .sort((a,b)=>b.rank-a.rank||kickoffMs(a.x)-kickoffMs(b.x));
+ $("marketWatchCount").textContent=String(marketWatchItems.length);
+ if(!$("marketWatchPanel").classList.contains("hide"))renderMarketWatch();
+}
+function renderMarketWatch(){
+ const n=marketWatchItems.length;
+ $("marketWatchSummary").textContent=n
+   ?"Βρέθηκαν "+n+" προσεχείς αγώνες με πλήρη στιγμιότυπα. Πρώτες εμφανίζονται οι λιγότερο συνηθισμένες κινήσεις χρημάτων/αποδόσεων, όχι προβλέψεις νίκης."
+   :"Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα 90′ και τελευταίας ενημέρωσης. Οι παρατηρήσεις θα εμφανιστούν όταν ενημερωθούν οι σχετικές στήλες του Excel.";
+ $("marketWatchRows").innerHTML=n?marketWatchItems.slice(0,30).map(o=>{
+   const x=o.x;
+   return '<button type="button" class="market-watch-item" data-observation-id="'+x.id+'">'+
+     '<b>'+safe(name(x))+'</b><small>'+safe(x.lg)+" · "+safe(kickoffLabel(x))+'</small>'+
+     '<span class="watch-pattern">'+safe(o.title)+'</span>'+
+     '<span class="watch-facts">'+safe(o.details)+'</span>'+
+     '<small>'+safe(o.historyText+" "+o.frequencyText)+'</small></button>';
+ }).join("")+
+   (n>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+n+' παρατηρήσεις.</p>':""):
+   '<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>';
+ $("marketWatchRows").querySelectorAll("[data-observation-id]").forEach(b=>b.addEventListener("click",()=>{
+   const id=Number(b.dataset.observationId);
+   if(!matches.some(z=>z.id===id))return;
+   closeMarketWatch();
+   select(id);
+   const title=$("matchTitle");
+   if(title&&typeof title.scrollIntoView==="function")
+     title.scrollIntoView({behavior:"smooth",block:"start"});
+ }));
+}
+function closeMarketWatch(){
+ $("marketWatchPanel").classList.add("hide");
+ $("marketWatchToggle").setAttribute("aria-expanded","false");
+}
+function toggleMarketWatch(){
+ const panel=$("marketWatchPanel");
+ if(!panel.classList.contains("hide")){closeMarketWatch();return}
+ panel.classList.remove("hide");
+ $("marketWatchToggle").setAttribute("aria-expanded","true");
+ renderMarketWatch();
+ if(typeof panel.scrollIntoView==="function")
+   panel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
 function automaticOpinion(x,prior){
   const result=svMoneyCases(x,prior);
   if(!result){
@@ -822,6 +927,7 @@ async function refresh(){
       return x;
     }).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));
     setupRanks();setupLeagues();fillLeagueFilter();
+    buildMarketWatch();
     captureAutoPredictions();
     status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";
     status.className=d.stale?"status warn":"status live";
@@ -857,6 +963,8 @@ $("viewHistory").addEventListener("click",()=>{$("historyDetails").classList.tog
 $("closeCompare").addEventListener("click",()=>{compareMatchId=null;$("comparePanel").classList.add("hide")});
 document.querySelectorAll("[data-history]").forEach(b=>b.addEventListener("click",()=>{historyTab=b.dataset.history;document.querySelectorAll("[data-history]").forEach(z=>z.classList.toggle("active",z===b));paintHistory()}));
 $("opinion").addEventListener("click",opinion);
+$("marketWatchToggle").addEventListener("click",toggleMarketWatch);
+$("marketWatchClose").addEventListener("click",closeMarketWatch);
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
 $("snapToggle").addEventListener("click",()=>{
   const shown=$("snapDetails").classList.toggle("hide");
