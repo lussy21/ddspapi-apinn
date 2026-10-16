@@ -367,7 +367,7 @@ function svFingerprintTag(x,y,label,kind){
     safe(label)+'</text></g>';
 }
 function svFingerprintSvg(stages,fixture){
- const W=430,H=312,top=63,bottom=240,xs=[92,215,338];
+ const W=360,H=304,top=57,bottom=228,xs=[75,179,283];
  const odds=stages.map(z=>z.odds).filter(svFingerprintValidOdds);
  const turn=stages.map(z=>z.turn).filter(svFingerprintValidCash);
  if(!odds.length&&!turn.length)
@@ -393,16 +393,16 @@ function svFingerprintSvg(stages,fixture){
     '<filter id="svLineGlow" x="-25%" y="-30%" width="150%" height="160%">'+
       '<feGaussianBlur stdDeviation="2.8"/></filter>'+
   '</defs>';
- svg+='<text x="13" y="25" fill="#75d8ff" font-size="15.5" font-weight="820">Απόδοση</text>'+
-   '<text x="415" y="25" fill="#ffca79" font-size="13" font-weight="820" text-anchor="end">Τζίρος €</text>';
+ svg+='<text x="10" y="25" fill="#75d8ff" font-size="15.5" font-weight="820">Απόδοση</text>'+
+   '<text x="351" y="25" fill="#ffca79" font-size="14.5" font-weight="820" text-anchor="end">Τζίρος €</text>';
  for(let i=0;i<=3;i++){
    const y=top+(bottom-top)*i/3,amount=(3-i)*topTurn/3,odd=maxOdds-(maxOdds-minOdds)*i/3;
-   svg+='<line x1="57" y1="'+y.toFixed(1)+'" x2="375" y2="'+y.toFixed(1)+
+   svg+='<line x1="45" y1="'+y.toFixed(1)+'" x2="314" y2="'+y.toFixed(1)+
      '" stroke="#477090" stroke-opacity=".63" stroke-width=".8" stroke-dasharray="4 5"/>';
    if(odds.length)
-     svg+='<text x="51" y="'+(y+4).toFixed(1)+'" font-size="12.4" fill="#a8dafa" text-anchor="end">'+safe(nf(odd,2))+'</text>';
+     svg+='<text x="40" y="'+(y+4).toFixed(1)+'" font-size="11.7" fill="#a8dafa" text-anchor="end">'+safe(nf(odd,2))+'</text>';
    if(turn.length)
-     svg+='<text x="424" y="'+(y+4).toFixed(1)+'" font-size="12.4" fill="#edc78b" text-anchor="end">'+
+     svg+='<text x="358" y="'+(y+4).toFixed(1)+'" font-size="11.7" fill="#edc78b" text-anchor="end">'+
       safe(svFingerprintCash(amount))+'</text>';
  }
  stages.forEach((z,i)=>{
@@ -412,8 +412,17 @@ function svFingerprintSvg(stages,fixture){
      '" rx="6" fill="url(#svBarPremium)" stroke="#ffbe70" stroke-opacity=".6" stroke-width=".8">'+
      '<title>'+safe(z.title+": τζίρος "+money(v))+'</title></rect>';
  });
- // Draw no curve if the middle point is absent; joining endpoints would
- // misleadingly assert continuous movements across unobserved stages.
+ // When the 90′ odds are unavailable, a DASHED straight reference joins
+ // only the two KNOWN endpoints. It is not a reported intermediate price or curve.
+ // The visible note below the SVG spells this out explicitly.
+ if(!svFingerprintValidOdds(stages[1].odds)&&
+    svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds)){
+   const x1=xs[0],x2=xs[2],y1=yOdds(stages[0].odds),y2=yOdds(stages[2].odds);
+   svg+='<path d="M '+x1+' '+y1.toFixed(1)+' L '+x2+' '+y2.toFixed(1)+
+     '" stroke="#52c9f5" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 7" '+
+     'opacity=".85" fill="none"/>';
+ }
+ // Smooth path only between TWO consecutive REAL market snapshots.
  for(let i=1;i<3;i++){
    const a=stages[i-1].odds,b=stages[i].odds;
    if(!svFingerprintValidOdds(a)||!svFingerprintValidOdds(b))continue;
@@ -449,10 +458,10 @@ function svFingerprintSvg(stages,fixture){
  });
  stages.forEach((z,i)=>{
    const x=xs[i];
-   svg+='<text x="'+x+'" y="272" fill="#ecf7ff" font-size="15" font-weight="790" text-anchor="middle">'+
+   svg+='<text x="'+x+'" y="261" fill="#ecf7ff" font-size="15" font-weight="790" text-anchor="middle">'+
      safe(z.short)+'</text>'+
-     '<text x="'+x+'" y="290" fill="#94b8d9" font-size="11.5" text-anchor="middle">'+
-     safe(i===0?"Απόδ. αρχική / τζίρος 11:00":i===1?"90′ πριν":"Τελευταία")+'</text>';
+     '<text x="'+x+'" y="283" fill="#94b8d9" font-size="11.5" text-anchor="middle">'+
+     safe(i===0?"αρχική / 11:00":i===1?"90′ πριν":"τελευταία")+'</text>';
    if(!svFingerprintValidOdds(z.odds)&&!svFingerprintValidCash(z.turn))
      svg+='<text x="'+x+'" y="'+(top+(bottom-top)*.56).toFixed(1)+
        '" fill="#82a8c8" font-size="10" text-anchor="middle">χωρίς στοιχεία</text>';
@@ -510,6 +519,15 @@ function renderFingerprint(){
  if(!current)return;
  const stages=svFingerprintStages(current);
  $("fingerprintChart").innerHTML=svFingerprintSvg(stages,current);
+ const missing=[];
+ if(!svFingerprintValidOdds(stages[1].odds)&&
+    svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds))
+   missing.push("Η διακεκομμένη μπλε γραμμή συνδέει μόνο την αρχική και την τελευταία απόδοση. Δεν γνωρίζουμε την τιμή στα 90′.");
+ if(!svFingerprintValidCash(stages[1].turn)&&
+    svFingerprintValidCash(stages[0].turn)&&svFingerprintValidCash(stages[2].turn))
+   missing.push("Δεν υπάρχει μέτρηση τζίρου στα 90′.");
+ $("fingerprintMissing").textContent=missing.join(" ");
+ $("fingerprintMissing").classList.toggle("hide",!missing.length);
  $("fingerprintSummaryCards").innerHTML=svFingerprintSummary(stages);
  $("fingerprintStageValues").innerHTML=stages.map(z=>
    '<div class="sv-fingerprint-stage"><strong>'+safe(z.title)+'</strong>'+
