@@ -378,11 +378,73 @@ function paintHistory(){
  const heading=x.length>40?'<p class="tiny" style="padding:8px 0">Τα 40 πιο κοντινά από '+x.length+' · οι συνολικές συχνότητες μετρούν όλα τα ματς</p>':"";
  $("historyRows").innerHTML=x.length?heading+x.slice(0,40).map(z=>{
    const hit=marketWon(z)===true;
-   const sideVenue=histMarket==="contra"?(z.f==="H"?"εκτός":"εντός"):(z.f==="H"?"εντός":"εκτός");
-   const sideName=histMarket==="contra"?"Κόντρα +0,5":"Φαβορί";
-   const outcome=histMarket==="contra"?(hit?"Κέρδισε η κόντρα +0,5":"Κέρδισε το φαβορί"):(hit?"Κέρδισε το φαβορί":"Κέρδισε η κόντρα +0,5");
-   return '<div class="histrow"><div><b>'+safe(name(z))+'</b><small>'+safe(z.lg)+' · Δείκτης ομοιότητας '+z.similarity+'/100 · '+z.features+' στοιχεία · '+sideName+' '+sideVenue+'</small></div><div style="text-align:right;white-space:nowrap"><b class="'+(hit?"good":"bad")+'">'+safe(z.r)+'</b><small>'+outcome+'</small></div></div>';
+   const venue=histMarket==="contra"?(z.f==="H"?"εκτός":"εντός"):(z.f==="H"?"εντός":"εκτός");
+   const chosen=histMarket==="contra"?"Κόντρα +0,5":"Φαβορί";
+   const result=histMarket==="contra"?(hit?"Κέρδισε η κόντρα +0,5":"Κέρδισε το φαβορί"):(hit?"Κέρδισε το φαβορί":"Κέρδισε η κόντρα +0,5");
+   return '<div class="histrow"><div><b>'+safe(name(z))+'</b><small>'+
+     safe(z.lg)+' · Ομοιότητα '+z.similarity+'/100 · '+z.features+' στοιχεία · '+chosen+' '+venue+
+     '</small><button type="button" class="compare-button subtle" data-compare="'+z.id+'">Δίπλα δίπλα ↗</button></div>'+
+     '<div style="text-align:right;white-space:nowrap"><b class="'+(hit?"good":"bad")+'">'+safe(z.r)+
+     '</b><small>'+result+'</small></div></div>';
  }).join(""):'<div class="empty">Δεν υπάρχουν παρόμοιοι αγώνες σε αυτή την αναζήτηση.</div>';
+ document.querySelectorAll("[data-compare]").forEach(b=>b.addEventListener("click",()=>showHistoricalCompare(+b.dataset.compare)));
+ if(compareMatchId!==null && !x.some(z=>z.id===compareMatchId)){
+   compareMatchId=null;$("comparePanel").classList.add("hide");
+ }else if(compareMatchId!==null)showHistoricalCompare(compareMatchId);
+}
+function showHistoricalCompare(id){
+ if(!current)return;
+ const other=(history[historyTab]||[]).find(z=>z.id===id);
+ if(!other){$("comparePanel").classList.add("hide");compareMatchId=null;return}
+ compareMatchId=id;
+ const x=current,score=other.similarity;
+ $("compareTitle").textContent=name(x)+" ↔ "+name(other);
+ $("compareMeta").textContent="Πρωτάθλημα: "+x.lg+" ↔ "+other.lg+
+   " · Ομοιότητα "+score+"/100 · "+other.features+" συγκρίσιμα στοιχεία · "+
+   "Τελικό ιστορικού "+other.r;
+ // Colors measure closeness, not quality or favorability. A relative turnover
+ // percentile is comparable across leagues; absolute turnover is shown as context.
+ const definitions=[
+   ["Φαβορί",z=>fave(z),null],
+   ["Έδρα φαβορί",z=>z.f==="H"?"Εντός":"Εκτός",null],
+   ["Αρχική απόδοση φαβορί",z=>z.o,.12],
+   ["90′ φαβορί",z=>z.m,.12],
+   ["Τελευταία φαβορί",z=>z.l,.12],
+   ["Μεταβολή φαβορί",z=>change(z.o,z.l),4,"percentpoint"],
+   ["Αρχική κόντρα +0,5",z=>z.co,.18],
+   ["90′ κόντρα +0,5",z=>z.cm,.18],
+   ["Τελευταία κόντρα +0,5",z=>z.cl,.18],
+   ["Μεταβολή κόντρας",z=>change(z.co,z.cl),5,"percentpoint"],
+   ["Τζίρος",z=>z.v,null,"cash"],
+   ["Τζίρος % μέσα στη λίγκα",z=>z.rank,12,"pct"],
+   ["11:00 χρήματα φαβορί",z=>z.p0,8,"pct"],
+   ["90′ χρήματα φαβορί",z=>z.p90,8,"pct"],
+   ["Τελευταία χρήματα φαβορί",z=>z.p,8,"pct"],
+   ["11:00 χρήματα κόντρας",z=>z.contra0,8,"pct"],
+   ["90′ χρήματα κόντρας",z=>z.contra90,8,"pct"],
+   ["Τελευταία χρήματα κόντρας",z=>z.contra,8,"pct"],
+   ["SofaScore",z=>z.s,9,"pct"],
+   ["Καμπανάκι Excel",z=>z.alert,null],
+   ["Τελικό σκορ",z=>z.r,null]
+ ];
+ const format=(v,type)=>{
+   if(v===null||v===undefined||v==="")return "—";
+   if(typeof v==="number"){
+     if(type==="cash")return nf(v,0);
+     return nf(v,type==="pct"||type==="percentpoint"?1:3)+(type==="pct"||type==="percentpoint"?"%":"");
+   }
+   return String(v);
+ };
+ const rows=definitions.map(([label,fn,tol,type])=>{
+   const a=fn(x),b=fn(other);
+   const matched=tol!==null&&typeof a==="number"&&Number.isFinite(a)&&typeof b==="number"&&Number.isFinite(b);
+   const cls=matched?(Math.abs(a-b)<=tol?"same":"far"):"not-comparable";
+   return '<tr><td>'+safe(label)+'</td><td>'+safe(format(a,type))+'</td>'+
+     '<td class="'+cls+'">'+safe(format(b,type))+'</td></tr>';
+ }).join("");
+ $("compareBody").innerHTML='<table class="compare-table"><thead><tr><th>Στοιχείο</th><th>Επιλεγμένος</th><th>Ιστορικός</th></tr></thead><tbody>'+
+    rows+'</tbody></table>';
+ $("comparePanel").classList.remove("hide");
 }
 
 // Give an interpretable historical lean without treating frequencies as calibrated
@@ -524,6 +586,7 @@ document.querySelectorAll("[data-market]").forEach(b=>b.addEventListener("click"
 $("settingsToggle").addEventListener("click",()=>$("settings").classList.toggle("hide"));
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{let all=allLeagues();leaguesSelected=b.dataset.preset==="all"?all:b.dataset.preset==="none"?[]:all.filter(x=>!excluded.test(x));savedLeagues=leaguesSelected;store("sv_live_leagues",savedLeagues);paintSettings();clearOpinion();renderHistory()}));
 $("viewHistory").addEventListener("click",()=>{$("historyDetails").classList.toggle("hide");$("viewHistory").textContent=$("historyDetails").classList.contains("hide")?"Δες ματς & σκορ ▾":"Κρύψε τα ματς ▴";paintHistory()});
+$("closeCompare").addEventListener("click",()=>{compareMatchId=null;$("comparePanel").classList.add("hide")});
 document.querySelectorAll("[data-history]").forEach(b=>b.addEventListener("click",()=>{historyTab=b.dataset.history;document.querySelectorAll("[data-history]").forEach(z=>z.classList.toggle("active",z===b));paintHistory()}));
 $("opinion").addEventListener("click",opinion);
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
