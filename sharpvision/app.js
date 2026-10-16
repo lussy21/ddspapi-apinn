@@ -10,6 +10,8 @@ let histMarket="fav";
 let autoLedger=read("sv_prelock_v4",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
 let compareMatchId=null;
 let marketWatchItems=[],marketHunterItems=[],marketToolTab="analyst";
+let marketToolLog=read("sv_market_tools_v1",[]);
+if(!Array.isArray(marketToolLog))marketToolLog=[];
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
 const price=v=>nf(v,3),per=v=>v===null?"—":nf(v,1)+"%",money=v=>v===null?"—":new Intl.NumberFormat("el-GR",{maximumFractionDigits:0}).format(v)+" €";
@@ -665,7 +667,7 @@ function renderMarketHunter(){
   ?"Ο Κυνηγός συνέκρινε "+count+" προσεχείς αγώνες με τα ιστορικά προφίλ χρημάτων, "+
    "μεταβολής αποδόσεων, τζίρου και αρχικής συμπεριφοράς. Η σειρά προκύπτει από "+
    "τη συνολική απόσταση από προηγούμενες καταστάσεις, όχι από την έκβαση τους."
-  :"Δεν υπάρχουν ακόμη αρκετά ολοκληρωμένα παιχνίδια και προσεχείς αγώνες με πλήρη στιγμιότυπα για τον Κυνηγό.";
+   : "Δεν υπάρχουν ακόμη αρκετά δεδομένα για τον Κυνηγό. "+svCoverage();
  $("marketHunterRows").innerHTML=count?marketHunterItems.slice(0,30).map(o=>{
    const examples=o.nearest.map(z=>z.match+" ("+z.score+")").join(" · ");
    const rare="Η συμπεριφορά διαφέρει περισσότερο από του "+o.percentile+
@@ -682,6 +684,7 @@ function renderMarketHunter(){
  }).join("")+
  (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
  '<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>';
+ $("marketHunterRows").insertAdjacentHTML("beforeend",svSavedExtras("hunter",marketHunterItems.map(o=>o.x)));
  $("marketHunterRows").querySelectorAll("[data-hunter-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.hunterId);
    if(!matches.some(z=>z.id===id))return;
@@ -690,21 +693,127 @@ function renderMarketHunter(){
    if(title&&typeof title.scrollIntoView==="function")
      title.scrollIntoView({behavior:"smooth",block:"start"});
  }));
+ svWireSaved("marketHunterRows");
 }
 function renderMarketTools(){
- const analyst=marketToolTab==="analyst";
- $("marketAnalystView").classList.toggle("hide",!analyst);
- $("marketHunterView").classList.toggle("hide",analyst);
- for(const [id,selected] of [["marketToolAnalyst",analyst],["marketToolHunter",!analyst]]){
-   const button=$(id);
-   button.classList.toggle("active",selected);
-   button.setAttribute("aria-pressed",String(selected));
+ const selected=marketToolTab;
+ for(const [tab,panel,button] of [
+   ["analyst","marketAnalystView","marketToolAnalyst"],
+   ["hunter","marketHunterView","marketToolHunter"],
+   ["psych","marketPsychView","marketToolPsych"]
+ ]){
+   $(panel).classList.toggle("hide",tab!==selected);
+   $(button).classList.toggle("active",tab===selected);
+   $(button).setAttribute("aria-pressed",String(tab===selected));
  }
- if(analyst)renderMarketWatch();else renderMarketHunter();
+ if(selected==="analyst")renderMarketWatch();
+ else if(selected==="hunter")renderMarketHunter();
+ else renderMarketPsych();
+ renderMarketToolHistory();
 }
 function selectMarketTool(value){
- marketToolTab=value==="hunter"?"hunter":"analyst";
+ marketToolTab=["analyst","hunter","psych"].includes(value)?value:"analyst";
  renderMarketTools();
+}
+
+/* Browser-only records of what was actually seen BEFORE each kickoff.
+   Never reconstruct a pregame signal retrospectively from a final score. */
+function svCoverage(){
+ const open=matches.filter(x=>!finished(x));
+ const future=open.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>Date.now());
+ const ready=future.filter(x=>svCase(x)!==null);
+ return "Χωρίς τελικό: "+open.length+" · Μελλοντικοί με ώρα: "+future.length+
+   " · Πλήρη στιγμιότυπα: "+ready.length+".";
+}
+function svRememberTool(tool,x,label,pick=null,level=0){
+ const now=Date.now(),start=kickoffMs(x);
+ if(start===null||start<=now||finished(x))return false;
+ const fixture=autoKey(x),id=tool+"|"+fixture;
+ const existing=marketToolLog.find(e=>e&&e.id===id);
+ if(existing){
+   if(tool==="psych"&&(existing.lastPick!==pick||existing.lastLevel!==level)){
+     existing.lastPick=pick;existing.lastLevel=level;return true;
+   }
+   return false;
+ }
+ marketToolLog.unshift({id,tool,fixture,match:name(x),league:x.lg,kickoff:x.kickoff,
+   recordedAt:new Date().toISOString(),label,firstPick:pick,lastPick:pick,firstLevel:level,lastLevel:level});
+ return true;
+}
+function svToolMatch(e){return matches.find(x=>autoKey(x)===e.fixture)||null}
+function svActiveLog(tool){
+ return marketToolLog.filter(e=>{
+   if(!e||e.tool!==tool)return false;
+   const x=svToolMatch(e);
+   return !x||!finished(x);
+ });
+}
+function svSavedLabel(e){
+ if(e.tool!=="psych")return e.label;
+ const locked=autoLedger[e.fixture];
+ if(locked){
+   return locked.pick==="abstain"?e.label+" · τώρα Αποχή":
+     (locked.pick==="fav"?"Φαβορί":"Κόντρα +0,5")+" "+locked.level+"/3 · κλειδωμένο";
+ }
+ return e.lastPick==="abstain"?e.label+" · τώρα Αποχή":e.label+" · προσωρινό";
+}
+function svSavedCard(e){
+ const x=svToolMatch(e);
+ const past=Date.parse(e.kickoff)<=Date.now();
+ const status=past?"Έχει ξεκινήσει · αναμονή τελικού αποτελέσματος":"Πριν από τη σέντρα";
+ const label=svSavedLabel(e);
+ const inner='<b>'+safe(e.match)+'</b><small>'+safe(e.league)+' · '+safe(kickoffLabel({kickoff:e.kickoff}))+
+   '</small><span class="watch-pattern">'+safe(label)+'</span>'+
+   '<span class="market-saved-status">'+safe(status)+'</span>';
+ return x?'<button type="button" class="market-watch-item" data-saved-fixture="'+safe(e.fixture)+'">'+inner+'</button>':
+   '<div class="market-watch-item">'+inner+'</div>';
+}
+function svSavedExtras(tool,live){
+ const keys=new Set(live.map(x=>autoKey(x)));
+ return svActiveLog(tool).filter(e=>!keys.has(e.fixture))
+   .sort((a,b)=>Date.parse(a.kickoff)-Date.parse(b.kickoff))
+   .slice(0,30).map(svSavedCard).join("");
+}
+function svWireSaved(root){
+ $(root).querySelectorAll("[data-saved-fixture]").forEach(b=>b.addEventListener("click",()=>{
+   const x=matches.find(z=>autoKey(z)===b.dataset.savedFixture);
+   if(!x)return;
+   closeMarketWatch();select(x.id);
+   const el=$("matchTitle");
+   if(el&&typeof el.scrollIntoView==="function")el.scrollIntoView({behavior:"smooth",block:"start"});
+ }));
+}
+function renderMarketPsych(){
+ const entries=svActiveLog("psych").sort((a,b)=>Date.parse(a.kickoff)-Date.parse(b.kickoff));
+ $("marketPsychSummary").textContent=entries.length?
+   "Αγώνες που πέρασαν τα όρια Φαβορί ή Κόντρα πριν από τη σέντρα. Παραμένουν μέχρι το τελικό σκορ. Η προσωρινή ένδειξη μπορεί να αλλάξει.":
+   "Δεν έχει καταγραφεί ακόμη επιλογή Φαβορί ή Κόντρα. "+svCoverage();
+ $("marketPsychRows").innerHTML=entries.length?entries.slice(0,30).map(svSavedCard).join("")+
+   (entries.length>30?'<p class="market-watch-foot">Εμφανίζονται οι πρώτοι 30 αγώνες.</p>':""):
+   '<p class="market-watch-intro">Οι απλές Αποχές δεν προστίθενται.</p>';
+ svWireSaved("marketPsychRows");
+}
+function renderMarketToolHistory(){
+ const done=marketToolLog.filter(e=>{
+   if(!e||!["analyst","hunter","psych"].includes(e.tool))return false;
+   const x=svToolMatch(e);
+   if(!x||!finished(x))return false;
+   if(e.tool!=="psych")return true;
+   const locked=autoLedger[e.fixture];
+   return locked?locked.pick==="fav"||locked.pick==="contra":
+     e.lastPick==="fav"||e.lastPick==="contra";
+ }).sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt)));
+ $("marketHistoryCount").textContent=String(done.length);
+ const names={analyst:"Αναλυτής",hunter:"Κυνηγός",psych:"Ψυχολόγος"};
+ $("marketHistoryRows").innerHTML=done.length?done.slice(0,10).map(e=>{
+   const x=svToolMatch(e),locked=e.tool==="psych"?autoLedger[e.fixture]:null;
+   return '<div class="market-watch-item"><b>'+safe(e.match)+'</b>'+
+     '<small>'+safe(names[e.tool])+' · '+safe(new Date(e.recordedAt).toLocaleDateString("el-GR"))+'</small>'+
+     '<span class="watch-pattern">'+safe(e.tool==="psych"&&locked?
+       (locked.pick==="fav"?"Φαβορί":"Κόντρα +0,5")+" "+locked.level+"/3 · κλειδωμένο":
+       svSavedLabel(e))+'</span>'+
+     '<span class="market-saved-score">Τελικό '+safe(x.r)+'</span></div>';
+ }).join(""):'<p class="market-watch-intro">Δεν υπάρχουν ακόμη καταγραφές με τελικό σκορ. Οι Αποχές δεν εμφανίζονται.</p>';
 }
 
 function buildMarketWatch(){
@@ -716,13 +825,34 @@ function buildMarketWatch(){
    .sort((a,b)=>b.rank-a.rank||kickoffMs(a.x)-kickoffMs(b.x));
  $("marketWatchCount").textContent=String(marketWatchItems.length);
  buildMarketHunter(upcoming,past);
+ let changed=false;
+ for(const o of marketWatchItems)
+   changed=svRememberTool("analyst",o.x,o.title)||changed;
+ for(const o of marketHunterItems)
+   changed=svRememberTool("hunter",o.x,"Ασυνήθιστο προφίλ "+o.percentile+"/100")||changed;
+ for(const x of upcoming){
+   const decision=autoLedger[autoKey(x)]||automaticOpinion(x,past.filter(z=>autoKey(z)!==autoKey(x)));
+   const previous=marketToolLog.find(e=>e.id==="psych|"+autoKey(x));
+   if(decision.pick==="abstain"&&!previous)continue;
+   const label=previous?previous.label:
+     (decision.pick==="fav"?"Φαβορί":"Κόντρα +0,5")+" "+decision.level+"/3";
+   changed=svRememberTool("psych",x,label,decision.pick,decision.level)||changed;
+ }
+ if(changed){
+   marketToolLog=marketToolLog.filter(e=>e&&e.id&&e.fixture&&e.recordedAt)
+     .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt))).slice(0,1000);
+   store("sv_market_tools_v1",marketToolLog);
+ }
+ $("marketWatchCount").textContent=String(svActiveLog("analyst").length);
+ $("marketHunterCount").textContent=String(svActiveLog("hunter").length);
+ $("marketPsychCount").textContent=String(svActiveLog("psych").length);
  if(!$("marketWatchPanel").classList.contains("hide"))renderMarketTools();
 }
 function renderMarketWatch(){
  const n=marketWatchItems.length;
  $("marketWatchSummary").textContent=n
    ?"Βρέθηκαν "+n+" προσεχείς αγώνες με πλήρη στιγμιότυπα. Πρώτες εμφανίζονται οι λιγότερο συνηθισμένες κινήσεις χρημάτων/αποδόσεων, όχι προβλέψεις νίκης."
-   :"Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα 90′ και τελευταίας ενημέρωσης. Οι παρατηρήσεις θα εμφανιστούν όταν ενημερωθούν οι σχετικές στήλες του Excel.";
+    : "Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα. "+svCoverage();
  $("marketWatchRows").innerHTML=n?marketWatchItems.slice(0,30).map(o=>{
    const x=o.x;
    return '<button type="button" class="market-watch-item" data-observation-id="'+x.id+'">'+
@@ -734,6 +864,7 @@ function renderMarketWatch(){
  }).join("")+
    (n>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+n+' παρατηρήσεις.</p>':""):
    '<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>';
+ $("marketWatchRows").insertAdjacentHTML("beforeend",svSavedExtras("analyst",marketWatchItems.map(o=>o.x)));
  $("marketWatchRows").querySelectorAll("[data-observation-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.observationId);
    if(!matches.some(z=>z.id===id))return;
@@ -743,6 +874,7 @@ function renderMarketWatch(){
    if(title&&typeof title.scrollIntoView==="function")
      title.scrollIntoView({behavior:"smooth",block:"start"});
  }));
+ svWireSaved("marketWatchRows");
 }
 function closeMarketWatch(){
  $("marketWatchPanel").classList.add("hide");
@@ -1325,8 +1457,8 @@ async function refresh(){
       return x;
     }).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));
     setupRanks();setupLeagues();fillLeagueFilter();
-    buildMarketWatch();
     captureAutoPredictions();
+    buildMarketWatch();
     status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";
     status.className=d.stale?"status warn":"status live";
     $("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");
@@ -1365,6 +1497,7 @@ $("marketWatchToggle").addEventListener("click",toggleMarketWatch);
 $("marketWatchClose").addEventListener("click",closeMarketWatch);
 $("marketToolAnalyst").addEventListener("click",()=>selectMarketTool("analyst"));
 $("marketToolHunter").addEventListener("click",()=>selectMarketTool("hunter"));
+$("marketToolPsych").addEventListener("click",()=>selectMarketTool("psych"));
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
 $("fingerprintModeOdds").addEventListener("click",()=>setFingerprintMode(false));
 $("fingerprintModeBoth").addEventListener("click",()=>setFingerprintMode(true));
