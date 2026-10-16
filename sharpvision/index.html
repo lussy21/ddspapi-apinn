@@ -124,38 +124,88 @@
 @media(max-width:420px){.market-tool-tab{gap:5px;font-size:13px}.market-watch-panel{padding:13px}}
 
 
-/* Readable two-scale market fingerprint: short cards, three real snapshots only. */
-.sv-fingerprint{border-color:#3e5c73}
-.sv-fingerprint-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.sv-fingerprint-header .tiny{margin-top:5px}
-.sv-fingerprint-header button{flex-shrink:0}
-.sv-fingerprint-legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:17px 0 11px;font-size:12px;font-weight:680;color:#deebf7}
-.sv-fingerprint-legend span{display:inline-flex;gap:7px;align-items:center}
-.sv-legend-dot{display:inline-block;flex:0 0 11px;width:11px;height:11px;border-radius:50%;background:#4bcaf3}
-.sv-legend-dot.cash-dot{background:#f7bc69;border-radius:3px}
-.sv-legend-dot.favorite-dot{background:#36c59a}
-.sv-legend-dot.against-dot{background:#f17f91}
-.sv-fingerprint-chart{background:#102236;border:1px solid #365570;border-radius:14px;padding:9px 5px 1px;max-width:650px;overflow:hidden}
-.sv-fingerprint-chart svg{width:100%;height:auto;display:block;max-height:485px}
-.sv-fingerprint-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px;max-width:650px}
-.sv-fingerprint-stage{padding:9px 7px;border-radius:10px;background:#1c3146;text-align:center;min-width:0}
-.sv-fingerprint-stage strong{display:block;font-size:12px;margin-bottom:5px}
-.sv-fingerprint-stage small{display:block;font-size:11px;color:#c0d4e3;line-height:1.6;font-variant-numeric:tabular-nums}
-.sv-fingerprint-stage .odds-value{font-weight:850;color:#75dbfa}
-.sv-fingerprint-stage .cash-value{font-weight:850;color:#ffd38d}
-.sv-fingerprint-caveat{font-size:11px;color:#a5bacb;line-height:1.55;margin-top:9px;max-width:650px}
-.sv-fingerprint-money{margin-top:20px;padding-top:14px;border-top:1px solid #334e66;max-width:650px}
-.sv-fingerprint-money h3{font-size:15px}
-.sv-fingerprint-money .sv-fingerprint-legend{margin:11px 0}
-.sv-fingerprint-moneyrow{margin:12px 0}
-.sv-moneyrow-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px;color:#d9e7f3;margin-bottom:6px}
-.sv-moneyrow-heading strong{font-size:12px;white-space:nowrap}
-.sv-moneyrow-heading span{font-variant-numeric:tabular-nums;font-size:11px;color:#cfdeeb}
-.sv-moneybar{height:14px;display:flex;overflow:hidden;border-radius:7px;background:#35475b}
-.sv-moneybar .fav{background:#36c59a}
-.sv-moneybar .contra{background:#f17f91}
-.sv-fingerprint-insight{background:#1d3547;border:1px solid #42647b;border-radius:11px;padding:11px 12px;color:#dceaf4;font-size:12px;line-height:1.7;margin-top:15px;max-width:650px}
-@media(max-width:440px){.sv-fingerprint-header h2{font-size:18px}.sv-fingerprint-stages{gap:5px}.sv-fingerprint-stage{padding:8px 4px}.sv-fingerprint-stage strong{font-size:11px}.sv-fingerprint-stage small{font-size:10px}.sv-moneyrow-heading span{font-size:10px}}
+/* SHARPVISION MARKET FINGERPRINT — cinematic but accurate, mobile first. */
+.sv-fingerprint{border:1px solid #24578a;background:linear-gradient(148deg,#102646 0%,#0d1d36 76%,#0c1b31 100%);
+  box-shadow:0 16px 38px #01091640;overflow:hidden}
+.sv-fingerprint-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sv-fingerprint-heading{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.sv-fingerprint-icon{display:grid;place-items:center;flex:0 0 43px;width:43px;height:43px;border-radius:13px;
+  color:#8bc3ff;background:linear-gradient(145deg,#17417b,#152f5f);box-shadow:inset 0 1px #ffffff10}
+.sv-fingerprint-heading h2{font-size:clamp(19px,3vw,23px);letter-spacing:-.05em}
+.sv-fingerprint-heading .tiny{margin-top:4px;color:#b1c9e0;font-size:12px;line-height:1.4}
+.sv-fingerprint-header button{flex-shrink:0;background:#172f50;border:1px solid #426d96;color:#e1f3ff}
+.sv-fingerprint-dashboard{margin-top:17px;background:linear-gradient(145deg,#0b2040,#101f3a);
+  border:1px solid #245188;border-radius:18px;padding:14px 13px 15px;box-shadow:0 0 18px #006cf012 inset}
+.sv-fingerprint-legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin-bottom:13px;font-size:12px;font-weight:720;color:#e0efff}
+.sv-fingerprint-legend span{display:inline-flex;align-items:center;gap:8px;line-height:1.5}
+.sv-legend-dot{display:inline-block;flex-shrink:0;width:12px;height:12px;background:#16bbef;border-radius:50%;box-shadow:0 0 12px #12b9f55e}
+.sv-legend-dot.cash-dot{background:linear-gradient(145deg,#ffd17a,#f59a25);border-radius:3px;box-shadow:0 0 10px #ffc06c58}
+.sv-legend-dot.favorite-dot{background:#36c99e;box-shadow:0 0 9px #1cbb9c4e}
+.sv-legend-dot.against-dot{background:#f6779d;box-shadow:0 0 9px #ef5f8f46}
+.sv-fingerprint-chart{background:linear-gradient(150deg,#091b36,#0b213d);
+  border:1px solid #214a7b;border-radius:15px;padding:8px 4px 4px;overflow:hidden;max-width:760px}
+.sv-fingerprint-chart svg{width:100%;height:auto;display:block}
+.sv-fingerprint-scales{text-align:center;color:#a7bdd6;font-size:11px;margin:7px 0 13px}
+.sv-fingerprint-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px}
+.sv-fingerprint-summary-card{border:1px solid #265084;border-radius:15px;padding:13px 12px;
+  background:linear-gradient(154deg,#142f59,#0d2345);min-width:0;box-shadow:0 6px 16px #04122355}
+.sv-fingerprint-summary-label{display:flex;align-items:center;gap:6px;font-weight:800;font-size:12px;color:#bedaf5;line-height:1.45}
+.sv-fingerprint-summary-icon{font-size:18px;font-weight:900;color:#69caff}
+.sv-fingerprint-summary-card.cash .sv-fingerprint-summary-icon{color:#ffc46b}
+.sv-fingerprint-summary-card.distribution .sv-fingerprint-summary-icon{color:#b2a3ff}
+.sv-fingerprint-summary-number{margin-top:8px;font-size:clamp(14px,2.3vw,20px);
+  font-weight:900;color:#f3faff;letter-spacing:-.035em;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.sv-fingerprint-summary-number .highlight{color:#4bd7ff}
+.sv-fingerprint-summary-card.cash .highlight{color:#ffc272}
+.sv-fingerprint-summary-change{font-size:11px;color:#adcce7;margin-top:7px;line-height:1.55;overflow-wrap:anywhere}
+.sv-fingerprint-summary-change.positive{color:#4be0b0}
+.sv-fingerprint-summary-change.negative{color:#ffbd86}
+.sv-fingerprint-summary-sub{font-size:11px;color:#adcce7;margin-top:6px;line-height:1.55}
+.sv-fingerprint-mini-money{display:flex;width:100%;height:8px;margin-top:10px;border-radius:999px;background:#284463;overflow:hidden}
+.sv-fingerprint-mini-money .fav{background:#36c99e}.sv-fingerprint-mini-money .contra{background:#f6779d}
+.sv-fingerprint-expand{margin-top:12px;border-top:1px solid #254c77;padding-top:10px}
+.sv-fingerprint-expand summary{font-size:12px;color:#a9d9fa;font-weight:730;cursor:pointer;list-style-position:inside;user-select:none}
+.sv-fingerprint-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.sv-fingerprint-stage{padding:10px 7px;border-radius:10px;background:#122e4c;border:1px solid #2c4d75;text-align:center;min-width:0}
+.sv-fingerprint-stage strong{display:block;font-size:11px;color:#e8f4ff;margin-bottom:6px;line-height:1.4}
+.sv-fingerprint-stage small{display:block;font-size:11px;color:#b7d0e6;line-height:1.7;font-variant-numeric:tabular-nums}
+.sv-fingerprint-stage .odds-value{font-weight:850;color:#65ddff}
+.sv-fingerprint-stage .cash-value{font-weight:850;color:#ffcf86}
+.sv-fingerprint-caveat{font-size:11px;color:#9db4ce;line-height:1.65;margin-top:12px}
+.sv-fingerprint-money{margin-top:16px;background:linear-gradient(155deg,#0b2140,#0d203b);
+  border:1px solid #255185;border-radius:17px;padding:16px}
+.sv-fingerprint-money h3{font-size:16px;display:flex;align-items:center;gap:9px}
+.sv-section-icon{font-size:22px;color:#43bcff}
+.sv-fingerprint-money .sv-fingerprint-legend{margin:10px 0 14px}
+.sv-fingerprint-moneyrow{margin:14px 0 18px}
+.sv-fingerprint-moneyrow:last-child{margin-bottom:3px}
+.sv-moneyrow-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;align-items:center;
+  font-size:13px;color:#e0efff;margin-bottom:7px}
+.sv-moneyrow-heading strong{font-size:13px;white-space:nowrap}
+.sv-moneyrow-heading span{font-variant-numeric:tabular-nums;font-size:12px;color:#bfd3e8}
+.sv-moneybar{height:15px;display:flex;overflow:hidden;border-radius:8px;background:#1b395d}
+.sv-moneybar .fav{background:linear-gradient(90deg,#179f9f,#43caa4)}
+.sv-moneybar .contra{background:linear-gradient(90deg,#e56694,#f3789f)}
+.sv-fingerprint-empty-bar{display:grid;place-items:center;min-height:24px;border-radius:7px;
+  background:#173050;color:#91b4da;font-size:11px}
+.sv-fingerprint-insight-box{margin-top:16px;padding:16px;border:1px solid #36558c;
+  border-radius:17px;background:linear-gradient(110deg,#14253e,#0e2447)}
+.sv-fingerprint-insight-box h3{font-size:17px;color:#ffda70;display:flex;gap:9px;align-items:center}
+.sv-insight-bulb{display:grid;place-items:center;background:#745a2640;color:#ffdc79;
+  border-radius:50%;width:31px;height:31px;font-size:23px}
+.sv-fingerprint-insight{font-size:13px;color:#e4edff;line-height:1.75;margin-top:8px}
+.sv-fingerprint-insight-box .sv-fingerprint-caveat{border-top:1px solid #33476c;padding-top:10px;margin-top:10px}
+@media(max-width:690px){.sv-fingerprint-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .sv-fingerprint-summary-card.distribution{grid-column:1/-1}.sv-fingerprint-summary-card{padding:12px 10px}}
+@media(max-width:440px){.sv-fingerprint-dashboard{padding:11px 7px}
+ .sv-fingerprint-money,.sv-fingerprint-insight-box{padding:12px}
+ .sv-fingerprint-chart{padding:4px 0}.sv-fingerprint-legend{font-size:11px;gap:7px 12px}
+ .sv-fingerprint-heading h2{font-size:19px}.sv-fingerprint-heading .tiny{font-size:11px}
+ .sv-fingerprint-icon{width:38px;height:38px;flex-basis:38px}
+ .sv-fingerprint-summary-label{font-size:11px}.sv-fingerprint-summary-number{font-size:15px}
+ .sv-fingerprint-stages{gap:5px}.sv-fingerprint-stage{padding:8px 3px}
+ .sv-fingerprint-stage strong{font-size:10px}.sv-fingerprint-stage small{font-size:10px}
+ .sv-moneyrow-heading span{font-size:11px}}
 
 </style></head><body>
 <div id="login" class="panel login hide"><div class="brand"><span class="logo">SV</span><b>SharpVision</b></div><h1>Η προσωπική σου ανάλυση</h1><p class="muted">Βάλε τον κωδικό πρόσβασης για να ανοίξεις τους αγώνες και το ιστορικό.</p><form id="loginForm"><input type="password" id="password" autocomplete="current-password" placeholder="Κωδικός πρόσβασης" required><button class="primary full">Άνοιγμα SharpVision</button></form><p id="loginError" class="feedback"></p><p class="footer">Τα στοιχεία του ιδιωτικού Excel δεν αποθηκεύονται σε δημόσιο ιστότοπο.</p></div>
@@ -163,29 +213,42 @@
 <div class="main"><aside class="panel side"><div class="side-head"><div class="flex"><h2 class="sec">Βρες αγώνα</h2><span class="tiny" id="matchCount">—</span></div><input id="search" class="search" type="search" placeholder="Ομάδα ή πρωτάθλημα…" autocomplete="off" aria-label="Αναζήτηση αγώνα"><select id="leagueFilter" class="select" aria-label="Πρωτάθλημα"><option value="">Όλα τα πρωταθλήματα</option></select><div class="tabs"><button data-tab="open" class="active">Χωρίς σκορ</button><button data-tab="faves">★ Αγαπημένα</button><button data-tab="all">Ιστορικά</button></div></div><div class="market-watch-launch"><button type="button" id="marketWatchToggle" class="market-watch-button" aria-expanded="false" aria-controls="marketWatchPanel"><span class="market-watch-first"><strong><span aria-hidden="true">◈</span> Εργαλεία αγοράς</strong><span class="market-watch-count">2 εργαλεία</span></span><small>Αναλυτής · Κυνηγός ασυνήθιστων αγώνων ↗</small></button></div><div id="matchList" class="matchlist"><div class="empty">Φόρτωση…</div></div></aside>
 <main class="content"><section id="marketWatchPanel" class="panel pad market-watch-panel hide" aria-label="Εργαλεία αγοράς"><div class="market-watch-top"><h2>Εργαλεία αγοράς</h2><button type="button" id="marketWatchClose" class="sm subtle">Κλείσιμο ✕</button></div><div class="market-tool-tabs" role="group" aria-label="Επιλογή εργαλείου αγοράς"><button type="button" id="marketToolAnalyst" class="market-tool-tab active" aria-pressed="true"><span>Αναλυτής</span><small id="marketWatchCount">—</small></button><button type="button" id="marketToolHunter" class="market-tool-tab" aria-pressed="false"><span>Κυνηγός</span><small id="marketHunterCount">—</small></button></div><div id="marketAnalystView"><p id="marketWatchSummary" class="market-watch-intro">Περιμένουμε τα δεδομένα των αγώνων.</p><div id="marketWatchRows" class="market-watch-rows"></div><p class="market-watch-foot">Ο Αναλυτής καταγράφει τις διαθέσιμες κινήσεις νέου τζίρου και αποδόσεων με ιστορικά αποτελέσματα. Δεν είναι προτάσεις στοιχήματος.</p></div><div id="marketHunterView" class="hide"><p id="marketHunterSummary" class="market-watch-intro">Ο Κυνηγός συγκρίνει τη συνολική συμπεριφορά κάθε αγώνα με τους παλιούς αγώνες.</p><div id="marketHunterRows" class="market-watch-rows"></div><p class="market-watch-foot">Ο Κυνηγός εξετάζει πολλούς αριθμητικούς παράγοντες μαζί, όχι μόνο το αν η απόδοση ανέβηκε ή έπεσε. Η ασυνήθιστη συμπεριφορά δεν σημαίνει αξία ή πιθανή νίκη.</p></div></section><section class="panel pad hero"><div class="flex"><span id="matchLeague" class="caps">ΕΠΙΛΟΓΗ ΑΓΩΝΑ</span><span id="result" class="tiny"></span></div><h1 id="matchTitle">Διάλεξε έναν αγώνα</h1><div class="flex"><span class="labelpill" id="favLabel">Φαβορί —</span><span class="tiny" id="updatedAt"></span></div><div class="cards"><div id="turnBox" class="metric"><div class="name">Συνολικός τζίρος</div><div id="turnover" class="value">—</div><div class="sub" id="turnHint">Επίπεδο λίγκας</div></div><div id="favBox" class="metric"><div class="name">Χρήματα φαβορί</div><div id="favPercent" class="value">—</div><div class="sub">Ποσοστό αγοράς</div></div><div id="contraBox" class="metric"><div class="name">Χρήματα κόντρας</div><div id="contraPercent" class="value">—</div><div class="sub">Ποσοστό αγοράς</div></div><div id="sofaBox" class="metric"><div class="name">SofaScore</div><div id="sofa" class="value">—</div><div class="sub">Ένδειξη SofaScore</div></div></div></section>
 
-<section class="panel pad"><h2>Πώς κινήθηκαν οι αποδόσεις;</h2><table class="odds"><thead><tr><th></th><th>Αρχική</th><th>90′ πριν</th><th>Τωρινή</th></tr></thead><tbody><tr><td>Φαβορί</td><td id="o">—</td><td id="m">—</td><td id="l">—</td></tr><tr><td>Κόντρα +0,5</td><td id="co">—</td><td id="cm">—</td><td id="cl">—</td></tr></tbody></table><div class="actions"><button id="snapToggle" class="sm subtle" aria-expanded="false">Δες τα 3 στάδια του Excel ▾</button></div><div id="snapDetails" class="hide"><p class="tiny" style="margin-top:12px">Οι τιμές και τα χρώματα προέρχονται από τις αντίστοιχες στήλες του Excel. Τα κενά παραμένουν κενά.</p><table class="odds"><thead><tr><th></th><th>11:00</th><th>90′ πριν</th><th>Τελευταία</th></tr></thead><tbody><tr><td>Τζίρος</td><td id="v0snap" class="snapcell">—</td><td id="v90snap" class="snapcell">—</td><td id="vsnap" class="snapcell">—</td></tr><tr><td>Φαβορί %</td><td id="p0snap" class="snapcell">—</td><td id="p90snap" class="snapcell">—</td><td id="psnap" class="snapcell">—</td></tr><tr><td>Κόντρα %</td><td id="contra0snap" class="snapcell">—</td><td id="contra90snap" class="snapcell">—</td><td id="contrasnap" class="snapcell">—</td></tr></tbody></table></div><div id="excelAlert" class="note hide"></div></section><section class="panel pad sv-fingerprint">
+<section class="panel pad"><h2>Πώς κινήθηκαν οι αποδόσεις;</h2><table class="odds"><thead><tr><th></th><th>Αρχική</th><th>90′ πριν</th><th>Τωρινή</th></tr></thead><tbody><tr><td>Φαβορί</td><td id="o">—</td><td id="m">—</td><td id="l">—</td></tr><tr><td>Κόντρα +0,5</td><td id="co">—</td><td id="cm">—</td><td id="cl">—</td></tr></tbody></table><div class="actions"><button id="snapToggle" class="sm subtle" aria-expanded="false">Δες τα 3 στάδια του Excel ▾</button></div><div id="snapDetails" class="hide"><p class="tiny" style="margin-top:12px">Οι τιμές και τα χρώματα προέρχονται από τις αντίστοιχες στήλες του Excel. Τα κενά παραμένουν κενά.</p><table class="odds"><thead><tr><th></th><th>11:00</th><th>90′ πριν</th><th>Τελευταία</th></tr></thead><tbody><tr><td>Τζίρος</td><td id="v0snap" class="snapcell">—</td><td id="v90snap" class="snapcell">—</td><td id="vsnap" class="snapcell">—</td></tr><tr><td>Φαβορί %</td><td id="p0snap" class="snapcell">—</td><td id="p90snap" class="snapcell">—</td><td id="psnap" class="snapcell">—</td></tr><tr><td>Κόντρα %</td><td id="contra0snap" class="snapcell">—</td><td id="contra90snap" class="snapcell">—</td><td id="contrasnap" class="snapcell">—</td></tr></tbody></table></div><div id="excelAlert" class="note hide"></div></section><section class="panel pad sv-fingerprint" aria-label="Αποτύπωμα αγοράς">
   <div class="sv-fingerprint-header">
-    <div><h2>Αποτύπωμα αγοράς</h2><p class="tiny">Τζίρος και απόδοση μαζί, για να βλέπεις τι άλλαξε.</p></div>
+    <div class="sv-fingerprint-heading">
+      <span class="sv-fingerprint-icon" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 3 8-9"/><path d="M15 5h6v6"/></svg></span>
+      <div><h2>Αποτύπωμα αγοράς</h2><p class="tiny">Τζίρος και απόδοση μαζί. Όλα με μια ματιά.</p></div>
+    </div>
     <button type="button" id="fingerprintToggle" class="sm subtle" aria-expanded="false" aria-controls="fingerprintDetails">Δες γράφημα ▾</button>
   </div>
   <div id="fingerprintDetails" class="hide">
-    <div class="sv-fingerprint-legend" aria-label="Χρώματα γραφήματος">
-      <span><i class="sv-legend-dot odds-dot"></i> Γραμμή: απόδοση φαβορί</span>
-      <span><i class="sv-legend-dot cash-dot"></i> Μπάρες: τζίρος €</span>
+    <div class="sv-fingerprint-dashboard">
+      <div class="sv-fingerprint-legend" aria-label="Χρώματα γραφήματος">
+        <span><i class="sv-legend-dot odds-dot"></i> Απόδοση φαβορί</span>
+        <span><i class="sv-legend-dot cash-dot"></i> Συνολικός τζίρος</span>
+      </div>
+      <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Γράφημα απόδοσης και τζίρου στα τρία πραγματικά στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
+      <p class="sv-fingerprint-scales">Αριστερή κλίμακα: απόδοση · Δεξιά: ευρώ</p>
+      <div id="fingerprintSummaryCards" class="sv-fingerprint-summary"></div>
+      <details class="sv-fingerprint-expand">
+        <summary>Ακριβείς τιμές και στα 3 στάδια</summary>
+        <div id="fingerprintStageValues" class="sv-fingerprint-stages"></div>
+      </details>
+      <p class="sv-fingerprint-caveat">Στην αρχή η απόδοση είναι η <b>αρχική</b>, ενώ ο πρώτος τζίρος είναι των <b>11:00</b> — δεν είναι απαραίτητα μετρήσεις της ίδιας στιγμής.</p>
     </div>
-    <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Γράφημα αποδόσεων και τζίρου στα τρία στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
-    <div id="fingerprintStageValues" class="sv-fingerprint-stages"></div>
-    <p class="sv-fingerprint-caveat">Στο πρώτο σημείο η απόδοση είναι η <b>αρχική</b>, ενώ ο τζίρος είναι των <b>11:00</b>. Δεν είναι απαραίτητα μετρήσεις της ίδιας στιγμής.</p>
     <div class="sv-fingerprint-money">
-      <h3>Πού βρίσκονταν τα χρήματα;</h3>
+      <h3><span class="sv-section-icon" aria-hidden="true">◉</span> Πού βρίσκονταν τα χρήματα;</h3>
       <div class="sv-fingerprint-legend" aria-label="Χρώματα ποσοστών">
         <span><i class="sv-legend-dot favorite-dot"></i> Φαβορί</span>
         <span><i class="sv-legend-dot against-dot"></i> Κόντρα +0,5</span>
       </div>
       <div id="fingerprintMoneyRows"></div>
     </div>
-    <p id="fingerprintInsight" class="sv-fingerprint-insight"></p>
-    <p class="sv-fingerprint-caveat">Τα γραφήματα ενώνουν μόνο τις πραγματικές μετρήσεις του Excel. Δεν δείχνουν τι έγινε ανάμεσα στις τρεις καταγραφές ούτε αποδεικνύουν Smart Money.</p>
+    <div class="sv-fingerprint-insight-box">
+      <h3><span class="sv-insight-bulb" aria-hidden="true">✦</span> Τι μας δείχνει αυτό;</h3>
+      <p id="fingerprintInsight" class="sv-fingerprint-insight"></p>
+      <p class="sv-fingerprint-caveat">Οι γραμμές απλώς συνδέουν πραγματικές καταγραφές. Δεν γνωρίζουμε τις ενδιάμεσες κινήσεις και δεν αποδεικνύεται Smart Money.</p>
+    </div>
   </div>
 </section>
 <section id="marketObservation" class="panel pad market-observation"><div class="flex"><h2>Παρατήρηση αγοράς</h2><span id="marketObservationStatus" class="tiny">Έλεγχος δεδομένων…</span></div><div id="marketObservationBody" class="market-observation-body">Περιμένουμε τα διαθέσιμα στάδια τζίρου και αποδόσεων.</div><p id="marketObservationHistory" class="market-observation-history"></p><p class="market-observation-hint">Παρατήρηση από πραγματικά στοιχεία και παλιά αποτελέσματα, όχι πρόβλεψη ή απόδειξη «smart money».</p></section>
