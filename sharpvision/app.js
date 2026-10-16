@@ -895,28 +895,63 @@ function renderCasebook(book,retrospective=false){
  panel.classList.remove("hide");
 }
 
+// Presentation only. Decisions and historical calculations are unchanged.
+function svBriefPsychologistReason(full,book,side){
+ const profile=book&&book.profile;
+ const n=Number(profile&&profile.n),wins=Number(profile&&profile.wins);
+ if(profile&&Number.isInteger(n)&&n>0&&Number.isInteger(wins)&&wins>=0&&wins<=n){
+   const contra=side==="contra",successes=contra?n-wins:wins;
+   const first=contra?
+     "Σε "+n+" παρόμοιους αγώνες, η κόντρα +0,5 επαληθεύτηκε "+successes+
+       " φορές ("+nf(100*successes/n,0)+"%).":
+     "Σε "+n+" παρόμοιους αγώνες, το φαβορί κέρδισε "+wins+
+       " φορές ("+nf(100*wins/n,0)+"%).";
+   const conclusion=side==="fav"?
+     "Η ιστορική σύγκριση με τις αποδόσεις και παρόμοια παιχνίδια στηρίζει το φαβορί.":
+     side==="contra"?
+     "Η ιστορική σύγκριση με τις αποδόσεις και παρόμοια παιχνίδια στηρίζει την κόντρα.":
+     "Τα στοιχεία δεν είναι αρκετά ισχυρά για επιλογή.";
+   return first+" "+conclusion;
+ }
+ const first=String(full||"").split("\n").map(z=>z.trim()).find(Boolean);
+ return !first?"Δεν υπάρχουν ακόμη διαθέσιμα στοιχεία.":
+   first.startsWith("ΙΣΤΟΡΙΚΗ ΚΑΤΑΣΤΑΣΗ:")?
+     "Δεν υπάρχουν αρκετές συγκρίσιμες περιπτώσεις για τεκμηριωμένη επιλογή.":first;
+}
+
 function renderAutoCard(){
  if(!current)return;
  renderCasebook(null);
  const x=current,t=kickoffMs(x),saved=autoLedger[autoKey(x)];
  const card=$("autoDecisionCard");
+ const detail=$("autoDetails");
+ if(card.dataset.fixtureKey!==autoKey(x)){
+   detail.open=false;
+   card.dataset.fixtureKey=autoKey(x);
+ }
  const badge=$("autoGrade"),pick=$("autoPick"),reason=$("autoReason"),lock=$("autoLock");
  // Only an actual favorite/contra decision gets color. Abstention,
  // unrecorded fixtures and missing data stay visually neutral.
- const set=(lv,grade,title,why,when,side="none")=>{
+ const set=(lv,grade,title,why,when,side="none",casebook=null,briefWhen=null)=>{
    const marketSide=["fav","contra"].includes(side)?side:"none";
    const step=Math.max(1,Math.min(3,Number(lv)||1));
    const tone="outlook-"+marketSide+(marketSide==="none"?"":" level-"+step);
    card.className="panel pad prematch-card "+tone;
    badge.className="prematch-tag "+tone;badge.textContent=grade;
-   pick.textContent=title;reason.textContent=why;lock.textContent=when;
+   pick.textContent=title;
+   reason.textContent=svBriefPsychologistReason(why,casebook,side);
+   $("autoReasonFull").textContent=why;
+   lock.textContent=briefWhen||when;
+   $("autoLockFull").textContent=when;
  };
  if(saved){
    const titles={fav:"Νίκη φαβορί · "+saved.favorite,contra:"Κόντρα +0,5",abstain:"Αποχή"};
    const result=autoOutcome(saved);
    set(saved.level,saved.pick==="abstain"?"Αποχή · Χωρίς βαθμίδα":saved.level+"/3 · "+levelNames[saved.level],titles[saved.pick]||"Αποχή",saved.reason,
      "Κλειδώθηκε "+new Date(saved.recordedAt).toLocaleString("el-GR")+" · Πριν από "+kickoffLabel(x)+
-     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"),saved.pick);
+     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"),saved.pick,saved.casebook,
+     "🔒 Κλειδώθηκε "+new Date(saved.recordedAt).toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})+
+     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"));
    renderCasebook(saved.casebook);
  }else if(t===null){
    set(1,"1/3 · Χωρίς ώρα","Δεν υπάρχει προ-αγωνιστική καταγραφή",
@@ -956,7 +991,7 @@ function renderAutoCard(){
      const grade=preview.pick==="abstain"?"Προσωρινή · Αποχή":
        "Προσωρινή · "+preview.level+"/3 · "+levelNames[preview.level];
      set(preview.pick==="abstain"?1:preview.level,grade,choice,preview.reason,
-       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x),preview.pick);
+       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x),preview.pick,preview.casebook,"Προσωρινή ένδειξη · Δεν έχει κλειδώσει");
      renderCasebook(preview.casebook);
    }
  }
