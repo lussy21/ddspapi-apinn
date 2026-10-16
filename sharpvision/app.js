@@ -7,7 +7,7 @@ const read=(k,d)=>{try{let v=localStorage.getItem(k);return v===null?d:JSON.pars
 let favorites=read("sv_live_faves",[]),journal=read("sv_live_journal",[]),savedLeagues=read("sv_live_leagues",null);
 // Default to favorite on every new match and page opening.
 let histMarket="fav";
-let autoLedger=read("sv_prelock_v3",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
+let autoLedger=read("sv_prelock_v4",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
 let compareMatchId=null;
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
@@ -186,224 +186,179 @@ function kickoffLabel(x){
  return t===null?"Άγνωστη έναρξη":new Date(t).toLocaleString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 }
 const levelNames={1:"Αδύναμη",2:"Μέτρια",3:"Ισχυρή"};
-// SHARPVISION MARKET PSYCHOLOGY v3
-// These are observable market behaviors, not claims about bettors' intentions.
-// Explicitly independent of Excel alerts, colors, alert ratings and alerts log.
-const svClip=(v,min=-1,max=1)=>Math.max(min,Math.min(max,v));
-const svSign=v=>v>.24?1:v<-.24?-1:0;
-const svWord=s=>s>0?"φαβορί":s<0?"κόντρα":"καμία πλευρά";
-const svPercent=v=>nf(v,1)+"%";
-function svFairMarket(z){
-  if(!usable(z.l)||z.l<=1.01)return null;
-  const a=1/z.l;
-  if(usable(z.cl)&&z.cl>1.01){const b=1/z.cl;return svClip(a/(a+b),.05,.95)}
-  return svClip(a,.05,.95);
+// SHARPVISION MARKET CASEBOOK v4
+// "Psychologist" means measured similar historical situations, not guessed
+// bookmaker motives. Every eligible historical fixture counts at most once.
+// The cases are recomputed from finished PINNACLE rows; records of locked calls
+// are kept separately. No Excel alerts or alert scores are read here.
+function svCase(z){
+  const values=[z.v,z.v90,z.p,z.p90,z.m,z.l,z.rank];
+  if(!values.every(usable)||z.v90<=0||z.v<=z.v90||z.m<=1.01||z.l<=1.01||
+     z.p<0||z.p>100||z.p90<0||z.p90>100)return null;
+  const newTurnover=z.v-z.v90;
+  const favorAdded=z.v*z.p/100-z.v90*z.p90/100;
+  // If cumulative turnover corrections make a share impossible, discard row.
+  const share=favorAdded/newTurnover;
+  if(!Number.isFinite(share)||share<-.01||share>1.01)return null;
+  const favShare=Math.max(0,Math.min(1,share));
+  const growth=newTurnover/z.v90;
+  const oddsMove=(z.l/z.m-1)*100;
+  const priceState=oddsMove<=-.7?"down":oddsMove>=.7?"up":"flat";
+  const moneyState=growth>=.25&&favShare>=.70?"fav":
+    growth>=.25&&favShare<=.30?"contra":"split";
+  const liquidity=z.rank>=75?"high":z.rank>=35?"medium":"low";
+  return {
+    moneyState,priceState,liquidity,
+    newTurnover,favorAdded,contraAdded:newTurnover-favorAdded,
+    favShare,growth,oddsMove,rank:z.rank,price:z.m,
+    key:moneyState+"|"+priceState
+  };
 }
-function svHistorySignal(x,prior){
-  const unique=new Map(),views={fav:0,contra:0};
+const svPriceLabels={down:"Πτώση απόδοσης",flat:"Σταθερή απόδοση",up:"Άνοδος απόδοσης"};
+const svCashLabels={fav:"Έντονη εισροή προς φαβορί",contra:"Έντονη εισροή προς κόντρα",
+  split:"Μικτή ή ήπια νέα ροή"};
+const svAvg=(xs)=>xs.length?xs.reduce((sum,v)=>sum+v,0)/xs.length:null;
+function svMarketExpected(z){
+  // Victory of favorite and "contra +0.5" are complementary settlements.
+  // Fair market reference is not a prediction, merely a margin-stripped price.
+  if(!usable(z.l)||!usable(z.cl)||z.l<=1.01||z.cl<=1.01)return null;
+  const fav=1/z.l,contra=1/z.cl;
+  return fav/(fav+contra);
+}
+function svProfile(base,items){
+  const cases=items.map(rec=>rec.x||rec);
+  const n=cases.length,wins=cases.filter(z=>won(z)===true).length;
+  const rated=cases.filter(z=>svMarketExpected(z)!==null);
+  const e=rated.reduce((sum,z)=>sum+svMarketExpected(z),0);
+  const varSum=rated.reduce((sum,z)=>{const p=svMarketExpected(z);return sum+p*(1-p)},0);
+  const ratedWins=rated.filter(z=>won(z)===true).length;
+  return {n,wins,winPct:n?100*wins/n:null,priceN:rated.length,
+    expectedPct:rated.length?100*e/rated.length:null,
+    priceWins:ratedWins,
+    z:varSum>0?(ratedWins-e)/Math.sqrt(varSum):0,
+    advantage:rated.length?(ratedWins-e)/rated.length:null,
+    priceMove:base?.priceState||null};
+}
+function svMoneyCases(target,prior){
+  const pattern=svCase(target);
+  if(!pattern)return null;
+  const historical=[];
   for(const z of prior){
-    if(!finished(z)||autoKey(x)===autoKey(z))continue;
-    for(const side of ["fav","contra"]){
-      const result=similarity(x,z,side,"wide");
-      if(!result||result.features<6||result.similarity<77)continue;
-      views[side]++;
-      const id=autoKey(z),existing=unique.get(id);
-      if(!existing||result.similarity>existing.sim.similarity)unique.set(id,{x:z,sim:result});
-    }
+    if(!finished(z)||autoKey(z)===autoKey(target))continue;
+    const c=svCase(z);
+    if(!c)continue;
+    historical.push({x:z,c});
   }
-  const ranked=[...unique.values()].sort((a,b)=>b.sim.similarity-a.sim.similarity);
-  // Repeated entries of the same league cannot crowd out other competitions.
-  const leagueCounts={},items=[];
-  for(const entry of ranked){
-    const league=entry.x.lg;
-    if((leagueCounts[league]||0)>=12)continue;
-    items.push(entry);leagueCounts[league]=(leagueCounts[league]||0)+1;
-    if(items.length>=36)break;
+  // All comparisons below are observed, finished source rows.
+  const regime=historical.filter(rec=>rec.c.moneyState===pattern.moneyState);
+  const comparable=rec=>Math.abs(Math.log(rec.c.price/pattern.price))<=Math.log(1.37)&&
+    Math.abs(rec.c.rank-pattern.rank)<=40;
+  const broad=rec=>Math.abs(Math.log(rec.c.price/pattern.price))<=Math.log(1.62)&&
+    Math.abs(rec.c.rank-pattern.rank)<=55;
+  const caseMatches=regime.filter(rec=>rec.c.priceState===pattern.priceState);
+  let peers=caseMatches.filter(comparable),scope="παρόμοιες αποδόσεις και τζίρος";
+  if(peers.length<12){
+    peers=caseMatches.filter(broad);scope="διευρυμένες αποδόσεις και τζίρος";
   }
-  const n=items.length,same=items.filter(z=>z.x.f===x.f).length;
-  if(n<7)return {n,same,score:null,avg:0,views,reason:"Λίγα πραγματικά συγκρίσιμα αποτελέσματα ("+n+")."};
-  let sum=0,ws=0,sum2=0,win=0,expected=0,known=0;
-  for(const z of items){
-    const baseline=svFairMarket(z.x);
-    if(baseline===null)continue;
-    const w=Math.pow(z.sim.similarity/100,5)*(z.x.f===x.f?1.09:1);
-    ws+=w;sum2+=w*w;sum+=w*((won(z.x)?1:0)-baseline);
-    expected+=w*baseline;win+=w*(won(z.x)?1:0);known++;
-  }
-  if(!ws||known<7)return {n,same,score:null,avg:0,views,reason:"Λείπει ιστορική τιμή αγοράς από τα συγκρίσιμα ματς."};
-  const neff=ws*ws/sum2,delta=sum/ws;
-  // 14 prior-equivalent observations regularize noisy small samples.
-  const adjusted=delta*(neff/(neff+14));
-  const score=svClip(adjusted/.13);
-  const avg=items.reduce((v,z)=>v+z.sim.similarity,0)/n;
-  return {n,same,score,avg,views,edge:adjusted,
-    reason:n+" διαφορετικοί παρόμοιοι αγώνες ("+same+" ίδιας έδρας), ομοιότητα "+
-      nf(avg,0)+"/100. Σε σύγκριση με τις αντίστοιχες τιμές τους, "+
-      (adjusted>=0?"τα φαβορί πήγαν σχετικά καλύτερα.":"οι κόντρες πήγαν σχετικά καλύτερα.")};
-}
-function svOddsSignal(x){
- const openingFav=change(x.o,x.l),openingContra=change(x.co,x.cl);
- const lateFav=change(x.m,x.l),lateContra=change(x.cm,x.cl);
- const total=[],late=[];
- if(usable(openingFav))total.push(svClip(-openingFav/7));
- if(usable(openingContra))total.push(svClip(openingContra/8));
- if(usable(lateFav))late.push(svClip(-lateFav/4));
- if(usable(lateContra))late.push(svClip(lateContra/5));
- const mean=a=>a.length?a.reduce((v,z)=>v+z,0)/a.length:null;
- const whole=mean(total),latest=mean(late);
- if(whole===null&&latest===null)
-   return {score:null,late:null,contradiction:false,reason:"Δεν υπάρχουν αρκετά στοιχεία μεταβολής αποδόσεων."};
- const contradiction=total.length===2&&total[0]*total[1]<-.12||
-   late.length===2&&late[0]*late[1]<-.12;
- const base=whole===null?latest:latest===null?whole:.62*whole+.38*latest;
- return {score:svClip(base),late:latest,contradiction,
-  reason:base>.18?"Οι τιμές κινούνται προς το φαβορί (πέφτει η δική του ή ανεβαίνει της κόντρας).":
-    base<-.18?"Οι τιμές κινούνται προς την κόντρα (ανεβαίνει του φαβορί ή πέφτει της κόντρας).":
-    "Οι αποδόσεις έχουν μικτή ή σχεδόν ουδέτερη κίνηση."};
-}
-function svMoneySignal(x){
-  if(!usable(x.p))return {score:null,reason:"Δεν υπάρχουν δεδομένα ποσοστού χρημάτων."};
-  const stages=[];
-  if(usable(x.p0))stages.push(svClip((x.p-x.p0)/11));
-  if(usable(x.p90))stages.push(svClip((x.p-x.p90)/8));
-  if(usable(x.p0)&&usable(x.p90))stages.push(svClip((x.p90-x.p0)/10)*.5);
-  if(!stages.length)return {score:null,reason:"Γνωρίζουμε την κατανομή χρημάτων, αλλά όχι πώς άλλαξε στον χρόνο."};
-  const score=svClip(stages.reduce((v,z)=>v+z,0)/stages.length*1.18);
-  return {score,reason:score>.19?"Το ποσοστό χρημάτων μετακινείται προς το φαβορί ("+svPercent(x.p)+").":
-   score<-.19?"Το ποσοστό χρημάτων μετακινείται προς την κόντρα ("+svPercent(100-x.p)+").":
-   "Τα ποσοστά χρημάτων δεν δείχνουν ουσιαστική νέα μετακίνηση."};
+  const score=rec=>
+    Math.abs(Math.log(rec.c.price/pattern.price))*3.0+
+    Math.abs(rec.c.rank-pattern.rank)/110+
+    Math.abs(rec.c.favShare-pattern.favShare)*1.1+
+    Math.abs(Math.log((1+rec.c.growth)/(1+pattern.growth)))*.22+
+    (rec.x.f===target.f?0:.06);
+  peers.sort((a,b)=>score(a)-score(b));
+  if(peers.length>55)peers.length=55;
+  // Reference group with similar favorite prices/league turnover, regardless
+  // of odds move or inflow; used to guard against base-rate illusions.
+  const base=historical.filter(rec=>comparable(rec));
+  const profile=svProfile(pattern,peers);
+  const baseline=svProfile(pattern,base);
+  const states=["down","flat","up"].map(state=>{
+    const recs=regime.filter(rec=>rec.c.priceState===state&&comparable(rec));
+    const stats=svProfile({priceState:state},recs);
+    return {state,n:stats.n,wins:stats.wins,winPct:stats.winPct,
+      expectedPct:stats.expectedPct,priceN:stats.priceN};
+  });
+  const examples=peers.slice(0,6).map(rec=>({
+    match:name(rec.x),league:rec.x.lg,score:rec.x.r,
+    pct:Math.round(rec.c.favShare*1000)/10,
+    newFav:Math.round(rec.c.favorAdded),
+    priceMove:Math.round(rec.c.oddsMove*100)/100,
+    favoriteWon:won(rec.x),fixture:autoKey(rec.x)
+  }));
+  return {pattern,profile,baseline,states,examples,scope,totalHistorical:historical.length,
+    sameVenue:peers.filter(rec=>rec.x.f===target.f).length,
+    sameVenueStats:svProfile(pattern,peers.filter(rec=>rec.x.f===target.f))};
 }
 function automaticOpinion(x,prior){
-  const odds=svOddsSignal(x),moneyFlow=svMoneySignal(x),history=svHistorySignal(x,prior);
-  const cautions=[],details=[],evidence=[];
-  // This is intensity, not a directional vote: turnover alone predicts neither side.
-  const turnover=usable(x.rank)?x.rank:null;
-  const sufficientTurn=turnover!==null&&turnover>=65;
-  if(turnover===null)cautions.push("Δεν γνωρίζουμε συγκρίσιμο επίπεδο τζίρου.");
-  else if(turnover<35)cautions.push("Χαμηλός σχετικός τζίρος: ευάλωτες μεταβολές αποδόσεων.");
-  else details.push("Τζίρος "+nf(turnover,0)+"ο εκατοστημόριο λίγκας — ένταση, όχι κατεύθυνση.");
-  if(odds.score!==null){
-    details.push(odds.reason);evidence.push({name:"Αποδόσεις",score:odds.score,weight:.36});
-  }else details.push(odds.reason);
-  if(moneyFlow.score!==null){
-    details.push(moneyFlow.reason);evidence.push({name:"Μεταβολή χρημάτων",score:moneyFlow.score,weight:.26});
-  }else details.push(moneyFlow.reason);
-  if(history.score!==null){
-    details.push(history.reason);evidence.push({name:"Ιστορική υπεραπόδοση έναντι αγοράς",score:history.score,weight:.38});
-  }else details.push(history.reason);
-  if(odds.contradiction)cautions.push("Οι δύο τιμές (φαβορί/κόντρα) δεν επιβεβαιώνουν την ίδια κίνηση.");
-  const priceDir=svSign(odds.score??0),moneyDir=svSign(moneyFlow.score??0),histDir=svSign(history.score??0);
-  const moneyPriceConflict=priceDir*moneyDir===-1;
-  if(moneyPriceConflict){
-    cautions.push("Αντίφαση: τα χρήματα πάνε προς "+svWord(moneyDir)+
-      ", ενώ η κίνηση αποδόσεων στηρίζει "+svWord(priceDir)+
-      ". Δεν μπορούμε να ξέρουμε γιατί.");
-  }else if(priceDir!==0&&priceDir===moneyDir){
-    details.push("Αποδόσεις και νέα ροή χρημάτων συμφωνούν προς "+svWord(priceDir)+".");
+  const result=svMoneyCases(x,prior);
+  if(!result){
+    return {pick:"abstain",level:0,source:"sharpvision_cases",version:"v4",
+      reason:"Δεν υπάρχουν αξιόπιστα στιγμιότυπα 90′ τζίρου, ποσοστών και αποδόσεων. Δεν κατασκευάζω ιστορικό μοτίβο.",
+      casebook:null};
   }
-  // High money concentration with opposite price action is a warning,
-  // not automatic proof of informed money, manipulation or a contrarian edge.
-  if(usable(x.p)&&usable(x.o)&&usable(x.l)){
-    const favoriteDrift=change(x.o,x.l);
-    if(x.p>=85&&favoriteDrift!==null&&favoriteDrift>=1.7)
-      cautions.push("Πολύ υψηλό ποσοστό χρημάτων στο φαβορί ("+svPercent(x.p)+
-        "), αλλά η απόδοσή του ανεβαίνει. Η αγορά δεν επιβεβαιώνει τη συγκέντρωση χρημάτων.");
-    else if(x.p<=35&&favoriteDrift!==null&&favoriteDrift<=-1.7)
-      cautions.push("Λίγα χρήματα στο φαβορί ("+svPercent(x.p)+
-        "), αλλά η απόδοσή του πέφτει. Υπάρχει αξιοσημείωτη απόκλιση.");
-  }
-    if(history.n>=7&&histDir!==0&&priceDir!==0&&histDir!==priceDir)
-    cautions.push("Το ιστορικό διαφωνεί με την τωρινή τιμή αγοράς.");
-  if(odds.late!==null&&svSign(odds.late)!==0&&priceDir!==0&&svSign(odds.late)!==priceDir)
-    cautions.push("Ανατροπή τάσης στο τελευταίο στάδιο αποδόσεων.");
-  if(usable(x.v)&&usable(x.v90)&&x.v90>0&&x.v/x.v90>=2.5)
-    details.push("Ο τζίρος αυξήθηκε έντονα μετά το στιγμιότυπο 90′: απαιτείται προσοχή στη νεότερη κίνηση.");
-  // The same percentage change means something different in a thin
-  // market, a liquid late market, or a weak historical sample. Modify
-  // attention to the available circumstances, but do not manufacture votes.
-  const oddsVote=evidence.find(z=>z.name==="Αποδόσεις");
-  const moneyVote=evidence.find(z=>z.name==="Μεταβολή χρημάτων");
-  const historyVote=evidence.find(z=>z.name==="Ιστορική υπεραπόδοση έναντι αγοράς");
-  if(turnover!==null&&turnover<35){
-    if(oddsVote)oddsVote.weight=.25;
-    if(moneyVote)moneyVote.weight=.20;
-    if(historyVote)historyVote.weight=.55;
-    details.push("Χαμηλή ρευστότητα: δίνω λιγότερο βάρος στις άμεσες κινήσεις τιμών και χρημάτων.");
-  }else if(turnover!==null&&turnover>=80&&odds.late!==null&&Math.abs(odds.late)>=.4){
-    if(oddsVote)oddsVote.weight=.44;
-    if(moneyVote)moneyVote.weight=.26;
-    if(historyVote)historyVote.weight=.30;
-    details.push("Ισχυρή πρόσφατη κίνηση με υψηλό τζίρο: δίνω μεγαλύτερη προσοχή στις τελευταίες αποδόσεις.");
-  }
-  if(historyVote&&history.n<12){
-    historyVote.weight=Math.min(historyVote.weight,.18);
-    details.push("Μικρό ιστορικό δείγμα: μειώνω το βάρος των συγκρίσεων.");
-  }
-  if(moneyVote&&!usable(x.p90)){
-    moneyVote.weight=Math.min(moneyVote.weight,.18);
-    details.push("Λείπει το στιγμιότυπο χρημάτων των 90′: κρατώ επιφυλακτική την ένδειξη ροής.");
-  }
-  const weight=evidence.reduce((a,z)=>a+z.weight,0);
-  const total=weight?evidence.reduce((a,z)=>a+z.weight*z.score,0)/weight:0;
-  const direction=svSign(total);
-  const supports=evidence.filter(z=>svSign(z.score)===direction&&direction!==0);
-  const against=evidence.filter(z=>svSign(z.score)===-direction&&direction!==0);
-  // Two independent families must agree. The two odds timestamps are one
-  // family, never counted as separate corroborations.
+  const {pattern:p,profile:h,baseline:b,states,examples,sameVenue,sameVenueStats}=result;
+  const moneyLabel=svCashLabels[p.moneyState],priceLabel=svPriceLabels[p.priceState];
+  const newFavEur=Math.round(p.favorAdded);
+  const pct=nf(p.favShare*100,1)+"%";
+  const sign=p.oddsMove>0?"+":"";
+  const description=moneyLabel+": "+pct+" από τα "+money(p.newTurnover)+
+    " νέου τζίρου πήγε στο φαβορί (≈"+money(newFavEur)+"). "+
+    priceLabel+" από το 90′ στο τελευταίο στιγμιότυπο ("+sign+nf(p.oddsMove,2)+"%).";
+  const sameCases=h.n+" παλιές περιπτώσεις αυτού του συνδυασμού με "+result.scope+
+    ": φαβορί νίκησε "+h.wins+"/"+h.n+
+    (h.n?" ("+nf(h.winPct,0)+"%).":".");
+  const counterpart=h.priceN>=6?
+    "Στις "+h.priceN+" με πλήρεις τιμές φαβορί/κόντρας, η αγορά αντιστοιχούσε σε "+
+      nf(h.expectedPct,0)+"% νίκες φαβορί και έγιναν "+h.priceWins+"/"+h.priceN+"."
+      :"Δεν υπάρχουν αρκετές ιστορικές τιμές και των δύο πλευρών για σύγκριση με την αγορά.";
+  const baselineText=b.n>=10?
+    "Βασική εικόνα στην ίδια περιοχή αποδόσεων/τζίρου: "+b.wins+"/"+b.n+
+    " νίκες φαβορί ("+nf(b.winPct,0)+"%).":
+    "Πολύ μικρό γενικό δείγμα στην ίδια περιοχή αποδόσεων/τζίρου.";
   let pick="abstain",level=0;
-  if(direction!==0&&supports.length>=2&&Math.abs(total)>=.34&&!odds.contradiction){
-    pick=direction>0?"fav":"contra";
-    level=1;
-    if(Math.abs(total)>=.44&&supports.length>=2&&against.length===0&&
-       sufficientTurn&&!moneyPriceConflict&&history.n>=8)
-       level=2;
-    if(level>=2&&supports.length===3&&against.length===0&&
-       Math.abs(total)>=.67&&history.n>=22&&history.same>=7&&
-       history.avg>=87&&sufficientTurn&&turnover>=75&&
-       !cautions.some(z=>/Ανατροπή|Αντίφαση|διαφωνεί|επιβεβαιώνει|απόκλιση/.test(z))&&
-       ["m","cm","p0","p90"].every(k=>usable(x[k])))
-       level=3;
+  const n=h.priceN,delta=h.advantage,z=h.z;
+  const enoughBase=b.n>=15;
+  const contextContrast=enoughBase&&h.winPct!==null?((h.winPct-b.winPct)/100):null;
+  const advantageOk=delta!==null&&Math.abs(delta)>=.10;
+  const baselineOk=contextContrast!==null&&Math.abs(contextContrast)>=.065&&
+    Math.sign(contextContrast)===Math.sign(delta);
+  // Count alone NEVER triggers a pick. Require a residual versus quoted
+  // odds and versus unconditional peers of comparable price and liquidity.
+  if(n>=12&&h.n>=12&&advantageOk&&Math.abs(z)>=1.45&&baselineOk){
+    const proposed=delta>0?"fav":"contra";
+    const venue=h.n>=6&&sameVenue>=5&&sameVenueStats.n>=5
+      ?(sameVenueStats.winPct-h.expectedPct)/100:null;
+    // With contradictory same-venue evidence, stay out.
+    if(venue===null||Math.sign(venue)===Math.sign(delta)||Math.abs(venue)<.055){
+      pick=proposed;level=1;
+      if(n>=23&&sameVenue>=6&&Math.abs(z)>=1.9&&Math.abs(delta)>=.13&&
+         Math.abs(contextContrast)>=.095)level=2;
+      if(n>=38&&sameVenue>=9&&Math.abs(z)>=2.65&&Math.abs(delta)>=.17&&
+         Math.abs(contextContrast)>=.13)level=3;
+    }
   }
-  const label=pick==="fav"?"Φαβορί":pick==="contra"?"Κόντρα +0,5":"Αποχή";
-  let summary;
-  if(pick==="abstain"){
-    summary="Αποχή: δεν συμφωνούν τουλάχιστον δύο ανεξάρτητες ενδείξεις ή η αγορά δίνει αντικρουόμενα μηνύματα.";
-  }else{
-    summary="Επιλογή "+label+": "+supports.map(z=>z.name).join(" και ")+
-      " στηρίζουν την ίδια πλευρά."+
-      (level===3?" Τρεις ανεξάρτητες ενδείξεις με ισχυρή συμφωνία.":
-      level===2?" Αρκετή συνοχή, όχι όμως πλήρης επιβεβαίωση.":" Υπάρχουν ενδείξεις αλλά και ουσιαστική αβεβαιότητα.");
-  }
-  // Give each fixture an interpretable behavioral profile rather than
-  // another opaque similarity threshold. Interpret patterns, not motives.
-  let mood="Η αγορά δεν δίνει καθαρό κοινό σήμα.";
-  if(moneyPriceConflict)
-    mood="Διχασμένη αγορά: οι νέες τοποθετήσεις και οι τιμές δείχνουν διαφορετικές κατευθύνσεις.";
-  else if(priceDir!==0&&priceDir===moneyDir)
-    mood="Συντονισμένη πίεση προς "+svWord(priceDir)+": χρήματα και αποδόσεις κινούνται μαζί.";
-  else if(priceDir!==0&&moneyDir===0)
-    mood="Οι αποδόσεις στρέφονται προς "+svWord(priceDir)+", χωρίς αντίστοιχη επιβεβαίωση από αλλαγή χρημάτων.";
-  else if(priceDir===0&&moneyDir!==0)
-    mood="Μετακινείται η ροή χρημάτων προς "+svWord(moneyDir)+", αλλά οι αποδόσεις δεν έχουν δώσει καθαρή απάντηση.";
-  else if(priceDir!==0&&histDir===priceDir)
-    mood="Η πρόσφατη συμπεριφορά αποδόσεων συμφωνεί με την ιστορική εικόνα.";
-  if(cautions.some(z=>z.includes("συγκέντρωση χρημάτων")||z.includes("Λίγα χρήματα στο φαβορί")))
-    mood="Ασυμφωνία δημοφιλίας και τιμής: η κατανομή χρημάτων δεν εξηγεί μόνη της την αντίδραση της αγοράς.";
-  const lines=["ΚΛΙΜΑ ΑΓΟΡΑΣ: "+mood,summary,...details,
-    ...cautions.map(z=>"ΠΡΟΣΟΧΗ: "+z),
-    "Οι ενδείξεις περιγράφουν συμπεριφορά της αγοράς, όχι προθέσεις παικτών ή βεβαιότητα αποτελέσματος."];
-  return {
-    pick,level,source:"sharpvision_market_psychology",version:"v3",
-    sample:history.n,sameVenue:history.same,similarityAvg:history.avg?Math.round(history.avg):0,
-    nFav:history.views.fav,nContra:history.views.contra,
-    marketScore:Math.round(total*100),mood,evidence:details,cautions,
-    reason:lines.join("\n")
+  const why=pick==="abstain"?
+    "Αποχή: δεν υπάρχει αρκετή ανεξάρτητη ένδειξη ότι ο συνδυασμός αποδίδει διαφορετικά από τις αποδόσεις της αγοράς και τα συγκρίσιμα παιχνίδια.":
+    "Επιλογή "+(pick==="fav"?"φαβορί":"κόντρα +0,5")+
+    ": οι ιστορικές περιπτώσεις του ίδιου συνδυασμού είχαν ουσιαστική απόκλιση από "+
+    "την προσδοκία των αποδόσεων ΚΑΙ από τον βασικό ιστορικό μέσο όρο. "+
+    "Βαθμίδα "+level+"/3, βάσει μεγέθους και συνέπειας δείγματος.";
+  const label=moneyLabel+" × "+priceLabel;
+  const reason=["ΙΣΤΟΡΙΚΗ ΚΑΤΑΣΤΑΣΗ: "+label,description,sameCases,counterpart,baselineText,why,
+    "Δεν συμπεραίνουμε προθέσεις στοιχηματικών ή παικτών. Η ιστορική διαφορά δεν αποτελεί βέβαιη πρόβλεψη."].join("\n");
+  return {pick,level,source:"sharpvision_cases",version:"v4",
+    reason,sample:h.n,sameVenue,nFav:0,nContra:0,
+    casebook:{label,description,scope:result.scope,
+      profile:h,baseline:b,states,examples,sameVenue,
+      historical:result.totalHistorical,measuredAt:new Date().toISOString()},
+    evidenceDelta:delta,relativeToBaseline:contextContrast
   };
 }
 function captureAutoPredictions(){
  const now=Date.now();
- const due=matches.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>now+120000&&kickoffMs(x)<=now+75*60000&&!finished(x)&&
-   usable(x.o)&&usable(x.l)&&usable(x.p)&&usable(x.rank)&&!autoLedger[autoKey(x)]);
+ const due=matches.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>now+120000&&kickoffMs(x)<=now+22*60000&&!finished(x)&&
+   svCase(x)!==null&&!autoLedger[autoKey(x)]);
  if(!due.length)return;
  // Only outcomes already recorded as final on the pre-kickoff snapshot may
  // supply evidence. Finished matches with known later kickoffs are excluded.
@@ -423,7 +378,7 @@ function captureAutoPredictions(){
    const entries=Object.values(autoLedger).filter(z=>z&&z.recordedAt)
      .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt))).slice(0,1200);
    autoLedger=Object.fromEntries(entries.map(z=>[z.fixture,z]));
-   store("sv_prelock_v3",autoLedger);
+   store("sv_prelock_v4",autoLedger);
  }
 }
 function autoOutcome(entry){
@@ -472,7 +427,7 @@ function renderAutoCard(){
      const grade=preview.pick==="abstain"?"Προσωρινή · Αποχή":
        "Προσωρινή · "+preview.level+"/3 · "+levelNames[preview.level];
      set(preview.pick==="abstain"?1:preview.level,grade,choice,preview.reason,
-       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει 75–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x));
+       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x));
    }
  }
 }
