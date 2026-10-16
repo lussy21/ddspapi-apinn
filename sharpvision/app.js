@@ -506,7 +506,52 @@ function opinion(){
   $("opinionText").classList.remove("hide");
 }
 
-function renderArchive(){let entries=journal.map(j=>{let x=matches.find(m=>key(m)===j.key&&finished(m));let txt=x?(j.pick==="Αποχή"?"Αποχή (καμία τάση)":j.pick==="Νίκη φαβορί"?(won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση"):(!won(x)?"Επαληθεύτηκε η τάση":"Δεν επαληθεύτηκε η τάση")):"Αναμονή σκορ";return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+" · "+safe(new Date(j.created).toLocaleString("el-GR"))+'</small></div><div class="tiny">'+safe(txt)+'</div></div>'});$("archiveRows").innerHTML=entries.join("")||"Δεν υπάρχουν αποθηκευμένες εκτιμήσεις."}
+function renderArchive(){
+ const entries=Object.values(autoLedger).filter(e=>e&&e.fixture&&e.recordedAt)
+   .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt)));
+ const results=entries.map(e=>({entry:e,outcome:autoOutcome(e)}));
+ const chosen=results.filter(z=>z.entry.pick!=="abstain");
+ const graded=chosen.filter(z=>z.outcome==="win"||z.outcome==="lose");
+ const correct=graded.filter(z=>z.outcome==="win").length;
+ for(let i=1;i<=3;i++){
+   const inLevel=graded.filter(z=>z.entry.level===i);
+   const ok=inLevel.filter(z=>z.outcome==="win").length;
+   $("grade"+i+"Stats").textContent=inLevel.length?ok+"/"+inLevel.length:"—";
+   $("grade"+i+"Note").textContent=inLevel.length?nf(ok/inLevel.length*100,0)+"% ιστορική επαλήθευση":"Καμία ολοκληρωμένη";
+ }
+ const fav=graded.filter(z=>z.entry.pick==="fav"),contra=graded.filter(z=>z.entry.pick==="contra");
+ const ratio=z=>z.length?z.filter(x=>x.outcome==="win").length+"/"+z.length:"—";
+ $("autoTotals").textContent="Καταγραφές "+entries.length+" · Με τελικό σκορ "+
+   results.filter(z=>z.outcome!=="pending").length+" · Αποχές "+
+   results.filter(z=>z.entry.pick==="abstain").length+" · "+
+   "Επιτυχίες "+(graded.length?correct+"/"+graded.length:"—")+
+   " · Φαβορί "+ratio(fav)+" · Κόντρα "+ratio(contra)+
+   ". Μετράμε μόνο πραγματικές καταγραφές πριν από τη σέντρα, όχι παλιούς αγώνες εκ των υστέρων.";
+ $("autoArchiveRows").innerHTML=results.length?results.slice(0,80).map(({entry:e,outcome})=>{
+   const title=e.pick==="fav"?"Φαβορί":e.pick==="contra"?"Κόντρα +0,5":"Αποχή";
+   const status=outcome==="win"?"✓ Επαληθεύτηκε":
+     outcome==="lose"?"✕ Δεν επαληθεύτηκε":
+     outcome==="abstain"?"— Αποχή · Δεν μετρά ως επιτυχία":"⌛ Αναμονή αποτελέσματος";
+   const statusClass=outcome==="win"?"win":outcome==="lose"?"lose":"pending";
+   const lock=new Date(e.recordedAt).toLocaleString("el-GR");
+   return '<div class="auto-entry"><b>'+safe(e.match)+'</b><small>'+
+     safe(e.league)+' · '+safe(title)+' · '+safe(e.level+"/3 · "+(levelNames[e.level]||"Αδύναμη"))+
+     '</small><small>Κλειδώθηκε '+safe(lock)+' · Έναρξη '+safe(String(e.kickoff||""))+
+     '</small><small class="'+statusClass+'">'+status+'</small></div>';
+ }).join(""):'<div class="empty">Δεν υπάρχουν ακόμη αυτόματες προ-αγωνιστικές αποφάσεις. Θα καταγράφονται όταν η εφαρμογή είναι ανοιχτή πριν από τη σέντρα και υπάρχουν αρκετά στοιχεία.</div>';
+ const manual=journal.map(j=>{
+   const x=matches.find(m=>key(m)===j.key&&finished(m));
+   const status=x?(j.pick==="Αποχή"?"Αποχή":j.pick==="Νίκη φαβορί"?
+      (won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε"):
+      (!won(x)?"Επαληθεύτηκε":"Δεν επαληθεύτηκε")):"Αναμονή σκορ";
+   const created=new Date(j.created);
+   return '<div class="histrow"><div><b>'+safe(j.match)+'</b><small>'+safe(j.pick)+
+     ' · '+safe(Number.isFinite(created.getTime())?created.toLocaleString("el-GR"):"—")+
+     '</small></div><div class="tiny">'+safe(status)+'</div></div>';
+ });
+ $("archiveRows").innerHTML=manual.join("")||"Δεν υπάρχουν χειροκίνητες εκτιμήσεις.";
+}
+
 async function getJSON(url,opt){let r=await fetch(url,{credentials:"same-origin",cache:"no-store",...opt});let d=await r.json();if(r.status===401&&url!=="/api/login"){$("app").classList.add("hide");$("login").classList.remove("hide");throw Error("Χρειάζεται σύνδεση.")}return d}
 let refreshInFlight=false,feedRetryTimer=null,feedRetryCount=0;
 function scheduleFeedRetry(){
