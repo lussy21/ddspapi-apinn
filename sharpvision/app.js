@@ -366,10 +366,10 @@ function svFingerprintTag(x,y,label,kind){
     (odd?'#88eaff':'#ffe1a1')+'" font-size="13.5" font-weight="850" text-anchor="middle">'+
     safe(label)+'</text></g>';
 }
-function svFingerprintSvg(stages,fixture){
+function svFingerprintSvg(stages,fixture,showTurnover=false){
  const W=360,H=304,top=57,bottom=228,xs=[75,179,283];
  const odds=stages.map(z=>z.odds).filter(svFingerprintValidOdds);
- const turn=stages.map(z=>z.turn).filter(svFingerprintValidCash);
+ const turn=showTurnover?stages.map(z=>z.turn).filter(svFingerprintValidCash):[];
  if(!odds.length&&!turn.length)
   return '<div class="sv-fingerprint-no-data">Δεν υπάρχουν ακόμη τιμές για γράφημα. Θα εμφανιστούν μόλις ενημερωθεί το Excel.</div>';
  const rawMin=Math.min(...odds,1e6),rawMax=Math.max(...odds,0);
@@ -380,11 +380,11 @@ function svFingerprintSvg(stages,fixture){
  const yOdds=v=>bottom-(v-minOdds)/(maxOdds-minOdds)*(bottom-top);
  const yTurn=v=>bottom-(v/topTurn)*(bottom-top);
  let svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" '+
-  'role="img" aria-label="Γράφημα πραγματικών αποδόσεων και τζίρου σε τρία στάδια">'+
+  'role="img" aria-label="'+(showTurnover?"Γράφημα απόδοσης και τζίρου":"Γράφημα απόδοσης φαβορί")+' σε τρία στάδια">'+
   '<title>'+safe("Αποτύπωμα αγοράς: "+name(fixture))+'</title>'+
-  '<desc>Μπλε γραμμή με καμπύλες ενώσεις μόνο μεταξύ διαδοχικών γνωστών τιμών απόδοσης. '+
-  'Πορτοκαλί μπάρες για πραγματικά στιγμιότυπα τζίρου. Κενές καταγραφές δεν συμπληρώνονται. '+
-  'Η αρχική απόδοση μπορεί να έχει καταγραφεί νωρίτερα από τον τζίρο των 11:00.</desc>'+
+  '<desc>Η μπλε γραμμή συνδέει μόνο διαδοχικά γνωστά στιγμιότυπα απόδοσης. '+
+  (showTurnover?'Οι πορτοκαλί μπάρες δείχνουν πραγματικές καταγραφές τζίρου. ':'')+
+  'Δεν συμπληρώνονται κενά ή ενδιάμεσες παρατηρήσεις.</desc>'+
   '<defs>'+
     '<linearGradient id="svBarPremium" x1="0" y1="0" x2="0" y2="1">'+
       '<stop offset="0%" stop-color="#ffbb55" stop-opacity=".88"/>'+
@@ -394,7 +394,7 @@ function svFingerprintSvg(stages,fixture){
       '<feGaussianBlur stdDeviation="2.8"/></filter>'+
   '</defs>';
  svg+='<text x="10" y="25" fill="#75d8ff" font-size="15.5" font-weight="820">Απόδοση</text>'+
-   '<text x="351" y="25" fill="#ffca79" font-size="14.5" font-weight="820" text-anchor="end">Τζίρος €</text>';
+   (showTurnover?'<text x="351" y="25" fill="#ffca79" font-size="14.5" font-weight="820" text-anchor="end">Τζίρος €</text>':"");
  for(let i=0;i<=3;i++){
    const y=top+(bottom-top)*i/3,amount=(3-i)*topTurn/3,odd=maxOdds-(maxOdds-minOdds)*i/3;
    svg+='<line x1="45" y1="'+y.toFixed(1)+'" x2="314" y2="'+y.toFixed(1)+
@@ -406,7 +406,7 @@ function svFingerprintSvg(stages,fixture){
       safe(svFingerprintCash(amount))+'</text>';
  }
  stages.forEach((z,i)=>{
-   if(!svFingerprintValidCash(z.turn))return;
+   if(!showTurnover||!svFingerprintValidCash(z.turn))return;
    const x=xs[i],v=z.turn,y=yTurn(v),height=Math.max(.5,bottom-y);
    svg+='<rect x="'+(x-29)+'" y="'+y.toFixed(1)+'" width="58" height="'+height.toFixed(1)+
      '" rx="6" fill="url(#svBarPremium)" stroke="#ffbe70" stroke-opacity=".6" stroke-width=".8">'+
@@ -442,7 +442,7 @@ function svFingerprintSvg(stages,fixture){
  });
  stages.forEach((z,i)=>{
    const x=xs[i],v=z.turn;
-   if(!svFingerprintValidCash(v))return;
+   if(!showTurnover||!svFingerprintValidCash(v))return;
    const y=yTurn(v);
    const show=svCashExact(v),label=show.length>11?svFingerprintCash(v)+"€":show;
    const place=y<top+34?y+20:Math.max(top+14,y-13);
@@ -462,78 +462,83 @@ function svFingerprintSvg(stages,fixture){
      safe(z.short)+'</text>'+
      '<text x="'+x+'" y="283" fill="#94b8d9" font-size="11.5" text-anchor="middle">'+
      safe(i===0?"αρχική / 11:00":i===1?"90′ πριν":"τελευταία")+'</text>';
-   if(!svFingerprintValidOdds(z.odds)&&!svFingerprintValidCash(z.turn))
+   if(!svFingerprintValidOdds(z.odds)&&(!showTurnover||!svFingerprintValidCash(z.turn)))
      svg+='<text x="'+x+'" y="'+(top+(bottom-top)*.56).toFixed(1)+
        '" fill="#82a8c8" font-size="10" text-anchor="middle">χωρίς στοιχεία</text>';
  });
  return svg+'</svg>';
 }
-// One chart for odds + turnover. Share percentages appear only in this
-// concise early/last comparison — never repeat them in the conclusion.
+// Default: only the blue favorite-odds curve. Turnover is strictly opt-in,
+// never a second card or repeated numeric table.
+let svFingerprintWithTurnover=false;
+function setFingerprintMode(showTurnover){
+ svFingerprintWithTurnover=!!showTurnover;
+ const oddButton=$("fingerprintModeOdds"),bothButton=$("fingerprintModeBoth");
+ oddButton.classList.toggle("is-selected",!svFingerprintWithTurnover);
+ bothButton.classList.toggle("is-selected",svFingerprintWithTurnover);
+ oddButton.setAttribute("aria-pressed",String(!svFingerprintWithTurnover));
+ bothButton.setAttribute("aria-pressed",String(svFingerprintWithTurnover));
+ if(!$("fingerprintDetails").classList.contains("hide"))renderFingerprint();
+}
 function renderFingerprint(){
  if(!current)return;
- const stages=svFingerprintStages(current),x=current;
- $("fingerprintChart").innerHTML=svFingerprintSvg(stages,x);
+ const stages=svFingerprintStages(current),x=current,expanded=svFingerprintWithTurnover;
+ $("fingerprintChart").innerHTML=svFingerprintSvg(stages,x,expanded);
+ $("fingerprintTurnoverLegend").classList.toggle("hide",!expanded);
+ $("fingerprintScales").textContent=expanded?
+   "Μπλε: απόδοση · Πορτοκαλί: τζίρος (€). Η αρχική απόδοση και ο τζίρος 11:00 μπορεί να μην είναι της ίδιας ώρας.":
+   "Η μπλε γραμμή δείχνει μόνο την απόδοση του φαβορί.";
+
  const missing90Odds=!svFingerprintValidOdds(stages[1].odds);
  const missing90Turn=!svFingerprintValidCash(stages[1].turn);
- const hasChartValues=stages.some(z=>svFingerprintValidOdds(z.odds)||svFingerprintValidCash(z.turn));
+ const hasOdds=stages.some(z=>svFingerprintValidOdds(z.odds));
+ const hasTurn=expanded&&stages.some(z=>svFingerprintValidCash(z.turn));
  const missing=[];
- if(hasChartValues&&missing90Odds&&missing90Turn)
-   missing.push("90′: δεν υπάρχουν στοιχεία.");
- else if(hasChartValues&&missing90Odds)
-   missing.push("90′: λείπει η απόδοση.");
- else if(hasChartValues&&missing90Turn)
-   missing.push("90′: λείπει ο τζίρος.");
+ if(hasOdds&&missing90Odds)missing.push("Δεν έχουμε απόδοση στα 90′.");
+ if(hasTurn&&missing90Turn)missing.push("Δεν έχουμε τζίρο στα 90′.");
  if(missing90Odds&&svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds))
-   missing.push("Η διακεκομμένη γραμμή ενώνει μόνο δύο γνωστές τιμές.");
- const note=$("fingerprintMissing");
- note.textContent=missing.join(" ");
- note.classList.toggle("hide",!missing.length);
+   missing.push("Η διακεκομμένη μπλε σύνδεση δείχνει μόνο δύο γνωστές τιμές, όχι την ενδιάμεση κίνηση.");
+ $("fingerprintMissing").textContent=missing.join(" ");
+ $("fingerprintMissing").classList.toggle("hide",!missing.length);
 
- // Prefer 11:00 and latest; fall back to 90′ only if the early
- // percentages are missing. This is a visual comparison, not a third table.
- const hasMoney=z=>svFingerprintPct(z.p)!==null||svFingerprintPct(z.contra)!==null;
- const early=hasMoney(stages[0])?stages[0]:hasMoney(stages[1])?stages[1]:null;
- const late=hasMoney(stages[2])?stages[2]:null;
- const shown=early&&late?[early,late]:early?[early]:late?[late]:[];
- const label=z=>z===stages[0]?"11:00":z===stages[1]?"90′ πριν":"Τώρα";
- $("fingerprintMoneyRows").innerHTML=shown.length?shown.map(z=>{
-   const f=svFingerprintPct(z.p),c=svFingerprintPct(z.contra);
-   const both=f!==null&&c!==null,consistent=both&&Math.abs(f+c-100)<=.5;
-   const values="Φαβορί "+(f===null?"—":per(f))+" · Κόντρα "+(c===null?"—":per(c));
-   const bar=consistent?
-     '<div class="sv-moneybar" aria-hidden="true">'+
-       '<span class="fav" style="width:'+f.toFixed(2)+'%"></span>'+
-       '<span class="contra" style="width:'+Math.min(c,100-f).toFixed(2)+'%"></span></div>':
+ // Only one money split, in the latest source snapshot. Earlier values
+ // already belong to the main Excel table; don't draw extra comparisons.
+ const fav=svFingerprintPct(stages[2].p),contra=svFingerprintPct(stages[2].contra);
+ const both=fav!==null&&contra!==null&&Math.abs(fav+contra-100)<=.5;
+ if(fav===null&&contra===null){
+   $("fingerprintMoneyRows").innerHTML='<p class="tiny">Δεν υπάρχουν διαθέσιμα ποσοστά χρημάτων.</p>';
+ }else{
+   const bar=both?
+     '<div class="sv-moneybar" aria-hidden="true"><span class="fav" style="width:'+
+       fav.toFixed(2)+'%"></span><span class="contra" style="width:'+
+       Math.min(contra,100-fav).toFixed(2)+'%"></span></div>':
      '<p class="tiny">Δεν υπάρχουν πλήρη, συγκρίσιμα ποσοστά.</p>';
-   return '<div class="sv-fingerprint-moneyrow"><div class="sv-moneyrow-heading">'+
-     '<strong>'+safe(label(z))+'</strong><span>'+safe(values)+'</span></div>'+bar+'</div>';
- }).join(""):'<p class="tiny">Δεν υπάρχουν ποσοστά χρημάτων για σύγκριση.</p>';
+   $("fingerprintMoneyRows").innerHTML='<div class="sv-fingerprint-moneyrow">'+
+     '<div class="sv-moneyrow-heading"><strong>Τώρα</strong><span>Φαβορί '+
+       safe(fav===null?"—":per(fav))+' · Κόντρα '+safe(contra===null?"—":per(contra))+
+       '</span></div>'+bar+'</div>';
+ }
 
- // Only qualitative summary: the numerical evidence is already visible
- // above. Do not infer bookmaker intent or Smart Money.
- const pOld=svFingerprintValidOdds(x.o)?x.o:svFingerprintValidOdds(x.m)?x.m:null;
- const pNew=svFingerprintValidOdds(x.l)?x.l:null;
- const cashOld=svFingerprintValidCash(x.v0)?x.v0:svFingerprintValidCash(x.v90)?x.v90:null;
- const cashNew=svFingerprintValidCash(x.v)?x.v:null;
- const phrases=[];
- if(pOld!==null&&pNew!==null){
-   const pct=(pNew/pOld-1)*100;
-   phrases.push(Math.abs(pct)<.25?"Η απόδοση έμεινε σχεδόν σταθερή":
-     pct>0?"Η απόδοση ανέβηκε":"Η απόδοση έπεσε");
+ // A short contextual interpretation: no repeated price, turnover or share
+ // numbers and no rule that falling price favors one selection.
+ const oldestPrice=svFingerprintValidOdds(x.o)?x.o:svFingerprintValidOdds(x.m)?x.m:null;
+ const currentPrice=svFingerprintValidOdds(x.l)?x.l:null;
+ let oddsPhrase="";
+ if(oldestPrice!==null&&currentPrice!==null){
+   const diff=100*(currentPrice/oldestPrice-1);
+   oddsPhrase=Math.abs(diff)<.25?"Η απόδοση έμεινε σχεδόν σταθερή":
+     diff>0?"Η απόδοση ανέβηκε":"Η απόδοση έπεσε";
  }
- if(cashOld!==null&&cashNew!==null)
-   phrases.push(cashNew>cashOld?"ο τζίρος αυξήθηκε":
-     cashNew<cashOld?"ο καταγεγραμμένος τζίρος μειώθηκε":"ο τζίρος δεν άλλαξε");
- if(early&&late&&early!==late&&svFingerprintPct(early.p)!==null&&svFingerprintPct(late.p)!==null){
-   const diff=late.p-early.p;
-   phrases.push(Math.abs(diff)<3?"η κατανομή χρημάτων έμεινε κοντά στα ίδια":
-     diff>0?"μεγάλωσε το μερίδιο του φαβορί":"μεγάλωσε το μερίδιο της κόντρας");
- }
- const sentence=phrases.length?phrases.map((p,i)=>i===0?p:p).join(" · "):
-   "Αναμονή περισσότερων πραγματικών μετρήσεων.";
- $("fingerprintInsight").textContent=sentence+
-   (phrases.length?". Δεν προκύπτει από αυτό μόνο του πρόβλεψη.":"");
+ const oldestTurn=svFingerprintValidCash(x.v0)?x.v0:svFingerprintValidCash(x.v90)?x.v90:null;
+ const currentTurn=svFingerprintValidCash(x.v)?x.v:null;
+ let turnoverPhrase="";
+ if(expanded&&oldestTurn!==null&&currentTurn!==null)
+   turnoverPhrase=currentTurn>oldestTurn?"ο τζίρος αυξήθηκε":
+     currentTurn<oldestTurn?"ο καταγεγραμμένος τζίρος μειώθηκε":"ο τζίρος έμεινε σταθερός";
+ const changes=[oddsPhrase,turnoverPhrase].filter(Boolean);
+ $("fingerprintInsight").textContent=changes.length?
+   changes.join(" · ")+". Οι κινήσεις αυτές από μόνες τους δεν δείχνουν ποιος θα κερδίσει.":
+   "Δεν υπάρχουν αρκετά στοιχεία για να περιγράψουμε την αλλαγή της αγοράς.";
 }
 
 function renderMarketObservation(){
@@ -1326,6 +1331,8 @@ $("marketWatchClose").addEventListener("click",closeMarketWatch);
 $("marketToolAnalyst").addEventListener("click",()=>selectMarketTool("analyst"));
 $("marketToolHunter").addEventListener("click",()=>selectMarketTool("hunter"));
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
+$("fingerprintModeOdds").addEventListener("click",()=>setFingerprintMode(false));
+$("fingerprintModeBoth").addEventListener("click",()=>setFingerprintMode(true));
 $("fingerprintToggle").addEventListener("click",()=>{
   const panel=$("fingerprintDetails"),nowHidden=panel.classList.toggle("hide");
   $("fingerprintToggle").setAttribute("aria-expanded",String(!nowHidden));
