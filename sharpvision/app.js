@@ -7,6 +7,8 @@ const read=(k,d)=>{try{let v=localStorage.getItem(k);return v===null?d:JSON.pars
 let favorites=read("sv_live_faves",[]),journal=read("sv_live_journal",[]),savedLeagues=read("sv_live_leagues",null);
 // Default to favorite on every new match and page opening.
 let histMarket="fav";
+let autoLedger=read("sv_prelock_v1",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
+let compareMatchId=null;
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
 const price=v=>nf(v,3),per=v=>v===null?"—":nf(v,1)+"%",money=v=>v===null?"—":new Intl.NumberFormat("el-GR",{maximumFractionDigits:0}).format(v)+" €";
@@ -32,6 +34,7 @@ function parseRow(r,i){
     s:num(r[13],13),alert:String(r[14]||""),r:String(r[15]||""),
     v0:num(r[19],19),p0:num(r[20],20),contra0:num(r[21],21),
     v90:num(r[22],22),p90:num(r[23],23),contra90:num(r[24],24),
+    gradeRaw:String(r[75]||""),kickoff:String(r[76]||""),
     sourceRank:num(r[64],64),source90Rank:num(r[63],63),
     rank:null,rankEstimated:false,formats:{},display
   };
@@ -89,7 +92,7 @@ function paintSettings(){$("checks").innerHTML=allLeagues().map((l,i)=>'<label><
 function activeList(){let q=norm($("search").value);let aliases={αστον:"aston",βιλα:"villa",φεγενορντ:"feyenoord",σιτι:"city",παρι:"paris",ντορτμουντ:"dortmund",ρεαλ:"real",κομο:"como"};for(let [greek,english] of Object.entries(aliases))if(q.includes(greek))q=q.replace(greek,english);let lg=$("leagueFilter").value;let items=matches.filter(x=>!lg||x.lg===lg);if(q)items=items.filter(x=>norm(name(x)+" "+x.lg).includes(q));else if(tab==="open")items=items.filter(x=>!finished(x));else if(tab==="faves")items=items.filter(x=>favorites.includes(key(x)));else items=items.filter(finished);return items.slice().reverse().slice(0,80)}
 function fillLeagueFilter(){let old=$("leagueFilter").value;$("leagueFilter").innerHTML='<option value="">Όλα τα πρωταθλήματα</option>'+allLeagues().map(x=>'<option value="'+safe(x)+'">'+safe(x)+'</option>').join("");$("leagueFilter").value=allLeagues().includes(old)?old:""}
 function listMatches(){let v=activeList();$("matchCount").textContent=v.length+(v.length>=80?"+":"")+" αγώνες";$("matchList").innerHTML=v.length?v.map(x=>'<div class="matchitem '+(current&&x.id===current.id?"active":"")+'"><button class="star '+(favorites.includes(key(x))?"on":"")+'" data-star="'+x.id+'" aria-label="Αγαπημένο">★</button><button class="matchtext" data-match="'+x.id+'" style="background:none;border:0;padding:0;text-align:left"><b>'+safe(name(x))+'</b><small>'+safe(x.lg)+(finished(x)?" · "+safe(x.r):" · Χωρίς τελικό σκορ")+'</small></button></div>').join(""):'<div class="empty">Δεν βρέθηκαν αγώνες. Δοκίμασε άλλη αναζήτηση ή καρτέλα.</div>';document.querySelectorAll("[data-match]").forEach(b=>b.addEventListener("click",()=>select(+b.dataset.match)));document.querySelectorAll("[data-star]").forEach(b=>b.addEventListener("click",()=>{let x=matches.find(z=>z.id===+b.dataset.star),k=key(x);favorites=favorites.includes(k)?favorites.filter(z=>z!==k):[...favorites,k];store("sv_live_faves",favorites);listMatches()}))}
-function select(id){current=matches.find(x=>x.id===id);histMarket="fav";clearOpinion();listMatches();render()}
+function select(id){current=matches.find(x=>x.id===id);histMarket="fav";compareMatchId=null;clearOpinion();listMatches();render()}
 function render(){
   if(!current)return;
   const x=current,styles=x.formats||{};
@@ -143,7 +146,7 @@ function render(){
   if(x.alert&&Array.isArray(af)&&/^#[0-9a-f]{6}$/i.test(af[0]||"")&&af[0].toLowerCase()!=="#ffffff"){
     alertBox.style.backgroundColor=af[0];alertBox.style.color=/^#[0-9a-f]{6}$/i.test(af[1]||"")?af[1]:"#1e1e1e";
   }
-  renderHistory();renderArchive();
+  renderAutoCard();renderHistory();renderArchive();
 }
 const change=(a,b)=>a!==null&&b!==null&&a>0?(b/a-1)*100:null;
 // Every comparison uses all shared available market signals; never make up missing
@@ -179,13 +182,13 @@ function clearOpinion(){lastOpinion=null;$("opinionText").classList.add("hide");
 function paintMarketSwitch(){
   document.querySelectorAll("[data-market]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.market===histMarket)));
 }
-function similarity(t,h){
-  const forContra=histMarket==="contra";
+function similarity(t,h,side=histMarket,searchMode=mode){
+  const forContra=side==="contra";
   const hasContraMoney=usable(t.contra)||usable(t.p);
   if(forContra){
     if(!usable(t.rank)||!hasContraMoney||!usable(h.rank)||!(usable(h.contra)||usable(h.p)))return null;
   }else if(!["o","l","p","rank"].every(k=>usable(t[k])&&usable(h[k])))return null;
-  const multiplier={strict:1,medium:1.7,wide:2.8}[mode];
+  const multiplier={strict:1,medium:1.7,wide:2.8}[searchMode]||1;
   let weighted=0,totalWeight=0,features=0;
   for(const spec of signalSpecs){
     const weight=forContra?spec.cWeight:spec.weight;
@@ -378,6 +381,7 @@ async function refresh(){
       return x;
     }).filter(x=>x.lg&&x.h&&x.a&&["H","A"].includes(x.f));
     setupRanks();setupLeagues();fillLeagueFilter();
+    captureAutoPredictions();
     status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";
     status.className=d.stale?"status warn":"status live";
     $("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");
