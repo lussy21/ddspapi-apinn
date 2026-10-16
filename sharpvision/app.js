@@ -7,7 +7,7 @@ const read=(k,d)=>{try{let v=localStorage.getItem(k);return v===null?d:JSON.pars
 let favorites=read("sv_live_faves",[]),journal=read("sv_live_journal",[]),savedLeagues=read("sv_live_leagues",null);
 // Default to favorite on every new match and page opening.
 let histMarket="fav";
-let autoLedger=read("sv_prelock_v2",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
+let autoLedger=read("sv_prelock_v3",{});if(!autoLedger||Array.isArray(autoLedger)||typeof autoLedger!=="object")autoLedger={};
 let compareMatchId=null;
 function num(v,col){if(typeof v==="number")return Number.isFinite(v)?v:null;let s=String(v??"").replace(/[%€\s]/g,"");if(!s)return null;if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");else if([10,19,22].includes(col)&&/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");let n=Number(s);return Number.isFinite(n)?n:null}
 const nf=(v,d=1)=>v!==null&&Number.isFinite(v)?new Intl.NumberFormat("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v):"—";
@@ -186,102 +186,171 @@ function kickoffLabel(x){
  return t===null?"Άγνωστη έναρξη":new Date(t).toLocaleString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 }
 const levelNames={1:"Αδύναμη",2:"Μέτρια",3:"Ισχυρή"};
-// SHARPVISION HISTORICAL CONSENSUS v2
-// No alert, BX strength, Excel warning color or Excel signal participates here.
-// Each finished historical game counts ONCE, even if both market lenses find it.
+// SHARPVISION MARKET PSYCHOLOGY v3
+// These are observable market behaviors, not claims about bettors' intentions.
+// Explicitly independent of Excel alerts, colors, alert ratings and alerts log.
+const svClip=(v,min=-1,max=1)=>Math.max(min,Math.min(max,v));
+const svSign=v=>v>.24?1:v<-.24?-1:0;
+const svWord=s=>s>0?"φαβορί":s<0?"κόντρα":"καμία πλευρά";
+const svPercent=v=>nf(v,1)+"%";
+function svFairMarket(z){
+  if(!usable(z.l)||z.l<=1.01)return null;
+  const a=1/z.l;
+  if(usable(z.cl)&&z.cl>1.01){const b=1/z.cl;return svClip(a/(a+b),.05,.95)}
+  return svClip(a,.05,.95);
+}
+function svHistorySignal(x,prior){
+  const unique=new Map(),views={fav:0,contra:0};
+  for(const z of prior){
+    if(!finished(z)||autoKey(x)===autoKey(z))continue;
+    for(const side of ["fav","contra"]){
+      const result=similarity(x,z,side,"wide");
+      if(!result||result.features<6||result.similarity<77)continue;
+      views[side]++;
+      const id=autoKey(z),existing=unique.get(id);
+      if(!existing||result.similarity>existing.sim.similarity)unique.set(id,{x:z,sim:result});
+    }
+  }
+  const ranked=[...unique.values()].sort((a,b)=>b.sim.similarity-a.sim.similarity);
+  // Repeated entries of the same league cannot crowd out other competitions.
+  const leagueCounts={},items=[];
+  for(const entry of ranked){
+    const league=entry.x.lg;
+    if((leagueCounts[league]||0)>=12)continue;
+    items.push(entry);leagueCounts[league]=(leagueCounts[league]||0)+1;
+    if(items.length>=36)break;
+  }
+  const n=items.length,same=items.filter(z=>z.x.f===x.f).length;
+  if(n<7)return {n,same,score:null,avg:0,views,reason:"Λίγα πραγματικά συγκρίσιμα αποτελέσματα ("+n+")."};
+  let sum=0,ws=0,sum2=0,win=0,expected=0,known=0;
+  for(const z of items){
+    const baseline=svFairMarket(z.x);
+    if(baseline===null)continue;
+    const w=Math.pow(z.sim.similarity/100,5)*(z.x.f===x.f?1.09:1);
+    ws+=w;sum2+=w*w;sum+=w*((won(z.x)?1:0)-baseline);
+    expected+=w*baseline;win+=w*(won(z.x)?1:0);known++;
+  }
+  if(!ws||known<7)return {n,same,score:null,avg:0,views,reason:"Λείπει ιστορική τιμή αγοράς από τα συγκρίσιμα ματς."};
+  const neff=ws*ws/sum2,delta=sum/ws;
+  // 14 prior-equivalent observations regularize noisy small samples.
+  const adjusted=delta*(neff/(neff+14));
+  const score=svClip(adjusted/.13);
+  const avg=items.reduce((v,z)=>v+z.sim.similarity,0)/n;
+  return {n,same,score,avg,views,edge:adjusted,
+    reason:n+" διαφορετικοί παρόμοιοι αγώνες ("+same+" ίδιας έδρας), ομοιότητα "+
+      nf(avg,0)+"/100. Σε σύγκριση με τις αντίστοιχες τιμές τους, "+
+      (adjusted>=0?"τα φαβορί πήγαν σχετικά καλύτερα.":"οι κόντρες πήγαν σχετικά καλύτερα.")};
+}
+function svOddsSignal(x){
+ const openingFav=change(x.o,x.l),openingContra=change(x.co,x.cl);
+ const lateFav=change(x.m,x.l),lateContra=change(x.cm,x.cl);
+ const total=[],late=[];
+ if(usable(openingFav))total.push(svClip(-openingFav/7));
+ if(usable(openingContra))total.push(svClip(openingContra/8));
+ if(usable(lateFav))late.push(svClip(-lateFav/4));
+ if(usable(lateContra))late.push(svClip(lateContra/5));
+ const mean=a=>a.length?a.reduce((v,z)=>v+z,0)/a.length:null;
+ const whole=mean(total),latest=mean(late);
+ if(whole===null&&latest===null)
+   return {score:null,late:null,contradiction:false,reason:"Δεν υπάρχουν αρκετά στοιχεία μεταβολής αποδόσεων."};
+ const contradiction=total.length===2&&total[0]*total[1]<-.12||
+   late.length===2&&late[0]*late[1]<-.12;
+ const base=whole===null?latest:latest===null?whole:.62*whole+.38*latest;
+ return {score:svClip(base),late:latest,contradiction,
+  reason:base>.18?"Οι τιμές κινούνται προς το φαβορί (πέφτει η δική του ή ανεβαίνει της κόντρας).":
+    base<-.18?"Οι τιμές κινούνται προς την κόντρα (ανεβαίνει του φαβορί ή πέφτει της κόντρας).":
+    "Οι αποδόσεις έχουν μικτή ή σχεδόν ουδέτερη κίνηση."};
+}
+function svMoneySignal(x){
+  if(!usable(x.p))return {score:null,reason:"Δεν υπάρχουν δεδομένα ποσοστού χρημάτων."};
+  const stages=[];
+  if(usable(x.p0))stages.push(svClip((x.p-x.p0)/11));
+  if(usable(x.p90))stages.push(svClip((x.p-x.p90)/8));
+  if(usable(x.p0)&&usable(x.p90))stages.push(svClip((x.p90-x.p0)/10)*.5);
+  if(!stages.length)return {score:null,reason:"Γνωρίζουμε την κατανομή χρημάτων, αλλά όχι πώς άλλαξε στον χρόνο."};
+  const score=svClip(stages.reduce((v,z)=>v+z,0)/stages.length*1.18);
+  return {score,reason:score>.19?"Το ποσοστό χρημάτων μετακινείται προς το φαβορί ("+svPercent(x.p)+").":
+   score<-.19?"Το ποσοστό χρημάτων μετακινείται προς την κόντρα ("+svPercent(100-x.p)+").":
+   "Τα ποσοστά χρημάτων δεν δείχνουν ουσιαστική νέα μετακίνηση."};
+}
 function automaticOpinion(x,prior){
- const keys=["o","l","p","rank"];
- if(!keys.every(k=>usable(x[k]))){
-  return {pick:"abstain",level:1,source:"sharpvision_history",version:"v2",
-    reason:"Αποχή: λείπουν βασικές αποδόσεις, χρήματα ή επίπεδο τζίρου.",
-    sample:0,sameVenue:0,nFav:0,nContra:0};
- }
- const found={fav:[],contra:[]};
- for(const z of prior){
-   if(!finished(z)||autoKey(z)===autoKey(x))continue;
-   for(const side of ["fav","contra"]){
-     const sim=similarity(x,z,side,"medium");
-     if(sim&&sim.features>=6&&sim.similarity>=78){
-       found[side].push({match:z,sim});
-     }
-   }
- }
- // Use capped neighborhoods to avoid one very common profile dominating.
- // The independent fav/contra searches are not treated as independent games.
- for(const side of ["fav","contra"])
-   found[side].sort((a,b)=>b.sim.similarity-a.sim.similarity).splice(30);
- const unique=new Map();
- for(const side of ["fav","contra"])for(const hit of found[side]){
-   const id=autoKey(hit.match);
-   const saved=unique.get(id);
-   if(!saved||hit.sim.similarity>saved.sim.similarity)unique.set(id,hit);
- }
- const pool=[...unique.values()].sort((a,b)=>b.sim.similarity-a.sim.similarity).slice(0,30);
- const n=pool.length,same=pool.filter(z=>z.match.f===x.f).length;
- const noSample={sample:n,sameVenue:same,nFav:found.fav.length,nContra:found.contra.length};
- const base={...noSample,source:"sharpvision_history",version:"v2"};
- const abstain=(why)=>({pick:"abstain",level:1,...base,reason:"Αποχή: "+why});
- if(n<9)return abstain("βρέθηκαν μόλις "+n+" διακριτοί παρόμοιοι αγώνες (χρειάζονται τουλάχιστον 9).");
- if(same<3)return abstain("λίγα παραδείγματα με την ίδια έδρα φαβορί ("+same+").");
- const weight=z=>Math.pow(z.sim.similarity/100,4)*(z.match.f===x.f?1.12:1);
- const ratio=items=>{
-   const total=items.reduce((a,z)=>a+weight(z),0);
-   return total?items.reduce((a,z)=>a+weight(z)*(won(z.match)?1:0),0)/total:null;
- };
- const favoriteRate=ratio(pool);
- const sameRate=ratio(pool.filter(z=>z.match.f===x.f));
- // Independent views must not strongly disagree about the side.
- const lensRate=side=>{
-  const list=found[side];
-  if(list.length<7)return null;
-  const total=list.reduce((a,z)=>a+weight(z),0);
-  return total?list.reduce((a,z)=>a+weight(z)*(won(z.match)?1:0),0)/total:null;
- };
- const lensFav=lensRate("fav"),lensContra=lensRate("contra");
- if(lensFav!==null&&lensContra!==null
-  &&Math.abs(lensFav-.5)>.08&&Math.abs(lensContra-.5)>.08
-  &&(lensFav-.5)*(lensContra-.5)<0){
-   return abstain("οι δύο ανεξάρτητες ιστορικές συγκρίσεις δείχνουν αντίθετη πλευρά.");
- }
- const pick=favoriteRate>=.62?"fav":favoriteRate<=.38?"contra":"abstain";
- if(pick==="abstain")return abstain("το ιστορικό είναι μοιρασμένο, χωρίς σαφή κατεύθυνση ("+
-    Math.round(favoriteRate*100)+"% νίκες φαβορί στο συγκρίσιμο δείγμα).");
- if(same>=4&&(sameRate-.5)*(favoriteRate-.5)<0&&Math.abs(sameRate-.5)>.08){
-   return abstain("οι αγώνες ίδιας έδρας διαφωνούν με το γενικό δείγμα.");
- }
- // Neither cash volume alone nor favorite popularity is assigned a level.
- // Higher levels demand more unique cases, stronger consensus and adequate
- // market data, NOT a high Excel alert score.
- const support=pick==="fav"?favoriteRate:1-favoriteRate;
- const avgSimilarity=pool.reduce((v,z)=>v+z.sim.similarity,0)/n;
- const avgFeatures=pool.reduce((v,z)=>v+z.sim.features,0)/n;
- const fullStages=["o","l","m","co","cm","cl","p","p90","p0","contra"].every(k=>usable(x[k]));
- const marketDirection=change(x.o,x.l);
- const contraDirection=change(x.co,x.cl);
- const marketDisagrees=pick==="fav"
-   ?((marketDirection!==null&&marketDirection>1.5)&&(contraDirection===null||contraDirection<-.8))
-   :((marketDirection!==null&&marketDirection< -1.5)&&(contraDirection===null||contraDirection>.8));
- const bothLenses=found.fav.length>=8&&found.contra.length>=8;
- let level=1;
- if(n>=16&&same>=5&&support>=.68&&avgSimilarity>=84&&avgFeatures>=8)
-   level=2;
- if(n>=25&&same>=8&&support>=.78&&avgSimilarity>=88&&avgFeatures>=10&&
-      bothLenses&&fullStages&&!marketDisagrees)level=3;
- if(marketDisagrees)level=Math.min(level,2);
- const score=Math.round(support*100),favWins=pool.filter(z=>won(z.match)).length;
- const evidence=(pick==="fav"?favWins:n-favWins)+"/"+n;
- const record="Συμφωνία ιστορικού "+evidence+" · "+same+" με ίδια έδρα · "+
-   "μέση ομοιότητα "+nf(avgSimilarity,0)+"/100.";
- const why=level===3?"Ισχυρή: μεγάλο, κοντινό και συνεπές δείγμα, με πλήρη στάδια αποδόσεων και συμφωνία των δύο πλευρών.":
-   level===2?"Μέτρια: αρκετό ιστορικό με καθαρή κατεύθυνση, αλλά όχι όλες οι προϋποθέσεις του 3/3.":
-   "Αδύναμη: υπάρχει τάση, αλλά το δείγμα ή η συνέπεια δεν αρκούν για υψηλότερη βαθμίδα.";
- return {pick,level,...base,
-   supportPct:score,similarityAvg:Math.round(avgSimilarity),
-   reason:record+" "+why+" Βαθμός στήριξης, όχι ποσοστό πιθανότητας νίκης."};
+  const odds=svOddsSignal(x),moneyFlow=svMoneySignal(x),history=svHistorySignal(x,prior);
+  const cautions=[],details=[],evidence=[];
+  // This is intensity, not a directional vote: turnover alone predicts neither side.
+  const turnover=usable(x.rank)?x.rank:null;
+  const sufficientTurn=turnover!==null&&turnover>=65;
+  if(turnover===null)cautions.push("Δεν γνωρίζουμε συγκρίσιμο επίπεδο τζίρου.");
+  else if(turnover<35)cautions.push("Χαμηλός σχετικός τζίρος: ευάλωτες μεταβολές αποδόσεων.");
+  else details.push("Τζίρος "+nf(turnover,0)+"ο εκατοστημόριο λίγκας — ένταση, όχι κατεύθυνση.");
+  if(odds.score!==null){
+    details.push(odds.reason);evidence.push({name:"Αποδόσεις",score:odds.score,weight:.36});
+  }else details.push(odds.reason);
+  if(moneyFlow.score!==null){
+    details.push(moneyFlow.reason);evidence.push({name:"Μεταβολή χρημάτων",score:moneyFlow.score,weight:.26});
+  }else details.push(moneyFlow.reason);
+  if(history.score!==null){
+    details.push(history.reason);evidence.push({name:"Ιστορική υπεραπόδοση έναντι αγοράς",score:history.score,weight:.38});
+  }else details.push(history.reason);
+  if(odds.contradiction)cautions.push("Οι δύο τιμές (φαβορί/κόντρα) δεν επιβεβαιώνουν την ίδια κίνηση.");
+  const priceDir=svSign(odds.score??0),moneyDir=svSign(moneyFlow.score??0),histDir=svSign(history.score??0);
+  const moneyPriceConflict=priceDir*moneyDir===-1;
+  if(moneyPriceConflict){
+    cautions.push("Αντίφαση: τα χρήματα πάνε προς "+svWord(moneyDir)+
+      ", ενώ η κίνηση αποδόσεων στηρίζει "+svWord(priceDir)+
+      ". Δεν μπορούμε να ξέρουμε γιατί.");
+  }else if(priceDir!==0&&priceDir===moneyDir){
+    details.push("Αποδόσεις και νέα ροή χρημάτων συμφωνούν προς "+svWord(priceDir)+".");
+  }
+  if(history.n>=7&&histDir!==0&&priceDir!==0&&histDir!==priceDir)
+    cautions.push("Το ιστορικό διαφωνεί με την τωρινή τιμή αγοράς.");
+  if(odds.late!==null&&svSign(odds.late)!==0&&priceDir!==0&&svSign(odds.late)!==priceDir)
+    cautions.push("Ανατροπή τάσης στο τελευταίο στάδιο αποδόσεων.");
+  if(usable(x.v)&&usable(x.v90)&&x.v90>0&&x.v/x.v90>=2.5)
+    details.push("Ο τζίρος αυξήθηκε έντονα μετά το στιγμιότυπο 90′: απαιτείται προσοχή στη νεότερη κίνηση.");
+  const weight=evidence.reduce((a,z)=>a+z.weight,0);
+  const total=weight?evidence.reduce((a,z)=>a+z.weight*z.score,0)/weight:0;
+  const direction=svSign(total);
+  const supports=evidence.filter(z=>svSign(z.score)===direction&&direction!==0);
+  const against=evidence.filter(z=>svSign(z.score)===-direction&&direction!==0);
+  // Two independent families must agree. The two odds timestamps are one
+  // family, never counted as separate corroborations.
+  let pick="abstain",level=0;
+  if(direction!==0&&supports.length>=2&&Math.abs(total)>=.34&&!odds.contradiction){
+    pick=direction>0?"fav":"contra";
+    level=1;
+    if(Math.abs(total)>=.44&&supports.length>=2&&against.length===0&&
+       sufficientTurn&&!moneyPriceConflict&&history.n>=8)
+       level=2;
+    if(level>=2&&supports.length===3&&against.length===0&&
+       Math.abs(total)>=.67&&history.n>=22&&history.same>=7&&
+       history.avg>=87&&sufficientTurn&&turnover>=75&&
+       !cautions.some(z=>/Ανατροπή|Αντίφαση|διαφωνεί/.test(z))&&
+       ["m","cm","p0","p90"].every(k=>usable(x[k])))
+       level=3;
+  }
+  const label=pick==="fav"?"Φαβορί":pick==="contra"?"Κόντρα +0,5":"Αποχή";
+  let summary;
+  if(pick==="abstain"){
+    summary="Αποχή: δεν συμφωνούν τουλάχιστον δύο ανεξάρτητες ενδείξεις ή η αγορά δίνει αντικρουόμενα μηνύματα.";
+  }else{
+    summary="Επιλογή "+label+": "+supports.map(z=>z.name).join(" και ")+
+      " στηρίζουν την ίδια πλευρά."+
+      (level===3?" Τρεις ανεξάρτητες ενδείξεις με ισχυρή συμφωνία.":
+      level===2?" Αρκετή συνοχή, όχι όμως πλήρης επιβεβαίωση.":" Υπάρχουν ενδείξεις αλλά και ουσιαστική αβεβαιότητα.");
+  }
+  const lines=[summary,...details,...cautions.map(z=>"ΠΡΟΣΟΧΗ: "+z),
+    "Οι ενδείξεις περιγράφουν συμπεριφορά της αγοράς, όχι προθέσεις παικτών ή βεβαιότητα αποτελέσματος."];
+  return {
+    pick,level,source:"sharpvision_market_psychology",version:"v3",
+    sample:history.n,sameVenue:history.same,similarityAvg:history.avg?Math.round(history.avg):0,
+    nFav:history.views.fav,nContra:history.views.contra,
+    marketScore:Math.round(total*100),evidence:details,cautions,
+    reason:lines.join("\n")
+  };
 }
 function captureAutoPredictions(){
  const now=Date.now();
- const due=matches.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>now+60000&&!finished(x)&&
+ const due=matches.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>now+120000&&kickoffMs(x)<=now+75*60000&&!finished(x)&&
    usable(x.o)&&usable(x.l)&&usable(x.p)&&usable(x.rank)&&!autoLedger[autoKey(x)]);
  if(!due.length)return;
  // Only outcomes already recorded as final on the pre-kickoff snapshot may
@@ -302,7 +371,7 @@ function captureAutoPredictions(){
    const entries=Object.values(autoLedger).filter(z=>z&&z.recordedAt)
      .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt))).slice(0,1200);
    autoLedger=Object.fromEntries(entries.map(z=>[z.fixture,z]));
-   store("sv_prelock_v2",autoLedger);
+   store("sv_prelock_v3",autoLedger);
  }
 }
 function autoOutcome(entry){
