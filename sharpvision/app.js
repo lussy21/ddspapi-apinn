@@ -476,12 +476,13 @@ function renderFingerprint(){
  $("fingerprintChart").innerHTML=svFingerprintSvg(stages,x);
  const missing90Odds=!svFingerprintValidOdds(stages[1].odds);
  const missing90Turn=!svFingerprintValidCash(stages[1].turn);
+ const hasChartValues=stages.some(z=>svFingerprintValidOdds(z.odds)||svFingerprintValidCash(z.turn));
  const missing=[];
- if(missing90Odds&&missing90Turn)
+ if(hasChartValues&&missing90Odds&&missing90Turn)
    missing.push("90′: δεν υπάρχουν στοιχεία.");
- else if(missing90Odds)
+ else if(hasChartValues&&missing90Odds)
    missing.push("90′: λείπει η απόδοση.");
- else if(missing90Turn)
+ else if(hasChartValues&&missing90Turn)
    missing.push("90′: λείπει ο τζίρος.");
  if(missing90Odds&&svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds))
    missing.push("Η διακεκομμένη γραμμή ενώνει μόνο δύο γνωστές τιμές.");
@@ -511,9 +512,9 @@ function renderFingerprint(){
 
  // Only qualitative summary: the numerical evidence is already visible
  // above. Do not infer bookmaker intent or Smart Money.
- const pOld=svFingerprintValidOdds(x.m)?x.m:svFingerprintValidOdds(x.o)?x.o:null;
+ const pOld=svFingerprintValidOdds(x.o)?x.o:svFingerprintValidOdds(x.m)?x.m:null;
  const pNew=svFingerprintValidOdds(x.l)?x.l:null;
- const cashOld=svFingerprintValidCash(x.v90)?x.v90:svFingerprintValidCash(x.v0)?x.v0:null;
+ const cashOld=svFingerprintValidCash(x.v0)?x.v0:svFingerprintValidCash(x.v90)?x.v90:null;
  const cashNew=svFingerprintValidCash(x.v)?x.v:null;
  const phrases=[];
  if(pOld!==null&&pNew!==null){
@@ -538,6 +539,7 @@ function renderFingerprint(){
 function renderMarketObservation(){
  if(!current)return;
  const o=svMarketObservation(current,svObservationHistory(current));
+ $("marketObservation").classList.toggle("hide",!o);
  const status=$("marketObservationStatus"),body=$("marketObservationBody"),
    history=$("marketObservationHistory");
  if(!o){
