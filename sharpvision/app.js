@@ -663,11 +663,13 @@ function buildMarketHunter(upcoming,past){
 }
 function renderMarketHunter(){
  const count=marketHunterItems.length;
+ const kept=svSavedExtras("hunter",marketHunterItems.map(o=>o.x));
  $("marketHunterSummary").textContent=count
   ?"Ο Κυνηγός συνέκρινε "+count+" προσεχείς αγώνες με τα ιστορικά προφίλ χρημάτων, "+
    "μεταβολής αποδόσεων, τζίρου και αρχικής συμπεριφοράς. Η σειρά προκύπτει από "+
    "τη συνολική απόσταση από προηγούμενες καταστάσεις, όχι από την έκβαση τους."
-   : "Δεν υπάρχουν ακόμη αρκετά δεδομένα για τον Κυνηγό. "+svCoverage();
+   :kept?"Αποθηκευμένοι αγώνες που περιμένουν τελικό αποτέλεσμα. "+svCoverage():
+     "Δεν υπάρχουν ακόμη αρκετά δεδομένα για τον Κυνηγό. "+svCoverage();
  $("marketHunterRows").innerHTML=count?marketHunterItems.slice(0,30).map(o=>{
    const examples=o.nearest.map(z=>z.match+" ("+z.score+")").join(" · ");
    const rare="Η συμπεριφορά διαφέρει περισσότερο από του "+o.percentile+
@@ -683,8 +685,8 @@ function renderMarketHunter(){
      '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
  }).join("")+
  (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
- '<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>';
- $("marketHunterRows").insertAdjacentHTML("beforeend",svSavedExtras("hunter",marketHunterItems.map(o=>o.x)));
+ (kept?'':'<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>');
+ $("marketHunterRows").insertAdjacentHTML("beforeend",kept);
  $("marketHunterRows").querySelectorAll("[data-hunter-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.hunterId);
    if(!matches.some(z=>z.id===id))return;
@@ -850,9 +852,11 @@ function buildMarketWatch(){
 }
 function renderMarketWatch(){
  const n=marketWatchItems.length;
+ const kept=svSavedExtras("analyst",marketWatchItems.map(o=>o.x));
  $("marketWatchSummary").textContent=n
    ?"Βρέθηκαν "+n+" προσεχείς αγώνες με πλήρη στιγμιότυπα. Πρώτες εμφανίζονται οι λιγότερο συνηθισμένες κινήσεις χρημάτων/αποδόσεων, όχι προβλέψεις νίκης."
-    : "Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα. "+svCoverage();
+   :kept?"Αποθηκευμένοι αγώνες που περιμένουν τελικό αποτέλεσμα. "+svCoverage():
+     "Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα. "+svCoverage();
  $("marketWatchRows").innerHTML=n?marketWatchItems.slice(0,30).map(o=>{
    const x=o.x;
    return '<button type="button" class="market-watch-item" data-observation-id="'+x.id+'">'+
@@ -863,8 +867,8 @@ function renderMarketWatch(){
      '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
  }).join("")+
    (n>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+n+' παρατηρήσεις.</p>':""):
-   '<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>';
- $("marketWatchRows").insertAdjacentHTML("beforeend",svSavedExtras("analyst",marketWatchItems.map(o=>o.x)));
+   (kept?'':'<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>');
+ $("marketWatchRows").insertAdjacentHTML("beforeend",kept);
  $("marketWatchRows").querySelectorAll("[data-observation-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.observationId);
    if(!matches.some(z=>z.id===id))return;
