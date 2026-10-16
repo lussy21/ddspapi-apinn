@@ -173,6 +173,117 @@ const signalSpecs=[
   {key:"90ContraMoney", fn:x=>x.contra90!==null?x.contra90:x.p90!==null?100-x.p90:null, tol:15, weight:0,cTol:15,cWeight:1.2}
 ];
 const usable=v=>v!==null&&Number.isFinite(v);
+// Every stored call is an immutable, timestamped snapshot from BEFORE kickoff.
+// Browser storage is local; no retrospective calls and no fake 24/7 tracking.
+function kickoffMs(x){
+ const k=String(x?.kickoff||"");
+ const t=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(k)?Date.parse(k):NaN;
+ return Number.isFinite(t)?t:null;
+}
+function autoKey(x){return key(x)+"|"+String(x.kickoff||"").slice(0,10);}
+function kickoffLabel(x){
+ const t=kickoffMs(x);
+ return t===null?"Άγνωστη έναρξη":new Date(t).toLocaleString("el-GR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+const levelNames={1:"Αδύναμη",2:"Μέτρια",3:"Ισχυρή"};
+function gradeFromExcel(x){
+ const v=(String(x.gradeRaw||"")+" "+String(x.alert||"")).match(/(\d{1,2}(?:[.,]\d+)?)\s*\/\s*10/);
+ const n=v?Number(v[1].replace(",",".")):NaN;
+ return Number.isFinite(n)&&n>=0&&n<=10?n:null;
+}
+function automaticOpinion(x,prior){
+ const alert=String(x.alert||"");
+ const contra=/ΚΟΝΤΡΑ/i.test(alert),fav=/ΦΑΒΟΡΙ/i.test(alert);
+ if(contra!==fav){
+   const g=gradeFromExcel(x),lvl=g===null?1:g>=7?3:g>=4?2:1;
+   return {pick:contra?"contra":"fav",level:lvl,source:"excel",nFav:0,nContra:0,
+     reason:"Καμπανάκι Excel: "+alert.replace(/\s+/g," ").trim()+
+       (g===null?" · Χωρίς βαθμό Excel 0–10.":" · Βαθμός Excel "+nf(g,1)+"/10."),
+     version:"v1"};
+ }
+ const sample=side=>{
+   const sims=prior.map(z=>{const a=similarity(x,z,side,"medium");return a?{x:z,d:a.distance}:null})
+    .filter(Boolean).sort((a,b)=>a.d-b.d).slice(0,30);
+   return {n:sims.length,w:sims.filter(z=>won(z.x)).length,home:sims.filter(z=>z.x.f===x.f).length};
+ };
+ const a=sample("fav"),b=sample("contra"),sources=[];
+ if(a.n>=6)sources.push({rate:a.w/a.n,n:a.n,home:a.home});
+ if(b.n>=6)sources.push({rate:b.w/b.n,n:b.n,home:b.home});
+ if(!sources.length)return {pick:"abstain",level:1,source:"history",nFav:a.n,nContra:b.n,
+   reason:"Αποχή: ανεπαρκείς ιστορικές συγκρίσεις (φαβορί "+a.n+", κόντρα "+b.n+").",version:"v1"};
+ const weighted=sources.reduce((v,z)=>v+z.rate*Math.min(25,z.n),0)/
+   sources.reduce((v,z)=>v+Math.min(25,z.n),0);
+ const conflict=sources.length===2&&(sources[0].rate-.5)*(sources[1].rate-.5)<0;
+ const edge=Math.abs(weighted-.5);
+ const pick=conflict||edge<.075?"abstain":weighted>.5?"fav":"contra";
+ const count=sources.reduce((v,z)=>v+z.n,0),same=sources.reduce((v,z)=>v+z.home,0);
+ const level=pick==="abstain"?1:count>=40&&same>=12&&edge>=.22?3:count>=16&&same>=5&&edge>=.13?2:1;
+ const reason=pick==="abstain"
+    ?"Αποχή: αντικρουόμενα ή σχεδόν ισορροπημένα ιστορικά αποτελέσματα."
+    :"Ιστορικά δείγματα: "+a.n+" με βάση το φαβορί, "+b.n+" με βάση την κόντρα · "+same+" ίδιας έδρας. Η βαθμίδα εκφράζει στήριξη, όχι πιθανότητα.";
+ return {pick,level,source:"history",nFav:a.n,nContra:b.n,reason,version:"v1"};
+}
+function captureAutoPredictions(){
+ const now=Date.now();
+ const due=matches.filter(x=>kickoffMs(x)!==null&&kickoffMs(x)>now+60000&&!finished(x)&&
+   usable(x.o)&&usable(x.l)&&usable(x.p)&&usable(x.rank)&&!autoLedger[autoKey(x)]);
+ if(!due.length)return;
+ const earlier=matches.filter(z=>finished(z)&&(kickoffMs(z)===null||kickoffMs(z)<now));
+ let changed=false;
+ for(const x of due)try{
+   if(Date.now()>=kickoffMs(x)-60000||autoLedger[autoKey(x)])continue;
+   const historical=earlier.filter(z=>autoKey(z)!==autoKey(x)&&
+     (kickoffMs(z)===null||kickoffMs(z)<kickoffMs(x)));
+   const decision=automaticOpinion(x,historical);
+   const entry={fixture:autoKey(x),match:name(x),league:x.lg,kickoff:x.kickoff,
+     recordedAt:new Date().toISOString(),favorite:fave(x),favoriteVenue:x.f,
+     oddsFav:x.l,oddsContra:x.cl,...decision};
+   if(Date.parse(entry.recordedAt)>=kickoffMs(x))continue;
+   autoLedger[entry.fixture]=entry;changed=true;
+ }catch(e){/* One bad row must not interrupt the Excel view. */}
+ if(changed){
+   const entries=Object.values(autoLedger).filter(z=>z&&z.recordedAt)
+     .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt))).slice(0,1200);
+   autoLedger=Object.fromEntries(entries.map(z=>[z.fixture,z]));
+   store("sv_prelock_v1",autoLedger);
+ }
+}
+function autoOutcome(entry){
+ const x=matches.find(z=>autoKey(z)===entry.fixture);
+ if(!x||!finished(x))return "pending";
+ if(entry.pick==="abstain")return "abstain";
+ const winner=won(x);
+ return entry.pick==="fav"?(winner?"win":"lose"):(winner?"lose":"win");
+}
+function renderAutoCard(){
+ if(!current)return;
+ const x=current,t=kickoffMs(x),saved=autoLedger[autoKey(x)];
+ const badge=$("autoGrade"),pick=$("autoPick"),reason=$("autoReason"),lock=$("autoLock");
+ const set=(lv,grade,title,why,when)=>{
+   badge.className="prematch-tag level-"+lv;badge.textContent=grade;
+   pick.textContent=title;reason.textContent=why;lock.textContent=when;
+ };
+ if(saved){
+   const titles={fav:"Νίκη φαβορί · "+saved.favorite,contra:"Κόντρα +0,5",abstain:"Αποχή"};
+   const result=autoOutcome(saved);
+   set(saved.level,saved.level+"/3 · "+levelNames[saved.level],titles[saved.pick]||"Αποχή",saved.reason,
+     "Κλειδώθηκε "+new Date(saved.recordedAt).toLocaleString("el-GR")+" · Πριν από "+kickoffLabel(x)+
+     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"));
+ }else if(t===null){
+   set(1,"1/3 · Χωρίς ώρα","Δεν υπάρχει προ-αγωνιστική καταγραφή",
+     "Λείπει έγκυρη ώρα έναρξης στην BY του Excel. Δεν μπορούμε να επιβεβαιώσουμε ότι δεν ξεκίνησε.",
+     "Δεν επινοούμε ώρα έναρξης.");
+ }else if(Date.now()>=t-60000||finished(x)){
+   set(1,"1/3 · Χωρίς εγγραφή","Δεν καταγράφηκε πριν τη σέντρα",
+     "Αυτός ο αγώνας δεν είχε προ-αγωνιστική καταγραφή σε αυτή τη συσκευή. Δεν συμπληρώνουμε εκτιμήσεις μετά τη σέντρα.",
+     "Έναρξη: "+kickoffLabel(x));
+ }else{
+   set(1,"1/3 · Αναμονή","Περιμένουμε αποδόσεις",
+     "Μόλις εμφανιστούν οι αρχικές και τελευταίες αποδόσεις, ποσοστά και τζίρος, καταγράφεται απόφαση, ακόμη κι αν δεν ανοίξεις το συγκεκριμένο παιχνίδι.",
+     "Έναρξη: "+kickoffLabel(x)+" · Η εφαρμογή πρέπει να είναι ανοιχτή.");
+ }
+}
+
 function marketWon(x) {
   const w=won(x);
   return w===null?null:histMarket==="contra"?!w:w;
