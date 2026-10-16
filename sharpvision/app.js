@@ -419,12 +419,17 @@ function renderFingerprint(){
    '<small>Τζίρος: <span class="cash-value">'+safe(usable(z.turn)&&z.turn>=0?money(z.turn):"—")+'</span></small></div>'
  ).join("");
  $("fingerprintMoneyRows").innerHTML=stages.map(z=>{
-   const f=pct(z.p),c=pct(z.contra),fw=f===null?0:f,cw=c===null?0:Math.min(c,100-fw);
+   const f=pct(z.p),c=pct(z.contra);
+   const incompatible=f!==null&&c!==null&&(f+c>100.5||f+c<99);
+   const fw=Number((f===null?0:f).toFixed(2));
+   const cw=Number((c===null?0:c).toFixed(2));
    const parts=f===null&&c===null?
      '<p class="tiny">Δεν υπάρχει διαθέσιμο ποσοστό.</p>':
-     '<div class="sv-moneybar" aria-hidden="true">'+
-       (fw>0?'<span class="fav" style="width:'+fw+'%"></span>':"")+
-       (cw>0?'<span class="contra" style="width:'+cw+'%"></span>':"")+'</div>';
+     incompatible?
+       '<p class="tiny">Τα ποσοστά δεν αθροίζουν σε 100%. Προβάλλονται μόνο οι πραγματικές τιμές, χωρίς παραπλανητική μπάρα.</p>':
+       '<div class="sv-moneybar" aria-hidden="true">'+
+         (fw>0?'<span class="fav" style="width:'+fw+'%"></span>':"")+
+         (cw>0?'<span class="contra" style="width:'+Math.min(cw,100-fw)+'%"></span>':"")+'</div>';
    return '<div class="sv-fingerprint-moneyrow">'+
      '<div class="sv-moneyrow-heading"><strong>'+safe(z.title==="Αρχική / 11:00"?"11:00":z.title)+'</strong>'+
      '<span>Φαβορί '+safe(f===null?"—":per(f))+' · Κόντρα '+safe(c===null?"—":per(c))+'</span></div>'+
