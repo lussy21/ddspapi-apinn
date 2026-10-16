@@ -207,6 +207,106 @@
  .sv-fingerprint-stage strong{font-size:10px}.sv-fingerprint-stage small{font-size:10px}
  .sv-moneyrow-heading span{font-size:11px}}
 
+
+/* Fidelity pass: screenshot-sized phones must NOT squeeze the title or numbers. */
+.sv-fingerprint{
+  background:
+    radial-gradient(circle at 82% 5%,rgba(31,120,232,.13),transparent 40%),
+    linear-gradient(155deg,#0e203c,#0b1930);
+  border-color:#2969b2;
+}
+.sv-fingerprint-header{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.sv-fingerprint-heading{width:100%;align-items:center;gap:12px}
+.sv-fingerprint-heading>div{min-width:0}
+.sv-fingerprint-heading h2{font-size:clamp(20px,3.2vw,25px);line-height:1.15;letter-spacing:-.03em}
+.sv-fingerprint-heading .tiny{margin-top:7px;max-width:none;font-size:12px}
+.sv-fingerprint-header button{justify-self:start;min-height:42px;padding:10px 14px;font-size:13px}
+.sv-fingerprint-dashboard{
+  background:linear-gradient(155deg,#071b36,#0b2243);
+  border-color:#285996;
+  box-shadow:inset 0 0 36px #006cf01a,0 10px 24px #010a1d42;
+}
+.sv-fingerprint-chart{
+  background:linear-gradient(150deg,#071832,#0b2040);
+  border-color:#2b5f9f;
+}
+.sv-fingerprint-summary-card{
+  background:linear-gradient(135deg,#102d58,#0c2040);
+  border-color:#2962a2;
+  box-shadow:inset 0 1px 0 #72bfff12,0 9px 19px #020e2466;
+}
+.sv-fingerprint-summary-number{
+  white-space:nowrap;
+  overflow-wrap:normal;
+  letter-spacing:-.04em;
+  font-size:clamp(15px,2.3vw,21px);
+}
+.sv-fingerprint-summary-change{font-size:12px;font-weight:750}
+.sv-fingerprint-summary-card.odds .sv-fingerprint-summary-change.positive{color:#ffb177}
+.sv-fingerprint-summary-card.odds .sv-fingerprint-summary-change.negative{color:#50d4ff}
+.sv-fingerprint-summary-card.cash .sv-fingerprint-summary-change.positive{color:#4be0b0}
+.sv-fingerprint-money{
+  background:linear-gradient(150deg,#091e3b,#0c2341);
+  border-color:#2963a8;
+}
+.sv-fingerprint-insight-box{
+  background:linear-gradient(115deg,#192640,#0b2546);
+  border-color:#365b99;
+}
+.sv-fingerprint-status{color:#8cb8e0;font-size:11px;font-weight:700}
+@media(max-width:700px){
+  .sv-fingerprint-summary{grid-template-columns:1fr;gap:9px}
+  .sv-fingerprint-summary-card.distribution{grid-column:auto}
+  .sv-fingerprint-summary-card{
+    padding:13px 14px;
+    border-radius:14px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    column-gap:9px;
+    row-gap:4px;
+    align-items:start;
+  }
+  .sv-fingerprint-summary-label{grid-column:1/-1;font-size:13px}
+  .sv-fingerprint-summary-number{
+    grid-column:1/-1;
+    margin-top:4px;
+    font-size:clamp(18px,4.5vw,23px);
+    line-height:1.3;
+  }
+  .sv-fingerprint-summary-change{grid-column:1/-1;margin-top:1px;font-size:12px}
+  .sv-fingerprint-summary-sub{grid-column:1/-1;margin-top:0;font-size:11px}
+  .sv-fingerprint-summary-card.distribution .sv-fingerprint-summary-number{
+    font-size:clamp(14px,3.8vw,19px)!important;
+    white-space:normal;line-height:1.55;
+  }
+  .sv-fingerprint-mini-money{grid-column:1/-1;margin-top:7px;height:10px}
+}
+@media(max-width:470px){
+  .sv-fingerprint.pad{padding:15px 12px 19px}
+  .sv-fingerprint-heading{gap:11px}
+  .sv-fingerprint-heading h2{font-size:21px;white-space:nowrap}
+  .sv-fingerprint-heading .tiny{font-size:12px;line-height:1.5}
+  .sv-fingerprint-header button{min-height:42px;font-size:13px;padding:9px 13px}
+  .sv-fingerprint-dashboard{margin:15px -7px 0;padding:12px 6px 14px;border-radius:17px}
+  .sv-fingerprint-chart{padding:5px 0 1px;border-radius:13px}
+  .sv-fingerprint-chart svg{max-width:none;max-height:none}
+  .sv-fingerprint-legend{padding-left:5px;font-size:11px;gap:7px 12px;justify-content:center}
+  .sv-fingerprint-scales{font-size:10px;margin:8px 0 12px}
+  .sv-fingerprint-summary{padding:0 4px}
+  .sv-fingerprint-summary-card{padding:12px 14px}
+  .sv-fingerprint-summary-label{font-size:12px}
+  .sv-fingerprint-summary-number{font-size:20px}
+  .sv-fingerprint-summary-card.distribution .sv-fingerprint-summary-number{font-size:16px!important}
+  .sv-fingerprint-stages{grid-template-columns:1fr}
+  .sv-fingerprint-stage{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;
+    text-align:left;align-items:center;padding:10px 12px}
+  .sv-fingerprint-stage strong{grid-row:span 2;font-size:12px;margin:0}
+  .sv-fingerprint-stage small{font-size:11px;text-align:right}
+  .sv-fingerprint-money,.sv-fingerprint-insight-box{padding:15px 12px}
+  .sv-moneyrow-heading span{font-size:11px}
+  .sv-fingerprint-money h3{font-size:16px}
+}
+
 </style></head><body>
 <div id="login" class="panel login hide"><div class="brand"><span class="logo">SV</span><b>SharpVision</b></div><h1>Η προσωπική σου ανάλυση</h1><p class="muted">Βάλε τον κωδικό πρόσβασης για να ανοίξεις τους αγώνες και το ιστορικό.</p><form id="loginForm"><input type="password" id="password" autocomplete="current-password" placeholder="Κωδικός πρόσβασης" required><button class="primary full">Άνοιγμα SharpVision</button></form><p id="loginError" class="feedback"></p><p class="footer">Τα στοιχεία του ιδιωτικού Excel δεν αποθηκεύονται σε δημόσιο ιστότοπο.</p></div>
 <div id="app" class="shell hide"><header class="top"><div class="brand"><div class="logo">SV</div><div><strong>SharpVision</strong><small>Προσωπική ανάλυση αγοράς</small></div></div><div class="top-right"><span class="status" id="feedStatus">Σύνδεση…</span><button class="sm subtle" id="reload">↻</button><button class="sm ghost" id="logout">Έξοδος</button></div></header>
