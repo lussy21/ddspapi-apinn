@@ -216,7 +216,7 @@ function automaticOpinion(x,prior){
    const saved=unique.get(id);
    if(!saved||hit.sim.similarity>saved.sim.similarity)unique.set(id,hit);
  }
- const pool=[...unique.values()].sort((a,b)=>b.sim.similarity-a.sim.similarity).slice(30);
+ const pool=[...unique.values()].sort((a,b)=>b.sim.similarity-a.sim.similarity).slice(0,30);
  const n=pool.length,same=pool.filter(z=>z.match.f===x.f).length;
  const noSample={sample:n,sameVenue:same,nFav:found.fav.length,nContra:found.contra.length};
  const base={...noSample,source:"sharpvision_history",version:"v2"};
