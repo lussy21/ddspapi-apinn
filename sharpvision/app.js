@@ -363,7 +363,7 @@ function svFingerprintTag(x,y,label,kind){
     'fill="'+(odd?'#073d73':'#332718')+'" fill-opacity=".98" stroke="'+
     (odd?'#32c5fc':'#ffb653')+'" stroke-width="1.15"/>'+
   '<text x="'+x+'" y="'+(y-2).toFixed(1)+'" fill="'+
-    (odd?'#88eaff':'#ffe1a1')+'" font-size="11.7" font-weight="850" text-anchor="middle">'+
+    (odd?'#88eaff':'#ffe1a1')+'" font-size="13.5" font-weight="850" text-anchor="middle">'+
     safe(label)+'</text></g>';
 }
 function svFingerprintSvg(stages,fixture){
@@ -393,16 +393,16 @@ function svFingerprintSvg(stages,fixture){
     '<filter id="svLineGlow" x="-25%" y="-30%" width="150%" height="160%">'+
       '<feGaussianBlur stdDeviation="2.8"/></filter>'+
   '</defs>';
- svg+='<text x="13" y="25" fill="#75d8ff" font-size="13" font-weight="820">Απόδοση</text>'+
+ svg+='<text x="13" y="25" fill="#75d8ff" font-size="15.5" font-weight="820">Απόδοση</text>'+
    '<text x="415" y="25" fill="#ffca79" font-size="13" font-weight="820" text-anchor="end">Τζίρος €</text>';
  for(let i=0;i<=3;i++){
    const y=top+(bottom-top)*i/3,amount=(3-i)*topTurn/3,odd=maxOdds-(maxOdds-minOdds)*i/3;
    svg+='<line x1="57" y1="'+y.toFixed(1)+'" x2="375" y2="'+y.toFixed(1)+
      '" stroke="#477090" stroke-opacity=".63" stroke-width=".8" stroke-dasharray="4 5"/>';
    if(odds.length)
-     svg+='<text x="51" y="'+(y+4).toFixed(1)+'" font-size="10" fill="#a8dafa" text-anchor="end">'+safe(nf(odd,2))+'</text>';
+     svg+='<text x="51" y="'+(y+4).toFixed(1)+'" font-size="12.4" fill="#a8dafa" text-anchor="end">'+safe(nf(odd,2))+'</text>';
    if(turn.length)
-     svg+='<text x="424" y="'+(y+4).toFixed(1)+'" font-size="10" fill="#edc78b" text-anchor="end">'+
+     svg+='<text x="424" y="'+(y+4).toFixed(1)+'" font-size="12.4" fill="#edc78b" text-anchor="end">'+
       safe(svFingerprintCash(amount))+'</text>';
  }
  stages.forEach((z,i)=>{
@@ -449,9 +449,9 @@ function svFingerprintSvg(stages,fixture){
  });
  stages.forEach((z,i)=>{
    const x=xs[i];
-   svg+='<text x="'+x+'" y="272" fill="#ecf7ff" font-size="13" font-weight="790" text-anchor="middle">'+
+   svg+='<text x="'+x+'" y="272" fill="#ecf7ff" font-size="15" font-weight="790" text-anchor="middle">'+
      safe(z.short)+'</text>'+
-     '<text x="'+x+'" y="290" fill="#94b8d9" font-size="10" text-anchor="middle">'+
+     '<text x="'+x+'" y="290" fill="#94b8d9" font-size="11.5" text-anchor="middle">'+
      safe(i===0?"Απόδ. αρχική / τζίρος 11:00":i===1?"90′ πριν":"Τελευταία")+'</text>';
    if(!svFingerprintValidOdds(z.odds)&&!svFingerprintValidCash(z.turn))
      svg+='<text x="'+x+'" y="'+(top+(bottom-top)*.56).toFixed(1)+
@@ -549,7 +549,7 @@ function renderFingerprint(){
  if(startOdds!==null&&svFingerprintValidOdds(x.l)){
    const d=(x.l/startOdds-1)*100,period=has90Odds?"Από τα 90′ ως τώρα":"Από την αρχική ως την τελευταία μέτρηση";
    oddsText=period+" η απόδοση του φαβορί "+
-     (Math.abs(d)<.25?"έμεινε σχεδόν ίδια.":" "+(d>0?"ανέβηκε":"έπεσε")+
+     (Math.abs(d)<.25?"έμεινε σχεδόν ίδια.":(d>0?"ανέβηκε":"έπεσε")+
       " κατά "+nf(Math.abs(d),2)+"%.");
  }
  const f=svFingerprintPct(x.p),c=svFingerprintPct(x.contra);
