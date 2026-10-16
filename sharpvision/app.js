@@ -318,6 +318,31 @@ function automaticOpinion(x,prior){
     cautions.push("Ανατροπή τάσης στο τελευταίο στάδιο αποδόσεων.");
   if(usable(x.v)&&usable(x.v90)&&x.v90>0&&x.v/x.v90>=2.5)
     details.push("Ο τζίρος αυξήθηκε έντονα μετά το στιγμιότυπο 90′: απαιτείται προσοχή στη νεότερη κίνηση.");
+  // The same percentage change means something different in a thin
+  // market, a liquid late market, or a weak historical sample. Modify
+  // attention to the available circumstances, but do not manufacture votes.
+  const oddsVote=evidence.find(z=>z.name==="Αποδόσεις");
+  const moneyVote=evidence.find(z=>z.name==="Μεταβολή χρημάτων");
+  const historyVote=evidence.find(z=>z.name==="Ιστορική υπεραπόδοση έναντι αγοράς");
+  if(turnover!==null&&turnover<35){
+    if(oddsVote)oddsVote.weight=.25;
+    if(moneyVote)moneyVote.weight=.20;
+    if(historyVote)historyVote.weight=.55;
+    details.push("Χαμηλή ρευστότητα: δίνω λιγότερο βάρος στις άμεσες κινήσεις τιμών και χρημάτων.");
+  }else if(turnover!==null&&turnover>=80&&odds.late!==null&&Math.abs(odds.late)>=.4){
+    if(oddsVote)oddsVote.weight=.44;
+    if(moneyVote)moneyVote.weight=.26;
+    if(historyVote)historyVote.weight=.30;
+    details.push("Ισχυρή πρόσφατη κίνηση με υψηλό τζίρο: δίνω μεγαλύτερη προσοχή στις τελευταίες αποδόσεις.");
+  }
+  if(historyVote&&history.n<12){
+    historyVote.weight=Math.min(historyVote.weight,.18);
+    details.push("Μικρό ιστορικό δείγμα: μειώνω το βάρος των συγκρίσεων.");
+  }
+  if(moneyVote&&!usable(x.p90)){
+    moneyVote.weight=Math.min(moneyVote.weight,.18);
+    details.push("Λείπει το στιγμιότυπο χρημάτων των 90′: κρατώ επιφυλακτική την ένδειξη ροής.");
+  }
   const weight=evidence.reduce((a,z)=>a+z.weight,0);
   const total=weight?evidence.reduce((a,z)=>a+z.weight*z.score,0)/weight:0;
   const direction=svSign(total);
