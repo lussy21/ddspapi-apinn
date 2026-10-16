@@ -318,8 +318,8 @@ function automaticOpinion(x,prior){
     "Πολύ μικρό γενικό δείγμα στην ίδια περιοχή αποδόσεων/τζίρου.";
   let pick="abstain",level=0;
   const n=h.priceN,delta=h.advantage,z=h.z;
-  const enoughBase=b.n>=15;
-  const contextContrast=enoughBase&&h.winPct!==null?((h.winPct-b.winPct)/100):null;
+  const enoughBase=b.priceN>=15;
+  const contextContrast=enoughBase&&h.priceN?((h.priceWins/h.priceN)-(b.priceWins/b.priceN)):null;
   const advantageOk=delta!==null&&Math.abs(delta)>=.10;
   const baselineOk=contextContrast!==null&&Math.abs(contextContrast)>=.065&&
     Math.sign(contextContrast)===Math.sign(delta);
@@ -388,8 +388,47 @@ function autoOutcome(entry){
  const winner=won(x);
  return entry.pick==="fav"?(winner?"win":"lose"):(winner?"lose":"win");
 }
+function renderCasebook(book){
+ const panel=$("casebookPanel"),teaser=$("casebookTeaser"),
+   table=$("casebookStates"),examples=$("casebookExamples");
+ if(!book){panel.classList.add("hide");teaser.textContent="";table.innerHTML="";examples.innerHTML="";return}
+ const a=book.profile||{},base=book.baseline||{},n=a.n||0;
+ const f=(x)=>x===null||x===undefined?"—":nf(x,0)+"%";
+ teaser.textContent=
+   "Παρόμοιες περιπτώσεις: "+(n?a.wins+"/"+n+" νίκες φαβορί ("+f(a.winPct)+")":"Καμία")+
+   "\nΑπό αυτές, "+(a.priceN||0)+" είχαν και τις δύο τιμές για έλεγχο με τις τότε αποδόσεις."+
+   (a.priceN>=6?" Η αγορά αντιστοιχούσε σε "+f(a.expectedPct)+
+      " και έγιναν "+a.priceWins+"/"+a.priceN+" νίκες φαβορί.":"")+
+   (base.priceN>=10?"\nΣε παρόμοια επίπεδα αποδόσεων και τζίρου γενικά: "+
+      base.priceWins+"/"+base.priceN+" ("+f(100*base.priceWins/base.priceN)+")":"")+
+   "\nΣύγκριση: "+book.scope+". Σύνολο παλιών αγώνων με έγκυρα στιγμιότυπα: "+
+   (book.historical||0)+".";
+ const titles={down:"Έπεσε",flat:"Έμεινε σταθερή",up:"Ανέβηκε"};
+ const lines=(book.states||[]).map(z=>{
+   const pct=z.n?f(z.winPct):"—";
+   const cls=book.label&&
+       ((book.label.includes("Πτώση")&&z.state==="down")||
+       (book.label.includes("Σταθερή")&&z.state==="flat")||
+       (book.label.includes("Άνοδος")&&z.state==="up"))?" class=\"case-current\"":"";
+   return '<tr'+cls+'><td>'+safe(titles[z.state]||z.state)+'</td><td>'+
+     safe((z.n||0)?z.wins+"/"+z.n:"0")+'</td><td>'+safe(pct)+'</td></tr>';
+ }).join("");
+ table.innerHTML='<table class="casebook-table"><thead><tr><th>Απόδοση φαβορί</th>'+
+   '<th>Νίκες/αγώνες</th><th>Ποσοστό</th></tr></thead><tbody>'+lines+'</tbody></table>';
+ examples.innerHTML=(book.examples||[]).length?(book.examples||[]).map(e=>
+   '<div class="casebook-example"><strong>'+safe(e.match)+'</strong> '+
+   '<span class="'+(e.favoriteWon?"good":"bad")+'">'+safe(e.score)+'</span>'+
+   '<small>'+safe(e.league)+' · '+safe(e.favoriteWon?"Νίκη φαβορί":"Επιτυχία κόντρας +0,5")+
+   ' · Νέος τζίρος προς φαβορί ≈'+safe(money(e.newFav))+
+   ' · Μερίδιο '+safe(nf(e.pct,1))+'% · Μεταβολή απόδοσης '+
+   safe((e.priceMove>0?"+":"")+nf(e.priceMove,2))+'%</small></div>').join(""):
+   '<div class="casebook-note">Δεν υπάρχουν αρκετά πλήρη παραδείγματα.</div>';
+ panel.classList.remove("hide");
+}
+
 function renderAutoCard(){
  if(!current)return;
+ renderCasebook(null);
  const x=current,t=kickoffMs(x),saved=autoLedger[autoKey(x)];
  const badge=$("autoGrade"),pick=$("autoPick"),reason=$("autoReason"),lock=$("autoLock");
  const set=(lv,grade,title,why,when)=>{
@@ -402,6 +441,7 @@ function renderAutoCard(){
    set(saved.level,saved.pick==="abstain"?"Αποχή · Χωρίς βαθμίδα":saved.level+"/3 · "+levelNames[saved.level],titles[saved.pick]||"Αποχή",saved.reason,
      "Κλειδώθηκε "+new Date(saved.recordedAt).toLocaleString("el-GR")+" · Πριν από "+kickoffLabel(x)+
      (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"));
+   renderCasebook(saved.casebook);
  }else if(t===null){
    set(1,"1/3 · Χωρίς ώρα","Δεν υπάρχει προ-αγωνιστική καταγραφή",
      "Λείπει έγκυρη ώρα έναρξης στην BY του Excel. Δεν μπορούμε να επιβεβαιώσουμε ότι δεν ξεκίνησε.",
@@ -428,6 +468,7 @@ function renderAutoCard(){
        "Προσωρινή · "+preview.level+"/3 · "+levelNames[preview.level];
      set(preview.pick==="abstain"?1:preview.level,grade,choice,preview.reason,
        "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x));
+     renderCasebook(preview.casebook);
    }
  }
 }
