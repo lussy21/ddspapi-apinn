@@ -431,9 +431,16 @@ function renderAutoCard(){
  if(!current)return;
  renderCasebook(null);
  const x=current,t=kickoffMs(x),saved=autoLedger[autoKey(x)];
+ const card=$("autoDecisionCard");
  const badge=$("autoGrade"),pick=$("autoPick"),reason=$("autoReason"),lock=$("autoLock");
- const set=(lv,grade,title,why,when)=>{
-   badge.className="prematch-tag level-"+lv;badge.textContent=grade;
+ // Only an actual favorite/contra decision gets color. Abstention,
+ // unrecorded fixtures and missing data stay visually neutral.
+ const set=(lv,grade,title,why,when,side="none")=>{
+   const marketSide=["fav","contra"].includes(side)?side:"none";
+   const step=Math.max(1,Math.min(3,Number(lv)||1));
+   const tone="outlook-"+marketSide+(marketSide==="none"?"":" level-"+step);
+   card.className="panel pad prematch-card "+tone;
+   badge.className="prematch-tag "+tone;badge.textContent=grade;
    pick.textContent=title;reason.textContent=why;lock.textContent=when;
  };
  if(saved){
@@ -441,7 +448,7 @@ function renderAutoCard(){
    const result=autoOutcome(saved);
    set(saved.level,saved.pick==="abstain"?"Αποχή · Χωρίς βαθμίδα":saved.level+"/3 · "+levelNames[saved.level],titles[saved.pick]||"Αποχή",saved.reason,
      "Κλειδώθηκε "+new Date(saved.recordedAt).toLocaleString("el-GR")+" · Πριν από "+kickoffLabel(x)+
-     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"));
+     (result==="win"?" · Επαληθεύτηκε":result==="lose"?" · Δεν επαληθεύτηκε":" · Αναμονή αποτελέσματος"),saved.pick);
    renderCasebook(saved.casebook);
  }else if(t===null){
    set(1,"1/3 · Χωρίς ώρα","Δεν υπάρχει προ-αγωνιστική καταγραφή",
@@ -481,7 +488,7 @@ function renderAutoCard(){
      const grade=preview.pick==="abstain"?"Προσωρινή · Αποχή":
        "Προσωρινή · "+preview.level+"/3 · "+levelNames[preview.level];
      set(preview.pick==="abstain"?1:preview.level,grade,choice,preview.reason,
-       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x));
+       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει περίπου 22–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x),preview.pick);
      renderCasebook(preview.casebook);
    }
  }
