@@ -301,7 +301,18 @@ function automaticOpinion(x,prior){
   }else if(priceDir!==0&&priceDir===moneyDir){
     details.push("Αποδόσεις και νέα ροή χρημάτων συμφωνούν προς "+svWord(priceDir)+".");
   }
-  if(history.n>=7&&histDir!==0&&priceDir!==0&&histDir!==priceDir)
+  // High money concentration with opposite price action is a warning,
+  // not automatic proof of informed money, manipulation or a contrarian edge.
+  if(usable(x.p)&&usable(x.o)&&usable(x.l)){
+    const favoriteDrift=change(x.o,x.l);
+    if(x.p>=85&&favoriteDrift!==null&&favoriteDrift>=1.7)
+      cautions.push("Πολύ υψηλό ποσοστό χρημάτων στο φαβορί ("+svPercent(x.p)+
+        "), αλλά η απόδοσή του ανεβαίνει. Η αγορά δεν επιβεβαιώνει τη συγκέντρωση χρημάτων.");
+    else if(x.p<=35&&favoriteDrift!==null&&favoriteDrift<=-1.7)
+      cautions.push("Λίγα χρήματα στο φαβορί ("+svPercent(x.p)+
+        "), αλλά η απόδοσή του πέφτει. Υπάρχει αξιοσημείωτη απόκλιση.");
+  }
+    if(history.n>=7&&histDir!==0&&priceDir!==0&&histDir!==priceDir)
     cautions.push("Το ιστορικό διαφωνεί με την τωρινή τιμή αγοράς.");
   if(odds.late!==null&&svSign(odds.late)!==0&&priceDir!==0&&svSign(odds.late)!==priceDir)
     cautions.push("Ανατροπή τάσης στο τελευταίο στάδιο αποδόσεων.");
@@ -324,7 +335,7 @@ function automaticOpinion(x,prior){
     if(level>=2&&supports.length===3&&against.length===0&&
        Math.abs(total)>=.67&&history.n>=22&&history.same>=7&&
        history.avg>=87&&sufficientTurn&&turnover>=75&&
-       !cautions.some(z=>/Ανατροπή|Αντίφαση|διαφωνεί/.test(z))&&
+       !cautions.some(z=>/Ανατροπή|Αντίφαση|διαφωνεί|επιβεβαιώνει|απόκλιση/.test(z))&&
        ["m","cm","p0","p90"].every(k=>usable(x[k])))
        level=3;
   }
@@ -358,7 +369,7 @@ function captureAutoPredictions(){
  const earlier=matches.filter(z=>finished(z)&&(kickoffMs(z)===null||kickoffMs(z)<now));
  let changed=false;
  for(const x of due)try{
-   if(Date.now()>=kickoffMs(x)-60000||autoLedger[autoKey(x)])continue;
+   if(Date.now()>=kickoffMs(x)-120000||autoLedger[autoKey(x)])continue;
    const historical=earlier.filter(z=>autoKey(z)!==autoKey(x));
    const decision=automaticOpinion(x,historical);
    const entry={fixture:autoKey(x),match:name(x),league:x.lg,kickoff:x.kickoff,
@@ -404,9 +415,24 @@ function renderAutoCard(){
      "Αυτός ο αγώνας δεν είχε προ-αγωνιστική καταγραφή σε αυτή τη συσκευή. Δεν συμπληρώνουμε εκτιμήσεις μετά τη σέντρα.",
      "Έναρξη: "+kickoffLabel(x));
  }else{
-   set(1,"1/3 · Αναμονή","Περιμένουμε αποδόσεις",
-     "Μόλις εμφανιστούν οι αρχικές και τελευταίες αποδόσεις, ποσοστά και τζίρος, καταγράφεται απόφαση, ακόμη κι αν δεν ανοίξεις το συγκεκριμένο παιχνίδι.",
-     "Έναρξη: "+kickoffLabel(x)+" · Η εφαρμογή πρέπει να είναι ανοιχτή.");
+   // A changing interpretation is displayed at any pregame time; only the
+   // first eligible reading in the T-75..T-2 minute window is saved immutably.
+   const hasBasic=["o","l","p","rank"].every(k=>usable(x[k]));
+   if(!hasBasic){
+     set(1,"Αναμονή στοιχείων","Δεν υπάρχουν αρκετά δεδομένα",
+       "Χρειάζονται αρχικές/τελευταίες αποδόσεις, ποσοστό χρημάτων και σχετικός τζίρος για τεκμηριωμένη γνώμη.",
+       "Έναρξη: "+kickoffLabel(x));
+   }else{
+     const historyNow=matches.filter(z=>finished(z)&&z.id!==x.id&&
+       (kickoffMs(z)===null||kickoffMs(z)<Date.now()));
+     const preview=automaticOpinion(x,historyNow);
+     const choice=preview.pick==="fav"?"Νίκη φαβορί · "+fave(x):
+       preview.pick==="contra"?"Κόντρα +0,5":"Αποχή";
+     const grade=preview.pick==="abstain"?"Προσωρινή · Αποχή":
+       "Προσωρινή · "+preview.level+"/3 · "+levelNames[preview.level];
+     set(preview.pick==="abstain"?1:preview.level,grade,choice,preview.reason,
+       "Ζωντανή μη αποθηκευμένη εκτίμηση · Κλειδώνει 75–2 λεπτά πριν την έναρξη, αν η εφαρμογή είναι ανοιχτή · Έναρξη "+kickoffLabel(x));
+   }
  }
 }
 
