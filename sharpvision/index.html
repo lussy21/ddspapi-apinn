@@ -307,6 +307,14 @@
   .sv-fingerprint-money h3{font-size:16px}
 }
 
+
+.sv-fingerprint-missing{
+  max-width:660px;margin:8px auto 0;padding:8px 10px;
+  border-radius:9px;border:1px solid #366188;
+  background:#132b4a;color:#c7def3;
+  font-size:11px;line-height:1.55;text-align:left;
+}
+
 </style></head><body>
 <div id="login" class="panel login hide"><div class="brand"><span class="logo">SV</span><b>SharpVision</b></div><h1>Η προσωπική σου ανάλυση</h1><p class="muted">Βάλε τον κωδικό πρόσβασης για να ανοίξεις τους αγώνες και το ιστορικό.</p><form id="loginForm"><input type="password" id="password" autocomplete="current-password" placeholder="Κωδικός πρόσβασης" required><button class="primary full">Άνοιγμα SharpVision</button></form><p id="loginError" class="feedback"></p><p class="footer">Τα στοιχεία του ιδιωτικού Excel δεν αποθηκεύονται σε δημόσιο ιστότοπο.</p></div>
 <div id="app" class="shell hide"><header class="top"><div class="brand"><div class="logo">SV</div><div><strong>SharpVision</strong><small>Προσωπική ανάλυση αγοράς</small></div></div><div class="top-right"><span class="status" id="feedStatus">Σύνδεση…</span><button class="sm subtle" id="reload">↻</button><button class="sm ghost" id="logout">Έξοδος</button></div></header>
@@ -328,6 +336,7 @@
         <span><i class="sv-legend-dot cash-dot"></i> Συνολικός τζίρος</span>
       </div>
       <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Γράφημα απόδοσης και τζίρου στα τρία πραγματικά στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
+      <p id="fingerprintMissing" class="sv-fingerprint-missing hide"></p>
       <p class="sv-fingerprint-scales">Αριστερή κλίμακα: απόδοση · Δεξιά: ευρώ</p>
       <div id="fingerprintSummaryCards" class="sv-fingerprint-summary"></div>
       <details class="sv-fingerprint-expand">
