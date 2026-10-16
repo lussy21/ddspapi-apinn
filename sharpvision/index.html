@@ -340,6 +340,36 @@
   .sv-fingerprint .sv-fingerprint-insight{margin-top:10px;font-size:12px}
 }
 
+
+/* Clean chart switcher: a single plot, never repeated odds/turnover cards. */
+.sv-fingerprint-modes{
+ display:grid;grid-template-columns:1fr 1fr;gap:5px;
+ margin:0 0 13px;padding:4px;border-radius:12px;
+ border:1px solid #244970;background:#06192f;
+}
+.sv-fingerprint-mode{
+ border:1px solid transparent;background:transparent;color:#bbd4eb;
+ padding:11px 7px;min-height:45px;border-radius:9px;
+ font-size:clamp(12px,2.6vw,14px);font-weight:800;line-height:1.25;
+}
+.sv-fingerprint-mode.is-selected{
+ background:linear-gradient(120deg,#1c6caa,#215e95);
+ border-color:#4bb9ef;color:#f0faff;
+ box-shadow:inset 0 1px #ffffff19,0 3px 12px #0012264d;
+}
+.sv-fingerprint .sv-fingerprint-dashboard>.sv-fingerprint-legend{
+ margin-bottom:10px;padding-left:5px;
+}
+.sv-fingerprint .sv-fingerprint-money{
+ margin-top:12px;
+}
+.sv-fingerprint .sv-fingerprint-money h3{font-size:15px}
+.sv-fingerprint .sv-fingerprint-insight{margin-top:12px}
+@media(max-width:420px){
+ .sv-fingerprint-modes{gap:3px;padding:3px}
+ .sv-fingerprint-mode{padding:10px 3px;font-size:12px}
+}
+
 </style></head><body>
 <div id="login" class="panel login hide"><div class="brand"><span class="logo">SV</span><b>SharpVision</b></div><h1>Η προσωπική σου ανάλυση</h1><p class="muted">Βάλε τον κωδικό πρόσβασης για να ανοίξεις τους αγώνες και το ιστορικό.</p><form id="loginForm"><input type="password" id="password" autocomplete="current-password" placeholder="Κωδικός πρόσβασης" required><button class="primary full">Άνοιγμα SharpVision</button></form><p id="loginError" class="feedback"></p><p class="footer">Τα στοιχεία του ιδιωτικού Excel δεν αποθηκεύονται σε δημόσιο ιστότοπο.</p></div>
 <div id="app" class="shell hide"><header class="top"><div class="brand"><div class="logo">SV</div><div><strong>SharpVision</strong><small>Προσωπική ανάλυση αγοράς</small></div></div><div class="top-right"><span class="status" id="feedStatus">Σύνδεση…</span><button class="sm subtle" id="reload">↻</button><button class="sm ghost" id="logout">Έξοδος</button></div></header>
@@ -356,15 +386,19 @@
   </div>
   <div id="fingerprintDetails" class="hide">
     <div class="sv-fingerprint-dashboard">
+      <div class="sv-fingerprint-modes" role="group" aria-label="Επιλογή στοιχείων στο γράφημα">
+        <button type="button" id="fingerprintModeOdds" class="sv-fingerprint-mode is-selected" aria-pressed="true">Απόδοση</button>
+        <button type="button" id="fingerprintModeBoth" class="sv-fingerprint-mode" aria-pressed="false">Απόδοση + Τζίρος</button>
+      </div>
       <div class="sv-fingerprint-legend" aria-label="Χρώματα γραφήματος">
         <span><i class="sv-legend-dot odds-dot"></i> Απόδοση φαβορί</span>
-        <span><i class="sv-legend-dot cash-dot"></i> Τζίρος €</span>
+        <span id="fingerprintTurnoverLegend" class="hide"><i class="sv-legend-dot cash-dot"></i> Τζίρος €</span>
       </div>
       <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Απόδοση και τζίρος στα πραγματικά στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
       <p id="fingerprintMissing" class="sv-fingerprint-missing hide"></p>
-      <p class="sv-fingerprint-scales">Μπλε: απόδοση · Πορτοκαλί: τζίρος. Αρχική απόδοση και τζίρος 11:00 μπορεί να μην είναι της ίδιας ώρας.</p>
+      <p id="fingerprintScales" class="sv-fingerprint-scales">Μπλε γραμμή: απόδοση φαβορί.</p>
       <div id="fingerprintMoney" class="sv-fingerprint-money">
-        <h3>Πώς άλλαξε η κατανομή χρημάτων;</h3>
+        <h3>Κατανομή χρημάτων (Τώρα)</h3>
         <div class="sv-fingerprint-legend sv-money-legend"><span><i class="sv-legend-dot favorite-dot"></i> Φαβορί</span><span><i class="sv-legend-dot against-dot"></i> Κόντρα +0,5</span></div>
         <div id="fingerprintMoneyRows"></div>
       </div>
