@@ -147,6 +147,7 @@ function render(){
   if(x.alert&&Array.isArray(af)&&/^#[0-9a-f]{6}$/i.test(af[0]||"")&&af[0].toLowerCase()!=="#ffffff"){
     alertBox.style.backgroundColor=af[0];alertBox.style.color=/^#[0-9a-f]{6}$/i.test(af[1]||"")?af[1]:"#1e1e1e";
   }
+  if(!$("fingerprintDetails").classList.contains("hide"))renderFingerprint();
   renderMarketObservation();renderAutoCard();renderHistory();renderArchive();
 }
 const change=(a,b)=>a!==null&&b!==null&&a>0?(b/a-1)*100:null;
@@ -331,6 +332,118 @@ function svMarketObservation(x,prior){
  return {x,pattern:p,title,details,historyText,frequencyText,
    rank,rarity,compared:total,frequency};
 }
+// Simple, three-point research fingerprint. Display only actual Excel snapshots;
+// a straight line between observations is only a visual connection, not a
+// claim that intermediate prices/turnover have been observed.
+function svFingerprintStages(x){
+ return [
+   {title:"Αρχική / 11:00",short:"Αρχή",odds:x.o,turn:x.v0,p:x.p0,contra:x.contra0},
+   {title:"90′ πριν",short:"90′ πριν",odds:x.m,turn:x.v90,p:x.p90,contra:x.contra90},
+   {title:"Τελευταία",short:"Τώρα",odds:x.l,turn:x.v,p:x.p,contra:x.contra}
+ ];
+}
+const svFingerprintCash=n=>n>=1000000?nf(n/1000000,1)+" εκ.":n>=1000?nf(n/1000,0)+" χιλ.":nf(n,0);
+function svFingerprintTurnMax(max){
+ if(!Number.isFinite(max)||max<=0)return 1;
+ const rough=max/3,base=Math.pow(10,Math.floor(Math.log10(rough)));
+ const step=[1,2,2.5,5,10].find(f=>f*base>=rough)||10;
+ return 3*step*base;
+}
+function svFingerprintSvg(stages,fixture){
+ const W=374,H=265,top=53,bottom=204,xpoints=[73,186,299],valid=n=>usable(n)&&n>=0;
+ const odds=stages.map(z=>z.odds).filter(z=>valid(z)&&z>1.01);
+ const turnover=stages.map(z=>z.turn).filter(valid);
+ if(!odds.length&&!turnover.length){
+   return '<p class="tiny">Δεν υπάρχουν τιμές για να σχεδιαστεί γράφημα. Θα εμφανιστεί όταν ενημερωθεί το Excel.</p>';
+ }
+ const low=Math.min(...odds,1e6),high=Math.max(...odds,0);
+ const pad=Math.max(.045,(high-low)*.26);
+ const minOdds=odds.length?Math.max(1.01,low-pad):1.01;
+ const maxOdds=odds.length?high+pad:2.01;
+ const topTurn=svFingerprintTurnMax(turnover.length?Math.max(...turnover):0);
+ const yPrice=v=>bottom-(v-minOdds)/(maxOdds-minOdds)*(bottom-top);
+ const yCash=v=>bottom-(v/topTurn)*(bottom-top);
+ let svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Απόδοση φαβορί με μπλε γραμμή και τζίρος με πορτοκαλί μπάρες, σε τρία στάδια.">'+
+   '<title>'+safe("Αποτύπωμα αγοράς: "+name(fixture))+'</title>'+
+   '<desc>Η πρώτη αρχική απόδοση ενδέχεται να έχει ληφθεί πριν από τον τζίρο των 11:00. '+
+   'Οι τιμές αναγράφονται ακριβώς και κάτω από το γράφημα. Δεν έχουν παρεμβληθεί πρόσθετες μετρήσεις.</desc>';
+ svg+='<text x="11" y="20" fill="#79dff9" font-size="12" font-weight="750">Απόδοση</text>'+
+      '<text x="360" y="20" text-anchor="end" fill="#ffd38d" font-size="12" font-weight="750">Τζίρος €</text>';
+ for(let i=0;i<=3;i++){
+   const y=top+(bottom-top)*i/3;
+   const amount=(3-i)*topTurn/3;
+   const odd=maxOdds-(maxOdds-minOdds)*i/3;
+   svg+='<line x1="48" y1="'+y.toFixed(1)+'" x2="319" y2="'+y.toFixed(1)+
+      '" stroke="#435a70" stroke-width="0.7" stroke-dasharray="3 4" />'+
+      (odds.length?'<text x="43" y="'+(y+4).toFixed(1)+'" font-size="10" fill="#b8cbde" text-anchor="end">'+safe(nf(odd,2))+'</text>':"")+
+      (turnover.length?'<text x="367" y="'+(y+4).toFixed(1)+'" font-size="10" fill="#e1c9a9" text-anchor="end">'+safe(svFingerprintCash(amount))+'</text>':"");
+ }
+ stages.forEach((stage,i)=>{
+   const x=xpoints[i],v=stage.turn;
+   if(valid(v)){
+     const y=yCash(v);
+     svg+='<rect x="'+(x-17)+'" y="'+y.toFixed(1)+'" width="34" height="'+
+        Math.max(0,bottom-y).toFixed(1)+'" rx="4" fill="#f5af51" opacity=".48">'+
+        '<title>'+safe(stage.title+": τζίρος "+money(v))+'</title></rect>';
+   }
+ });
+ for(let i=1;i<3;i++){
+   const a=stages[i-1].odds,b=stages[i].odds;
+   if(valid(a)&&a>1.01&&valid(b)&&b>1.01){
+     svg+='<path d="M '+xpoints[i-1]+' '+yPrice(a).toFixed(1)+' L '+xpoints[i]+' '+
+       yPrice(b).toFixed(1)+'" stroke="#48d1f7" stroke-width="3.2" fill="none" stroke-linecap="round"/>';
+   }
+ }
+ stages.forEach((stage,i)=>{
+   const x=xpoints[i],v=stage.odds;
+   if(valid(v)&&v>1.01){
+     const y=yPrice(v);
+     svg+='<circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="5.4" fill="#4bcdf5" stroke="#0f2235" stroke-width="1.5">'+
+       '<title>'+safe(stage.title+": απόδοση φαβορί "+price(v))+'</title></circle>';
+   }
+   svg+='<text x="'+x+'" y="232" font-size="11" font-weight="700" text-anchor="middle" fill="#e0edf8">'+
+     safe(stage.short)+'</text>';
+ });
+ svg+='<text x="73" y="250" font-size="9" text-anchor="middle" fill="#9eb5c9">Απόδ. αρχική</text>'+
+      '<text x="186" y="250" font-size="9" text-anchor="middle" fill="#9eb5c9">90′ πριν</text>'+
+      '<text x="299" y="250" font-size="9" text-anchor="middle" fill="#9eb5c9">Τελευταία</text></svg>';
+ return svg;
+}
+function renderFingerprint(){
+ if(!current)return;
+ const stages=svFingerprintStages(current),pct=v=>usable(v)&&v>=0&&v<=100?v:null;
+ $("fingerprintChart").innerHTML=svFingerprintSvg(stages,current);
+ $("fingerprintStageValues").innerHTML=stages.map(z=>
+   '<div class="sv-fingerprint-stage"><strong>'+safe(z.title)+'</strong>'+
+   '<small>Απόδοση: <span class="odds-value">'+safe(usable(z.odds)&&z.odds>1.01?price(z.odds):"—")+'</span></small>'+
+   '<small>Τζίρος: <span class="cash-value">'+safe(usable(z.turn)&&z.turn>=0?money(z.turn):"—")+'</span></small></div>'
+ ).join("");
+ $("fingerprintMoneyRows").innerHTML=stages.map(z=>{
+   const f=pct(z.p),c=pct(z.contra),fw=f===null?0:f,cw=c===null?0:Math.min(c,100-fw);
+   const parts=f===null&&c===null?
+     '<p class="tiny">Δεν υπάρχει διαθέσιμο ποσοστό.</p>':
+     '<div class="sv-moneybar" aria-hidden="true">'+
+       (fw>0?'<span class="fav" style="width:'+fw+'%"></span>':"")+
+       (cw>0?'<span class="contra" style="width:'+cw+'%"></span>':"")+'</div>';
+   return '<div class="sv-fingerprint-moneyrow">'+
+     '<div class="sv-moneyrow-heading"><strong>'+safe(z.title==="Αρχική / 11:00"?"11:00":z.title)+'</strong>'+
+     '<span>Φαβορί '+safe(f===null?"—":per(f))+' · Κόντρα '+safe(c===null?"—":per(c))+'</span></div>'+
+     parts+'</div>';
+ }).join("");
+ const x=current,first=x.v90,last=x.v,diff=usable(first)&&usable(last)?last-first:null;
+ const diffTxt=diff===null?"Ανεπαρκή στοιχεία για τη μεταβολή τζίρου από τα 90′.":
+   diff>=0?"Από τα 90′ ο τζίρος αυξήθηκε κατά "+money(diff)+
+     ".":"Από τα 90′ η καταγραφή τζίρου μειώθηκε κατά "+money(-diff)+" (πιθανή διόρθωση δεδομένων).";
+ const priceDiff=usable(x.m)&&usable(x.l)&&x.m>1.01&&x.l>1.01?(x.l/x.m-1)*100:null;
+ const oddsTxt=priceDiff===null?
+   "Δεν υπάρχουν και οι δύο αποδόσεις για σύγκριση.":
+   Math.abs(priceDiff)<.25?"Η απόδοση του φαβορί έμεινε σχεδόν αμετάβλητη.":
+     "Η απόδοση του φαβορί "+(priceDiff<0?"έπεσε":"ανέβηκε")+
+     " κατά "+nf(Math.abs(priceDiff),2)+"%.";
+ $("fingerprintInsight").textContent=diffTxt+" "+oddsTxt+
+   " Αυτή είναι περιγραφή της κίνησης, όχι εκτίμηση αποτελέσματος.";
+}
+
 function renderMarketObservation(){
  if(!current)return;
  const o=svMarketObservation(current,svObservationHistory(current));
@@ -1120,6 +1233,12 @@ $("marketWatchClose").addEventListener("click",closeMarketWatch);
 $("marketToolAnalyst").addEventListener("click",()=>selectMarketTool("analyst"));
 $("marketToolHunter").addEventListener("click",()=>selectMarketTool("hunter"));
 $("archiveToggle").addEventListener("click",()=>$("archive").classList.toggle("hide"));
+$("fingerprintToggle").addEventListener("click",()=>{
+  const panel=$("fingerprintDetails"),nowHidden=panel.classList.toggle("hide");
+  $("fingerprintToggle").setAttribute("aria-expanded",String(!nowHidden));
+  $("fingerprintToggle").textContent=nowHidden?"Δες γράφημα ▾":"Κρύψε γράφημα ▴";
+  if(!nowHidden)renderFingerprint();
+});
 $("snapToggle").addEventListener("click",()=>{
   const shown=$("snapDetails").classList.toggle("hide");
   $("snapToggle").setAttribute("aria-expanded",String(!shown));
