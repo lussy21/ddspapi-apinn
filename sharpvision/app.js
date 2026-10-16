@@ -468,115 +468,71 @@ function svFingerprintSvg(stages,fixture){
  });
  return svg+'</svg>';
 }
-function svFingerprintSummary(stages){
- const first=stages[0],mid=stages[1],last=stages[2];
- function cell(label,kind,start,end,fmt){
-   const available=kind==="price"?svFingerprintValidOdds:svFingerprintValidCash;
-   const vstart=start?start[kind==="price"?"odds":"turn"]:null;
-   const vend=last[kind==="price"?"odds":"turn"];
-   const hasFrom=available(vstart),hasTo=available(vend),f=hasFrom?fmt(vstart):"—",
-     t=hasTo?fmt(vend):"—";
-   let transition='Δεν υπάρχουν δύο μετρήσεις για σύγκριση.',changeClass="";
-   if(hasFrom&&hasTo){
-     const delta=vend-vstart,pct=vstart>0?100*delta/vstart:null;
-     const dstr=(delta>0?"+":"")+(kind==="price"?nf(delta,3):svCashExact(delta>=0?delta:-delta));
-     const diff=kind==="price"?dstr:delta<0?"−"+svCashExact(-delta):"+"+svCashExact(delta);
-     const pctText=pct===null?"":" ("+(pct>0?"+":"")+nf(pct,1)+"%)";
-     transition=(delta>0?"▲ ":delta<0?"▼ ":"＝ ")+diff+pctText;
-     changeClass=kind==="turn"?(delta<0?"negative":"positive"):"";
-   }
-   return '<div class="sv-fingerprint-summary-card '+(kind==="turn"?"cash":"odds")+'">'+
-    '<div class="sv-fingerprint-summary-label"><span class="sv-fingerprint-summary-icon" aria-hidden="true">'+
-       (kind==="price"?"↗":"▥")+'</span>'+safe(label)+'</div>'+
-    '<div class="sv-fingerprint-summary-number">'+safe(f)+
-       '<span style="color:#7b9cbd;font-weight:550"> → </span><span class="highlight">'+safe(t)+'</span></div>'+
-    '<div class="sv-fingerprint-summary-change '+changeClass+'">'+safe(transition)+'</div>'+
-    '<div class="sv-fingerprint-summary-sub">'+
-      safe(start?(kind==="price"?start===first?"Αρχική → Τελευταία":"90′ πριν → Τελευταία":
-        start===first?"11:00 → Τελευταία":"90′ πριν → Τελευταία"):"Δεν υπάρχει προηγούμενη μέτρηση")+
-    '</div></div>';
- }
- const priceStart=svFingerprintValidOdds(first.odds)?first:svFingerprintValidOdds(mid.odds)?mid:null;
- const turnStart=svFingerprintValidCash(first.turn)?first:svFingerprintValidCash(mid.turn)?mid:null;
- const cards=[
-   cell("Απόδοση φαβορί","price",priceStart,last,price),
-   cell("Συνολικός τζίρος","turn",turnStart,last,svCashExact)
- ];
- const f=svFingerprintPct(last.p),c=svFingerprintPct(last.contra);
- const labelF=f!==null?per(f):"—",labelC=c!==null?per(c):"—";
- const consistent=f!==null&&c!==null&&Math.abs(f+c-100)<=.5;
- const known=consistent?
-   '<div class="sv-fingerprint-mini-money" aria-hidden="true"><span class="fav" style="width:'+f.toFixed(2)+'%"></span>'+
-    '<span class="contra" style="width:'+Math.min(c,100-f).toFixed(2)+'%"></span></div>':"";
- cards.push('<div class="sv-fingerprint-summary-card distribution">'+
-   '<div class="sv-fingerprint-summary-label"><span class="sv-fingerprint-summary-icon" aria-hidden="true">◉</span>Κατανομή χρημάτων</div>'+
-   '<div class="sv-fingerprint-summary-number" style="font-size:14px">Φαβορί <span class="highlight" style="color:#62dfbb">'+safe(labelF)+
-     '</span> · Κόντρα <span class="highlight" style="color:#ff9bb6">'+safe(labelC)+'</span></div>'+
-   known+'<div class="sv-fingerprint-summary-sub">Στην τελευταία διαθέσιμη μέτρηση</div></div>');
- return cards.join("");
-}
+// One chart for odds + turnover. Share percentages appear only in this
+// concise early/last comparison — never repeat them in the conclusion.
 function renderFingerprint(){
  if(!current)return;
- const stages=svFingerprintStages(current);
- $("fingerprintChart").innerHTML=svFingerprintSvg(stages,current);
+ const stages=svFingerprintStages(current),x=current;
+ $("fingerprintChart").innerHTML=svFingerprintSvg(stages,x);
+ const missing90Odds=!svFingerprintValidOdds(stages[1].odds);
+ const missing90Turn=!svFingerprintValidCash(stages[1].turn);
  const missing=[];
- if(!svFingerprintValidOdds(stages[1].odds)&&
-    svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds))
-   missing.push("Η διακεκομμένη μπλε γραμμή συνδέει μόνο την αρχική και την τελευταία απόδοση. Δεν γνωρίζουμε την τιμή στα 90′.");
- if(!svFingerprintValidCash(stages[1].turn)&&
-    svFingerprintValidCash(stages[0].turn)&&svFingerprintValidCash(stages[2].turn))
-   missing.push("Δεν υπάρχει μέτρηση τζίρου στα 90′.");
- $("fingerprintMissing").textContent=missing.join(" ");
- $("fingerprintMissing").classList.toggle("hide",!missing.length);
- $("fingerprintSummaryCards").innerHTML=svFingerprintSummary(stages);
- $("fingerprintStageValues").innerHTML=stages.map(z=>
-   '<div class="sv-fingerprint-stage"><strong>'+safe(z.title)+'</strong>'+
-   '<small>Απόδοση: <span class="odds-value">'+safe(svFingerprintValidOdds(z.odds)?price(z.odds):"—")+'</span></small>'+
-   '<small>Τζίρος: <span class="cash-value">'+safe(svFingerprintValidCash(z.turn)?money(z.turn):"—")+'</span></small></div>'
- ).join("");
- $("fingerprintMoneyRows").innerHTML=stages.map(z=>{
+ if(missing90Odds&&missing90Turn)
+   missing.push("90′: δεν υπάρχουν στοιχεία.");
+ else if(missing90Odds)
+   missing.push("90′: λείπει η απόδοση.");
+ else if(missing90Turn)
+   missing.push("90′: λείπει ο τζίρος.");
+ if(missing90Odds&&svFingerprintValidOdds(stages[0].odds)&&svFingerprintValidOdds(stages[2].odds))
+   missing.push("Η διακεκομμένη γραμμή ενώνει μόνο δύο γνωστές τιμές.");
+ const note=$("fingerprintMissing");
+ note.textContent=missing.join(" ");
+ note.classList.toggle("hide",!missing.length);
+
+ // Prefer 11:00 and latest; fall back to 90′ only if the early
+ // percentages are missing. This is a visual comparison, not a third table.
+ const hasMoney=z=>svFingerprintPct(z.p)!==null||svFingerprintPct(z.contra)!==null;
+ const early=hasMoney(stages[0])?stages[0]:hasMoney(stages[1])?stages[1]:null;
+ const late=hasMoney(stages[2])?stages[2]:null;
+ const shown=early&&late?[early,late]:early?[early]:late?[late]:[];
+ const label=z=>z===stages[0]?"11:00":z===stages[1]?"90′ πριν":"Τώρα";
+ $("fingerprintMoneyRows").innerHTML=shown.length?shown.map(z=>{
    const f=svFingerprintPct(z.p),c=svFingerprintPct(z.contra);
-   const incompatible=f!==null&&c!==null&&Math.abs(f+c-100)>.5;
-   const fw=Number((f===null?0:f).toFixed(2));
-   const cw=Number((c===null?0:c).toFixed(2));
-   const parts=f===null&&c===null?
-     '<div class="sv-fingerprint-empty-bar">Δεν υπάρχουν διαθέσιμα στοιχεία</div>':
-     incompatible?
-       '<div class="sv-fingerprint-empty-bar">Τα δύο ποσοστά δεν αθροίζουν σε 100% — δείχνουμε μόνο τις πραγματικές τιμές.</div>':
-       '<div class="sv-moneybar" aria-hidden="true">'+
-         (fw>0?'<span class="fav" style="width:'+fw+'%"></span>':"")+
-         (cw>0?'<span class="contra" style="width:'+Math.min(cw,100-fw)+'%"></span>':"")+'</div>';
-   return '<div class="sv-fingerprint-moneyrow">'+
-     '<div class="sv-moneyrow-heading"><strong>'+safe(z.title==="Αρχική / 11:00"?"11:00":z.title)+'</strong>'+
-     '<span>Φαβορί '+safe(f===null?"—":per(f))+' · Κόντρα '+safe(c===null?"—":per(c))+'</span></div>'+
-     parts+'</div>';
- }).join("");
- const x=current,has90Turn=svFingerprintValidCash(x.v90),
-   has11Turn=svFingerprintValidCash(x.v0),hasLatestTurn=svFingerprintValidCash(x.v);
- let turnText="Δεν υπάρχουν δύο διαθέσιμες καταγραφές τζίρου για να μετρήσουμε τη μεταβολή.";
- const startTurn=has90Turn?x.v90:has11Turn?x.v0:null;
- if(startTurn!==null&&hasLatestTurn){
-   const tdelta=x.v-startTurn,period=has90Turn?"Από τα 90′ ως τώρα":"Από τις 11:00 ως τώρα";
-   turnText=tdelta<0?period+" ο καταγεγραμμένος τζίρος μειώθηκε κατά "+money(-tdelta)+
-     " (πιθανή διόρθωση στοιχείων).":
-     period+" ο τζίρος "+(tdelta===0?"δεν άλλαξε.":"αυξήθηκε κατά "+money(tdelta)+".");
+   const both=f!==null&&c!==null,consistent=both&&Math.abs(f+c-100)<=.5;
+   const values="Φαβορί "+(f===null?"—":per(f))+" · Κόντρα "+(c===null?"—":per(c));
+   const bar=consistent?
+     '<div class="sv-moneybar" aria-hidden="true">'+
+       '<span class="fav" style="width:'+f.toFixed(2)+'%"></span>'+
+       '<span class="contra" style="width:'+Math.min(c,100-f).toFixed(2)+'%"></span></div>':
+     '<p class="tiny">Δεν υπάρχουν πλήρη, συγκρίσιμα ποσοστά.</p>';
+   return '<div class="sv-fingerprint-moneyrow"><div class="sv-moneyrow-heading">'+
+     '<strong>'+safe(label(z))+'</strong><span>'+safe(values)+'</span></div>'+bar+'</div>';
+ }).join(""):'<p class="tiny">Δεν υπάρχουν ποσοστά χρημάτων για σύγκριση.</p>';
+
+ // Only qualitative summary: the numerical evidence is already visible
+ // above. Do not infer bookmaker intent or Smart Money.
+ const pOld=svFingerprintValidOdds(x.m)?x.m:svFingerprintValidOdds(x.o)?x.o:null;
+ const pNew=svFingerprintValidOdds(x.l)?x.l:null;
+ const cashOld=svFingerprintValidCash(x.v90)?x.v90:svFingerprintValidCash(x.v0)?x.v0:null;
+ const cashNew=svFingerprintValidCash(x.v)?x.v:null;
+ const phrases=[];
+ if(pOld!==null&&pNew!==null){
+   const pct=(pNew/pOld-1)*100;
+   phrases.push(Math.abs(pct)<.25?"Η απόδοση έμεινε σχεδόν σταθερή":
+     pct>0?"Η απόδοση ανέβηκε":"Η απόδοση έπεσε");
  }
- let oddsText="Δεν υπάρχουν δύο διαθέσιμες αποδόσεις φαβορί για σύγκριση.";
- const has90Odds=svFingerprintValidOdds(x.m),hasOpenOdds=svFingerprintValidOdds(x.o);
- const startOdds=has90Odds?x.m:hasOpenOdds?x.o:null;
- if(startOdds!==null&&svFingerprintValidOdds(x.l)){
-   const d=(x.l/startOdds-1)*100,period=has90Odds?"Από τα 90′ ως τώρα":"Από την αρχική ως την τελευταία μέτρηση";
-   oddsText=period+" η απόδοση του φαβορί "+
-     (Math.abs(d)<.25?"έμεινε σχεδόν ίδια.":(d>0?"ανέβηκε":"έπεσε")+
-      " κατά "+nf(Math.abs(d),2)+"%.");
+ if(cashOld!==null&&cashNew!==null)
+   phrases.push(cashNew>cashOld?"ο τζίρος αυξήθηκε":
+     cashNew<cashOld?"ο καταγεγραμμένος τζίρος μειώθηκε":"ο τζίρος δεν άλλαξε");
+ if(early&&late&&early!==late&&svFingerprintPct(early.p)!==null&&svFingerprintPct(late.p)!==null){
+   const diff=late.p-early.p;
+   phrases.push(Math.abs(diff)<3?"η κατανομή χρημάτων έμεινε κοντά στα ίδια":
+     diff>0?"μεγάλωσε το μερίδιο του φαβορί":"μεγάλωσε το μερίδιο της κόντρας");
  }
- const f=svFingerprintPct(x.p),c=svFingerprintPct(x.contra);
- let finalCash="";
- if(f!==null&&c!==null)finalCash=" Στην τελευταία καταγραφή τα χρήματα είναι "+
-   per(f)+" στο φαβορί και "+per(c)+" στην κόντρα.";
- else if(f!==null||c!==null)finalCash=" Διαθέτουμε μόνο μέρος των τελικών ποσοστών χρημάτων.";
- $("fingerprintInsight").textContent=turnText+" "+oddsText+finalCash+
-   " Αυτή είναι περιγραφή των καταγραφών, όχι πρόβλεψη αγώνα.";
+ const sentence=phrases.length?phrases.map((p,i)=>i===0?p:p).join(" · "):
+   "Αναμονή περισσότερων πραγματικών μετρήσεων.";
+ $("fingerprintInsight").textContent=sentence+
+   (phrases.length?". Δεν προκύπτει από αυτό μόνο του πρόβλεψη.":"");
 }
 
 function renderMarketObservation(){
