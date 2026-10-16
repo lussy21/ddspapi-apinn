@@ -315,6 +315,31 @@
   font-size:11px;line-height:1.55;text-align:left;
 }
 
+
+/* Minimal fingerprint: exactly one plotted source per statistic. */
+.sv-fingerprint .sv-fingerprint-dashboard{padding:12px 10px 14px}
+.sv-fingerprint .sv-fingerprint-chart{border-radius:12px}
+.sv-fingerprint .sv-fingerprint-scales{line-height:1.55;margin:9px 0 11px;text-align:left;font-size:11px}
+.sv-fingerprint .sv-fingerprint-money{margin:9px 0 0;padding:12px;
+  background:#102949;border-color:#264f7c;border-radius:12px}
+.sv-fingerprint .sv-fingerprint-money h3{font-size:14px}
+.sv-fingerprint .sv-money-legend{margin:8px 0 12px;font-size:11px}
+.sv-fingerprint .sv-fingerprint-moneyrow{margin:10px 0 12px}
+.sv-fingerprint .sv-fingerprint-moneyrow:last-child{margin-bottom:0}
+.sv-fingerprint .sv-moneybar{height:12px}
+.sv-fingerprint .sv-fingerprint-insight{
+  border-top:1px solid #294d76;padding:12px 3px 0;
+  margin-top:13px;font-size:13px;line-height:1.55;color:#dfebf9;
+}
+.sv-fingerprint .sv-fingerprint-missing{margin-top:8px;padding:7px 9px;font-size:11px}
+@media(max-width:470px){
+  .sv-fingerprint .sv-fingerprint-dashboard{margin-top:12px;padding:10px 7px 12px}
+  .sv-fingerprint .sv-fingerprint-legend{justify-content:center}
+  .sv-fingerprint .sv-fingerprint-money{padding:10px 9px}
+  .sv-fingerprint .sv-fingerprint-moneyrow{margin:9px 0 11px}
+  .sv-fingerprint .sv-fingerprint-insight{margin-top:10px;font-size:12px}
+}
+
 </style></head><body>
 <div id="login" class="panel login hide"><div class="brand"><span class="logo">SV</span><b>SharpVision</b></div><h1>Η προσωπική σου ανάλυση</h1><p class="muted">Βάλε τον κωδικό πρόσβασης για να ανοίξεις τους αγώνες και το ιστορικό.</p><form id="loginForm"><input type="password" id="password" autocomplete="current-password" placeholder="Κωδικός πρόσβασης" required><button class="primary full">Άνοιγμα SharpVision</button></form><p id="loginError" class="feedback"></p><p class="footer">Τα στοιχεία του ιδιωτικού Excel δεν αποθηκεύονται σε δημόσιο ιστότοπο.</p></div>
 <div id="app" class="shell hide"><header class="top"><div class="brand"><div class="logo">SV</div><div><strong>SharpVision</strong><small>Προσωπική ανάλυση αγοράς</small></div></div><div class="top-right"><span class="status" id="feedStatus">Σύνδεση…</span><button class="sm subtle" id="reload">↻</button><button class="sm ghost" id="logout">Έξοδος</button></div></header>
@@ -325,7 +350,7 @@
   <div class="sv-fingerprint-header">
     <div class="sv-fingerprint-heading">
       <span class="sv-fingerprint-icon" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 3 8-9"/><path d="M15 5h6v6"/></svg></span>
-      <div><h2>Αποτύπωμα αγοράς</h2><p class="tiny">Τζίρος και απόδοση μαζί. Όλα με μια ματιά.</p></div>
+      <div><h2>Αποτύπωμα αγοράς</h2><p class="tiny">Μία εικόνα για την κίνηση της αγοράς.</p></div>
     </div>
     <button type="button" id="fingerprintToggle" class="sm subtle" aria-expanded="false" aria-controls="fingerprintDetails">Δες γράφημα ▾</button>
   </div>
@@ -333,30 +358,17 @@
     <div class="sv-fingerprint-dashboard">
       <div class="sv-fingerprint-legend" aria-label="Χρώματα γραφήματος">
         <span><i class="sv-legend-dot odds-dot"></i> Απόδοση φαβορί</span>
-        <span><i class="sv-legend-dot cash-dot"></i> Συνολικός τζίρος</span>
+        <span><i class="sv-legend-dot cash-dot"></i> Τζίρος €</span>
       </div>
-      <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Γράφημα απόδοσης και τζίρου στα τρία πραγματικά στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
+      <div id="fingerprintChart" class="sv-fingerprint-chart" role="group" aria-label="Απόδοση και τζίρος στα πραγματικά στάδια"><p class="tiny">Περιμένουμε στοιχεία…</p></div>
       <p id="fingerprintMissing" class="sv-fingerprint-missing hide"></p>
-      <p class="sv-fingerprint-scales">Αριστερή κλίμακα: απόδοση · Δεξιά: ευρώ</p>
-      <div id="fingerprintSummaryCards" class="sv-fingerprint-summary"></div>
-      <details class="sv-fingerprint-expand">
-        <summary>Ακριβείς τιμές και στα 3 στάδια</summary>
-        <div id="fingerprintStageValues" class="sv-fingerprint-stages"></div>
-      </details>
-      <p class="sv-fingerprint-caveat">Στην αρχή η απόδοση είναι η <b>αρχική</b>, ενώ ο πρώτος τζίρος είναι των <b>11:00</b> — δεν είναι απαραίτητα μετρήσεις της ίδιας στιγμής.</p>
-    </div>
-    <div class="sv-fingerprint-money">
-      <h3><span class="sv-section-icon" aria-hidden="true">◉</span> Πού βρίσκονταν τα χρήματα;</h3>
-      <div class="sv-fingerprint-legend" aria-label="Χρώματα ποσοστών">
-        <span><i class="sv-legend-dot favorite-dot"></i> Φαβορί</span>
-        <span><i class="sv-legend-dot against-dot"></i> Κόντρα +0,5</span>
+      <p class="sv-fingerprint-scales">Μπλε: απόδοση · Πορτοκαλί: τζίρος. Αρχική απόδοση και τζίρος 11:00 μπορεί να μην είναι της ίδιας ώρας.</p>
+      <div id="fingerprintMoney" class="sv-fingerprint-money">
+        <h3>Πώς άλλαξε η κατανομή χρημάτων;</h3>
+        <div class="sv-fingerprint-legend sv-money-legend"><span><i class="sv-legend-dot favorite-dot"></i> Φαβορί</span><span><i class="sv-legend-dot against-dot"></i> Κόντρα +0,5</span></div>
+        <div id="fingerprintMoneyRows"></div>
       </div>
-      <div id="fingerprintMoneyRows"></div>
-    </div>
-    <div class="sv-fingerprint-insight-box">
-      <h3><span class="sv-insight-bulb" aria-hidden="true">✦</span> Τι μας δείχνει αυτό;</h3>
       <p id="fingerprintInsight" class="sv-fingerprint-insight"></p>
-      <p class="sv-fingerprint-caveat">Οι γραμμές απλώς συνδέουν πραγματικές καταγραφές. Δεν γνωρίζουμε τις ενδιάμεσες κινήσεις και δεν αποδεικνύεται Smart Money.</p>
     </div>
   </div>
 </section>
