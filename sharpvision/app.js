@@ -461,7 +461,7 @@ function svFingerprintSvg(stages,fixture,showTurnover=false){
    svg+='<text x="'+x+'" y="261" fill="#ecf7ff" font-size="15" font-weight="790" text-anchor="middle">'+
      safe(z.short)+'</text>'+
      '<text x="'+x+'" y="283" fill="#94b8d9" font-size="11.5" text-anchor="middle">'+
-     safe(i===0?"αρχική / 11:00":i===1?"90′ πριν":"τελευταία")+'</text>';
+     safe(i===0?(showTurnover?"αρχική / 11:00":"αρχική"):i===1?"90′ πριν":"τελευταία")+'</text>';
    if(!svFingerprintValidOdds(z.odds)&&(!showTurnover||!svFingerprintValidCash(z.turn)))
      svg+='<text x="'+x+'" y="'+(top+(bottom-top)*.56).toFixed(1)+
        '" fill="#82a8c8" font-size="10" text-anchor="middle">χωρίς στοιχεία</text>';
