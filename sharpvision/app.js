@@ -34,7 +34,7 @@ function parseRow(r,i){
     s:num(r[13],13),alert:String(r[14]||""),r:String(r[15]||""),
     v0:num(r[19],19),p0:num(r[20],20),contra0:num(r[21],21),
     v90:num(r[22],22),p90:num(r[23],23),contra90:num(r[24],24),
-    gradeRaw:String(r[75]||""),kickoff:String(r[76]||""),
+    kickoff:String(r[76]||""),
     sourceRank:num(r[64],64),source90Rank:num(r[63],63),
     rank:null,rankEstimated:false,formats:{},display
   };
@@ -209,7 +209,7 @@ function automaticOpinion(x,prior){
  // Use capped neighborhoods to avoid one very common profile dominating.
  // The independent fav/contra searches are not treated as independent games.
  for(const side of ["fav","contra"])
-   found[side].sort((a,b)=>b.sim.similarity-a.sim.similarity).splice(24);
+   found[side].sort((a,b)=>b.sim.similarity-a.sim.similarity).splice(30);
  const unique=new Map();
  for(const side of ["fav","contra"])for(const hit of found[side]){
    const id=autoKey(hit.match);
