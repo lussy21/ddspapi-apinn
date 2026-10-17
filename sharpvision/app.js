@@ -654,7 +654,8 @@ function hunterHistoryEvidence(feature,historical){
  // An observed pattern must beat BOTH the closing prices and the simple
  // price/liquidity baseline, with adequate size and coherent direction.
  // The thresholds are deliberately conservative; most profiles get no pick.
- if(profile.priceN>=24&&baseline.priceN>=25&&
+ if(svMarketExpected(feature.x)!==null&&
+    profile.priceN>=24&&baseline.priceN>=25&&
     profile.advantage!==null&&Math.abs(profile.advantage)>=.10&&
     Math.abs(profile.z)>=1.9&&contrast!==null&&Math.abs(contrast)>=.07&&
     Math.sign(profile.advantage)===Math.sign(contrast)){
