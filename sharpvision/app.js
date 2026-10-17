@@ -631,6 +631,49 @@ function hunterUnusualDetails(feature,history){
    ?"Ξεχωρίζουν σε σχέση με το ιστορικό: "+notable.map(z=>z.label).join(", ")+"."
    :"Ο συνδυασμός πολλών κινήσεων διαφέρει από παλιότερα παιχνίδια· κανένας μόνος δείκτης δεν αρκεί για εξήγηση.";
 }
+// The Excel's FINISHED matches teach the Hunter what comparable continuous
+// market profiles actually did. This is separate from the Psychologist's
+// categorical model; cash direction or falling odds never create a pick.
+function hunterHistoryEvidence(feature,historical){
+ const priced=historical.filter(z=>svMarketExpected(z.x)!==null);
+ // Nearest past matches across money flow, odds, timing and relative turnover.
+ // Do not pad the neighborhood with unrelated matches just to obtain a pick.
+ const near=hunterNearest(feature,priced,45).filter(z=>z.dist<=1.50);
+ const profile=svProfile(null,near.map(z=>z.old.x));
+ // Counterfactual: similar prices / liquidity WITHOUT conditioning on the
+ // special market profile. This guards against simply rediscovering favorites.
+ const controls=priced.filter(z=>
+   Math.abs(Math.log(z.case.price/feature.case.price))<=Math.log(1.32)&&
+   Math.abs(z.case.rank-feature.case.rank)<=35
+ );
+ const baseline=svProfile(null,controls.map(z=>z.x));
+ const rate=profile.priceN?profile.priceWins/profile.priceN:null;
+ const baseRate=baseline.priceN?baseline.priceWins/baseline.priceN:null;
+ const contrast=rate===null||baseRate===null?null:rate-baseRate;
+ let pick="none";
+ // An observed pattern must beat BOTH the closing prices and the simple
+ // price/liquidity baseline, with adequate size and coherent direction.
+ // The thresholds are deliberately conservative; most profiles get no pick.
+ if(profile.priceN>=24&&baseline.priceN>=25&&
+    profile.advantage!==null&&Math.abs(profile.advantage)>=.10&&
+    Math.abs(profile.z)>=1.9&&contrast!==null&&Math.abs(contrast)>=.07&&
+    Math.sign(profile.advantage)===Math.sign(contrast)){
+   pick=profile.advantage>0?"fav":"contra";
+ }
+ return {pick,profile,baseline,contrast};
+}
+function hunterHistoryVerdict(e){
+ if(e.pick==="none"){
+   return e.profile.priceN<24||e.baseline.priceN<25
+     ?"Λίγοι συγκρίσιμοι παλιοί αγώνες για ασφαλές συμπέρασμα."
+     :"Τα παλιά αποτελέσματα δεν ξεχωρίζουν καθαρά φαβορί ή κόντρα σε σχέση με τις αποδόσεις.";
+ }
+ const n=e.profile.priceN;
+ const successes=e.pick==="fav"?e.profile.priceWins:n-e.profile.priceWins;
+ const side=e.pick==="fav"?"Το φαβορί κέρδισε":"Η κόντρα +0,5 πέτυχε";
+ return side+" "+successes+" από "+n+" παρόμοιους αγώνες, "+
+   "περισσότερο από όσο περίμεναν οι αποδόσεις και το γενικό ιστορικό.";
+}
 function buildMarketHunter(upcoming,past){
  const historical=past.map(hunterFeatures).filter(Boolean);
  marketHunterItems=[];
@@ -650,14 +693,17 @@ function buildMarketHunter(upcoming,past){
    if(neighbors.length<3)return null;
    const distance=neighbors.reduce((v,z)=>v+z.dist,0)/neighbors.length;
    const percentile=Math.round(100*historicalScores.filter(z=>z<=distance).length/historicalScores.length);
-   return {x,distance,percentile,historySize:historical.length,
+   const evidence=hunterHistoryEvidence(feature,historical);
+   return {x,distance,percentile,evidence,historySize:historical.length,
      explanation:hunterUnusualDetails(feature,historical),
      nearest:neighbors.slice(0,3).map(z=>({
        match:name(z.old.x),score:z.old.x.r,matchDistance:z.dist
      })),
      feature
    };
- }).filter(Boolean).sort((a,b)=>b.percentile-a.percentile||b.distance-a.distance||
+ }).filter(Boolean).sort((a,b)=>
+   Number(b.evidence.pick!=="none")-Number(a.evidence.pick!=="none")||
+   b.percentile-a.percentile||b.distance-a.distance||
    kickoffMs(a.x)-kickoffMs(b.x));
  $("marketHunterCount").textContent=String(marketHunterItems.length);
 }
@@ -665,24 +711,38 @@ function renderMarketHunter(){
  const count=marketHunterItems.length;
  const kept=svSavedExtras("hunter",marketHunterItems.map(o=>o.x));
  $("marketHunterSummary").textContent=count
-  ?"Ο Κυνηγός συνέκρινε "+count+" προσεχείς αγώνες με τα ιστορικά προφίλ χρημάτων, "+
-   "μεταβολής αποδόσεων, τζίρου και αρχικής συμπεριφοράς. Η σειρά προκύπτει από "+
-   "τη συνολική απόσταση από προηγούμενες καταστάσεις, όχι από την έκβαση τους."
+  ?"Ο Κυνηγός μαθαίνει από τα τελικά σκορ παρόμοιων αγώνων στο Excel. "+
+   "Προς φαβορί ή κόντρα εμφανίζεται μόνο όταν το ιστορικό ξεπερνά και "+
+   "τις αποδόσεις και τα συνηθισμένα αποτελέσματα."
    :kept?"Αποθηκευμένοι αγώνες που περιμένουν τελικό αποτέλεσμα. "+svCoverage():
      "Δεν υπάρχουν ακόμη αρκετά δεδομένα για τον Κυνηγό. "+svCoverage();
  $("marketHunterRows").innerHTML=count?marketHunterItems.slice(0,30).map(o=>{
+   const e=o.evidence,h=e.profile,b=e.baseline;
+   const label=e.pick==="fav"?"Ιστορικά προς φαβορί":
+     e.pick==="contra"?"Ιστορικά προς κόντρα +0,5":"Χωρίς ξεκάθαρη κατεύθυνση";
    const examples=o.nearest.map(z=>z.match+" ("+z.score+")").join(" · ");
-   const rare="Η συμπεριφορά διαφέρει περισσότερο από του "+o.percentile+
-       "% των ιστορικών παιχνιδιών ως προς τον συνδυασμό μετρήσεων. "+
-       "Δεν είναι πιθανότητα νίκης.";
-   return '<button type="button" class="market-watch-item" data-hunter-id="'+o.x.id+'">'+
-     '<b>'+safe(name(o.x))+'</b><small>'+safe(o.x.lg)+" · "+safe(kickoffLabel(o.x))+'</small>'+
-     '<span class="watch-pattern">Ιστορική διαφοροποίηση: '+safe(o.percentile)+
-       '/100 (όχι πιθανότητα αποτελέσματος)</span>'+
-     '<span class="market-hunter-reason">'+safe(o.explanation)+'</span>'+
-     '<small>'+safe(rare)+'</small>'+
-     '<span class="market-hunter-observed">Πιο κοντινές παλιές περιπτώσεις: '+safe(examples)+'</span>'+
-     '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
+   const baseline=b.priceN?nf(100*b.priceWins/b.priceN,0)+"%":"—";
+   const historyNumbers=h.priceN
+     ?"Παρόμοιοι αγώνες: "+h.priceN+" · νίκες φαβορί: "+h.priceWins+
+      " ("+nf(100*h.priceWins/h.priceN,0)+"%) · από τις αποδόσεις: "+
+      nf(h.expectedPct,0)+"% · γενικό ιστορικό: "+baseline+"."
+     :"Δεν υπάρχουν παρόμοιοι αγώνες με τελικό σκορ και πλήρεις αποδόσεις.";
+   return '<div class="market-watch-item hunter-card">'+
+     '<b>'+safe(name(o.x))+'</b>'+
+     '<small>'+safe(o.x.lg)+" · "+safe(kickoffLabel(o.x))+'</small>'+
+     '<span class="hunter-verdict '+(e.pick==="none"?"hunter-neutral":"hunter-directed")+'">'+
+       safe(label)+'</span>'+
+     '<span class="hunter-simple">'+safe(hunterHistoryVerdict(e))+'</span>'+
+     '<small class="hunter-rarity">Ασυνήθιστη κίνηση: '+safe(o.percentile)+
+       '/100 · όχι πιθανότητα νίκης</small>'+
+     '<details class="hunter-evidence"><summary>Δες τα στοιχεία ▾</summary>'+
+       '<p>'+safe(historyNumbers)+'</p>'+
+       '<p>'+safe(o.explanation)+'</p>'+
+       '<p>Παρόμοια παλιά ματς: '+safe(examples)+'</p>'+
+       '<p>Η ιστορική ένδειξη δεν αποδεικνύει ότι τα χρήματα προέρχονται από επαγγελματίες.</p>'+
+     '</details>'+
+     '<button type="button" class="hunter-open" data-hunter-id="'+o.x.id+
+       '">Άνοιγμα αγώνα ↗</button></div>';
  }).join("")+
  (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
  (kept?'':'<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>');
@@ -812,7 +872,10 @@ function buildMarketWatch(){
  for(const o of marketWatchItems)
    changed=svRememberTool("analyst",o.x,o.title)||changed;
  for(const o of marketHunterItems)
-   changed=svRememberTool("hunter",o.x,"Ασυνήθιστο προφίλ "+o.percentile+"/100")||changed;
+   changed=svRememberTool("hunter",o.x,
+     (o.evidence.pick==="fav"?"Ιστορικά προς φαβορί":
+      o.evidence.pick==="contra"?"Ιστορικά προς κόντρα +0,5":
+      "Χωρίς ξεκάθαρη κατεύθυνση")+" · κίνηση "+o.percentile+"/100")||changed;
  if(changed){
    marketToolLog=marketToolLog.filter(e=>e&&e.id&&e.fixture&&e.recordedAt)
      .sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt))).slice(0,1000);
