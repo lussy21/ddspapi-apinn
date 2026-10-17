@@ -750,7 +750,7 @@ function buildMarketHunter(upcoming,past){
 }
 function renderMarketHunter(){
  const count=marketHunterItems.length;
- const kept=svSavedExtras("hunter",marketHunterItems.map(o=>o.x));
+ const kept=svSavedGroup("hunter",marketHunterItems.map(o=>o.x));
  $("marketHunterSummary").textContent=count
   ?"Ο Κυνηγός μαθαίνει από τα τελικά σκορ παρόμοιων αγώνων στο Excel. "+
    "Προς φαβορί ή κόντρα εμφανίζεται μόνο όταν το ιστορικό ξεπερνά και "+
@@ -858,22 +858,41 @@ function svSavedLabel(e){
  }
  return e.lastPick==="abstain"?e.label+" · τώρα Αποχή":e.label+" · προσωρινό";
 }
+// Keep every genuine pre-kickoff record. Old browser snapshots must NOT be
+// retrospectively rewritten as predictions by the newer historical models.
 function svSavedCard(e){
  const x=svToolMatch(e);
  const past=Date.parse(e.kickoff)<=Date.now();
- const status=past?"Έχει ξεκινήσει · αναμονή τελικού αποτελέσματος":"Πριν από τη σέντρα";
- const label=svSavedLabel(e);
- const inner='<b>'+safe(e.match)+'</b><small>'+safe(e.league)+' · '+safe(kickoffLabel({kickoff:e.kickoff}))+
-   '</small><span class="watch-pattern">'+safe(label)+'</span>'+
-   '<span class="market-saved-status">'+safe(status)+'</span>';
- return x?'<button type="button" class="market-watch-item" data-saved-fixture="'+safe(e.fixture)+'">'+inner+'</button>':
-   '<div class="market-watch-item">'+inner+'</div>';
+ const status=past?"Αναμονή τελικού σκορ":"Πριν από τη σέντρα";
+ const inner='<b>'+safe(e.match)+'</b>'+
+   '<small>'+safe(e.league)+' · '+safe(kickoffLabel({kickoff:e.kickoff}))+
+   ' · '+safe(status)+'</small>';
+ return x?'<button type="button" class="market-watch-item market-saved-compact" data-saved-fixture="'+
+   safe(e.fixture)+'">'+inner+'</button>':
+   '<div class="market-watch-item market-saved-compact">'+inner+'</div>';
 }
-function svSavedExtras(tool,live){
+function svSavedItems(tool,live){
  const keys=new Set(live.map(x=>autoKey(x)));
  return svActiveLog(tool).filter(e=>!keys.has(e.fixture))
-   .sort((a,b)=>Date.parse(a.kickoff)-Date.parse(b.kickoff))
-   .slice(0,30).map(svSavedCard).join("");
+   .sort((a,b)=>Date.parse(b.kickoff)-Date.parse(a.kickoff));
+}
+// Old observations are available only if explicitly opened. By default the
+// user sees new, analyzable fixtures rather than dozens of repeat summaries.
+function svSavedGroup(tool,live){
+ const saved=svSavedItems(tool,live);
+ if(!saved.length)return "";
+ const latest=saved.slice(0,5).map(svSavedCard).join("");
+ const extra=saved.slice(5,30).map(svSavedCard).join("");
+ const rest=extra?
+   '<details class="market-tools-pending-more"><summary>Δες ακόμη '+
+     (Math.min(saved.length,30)-5)+' αγώνες ▾</summary>'+
+     '<div class="market-watch-rows">'+extra+'</div>'+
+     (saved.length>30?'<p class="market-watch-foot">Οι υπόλοιπες καταγραφές παραμένουν αποθηκευμένες.</p>':"")+
+   '</details>':"";
+ return '<details class="market-tools-pending">'+
+   '<summary>Έχουν ξεκινήσει · αναμονή σκορ ('+saved.length+') ▾</summary>'+
+   '<p class="market-tools-pending-note">Παλιές προ-αγωνιστικές καταγραφές, όχι νέες επιλογές.</p>'+
+   '<div class="market-watch-rows">'+latest+'</div>'+rest+'</details>';
 }
 function svWireSaved(root){
  $(root).querySelectorAll("[data-saved-fixture]").forEach(b=>b.addEventListener("click",()=>{
@@ -934,8 +953,7 @@ function renderMarketWatch(){
  const n=marketWatchItems.length;
  // Started matches remain faithfully saved for final-score checking, but do
  // not crowd out still-upcoming observations or masquerade as live picks.
- const kept=svSavedExtras("analyst",marketWatchItems.map(o=>o.x));
- const pendingCount=(kept.match(/data-saved-fixture=/g)||[]).length;
+ const kept=svSavedGroup("analyst",marketWatchItems.map(o=>o.x));
  $("marketWatchSummary").textContent=n
    ?"Ο Αναλυτής συγκρίνει τους νέους αγώνες με πραγματικά παλιά αποτελέσματα. "+
     "Αν δεν βρίσκει διαφορά από τις αποδόσεις, δεν επιλέγει πλευρά."
@@ -969,11 +987,7 @@ function renderMarketWatch(){
  }).join("")+
    (n>30?'<p class="market-watch-foot">Εμφανίζονται οι 30 πρώτοι από '+n+' αγώνες.</p>':""):
    '<p class="market-watch-intro">Οι αγώνες που ξεκίνησαν βρίσκονται κλειστοί παρακάτω.</p>';
- if(kept){
-   $("marketWatchRows").insertAdjacentHTML("beforeend",
-     '<details class="market-tools-pending"><summary>Έχουν ξεκινήσει · αναμονή σκορ ('+
-     pendingCount+') ▾</summary><div class="market-watch-rows">'+kept+'</div></details>');
- }
+ if(kept)$("marketWatchRows").insertAdjacentHTML("beforeend",kept);
  $("marketWatchRows").querySelectorAll("[data-observation-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.observationId);
    if(!matches.some(z=>z.id===id))return;
