@@ -304,9 +304,49 @@ function svObservationHistory(x){
    return previous===null?z.id<x.id:previous<now;
  });
 }
+
+/* Analyst: one plain historical conclusion for an OBSERVED money/odds regime.
+   The pattern is learned from finished Excel matches, not from simple "money
+   went to favorite" rules. The Psychologist and Hunter models stay unchanged. */
+function svAnalystEvidence(result,target){
+ const h=result.profile,b=result.baseline,v=result.sameVenueStats;
+ const baselineRate=b.priceN?b.priceWins/b.priceN:null;
+ const patternRate=h.priceN?h.priceWins/h.priceN:null;
+ const contrast=baselineRate===null||patternRate===null?null:patternRate-baselineRate;
+ const advantage=h.advantage;
+ let pick="none";
+ // This is an exploratory historical screen, NOT a calibrated probability.
+ // Insist on independent advantage vs BOTH historical market prices and the
+ // unconditioned price/liquidity baseline. Never infer from money flow alone.
+ if(svMarketExpected(target)!==null&&h.priceN>=20&&b.priceN>=30&&
+   advantage!==null&&Math.abs(advantage)>=.095&&Math.abs(h.z)>=1.8&&
+   contrast!==null&&Math.abs(contrast)>=.075&&
+   Math.sign(advantage)===Math.sign(contrast)){
+   const venueRate=v.priceN>=6?v.priceWins/v.priceN:null;
+   const venueDifference=venueRate===null?null:venueRate-h.expectedPct/100;
+   if(venueDifference===null||Math.sign(venueDifference)===Math.sign(advantage)||
+      Math.abs(venueDifference)<.07){
+     pick=advantage>0?"fav":"contra";
+   }
+ }
+ return {pick,profile:h,baseline:b,contrast,advantage};
+}
+function svAnalystVerdict(o){
+ const e=o.evidence,h=e.profile,b=e.baseline;
+ if(e.pick==="none"){
+   return h.priceN<20||b.priceN<30
+     ?"Δεν υπάρχουν αρκετοί παλιοί αγώνες με πλήρεις αποδόσεις για ασφαλές συμπέρασμα."
+     :"Τα παλιά αποτελέσματα δεν ξεχωρίζουν καθαρά κάποια πλευρά από όσα περίμεναν οι αποδόσεις.";
+ }
+ const success=e.pick==="fav"?h.priceWins:h.priceN-h.priceWins;
+ const side=e.pick==="fav"?"Το φαβορί κέρδισε":"Η κόντρα +0,5 πέτυχε";
+ return side+" "+success+" από "+h.priceN+" παρόμοιους αγώνες — "+
+   "καλύτερα από τις τότε αποδόσεις και το γενικό ιστορικό.";
+}
 function svMarketObservation(x,prior){
  const res=svMoneyCases(x,prior);
  if(!res)return null;
+ const evidence=svAnalystEvidence(res,x);
  const p=res.pattern,h=res.profile,states=res.states||[];
  const selected=states.find(z=>z.state===p.priceState);
  const total=states.reduce((n,z)=>n+z.n,0),matching=selected?selected.n:0;
@@ -331,7 +371,7 @@ function svMarketObservation(x,prior){
  const magnitude=Math.min(1,Math.abs(p.oddsMove)/4),concentration=2*Math.abs(p.favShare-.5);
  // Sorting measures distinctiveness, not the probability of an outcome.
  const rank=(rarity===null?35:rarity)*.7+magnitude*18+concentration*12;
- return {x,pattern:p,title,details,historyText,frequencyText,
+ return {x,pattern:p,title,details,historyText,frequencyText,evidence,
    rank,rarity,compared:total,frequency};
 }
 // SHARPVISION PREMIUM MARKET FINGERPRINT
@@ -866,12 +906,16 @@ function buildMarketWatch(){
  const upcoming=matches.filter(x=>!finished(x)&&kickoffMs(x)!==null&&kickoffMs(x)>now&&svCase(x)!==null);
  marketWatchItems=upcoming.map(x=>svMarketObservation(x,past.filter(z=>z.id!==x.id&&(kickoffMs(z)!==null||z.id<x.id))))
    .filter(Boolean)
-   .sort((a,b)=>b.rank-a.rank||kickoffMs(a.x)-kickoffMs(b.x));
+   .sort((a,b)=>Number(b.evidence.pick!=="none")-Number(a.evidence.pick!=="none")||
+     b.rank-a.rank||kickoffMs(a.x)-kickoffMs(b.x));
  $("marketWatchCount").textContent=String(marketWatchItems.length);
  buildMarketHunter(upcoming,past);
  let changed=false;
  for(const o of marketWatchItems)
-   changed=svRememberTool("analyst",o.x,o.title)||changed;
+   changed=svRememberTool("analyst",o.x,
+     (o.evidence.pick==="fav"?"Ιστορικά προς φαβορί":
+      o.evidence.pick==="contra"?"Ιστορικά προς κόντρα +0,5":
+      "Χωρίς ξεκάθαρη κατεύθυνση")+" · "+svAnalystVerdict(o))||changed;
  for(const o of marketHunterItems)
    changed=svRememberTool("hunter",o.x,
      (o.evidence.pick==="fav"?"Ιστορικά προς φαβορί":
@@ -888,28 +932,52 @@ function buildMarketWatch(){
 }
 function renderMarketWatch(){
  const n=marketWatchItems.length;
+ // Started matches remain faithfully saved for final-score checking, but do
+ // not crowd out still-upcoming observations or masquerade as live picks.
  const kept=svSavedExtras("analyst",marketWatchItems.map(o=>o.x));
+ const pendingCount=(kept.match(/data-saved-fixture=/g)||[]).length;
  $("marketWatchSummary").textContent=n
-   ?"Βρέθηκαν "+n+" προσεχείς αγώνες με πλήρη στιγμιότυπα. Πρώτες εμφανίζονται οι λιγότερο συνηθισμένες κινήσεις χρημάτων/αποδόσεων, όχι προβλέψεις νίκης."
-   :kept?"Αποθηκευμένοι αγώνες που περιμένουν τελικό αποτέλεσμα. "+svCoverage():
-     "Δεν υπάρχουν ακόμη προσεχείς αγώνες με πλήρη στιγμιότυπα. "+svCoverage();
+   ?"Ο Αναλυτής συγκρίνει τους νέους αγώνες με πραγματικά παλιά αποτελέσματα. "+
+    "Αν δεν βρίσκει διαφορά από τις αποδόσεις, δεν επιλέγει πλευρά."
+   :"Δεν υπάρχουν αυτή τη στιγμή νέοι αγώνες με αρκετά στοιχεία πριν τη σέντρα.";
  $("marketWatchRows").innerHTML=n?marketWatchItems.slice(0,30).map(o=>{
-   const x=o.x;
-   return '<button type="button" class="market-watch-item" data-observation-id="'+x.id+'">'+
+   const x=o.x,e=o.evidence,h=e.profile,b=e.baseline;
+   const verdict=e.pick==="fav"?"Ιστορικά προς φαβορί":
+     e.pick==="contra"?"Ιστορικά προς κόντρα +0,5":"Χωρίς ξεκάθαρη κατεύθυνση";
+   const historyNumbers=h.priceN?
+     "Από "+h.priceN+" παρόμοιους αγώνες με πλήρεις αποδόσεις, νίκησε το φαβορί "+
+     h.priceWins+" φορές ("+nf(100*h.priceWins/h.priceN,0)+"%). "+
+     "Οι τότε αποδόσεις αντιστοιχούσαν σε "+nf(h.expectedPct,0)+"% νίκες φαβορί. "+
+     (b.priceN?"Σε γενικά συγκρίσιμους αγώνες: "+b.priceWins+"/"+b.priceN+
+       " ("+nf(100*b.priceWins/b.priceN,0)+"%).":"Δεν υπάρχουν αρκετές γενικές συγκρίσεις.")
+     :"Δεν υπάρχουν παλιοί αγώνες με πλήρες ιστορικό αποδόσεων.";
+   const oldExamples="Η ίδια κίνηση εμφανίστηκε σε "+o.compared+" ιστορικές περιπτώσεις.";
+   return '<div class="market-watch-item analyst-card">'+
      '<b>'+safe(name(x))+'</b><small>'+safe(x.lg)+" · "+safe(kickoffLabel(x))+'</small>'+
-     '<span class="watch-pattern">'+safe(o.title)+'</span>'+
-     '<span class="watch-facts">'+safe(o.details)+'</span>'+
-     '<small>'+safe(o.historyText+" "+o.frequencyText)+'</small>'+
-     '<small>Άνοιγμα ανάλυσης αγώνα ↗</small></button>';
+     '<span class="hunter-verdict '+(e.pick==="none"?"hunter-neutral":"hunter-directed")+'">'+
+       safe(verdict)+'</span>'+
+     '<span class="hunter-simple">'+safe(svAnalystVerdict(o))+'</span>'+
+     '<details class="hunter-evidence"><summary>Δες αναλυτικά ▾</summary>'+
+       '<p>'+safe(historyNumbers)+'</p>'+
+       '<p>Στον συγκεκριμένο αγώνα: '+safe(o.title)+'.</p>'+
+       '<p>'+safe(o.details)+'</p>'+
+       '<p>'+safe(o.frequencyText)+'</p>'+
+       '<p>Τα ιστορικά αποτελέσματα δεν αποτελούν εγγύηση για το επόμενο ματς.</p>'+
+     '</details>'+
+     '<button type="button" class="hunter-open" data-observation-id="'+x.id+
+       '">Άνοιγμα αγώνα ↗</button></div>';
  }).join("")+
-   (n>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+n+' παρατηρήσεις.</p>':""):
-   (kept?'':'<p class="market-watch-intro">Δεν υπάρχουν ακόμη παρατηρήσεις με πλήρη πραγματικά δεδομένα.</p>');
- $("marketWatchRows").insertAdjacentHTML("beforeend",kept);
+   (n>30?'<p class="market-watch-foot">Εμφανίζονται οι 30 πρώτοι από '+n+' αγώνες.</p>':""):
+   '<p class="market-watch-intro">Οι αγώνες που ξεκίνησαν βρίσκονται κλειστοί παρακάτω.</p>';
+ if(kept){
+   $("marketWatchRows").insertAdjacentHTML("beforeend",
+     '<details class="market-tools-pending"><summary>Έχουν ξεκινήσει · αναμονή σκορ ('+
+     pendingCount+') ▾</summary><div class="market-watch-rows">'+kept+'</div></details>');
+ }
  $("marketWatchRows").querySelectorAll("[data-observation-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.observationId);
    if(!matches.some(z=>z.id===id))return;
-   closeMarketWatch();
-   select(id);
+   closeMarketWatch();select(id);
    const title=$("matchTitle");
    if(title&&typeof title.scrollIntoView==="function")
      title.scrollIntoView({behavior:"smooth",block:"start"});
