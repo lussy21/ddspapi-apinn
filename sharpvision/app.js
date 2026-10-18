@@ -1576,13 +1576,13 @@ function scheduleFeedRetry(){
     if(!$("app").classList.contains("hide"))refresh();
   },wait);
 }
-async function refresh(){
+async function refresh(force=false){
   if(refreshInFlight)return;
   refreshInFlight=true;
   const status=$("feedStatus");
   if(!matches.length){status.textContent="Σύνδεση με Excel…";status.className="status";}
   try{
-    const d=await getJSON("/api/matches");
+    const d=await getJSON(force?"/api/matches?fresh=1":"/api/matches");
     if(!d.ok){
       if(d.state==="loading"){
         status.textContent=feedRetryCount>=8?"Το Excel αργεί — προσπάθεια…":"Ανάκτηση Excel…";
@@ -1614,9 +1614,10 @@ async function refresh(){
     setupRanks();setupLeagues();fillLeagueFilter();
     captureAutoPredictions();
     buildMarketWatch();
-    status.textContent=d.stale?"Παλαιότερα δεδομένα":"Excel συνδεδεμένο";
+    status.textContent=d.stale?"Παλαιότερα δεδομένα — ανανέωση…":d.refreshing?"Ενημέρωση από Excel…":"Excel συνδεδεμένο";
     status.className=d.stale?"status warn":"status live";
-    $("updatedAt").textContent="Ανάκτηση: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");
+    $("updatedAt").textContent="Τελευταία ανάκτηση Excel: "+new Date(d.serverFetchedAt||Date.now()).toLocaleString("el-GR");
+    if(d.refreshing)scheduleFeedRetry();
     current=matches.find(x=>key(x)===selectedKey)
       ||matches.filter(x=>!finished(x)).slice(-1)[0]||matches.slice(-1)[0]||null;
     if(current&&key(current)!==selectedKey){histMarket="fav";clearOpinion()}
@@ -1634,7 +1635,7 @@ async function refresh(){
 async function boot(){try{let d=await getJSON("/api/session");if(d.authenticated){$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}else{$("login").classList.remove("hide")}}catch(e){$("login").classList.remove("hide")}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginError").textContent="Σύνδεση…";try{let d=await getJSON("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("password").value})});if(!d.ok){$("loginError").textContent=d.error==="not_configured"?"Η πρόσβαση δεν έχει ενεργοποιηθεί ακόμα.":d.error==="too_many_attempts"?"Πολλές προσπάθειες. Δοκίμασε σε 10 λεπτά.":"Λάθος κωδικός.";return}$("password").value="";$("loginError").textContent="";$("login").classList.add("hide");$("app").classList.remove("hide");await refresh()}catch(e){$("loginError").textContent="Δεν ήταν δυνατή η σύνδεση."}});
 $("logout").addEventListener("click",async()=>{await fetch("/api/logout",{method:"POST",credentials:"same-origin"});$("app").classList.add("hide");$("login").classList.remove("hide")});
-$("reload").addEventListener("click",refresh);$("search").addEventListener("input",listMatches);$("leagueFilter").addEventListener("change",listMatches);
+$("reload").addEventListener("click",()=>refresh(true));$("search").addEventListener("input",listMatches);$("leagueFilter").addEventListener("change",listMatches);
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;document.querySelectorAll("[data-tab]").forEach(z=>z.classList.toggle("active",z===b));listMatches()}));
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{mode=b.dataset.mode;document.querySelectorAll("[data-mode]").forEach(z=>z.setAttribute("aria-pressed",String(z===b)));clearOpinion();renderHistory()}));
 document.querySelectorAll("[data-market]").forEach(b=>b.addEventListener("click",()=>{
@@ -1668,4 +1669,5 @@ $("snapToggle").addEventListener("click",()=>{
 });
 $("saveOpinion").addEventListener("click",()=>{if(!current||finished(current)){alert("Δεν αποθηκεύουμε εκτίμηση αφού βγει τελικό σκορ.");return}if(!lastOpinion||lastOpinion.key!==key(current)||lastOpinion.analysisSide!==histMarket){alert("Πάτησε πρώτα «Εσύ τι θα επέλεγες;» για την επιλεγμένη πλευρά.");return}journal=[lastOpinion,...journal].slice(0,250);store("sv_live_journal",journal);renderArchive();alert("Αποθηκεύτηκε στη συσκευή.")});
 boot();
-setInterval(()=>{if(!$("app").classList.contains("hide"))refresh()},600000);
+setInterval(()=>{if(!$("app").classList.contains("hide"))refresh()},60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!$("app").classList.contains("hide"))refresh(true)});
