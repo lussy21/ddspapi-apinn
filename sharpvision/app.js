@@ -766,6 +766,12 @@ function hunterBriefFacts(o){
  reason=reason.replace("επίπεδο απόδοσης",c.price<1.6?"χαμηλή απόδοση φαβορί":"απόδοση φαβορί");
  reason=reason.replace("ρυθμός αύξησης τζίρου",c.growth>=.5?"γρήγορη αύξηση τζίρου":"μεταβολή τζίρου");
  reason=reason.replace("κατανομή νέων χρημάτων","μοίρασμα νέων χρημάτων");
+ if(reason.startsWith("Ξεχωρίζει: ")){
+   const bits=reason.slice("Ξεχωρίζει: ".length).replace(/\\.$/,"").split(", ");
+   reason="Ξεχωρίζει: "+bits.slice(0,2).join(" · ")+".";
+ }else if(reason.startsWith("Ο συνδυασμός πολλών κινήσεων")){
+   reason="Ο συνολικός συνδυασμός κινήσεων διαφέρει από παλιότερα ματς.";
+ }
  return {movement,reason};
 }
 function renderMarketHunter(){
