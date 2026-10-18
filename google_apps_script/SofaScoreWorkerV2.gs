@@ -251,13 +251,22 @@ function sofaDailySchedule_(dateKey) {
 function allToday_() {
   // Include early next-morning fixtures before their kickoff.
   const now=Date.now(),end=now+24*60*60*1000,byId={};
+  let daysOK=0,failures=[];
   [today_(),dateOffset_(1)].forEach(day=>{
-    sofaDailySchedule_(day).forEach(e=>{
-      const kickoff=Number(e.startTimestamp||0)*1000;
-      if (!e || !e.id || kickoff<=now || kickoff>end || byId[e.id]) return;
-      byId[e.id]=e;
-    });
+    try {
+      const schedule=sofaDailySchedule_(day);
+      daysOK++;
+      schedule.forEach(e=>{
+        if (!e || !e.id || byId[e.id]) return;
+        const kickoff=Number(e.startTimestamp||0)*1000;
+        if (kickoff>now && kickoff<=end) byId[e.id]=e;
+      });
+    } catch (err) {
+      failures.push(String(err));
+      Logger.log('SOFA DAILY SCHEDULE ERROR '+day+' | '+err);
+    }
   });
+  if (!daysOK) throw new Error(failures.join(' | ').slice(0,250));
   const events=Object.keys(byId).map(key=>byId[key]);
   Logger.log('SOFA UPCOMING 24H | events='+events.length);
   return events;
@@ -394,7 +403,7 @@ function runSofaDaily() {
     });
 
     // Do not mark an empty (or throttled) run as successfully completed.
-    if (errors===0 && matched>0 && written>0) {
+    if (errors===0 && matched>0) {
       props.setProperty('SOFA_VOTES_DONE_DATE',today);
       control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors=0');
     } else {
