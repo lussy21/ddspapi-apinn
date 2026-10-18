@@ -223,18 +223,44 @@ function eventsToday_(tid) {
   return out;
 }
 
-function allToday_() {
-  const byId={};
-  SOFA_TOURNAMENTS.forEach(t=>{
-    try {
-      eventsToday_(t[1]).forEach(e=>{
-        if (!byId[e.id]) { e.__league=t[0]; byId[e.id]=e; }
-      });
-    } catch(e) {
-      Logger.log('TOURNAMENT ERROR | '+t[0]+' | '+e);
+// A single schedule request per UTC day replaces hundreds of tournament-page
+// requests. Google Apps Script has a 6-minute runtime limit. Never use Apify.
+function sofaDailySchedule_(dateKey) {
+  const path='/sport/football/scheduled-events/'+dateKey;
+  let response=sofaFetchJson_(path);
+  if (response.code!==200) {
+    // The two official site hosts sometimes behave differently on Google's IPs.
+    const alternative=UrlFetchApp.fetch('https://www.sofascore.com/api/v1'+path,{
+      method:'get',muteHttpExceptions:true,followRedirects:true
+    });
+    let json=null;
+    try { json=JSON.parse(alternative.getContentText()); } catch(e) {}
+    if (alternative.getResponseCode()===200 && json) {
+      response={code:200,json:json};
+    } else {
+      throw new Error('SOFA SCHEDULE '+dateKey+' | HTTP '+response.code+
+        ' / '+alternative.getResponseCode());
     }
+  }
+  if (!response.json || !Array.isArray(response.json.events)) {
+    throw new Error('SOFA SCHEDULE '+dateKey+' | invalid JSON');
+  }
+  Logger.log('SOFA SCHEDULE '+dateKey+' | HTTP 200 | events='+response.json.events.length);
+  return response.json.events;
+}
+function allToday_() {
+  // Include early next-morning fixtures before their kickoff.
+  const now=Date.now(),end=now+24*60*60*1000,byId={};
+  [today_(),dateOffset_(1)].forEach(day=>{
+    sofaDailySchedule_(day).forEach(e=>{
+      const kickoff=Number(e.startTimestamp||0)*1000;
+      if (!e || !e.id || kickoff<=now || kickoff>end || byId[e.id]) return;
+      byId[e.id]=e;
+    });
   });
-  return Object.keys(byId).map(k=>byId[k]);
+  const events=Object.keys(byId).map(key=>byId[key]);
+  Logger.log('SOFA UPCOMING 24H | events='+events.length);
+  return events;
 }
 
 function loadCache_() {
@@ -311,10 +337,12 @@ function runSofaDaily() {
     const byId={}; fixtures.forEach(f=>{byId[Number(f.id)]=f;});
     const sh=ss_().getSheetByName(SOFA_CFG.pinnacleSheet);
     const last=sh.getLastRow();
-    const rows=last>=3 ? sh.getRange(3,1,last-2,18).getValues() : [];
+    const rows=last>=3 ? sh.getRange(3,1,last-2,77).getValues() : [];
     const cache=loadCache_();
+    const limitMs=nowMs+24*60*60*1000;
 
     let matched=0,written=0,cached=0,errors=0;
+    control_('P2','FETCHED '+stamp_()+' | fixtures='+fixtures.length);
 
     rows.forEach((row,i)=>{
       const rowNo=i+3;
@@ -323,6 +351,9 @@ function runSofaDaily() {
       const result=String(row[15]||'').trim(), apinn=String(row[17]||'').trim();
 
       if (!home||!away||!apinn||result||(fav!=='H'&&fav!=='A')) return;
+      // Historic blank results must never trigger today's API requests.
+      const kickoffMs=new Date(row[76]).getTime();
+      if (!Number.isFinite(kickoffMs)||kickoffMs<=nowMs||kickoffMs>limitMs) return;
 
       let f=null, sofaId=null;
       const cachedInfo=cache.map[apinn];
@@ -362,7 +393,8 @@ function runSofaDaily() {
       Utilities.sleep(80);
     });
 
-    if (errors===0) {
+    // Do not mark an empty (or throttled) run as successfully completed.
+    if (errors===0 && matched>0 && written>0) {
       props.setProperty('SOFA_VOTES_DONE_DATE',today);
       control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors=0');
     } else {
