@@ -305,20 +305,47 @@ function runSofaDaily() {
     const dateKey = todayKey_();
     setControl_('P2', 'RUNNING ' + nowStamp_());
 
-    const schedule = sofaFetchJson_(
-      '/sport/football/scheduled-events/' + dateKey
+    // Two predictable, low-cost calls instead of scanning many tournaments.
+    // Include early next-day matches before the daily 12:30 snapshot.
+    const nextDay = Utilities.formatDate(
+      new Date(Date.now()+24*60*60*1000), SOFA_CFG.tz, 'yyyy-MM-dd'
     );
-    const fixtures = schedule.json && Array.isArray(schedule.json.events)
-      ? schedule.json.events
-      : [];
+    const fixtureMap = {};
+    let firstHttp = 0, availableDays = 0;
+    [dateKey, nextDay].forEach((day, index) => {
+      let schedule = sofaFetchJson_('/sport/football/scheduled-events/' + day);
+      if (schedule.code !== 200) {
+        const backupUrl = 'https://www.sofascore.com/api/v1/sport/football/scheduled-events/' + day;
+        const backup = UrlFetchApp.fetch(backupUrl, {
+          method: 'get', muteHttpExceptions: true, followRedirects: true,
+          headers: SOFA_CFG.requestHeaders
+        });
+        let json = null;
+        try { json = JSON.parse(backup.getContentText()); } catch (ignore) {}
+        if (backup.getResponseCode()===200 && json) {
+          schedule={code:200,json:json};
+        } else {
+          if (index===0) firstHttp = schedule.code || backup.getResponseCode();
+          Logger.log('SOFASCORE SCHEDULE ' + day + ' HTTP ' +
+            schedule.code + '/' + backup.getResponseCode());
+          return;
+        }
+      }
+      if (!schedule.json || !Array.isArray(schedule.json.events)) return;
+      availableDays++;
+      schedule.json.events.forEach(event => {
+        if (event && event.id && !fixtureMap[event.id]) fixtureMap[event.id]=event;
+      });
+    });
+    const horizon=Date.now()+24*60*60*1000;
+    const fixtures=Object.keys(fixtureMap).map(k=>fixtureMap[k])
+      .filter(e=>Number(e.startTimestamp||0)*1000 > Date.now() &&
+        Number(e.startTimestamp||0)*1000 <= horizon);
 
-    if (schedule.code !== 200 || !fixtures.length) {
-      setControl_(
-        'P2',
-        'STOPPED ' + nowStamp_() +
-        ' | schedule HTTP ' + schedule.code +
-        ' | events=' + fixtures.length
-      );
+    if (!availableDays || !fixtures.length) {
+      setControl_('P2','STOPPED '+nowStamp_()+
+        ' | Sofa schedule HTTP '+firstHttp+
+        ' | availableDays='+availableDays+' | events='+fixtures.length);
       return;
     }
 
@@ -330,8 +357,10 @@ function runSofaDaily() {
       return;
     }
 
-    const rows = pinnacle.getRange(3, 1, lastRow - 2, 18).getValues();
+    const rows = pinnacle.getRange(3, 1, lastRow - 2, 77).getValues();
     const cache = loadCache_();
+    const nowMs=Date.now(),cutoff=nowMs+24*60*60*1000;
+    setControl_('P2','FETCHED '+nowStamp_()+' | events='+fixtures.length);
 
     let matched = 0;
     let written = 0;
@@ -350,6 +379,8 @@ function runSofaDaily() {
       if (!home || !away || !apinnId) continue;
       if (favoriteSide !== 'H' && favoriteSide !== 'A') continue;
       if (resultValue) continue; // historical match; do not touch
+      const kickoffMs=new Date(row[76]).getTime();
+      if (!Number.isFinite(kickoffMs)||kickoffMs<=nowMs||kickoffMs>cutoff) continue;
 
       let sofaId = cache.byApinn[apinnId]
         ? cache.byApinn[apinnId].sofaId
@@ -379,6 +410,11 @@ function runSofaDaily() {
 
       if (votesResult.code !== 200 || !votesResult.json) {
         voteErrors++;
+        if (votesResult.code===403 || votesResult.code===429) {
+          setControl_('P2','PARTIAL '+nowStamp_()+
+            ' | Sofa votes HTTP '+votesResult.code+' | wrote='+written);
+          return; // Stop immediately; do not hammer a blocked provider.
+        }
         continue;
       }
 
@@ -393,14 +429,15 @@ function runSofaDaily() {
         continue;
       }
 
-      pinnacle.getRange(rowNumber, 14).setValue(pct + '%'); // N
+      const cell=pinnacle.getRange(rowNumber,14); // N only
+      cell.setValue(pct);
+      cell.setNumberFormat('0"%"');
       written++;
-      Utilities.sleep(120);
     }
 
     setControl_(
       'P2',
-      'DONE ' + nowStamp_() +
+      (written>0?'DONE ':'PARTIAL ') + nowStamp_() +
       ' | schedule=' + fixtures.length +
       ' | matched=' + matched +
       ' | cache+=' + cached +
