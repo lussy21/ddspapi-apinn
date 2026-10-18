@@ -748,45 +748,72 @@ function buildMarketHunter(upcoming,past){
    kickoffMs(a.x)-kickoffMs(b.x));
  $("marketHunterCount").textContent=String(marketHunterItems.length);
 }
+function hunterBriefFacts(o){
+ const c=o.feature.case,x=o.x;
+ const favor=c.favShare>=.65,contra=c.favShare<=.35;
+ const moneyText=favor?"Το "+nf(c.favShare*100,0)+"% των νέων χρημάτων πήγε προς "+fave(x):
+   contra?"Το "+nf((1-c.favShare)*100,0)+"% των νέων χρημάτων πήγε προς την κόντρα":
+   "Τα νέα χρήματα μοιράστηκαν";
+ const rise=c.oddsMove>=.7,fall=c.oddsMove<=-.7;
+ const odds=rise?"ανέβηκε":fall?"έπεσε":"έμεινε σχεδόν ίδια";
+ const contrary=(favor&&rise)||(contra&&fall);
+ const movement="Τζίρος +"+nf(c.growth*100,0)+"%. "+moneyText+
+   (contrary?", αλλά ":", ενώ ")+"η απόδοση φαβορί "+odds+
+   " ("+price(x.m)+" → "+price(x.l)+").";
+ let reason=o.explanation;
+ reason=reason.replace("Ξεχωρίζουν σε σχέση με το ιστορικό: ","Ξεχωρίζει: ");
+ reason=reason.replace("σχετικός τζίρος λίγκας",c.rank>=75?"πολύ υψηλός τζίρος στη λίγκα":"χαμηλός τζίρος στη λίγκα");
+ reason=reason.replace("επίπεδο απόδοσης",c.price<1.6?"χαμηλή απόδοση φαβορί":"απόδοση φαβορί");
+ reason=reason.replace("ρυθμός αύξησης τζίρου",c.growth>=.5?"γρήγορη αύξηση τζίρου":"μεταβολή τζίρου");
+ reason=reason.replace("κατανομή νέων χρημάτων","μοίρασμα νέων χρημάτων");
+ return {movement,reason};
+}
 function renderMarketHunter(){
  const count=marketHunterItems.length;
  const kept=svSavedGroup("hunter",marketHunterItems.map(o=>o.x));
  $("marketHunterSummary").textContent=count
-  ?"Ο Κυνηγός μαθαίνει από τα τελικά σκορ παρόμοιων αγώνων στο Excel. "+
-   "Προς φαβορί ή κόντρα εμφανίζεται μόνο όταν το ιστορικό ξεπερνά και "+
-   "τις αποδόσεις και τα συνηθισμένα αποτελέσματα."
-   :kept?"Αποθηκευμένοι αγώνες που περιμένουν τελικό αποτέλεσμα. "+svCoverage():
-     "Δεν υπάρχουν ακόμη αρκετά δεδομένα για τον Κυνηγό. "+svCoverage();
- $("marketHunterRows").innerHTML=count?marketHunterItems.slice(0,30).map(o=>{
-   const e=o.evidence,h=e.profile,b=e.baseline;
+   ?"Το σκορ δείχνει πόσο ασυνήθιστη είναι η αγορά, όχι πιθανότητα νίκης."
+   :kept?"Δεν υπάρχουν νέοι αγώνες με πλήρη στοιχεία πριν τη σέντρα."
+     :"Δεν υπάρχουν αρκετά στοιχεία για νέες παρατηρήσεις. "+svCoverage();
+ const card=o=>{
+   const e=o.evidence,h=e.profile,b=e.baseline,brief=hunterBriefFacts(o);
    const label=e.pick==="fav"?"Ιστορικά προς φαβορί":
      e.pick==="contra"?"Ιστορικά προς κόντρα +0,5":"Χωρίς ξεκάθαρη κατεύθυνση";
    const examples=o.nearest.map(z=>z.match+" ("+z.score+")").join(" · ");
    const baseline=b.priceN?nf(100*b.priceWins/b.priceN,0)+"%":"—";
-   const historyNumbers=h.priceN
+   const historical=h.priceN
      ?"Παρόμοιοι αγώνες: "+h.priceN+" · νίκες φαβορί: "+h.priceWins+
-      " ("+nf(100*h.priceWins/h.priceN,0)+"%) · από τις αποδόσεις: "+
+      " ("+nf(100*h.priceWins/h.priceN,0)+"%) · οι αποδόσεις έδειχναν "+
       nf(h.expectedPct,0)+"% · γενικό ιστορικό: "+baseline+"."
-     :"Δεν υπάρχουν παρόμοιοι αγώνες με τελικό σκορ και πλήρεις αποδόσεις.";
+     :"Δεν υπάρχουν παρόμοιοι αγώνες με πλήρεις αποδόσεις και τελικό σκορ.";
    return '<div class="market-watch-item hunter-card">'+
-     '<b>'+safe(name(o.x))+'</b>'+
+     '<div class="hunter-heading"><b>'+safe(name(o.x))+'</b>'+
+       '<span class="hunter-score">'+safe(o.percentile)+'/100</span></div>'+
      '<small>'+safe(o.x.lg)+" · "+safe(kickoffLabel(o.x))+'</small>'+
+     '<span class="hunter-simple">'+safe(brief.movement)+'</span>'+
+     (o.percentile>=65?'<small class="hunter-drivers">'+safe(brief.reason)+'</small>':"")+
      '<span class="hunter-verdict '+(e.pick==="none"?"hunter-neutral":"hunter-directed")+'">'+
        safe(label)+'</span>'+
-     '<span class="hunter-simple">'+safe(hunterHistoryVerdict(e))+'</span>'+
-     '<small class="hunter-rarity">Ασυνήθιστη κίνηση: '+safe(o.percentile)+
-       '/100 · όχι πιθανότητα νίκης</small>'+
-     '<details class="hunter-evidence"><summary>Δες τα στοιχεία ▾</summary>'+
-       '<p>'+safe(historyNumbers)+'</p>'+
-       '<p>'+safe(o.explanation)+'</p>'+
+     '<div class="hunter-actions"><details class="hunter-evidence">'+
+       '<summary>Δες γιατί ▾</summary>'+
+       '<p>'+safe(hunterHistoryVerdict(e))+'</p>'+
+       '<p>'+safe(historical)+'</p>'+
+       (o.percentile<65?'<p>'+safe(brief.reason)+'</p>':"")+
        '<p>Παρόμοια παλιά ματς: '+safe(examples)+'</p>'+
-       '<p>Η ιστορική ένδειξη δεν αποδεικνύει ότι τα χρήματα προέρχονται από επαγγελματίες.</p>'+
+       '<p>Το σκορ δεν είναι πιθανότητα νίκης και δεν αποδεικνύει Smart Money.</p>'+
      '</details>'+
      '<button type="button" class="hunter-open" data-hunter-id="'+o.x.id+
-       '">Άνοιγμα αγώνα ↗</button></div>';
- }).join("")+
- (count>30?'<p class="market-watch-foot">Οι 30 πρώτες από '+count+' παρατηρήσεις.</p>':""):
- (kept?'':'<p class="market-watch-intro">Αναμονή επαρκών μετρήσεων.</p>');
+       '">Άνοιγμα αγώνα ↗</button></div></div>';
+ };
+ const shown=marketHunterItems.slice(0,7).map(card).join("");
+ const extras=marketHunterItems.slice(7,30);
+ const more=extras.length?'<details class="hunter-more"><summary>Δες ακόμη '+
+   extras.length+' αγώνες ▾</summary><div class="market-watch-rows">'+
+   extras.map(card).join("")+'</div>'+
+   (count>30?'<p class="market-watch-foot">Οι 30 πρώτοι από '+count+' αγώνες.</p>':"")+
+   '</details>':"";
+ $("marketHunterRows").innerHTML=count?shown+more:
+   '<p class="market-watch-intro">Δεν υπάρχουν νέες παρατηρήσεις αυτή τη στιγμή.</p>';
  $("marketHunterRows").insertAdjacentHTML("beforeend",kept);
  $("marketHunterRows").querySelectorAll("[data-hunter-id]").forEach(b=>b.addEventListener("click",()=>{
    const id=Number(b.dataset.hunterId);
