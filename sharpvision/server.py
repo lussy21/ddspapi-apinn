@@ -22,7 +22,7 @@ app.config.update(
 VIEW_PASSWORD = os.getenv("SV_VIEW_PASSWORD", "").strip()
 FEED_URL = os.getenv("SV_FEED_URL", "").strip()
 FEED_KEY = os.getenv("SV_FEED_KEY", "").strip()
-CACHE_TTL = 540
+CACHE_TTL = 120
 # A slow Google Sheets read must never block a browser request.
 # The cache holds last good data and a background worker refreshes it.
 cache = {"time": 0.0, "payload": None, "refreshing": False, "last_attempt": 0.0, "last_error": None}
@@ -245,12 +245,19 @@ def matches():
         refreshing = cache["refreshing"]
         error = cache["last_error"]
     if payload and payload.get("ok"):
-        if age >= CACHE_TTL and not refreshing:
+        # A manual refresh asks for a new read even when the short cache is fresh.
+        # Continue serving the last good snapshot while its replacement loads.
+        wants_fresh = request.args.get("fresh") == "1"
+        if (age >= CACHE_TTL or wants_fresh) and not refreshing:
             _ensure_refresh()
+            with lock:
+                refreshing = cache["refreshing"]
         out = dict(payload)
         out["cached"] = True
-        if age >= CACHE_TTL:
-            out["stale"] = True
+        out["refreshing"] = bool(refreshing)
+        out["cacheAgeSeconds"] = max(0, int(age))
+        out["stale"] = age >= CACHE_TTL
+        if out["stale"]:
             out["state"] = "stale"
         return _response(out)
     if not FEED_URL or not FEED_KEY:
