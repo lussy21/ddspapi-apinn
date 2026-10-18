@@ -26,9 +26,12 @@ CACHE_SHEET_NAME = "SOFA CACHE"
 GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
+# The previous fixtures Actor returned HTTP 403 and an empty dataset on 2026-10-18.
+# This backup uses a browser-TLS client and rotates free Apify datacenter proxies.
+# It is ONLY used by the one-shot manual flow until independently verified.
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
-    "teodor_banea~sofascore-live-scores-fixtures-scraper/"
+    "incognito_mode~sofascore-live-scores-scraper/"
     "run-sync-get-dataset-items"
 )
 APIFY_MATCH_URL = (
@@ -361,27 +364,48 @@ def _normalize_apify_fixture(item):
     }
 
 
-def _backup_schedule_payload(date_str, max_items=500):
-    return {
-        "mode": "scheduled",
+def _backup_schedule_payload(date_str, max_items=200, tournament_ids=None):
+    """Bounded daily fixture discovery using the verified new Actor schema.
+
+    Sending tournamentIds skips the endpoint blocked on the old Actor.
+    No proxyConfiguration means the Actor handles inexpensive proxy rotation.
+    """
+    payload = {
         "sports": ["football"],
-        "date": date_str,
-        "includeOdds": False,
-        "maxEvents": max_items,
+        "liveOnly": False,
+        "dateFrom": date_str,
+        "dateTo": date_str,
+        "maxItems": max_items,
+        "maxDiscoveryPages": 2,
+        "maxTournamentsPerDate": 30,
     }
+    ids = sorted({int(x) for x in (tournament_ids or []) if x})
+    if ids:
+        payload["tournamentIds"] = ids[:25]
+    return payload
 
 
-def fetch_fixtures(token, date_str, tournament_ids, timeout=75, attempts=1):
+def fetch_fixtures(token, date_str, tournament_ids, timeout=120, attempts=1):
+    payload = _backup_schedule_payload(date_str, tournament_ids=tournament_ids)
+    print("SOFASCORE BACKUP ACTOR: incognito_mode",
+          "| day:", date_str,
+          "| tournamentIds:", payload.get("tournamentIds", "discovery"),
+          "| maxItems:", payload["maxItems"], flush=True)
     rows = apify_post(
-        APIFY_FIXTURES_URL, token,
-        _backup_schedule_payload(date_str),
+        APIFY_FIXTURES_URL, token, payload,
         timeout=timeout, attempts=attempts,
     )
-    return [
+    valid = [
         normalized for normalized in
         (_normalize_apify_fixture(item) for item in rows)
-        if normalized is not None
+        if normalized is not None and
+        (normalized.get("id") or normalized.get("eventId")) and
+        isinstance(normalized.get("homeTeam"), dict) and
+        isinstance(normalized.get("awayTeam"), dict)
     ]
+    print("SOFASCORE BACKUP FIXTURES RECEIVED:", len(valid),
+          "| raw:", len(rows), flush=True)
+    return valid
 
 
 def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
@@ -411,6 +435,11 @@ def fetch_votes(token, event_ids, allow_paid_fallback=False):
     rows = []
     fallback_ids = []
     for event_id in ids:
+        # Render's outbound IP was blocked with HTTP 403. Stop retrying
+        # the same blocked API for every match in this one run.
+        if SOFA_DIRECT_BLOCKED:
+            fallback_ids.append(event_id)
+            continue
         try:
             item = fetch_sofa_votes_direct(event_id)
         except Exception as exc:
@@ -1152,7 +1181,7 @@ def manual_full_sofa_run():
 
     ok = update_votes(
         sheet, rows, book, apify_token, apinn_key, now,
-        only_blank=False,
+        only_blank=True,
         allow_fixture_lookup=True,
         allow_paid_fallback=True,
     )
@@ -1190,7 +1219,7 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
     try:
         ok = update_votes(
             sheet, rows, book, apify_token, apinn_key, now,
-            only_blank=False,
+            only_blank=True,
             allow_fixture_lookup=True,
             allow_paid_fallback=True,
         )
