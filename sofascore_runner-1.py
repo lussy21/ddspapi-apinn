@@ -1190,6 +1190,7 @@ def manual_full_sofa_run():
         only_blank=True,
         allow_fixture_lookup=True,
         allow_paid_fallback=True,
+        include_next_morning=True,
     )
     print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
 
@@ -1228,6 +1229,7 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
             only_blank=True,
             allow_fixture_lookup=True,
             allow_paid_fallback=True,
+            include_next_morning=True,
         )
         end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
         control.update(
