@@ -895,7 +895,7 @@ def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
     only_blank=False, allow_fixture_lookup=True,
     minutes_window=None, mark_final=False,
-    allow_paid_fallback=False,
+    allow_paid_fallback=False, include_next_morning=False,
 ):
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
@@ -948,7 +948,12 @@ def update_votes(
             ).astimezone(GREECE_TZ)
         except ValueError:
             continue
-        if kickoff.date() != now.date() or kickoff <= now:
+        if include_next_morning:
+            # The 12:30 Athens snapshot must also capture overnight fixtures
+            # that start before the next day's snapshot, e.g. MLS/Argentina.
+            if not (now < kickoff <= now + timedelta(hours=24)):
+                continue
+        elif kickoff.date() != now.date() or kickoff <= now:
             continue
         minutes_to_kickoff = (kickoff - now).total_seconds() / 60
         if minutes_window is not None:
@@ -1325,6 +1330,7 @@ def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_
             only_blank=True,
             allow_fixture_lookup=True,
             allow_paid_fallback=True,
+            include_next_morning=True,
         )
         after_rows = sheet.get_all_values()
         new_count = sum(
