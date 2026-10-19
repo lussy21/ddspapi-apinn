@@ -1,4 +1,5 @@
 import os
+import random
 import re
 import signal
 import sys
@@ -1265,6 +1266,94 @@ def save_sofa_block(control, now):
     return until
 
 
+def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_key, now):
+    """Daily SofaScore 12:30 Athens snapshot through existing paid Apify account.
+
+    The existing Render job runs every ten minutes and reaches this runner after
+    main.py. Execute only once each calendar day, use a small bounded random
+    delay in the 12:25-12:35 window, and allow a 12:40 catch-up if earlier cron
+    processing ran late. P3 is an independent owner/status marker; GAS owns P2.
+    A failed paid attempt is NOT retried automatically to protect the balance.
+    """
+    if now.hour != 12 or not (25 <= now.minute <= 45):
+        return False
+
+    day = now.date().isoformat()
+    marker_prefix = f"RENDER SOFA {day} |"
+    marker = str(control.acell("P3").value or "").strip()
+    if marker.startswith(marker_prefix):
+        print("SOFASCORE DAILY RENDER ALREADY ATTEMPTED:", marker, flush=True)
+        return True
+
+    if not apinn_key or not apify_token:
+        reason = "APINN_API_KEY missing" if not apinn_key else "APIFY_TOKEN missing"
+        control.update(
+            range_name="P3", values=[[f"{marker_prefix} ERROR | {reason}"]],
+            value_input_option="RAW",
+        )
+        print("SOFASCORE DAILY RENDER ERROR:", reason, flush=True)
+        return True
+
+    # Mark first, so the following ten-minute crons cannot make paid retries.
+    control.update(
+        range_name="P3",
+        values=[[f"{marker_prefix} RUNNING | {now.strftime('%H:%M:%S')}"]],
+        value_input_option="RAW",
+    )
+    print("SOFASCORE DAILY RENDER START:", day, flush=True)
+    try:
+        # A small genuine random delay, always bounded to preserve the runner's
+        # 240-second hard timeout. This is not an anti-block guarantee.
+        cutoff = now.replace(hour=12, minute=34, second=30, microsecond=0)
+        seconds_left = max(0, int((cutoff - now).total_seconds()))
+        max_delay = min(65, seconds_left)
+        delay = random.SystemRandom().randint(0, max_delay)
+        print("SOFASCORE DAILY RENDER RANDOM DELAY:", delay, "seconds", flush=True)
+        if delay:
+            time.sleep(delay)
+
+        # Refresh after the delay; never replace already filled/manual N values.
+        fresh_rows = sheet.get_all_values()
+        before = {
+            str(row[17]).strip(): str(row[13] if len(row) > 13 else "").strip()
+            for row in fresh_rows[2:]
+            if len(row) > 17 and str(row[17]).strip()
+        }
+        ok = update_votes(
+            sheet, fresh_rows, book, apify_token, apinn_key,
+            datetime.now(GREECE_TZ),
+            only_blank=True,
+            allow_fixture_lookup=True,
+            allow_paid_fallback=True,
+        )
+        after_rows = sheet.get_all_values()
+        new_count = sum(
+            1 for row in after_rows[2:]
+            if len(row) > 17
+            and str(row[17]).strip() in before
+            and not before[str(row[17]).strip()]
+            and len(row) > 13 and str(row[13]).strip()
+        )
+        status = "DONE" if ok and new_count else "NO DATA"
+        stamp = datetime.now(GREECE_TZ).strftime("%H:%M")
+        control.update(
+            range_name="P3",
+            values=[[f"{marker_prefix} {status} | {stamp} | wrote={new_count}"]],
+            value_input_option="RAW",
+        )
+        print("SOFASCORE DAILY RENDER COMPLETE:",
+              status, "| wrote:", new_count, flush=True)
+    except Exception as exc:
+        stamp = datetime.now(GREECE_TZ).strftime("%H:%M")
+        control.update(
+            range_name="P3",
+            values=[[f"{marker_prefix} ERROR | {stamp} | {str(exc)[:90]}"]],
+            value_input_option="RAW",
+        )
+        print("SOFASCORE DAILY RENDER EXCEPTION:", repr(exc), flush=True)
+    return True
+
+
 def main():
     try:
         sys.stdout.reconfigure(line_buffering=True)
@@ -1308,17 +1397,22 @@ def main():
         )
         return
 
-    # Automatic SofaScore result collection is owned by Google Apps Script.
-    # Render must never write column P automatically.
+    # Google Apps Script retains result updates (column P); do not touch them.
     print("SOFASCORE AUTO RESULTS: DISABLED ON RENDER | owner=GOOGLE_APPS_SCRIPT")
+
+    # The proven Apify fallback now owns the 12:30 daily N snapshots.
+    # It only fills blanks and records its own attempt in ALERT STATS!P3,
+    # leaving the older Google Apps Script worker's P2 untouched.
+    if run_daily_paid_sofa_snapshot(
+        control, sheet, rows, book, apify_token, apinn_key, now
+    ):
+        return
 
     if not apinn_key:
         print("SOFASCORE: APINN_API_KEY missing - vote snapshot skipped")
         return
 
-    # Automatic SofaScore vote snapshots are owned by Google Apps Script.
-    # Render must never write column N automatically. Manual FULL remains available.
-    print("SOFASCORE DAILY VOTES: DISABLED ON RENDER | owner=GOOGLE_APPS_SCRIPT")
+    print("SOFASCORE DAILY VOTES: RENDER ONCE DAILY NEAR 12:30 | PAID APIFY BACKUP")
 
     # Automatic 90-minute SofaScore refresh remains disabled.
 
