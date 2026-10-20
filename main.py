@@ -993,6 +993,7 @@ TODAY = NOW.date()
 
 matches = []
 seen_events = set()
+board_successes = 0
 
 for league_id in TARGET_LEAGUE_IDS:
     response = apinn_get(
@@ -1009,6 +1010,7 @@ for league_id in TARGET_LEAGUE_IDS:
         print("APINN LEAGUE SKIPPED AFTER RETRIES:", league_id)
         continue
 
+    board_successes += 1
     for match in response.json():
         event_id = match.get("event_id")
         if event_id and event_id not in seen_events:
@@ -1025,6 +1027,7 @@ response = apinn_get(
 )
 
 if response is not None:
+    board_successes += 1
     all_board_matches = response.json()
     print("APINN ALL-BOARD RAW COUNT:", len(all_board_matches))
 
@@ -1108,7 +1111,7 @@ for match in matches:
 raw_match_count = len(matches)
 matches, event_aliases, raw_event_matches = dedupe_apinn_fixtures(matches)
 
-print("APINN CONNECTION OK")
+print("APINN BOARD CONNECTION OK" if board_successes else "APINN BOARD UNAVAILABLE: trying saved event IDs")
 print(
     "MATCHES FOUND:",
     len(matches),
@@ -1126,6 +1129,71 @@ except Exception as exc:
     print("ARBWORLD ERROR:", repr(exc))
 
 sheet_rows = SHEET.get_all_values()
+
+# If all APINN board requests failed, use already-recorded event IDs (R)
+# and kickoff times (BY) to recover LIVE quotes from the separate odds
+# endpoint. Never substitute old Sheet prices for a fresh 90' snapshot.
+if board_successes == 0:
+    candidates = []
+    matched_ids = {str(m.get("event_id") or "") for m in matches}
+    for row_number, row in enumerate(sheet_rows, start=1):
+        if row_number < 3 or len(row) <= 76:
+            continue
+        event_id = str(row[17] or "").strip()
+        home, away = str(row[1] or "").strip(), str(row[2] or "").strip()
+        kickoff_text = str(row[76] or "").strip()
+        if not (event_id and home and away and kickoff_text):
+            continue
+        if event_id in matched_ids:
+            continue
+        try:
+            kickoff = datetime.fromisoformat(kickoff_text.replace("Z", "+00:00"))
+            if kickoff.tzinfo is None:
+                kickoff = kickoff.replace(tzinfo=GREECE_TZ)
+            kickoff = kickoff.astimezone(GREECE_TZ)
+        except ValueError:
+            continue
+        mins = (kickoff - datetime.now(GREECE_TZ)).total_seconds() / 60
+        if not 0 < mins <= 105:
+            continue
+        missing_90 = not str(row[5] or "").strip()
+        priority = 0 if missing_90 and 85 <= mins <= 95 else (1 if missing_90 else 2)
+        candidates.append((priority, abs(mins - 90), row_number, event_id,
+                           home, away, kickoff, str(row[0] or "").strip()))
+    candidates.sort()
+    recovered, failed_direct = 0, 0
+    # Stop after two endpoint failures instead of flooding APINN during an outage.
+    for _, _, row_number, event_id, home, away, kickoff, league in candidates[:20]:
+        reply = apinn_get(ODDS_URL, {"event_id": event_id}, attempts=1)
+        if reply is None:
+            failed_direct += 1
+            if failed_direct >= 2:
+                print("APINN EVENT FALLBACK STOPPED: direct odds unavailable")
+                break
+            continue
+        try:
+            direct_odds = reply.json()
+        except ValueError:
+            continue
+        moneyline = moneyline_from_event_odds(direct_odds)
+        if not (_as_float(moneyline.get("odds1")) and _as_float(moneyline.get("odds2"))):
+            continue
+        if league.startswith("ΕΘΝΙΚΕΣ - "):
+            league = league[len("ΕΘΝΙΚΕΣ - "):]
+        matches.append({
+            "event_id": event_id,
+            "runner_home": home, "runner_away": away,
+            "league_name": league, "starts": kickoff.isoformat(),
+            "odds": {"moneyline": moneyline},
+            "_direct_event_odds": direct_odds,
+        })
+        recovered += 1
+        print("APINN EVENT FALLBACK RECOVERED:", home, "vs", away,
+              "| row:", row_number)
+    print("APINN EVENT FALLBACK SUMMARY:",
+          "candidates:", len(candidates),
+          "| recovered:", recovered, "| errors:", failed_direct)
+
 event_rows = {}
 last_real_match_row = 2
 
@@ -1329,11 +1397,13 @@ for match in matches:
     fav_odd = odd1 if favorite == "1" else odd2
     event_id_text = str(event_id)
 
-    odds_response = apinn_get(
-        ODDS_URL,
-        {"event_id": event_id},
-    )
-    event_odds = odds_response.json() if odds_response is not None else []
+    event_odds = match.get("_direct_event_odds")
+    if event_odds is None:
+        odds_response = apinn_get(
+            ODDS_URL,
+            {"event_id": event_id},
+        )
+        event_odds = odds_response.json() if odds_response is not None else []
 
     contra = None
 
@@ -1443,7 +1513,7 @@ for match in matches:
     open_already = len(current_row) >= 5 and current_row[4] != ""
     min90_already = len(current_row) >= 6 and current_row[5] != ""
 
-    minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
+    minutes_to_kickoff = (kickoff - datetime.now(GREECE_TZ)).total_seconds() / 60
 
     # Preserve any hand-written note in Q. Automatic multi-alert details are
     # rendered from hidden helpers, while the original manual text lives in BW.
