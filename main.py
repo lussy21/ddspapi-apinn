@@ -1198,6 +1198,9 @@ def strong_contra_bg_guard_formula(row_number, kickoff=None):
     r = row_number
     new_over = kickoff is not None and kickoff >= OVER15_START
     primary_name = "🔔 OVER 1.5" if new_over else "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+    # Retire the separate +10 contra alert from public display after cutover.
+    # Historical signals and original criteria remain for research.
+    plus10_name = '""' if new_over else '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)"'
     return (
         f'=IF(NOT(AND(ISNUMBER($L{r});ISNUMBER($N{r})));"";'
         f'IFS(AND(OR($CD{r}=1;AND(ISNUMBER($J{r});$J{r}<=2,4));'
@@ -1205,7 +1208,7 @@ def strong_contra_bg_guard_formula(row_number, kickoff=None):
         f'"{primary_name}";'
         f'AND(ISNUMBER($E{r});$E{r}>=1,7;$E{r}<=2,4;'
         f'$L{r}<=70;$N{r}>=50;$N{r}-$L{r}>=10);'
-        '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)";'
+        f'{plus10_name};'
         f'AND(ISNUMBER($E{r});$E{r}>=1,25;$E{r}<=1,9;'
         f'$L{r}>=90;$N{r}>=82);'
         '"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ";TRUE;""))'
