@@ -14,6 +14,9 @@ from arbworld import find_match as find_arbworld_match
 from arbworld import metrics as arbworld_metrics
 
 GREECE_TZ = ZoneInfo("Europe/Athens")
+# New market and statistics start after the 2026-10-20 migration (Greek time).
+# Earlier fixtures retain the old Strong Contra identity and historical outcome.
+OVER15_START = datetime(2026, 10, 20, 11, 41, tzinfo=GREECE_TZ)
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 CREDS = Credentials.from_service_account_file(
@@ -338,6 +341,9 @@ def _selector_signature(row, prefer_visible=False):
 
 
 def _selector_side(tokens, alert_text=""):
+    # Over 1.5 is a GOALS market. Never rank it as favorite/contra.
+    if str(alert_text or "").strip().startswith("🔔 OVER 1.5"):
+        return None
     # For a multi-alert row, the first visible signal is the same primary family
     # used by the sheet. This only resolves rare opposite-side combinations.
     visible = _selector_tokens_from_text(alert_text)
@@ -536,6 +542,9 @@ def _selector_backfill_strengths(all_rows):
             continue
         fav_won = _selector_favorite_won(row)
         if fav_won is None:
+            continue
+        # Do not teach old 1X2-side rankings with new Over 1.5 results.
+        if str(_selector_visible_alert_text(row)).strip().startswith("🔔 OVER 1.5"):
             continue
 
         tokens = _selector_signature(row, prefer_visible=False)
@@ -1176,7 +1185,7 @@ for duplicate_id, preferred_id in event_aliases.items():
             "| ids:", duplicate_id, preferred_id,
         )
 
-def strong_contra_bg_guard_formula(row_number):
+def strong_contra_bg_guard_formula(row_number, kickoff=None):
     """Only NEW strong-contra signals require live +0.5 odds <= 2.40.
 
     CD is a one-way authorization snapshot. It lets an already opened strong
@@ -1184,11 +1193,13 @@ def strong_contra_bg_guard_formula(row_number):
     keep their original criteria and priority.
     """
     r = row_number
+    new_over = kickoff is not None and kickoff >= OVER15_START
+    primary_name = "🔔 OVER 1.5" if new_over else "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
     return (
         f'=IF(NOT(AND(ISNUMBER($L{r});ISNUMBER($N{r})));"";'
         f'IFS(AND(OR($CD{r}=1;AND(ISNUMBER($J{r});$J{r}<=2,4));'
         f'ISNUMBER($E{r});$E{r}>=1,5;$E{r}<=2,4;$L{r}<60;$N{r}>=50);'
-        '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ";'
+        f'"{primary_name}";'
         f'AND(ISNUMBER($E{r});$E{r}>=1,7;$E{r}<=2,4;'
         f'$L{r}<=70;$N{r}>=50;$N{r}-$L{r}>=10);'
         '"🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)";'
@@ -1389,7 +1400,7 @@ for match in matches:
     already_authorized = str(current_row[81]).strip() == "1" if len(current_row) > 81 else False
     if (
         not already_authorized and not prior_result
-        and prior_alert == "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+        and prior_alert in ("🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ", "🔔 OVER 1.5")
         and prior_contra is not None and prior_contra <= 2.40
     ):
         updates.append({"range": f"CD{row_number}", "values": [[1]]})
@@ -1399,7 +1410,7 @@ for match in matches:
     # and thresholds, but reject NEW strong contra above 2.40 at the current J.
     updates.append({
         "range": f"BG{row_number}",
-        "values": [[strong_contra_bg_guard_formula(row_number)]],
+        "values": [[strong_contra_bg_guard_formula(row_number, kickoff)]],
     })
     # Internal app metadata only: BY stores kickoff in Greek local ISO time.
     # Existing visible/core columns, including Q comments and R event id, stay unchanged.
