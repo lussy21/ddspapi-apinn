@@ -603,6 +603,9 @@ def update_selector_ranking(sheet, all_rows, matches, now):
         fav_won = _selector_favorite_won(row)
         if fav_won is None:
             continue
+        # Goal alerts have a different success definition from 1X2 sides.
+        if str(_selector_visible_alert_text(row)).strip().startswith("🔔 OVER 1.5"):
+            continue
         tokens = _selector_signature(row, prefer_visible=False)
         if not tokens:
             continue
