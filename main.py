@@ -2007,6 +2007,13 @@ for match in matches:
         'MATCH("ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # Retain the SOFA+3X research condition and historical statistics.
+    # Public selection requires an explicitly active configuration.
+    fav_sofa_3x_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΦΑΒΟΡΙ SOFA+3X";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
         f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
@@ -2016,7 +2023,8 @@ for match in matches:
         f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
         f'IF(AND($CA{row_number}<>"";'
         f'{fav_turnover_3x_public_enabled});$CA{row_number};'
-        f'IF($CB{row_number}<>"";$CB{row_number};'
+        f'IF(AND($CB{row_number}<>"";'
+        f'{fav_sofa_3x_public_enabled});$CB{row_number};'
         f'IF($CC{row_number}<>"";$CC{row_number};'
         f'IF($BZ{row_number}<>"";$BZ{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
