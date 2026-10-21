@@ -2014,6 +2014,13 @@ for match in matches:
         'MATCH("ΦΑΒΟΡΙ SOFA+3X";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # Preserve the price-drop condition and statistics for research.
+    # Only active alerts can become the public primary signal.
+    fav_drop_2_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΦΑΒΟΡΙ ΠΤΩΣΗ 2%";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
         f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
@@ -2025,7 +2032,8 @@ for match in matches:
         f'{fav_turnover_3x_public_enabled});$CA{row_number};'
         f'IF(AND($CB{row_number}<>"";'
         f'{fav_sofa_3x_public_enabled});$CB{row_number};'
-        f'IF($CC{row_number}<>"";$CC{row_number};'
+        f'IF(AND($CC{row_number}<>"";'
+        f'{fav_drop_2_public_enabled});$CC{row_number};'
         f'IF($BZ{row_number}<>"";$BZ{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
