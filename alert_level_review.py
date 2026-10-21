@@ -419,7 +419,9 @@ def run_level_review_if_due(spreadsheet, force=False):
             raw=True,
         )
 
-        if not auto_apply or status == "ADMIN_ONLY":
+        # Research-only decisions remain manual even when automatic level
+        # reviews are enabled. Continue updating their metrics above.
+        if not auto_apply or status in ("ADMIN_ONLY", "RESEARCH_ONLY"):
             continue
 
         new_level = current_level

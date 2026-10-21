@@ -1992,11 +1992,20 @@ for match in matches:
         f'$BI{row_number}="";$BJ{row_number}="");$BK{row_number};""))'
     )
 
+    # Keep BN and the internal multi-alert history for research. Public
+    # selection follows ALERT LEVELS so a retired alert cannot reappear
+    # on the next scheduled formula refresh. Missing configuration is closed.
+    fav_turnover_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΦΑΒΟΡΙ ΤΖΙΡΟΥ";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
         f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"";'
+        f'{fav_turnover_public_enabled});$BN{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
         f'IF($CA{row_number}<>"";$CA{row_number};'
         f'IF($CB{row_number}<>"";$CB{row_number};'
