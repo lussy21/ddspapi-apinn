@@ -24,6 +24,8 @@ GREECE_TZ = ZoneInfo("Europe/Athens")
 OVER15_START = datetime(2026, 10, 20, 11, 41, tzinfo=GREECE_TZ)
 # Old Contra Reversal history stays intact; from this day the live pick is favorite.
 FAV_REVERSAL_START_DAY = "2026-10-21"
+# Preserve older reconstruction profiles; the next live fixtures use home-only FAV60.
+FAV60_HOME_START_DAY = "2026-10-22"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 CREDS = Credentials.from_service_account_file(
@@ -324,7 +326,10 @@ def _selector_reconstructed_tokens(row):
         if e <= 1.7 and bm >= 75:
             tokens.append("FAV75")
         elif e <= 1.7 and bm >= 60:
-            tokens.append("FAV60")
+            kickoff_iso = str(row[76]).strip() if len(row) > 76 else ""
+            home_favorite = len(row) > 3 and str(row[3]).strip().upper() == "H"
+            if kickoff_iso[:10] < FAV60_HOME_START_DAY or home_favorite:
+                tokens.append("FAV60")
 
     if (
         e is not None and f90 is not None and g is not None
@@ -1907,7 +1912,7 @@ for match in matches:
     # Turnover alerts discovered from the historical PINNACLE sample.
     # They are tracked for every league category; stats pages split the results.
     fav_60_formula = (
-        f'=IF(AND('
+        f'=IF(AND($D{row_number}="H";'
         f'ISNUMBER($E{row_number});$E{row_number}<=1,7;'
         f'ISNUMBER($BM{row_number});$BM{row_number}>=60);'
         '"🔔 ΦΑΒ 60+";"")'

@@ -160,7 +160,8 @@ def _matches(alert, row):
             and k is not None and w is not None and w > 0 and (k / w) >= 1.5
         )
     if alert == "ΦΑΒ 60+":
-        return e is not None and e <= 1.7 and bm is not None and bm >= 60
+        home_favorite = len(row) > 3 and str(row[3] or "").strip().upper() == "H"
+        return home_favorite and e is not None and e <= 1.7 and bm is not None and bm >= 60
     if alert == "ΦΑΒ 75+":
         return e is not None and e <= 1.7 and bm is not None and bm >= 75
     if alert == "ΤΖΙΡΟΣ ↑":
