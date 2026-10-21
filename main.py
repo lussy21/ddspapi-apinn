@@ -2045,9 +2045,20 @@ for match in matches:
         'MATCH("ΤΖΙΡΟΣ ↑";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # BG and its BH continuation also contain other alert families.
+    # Keep both research signals intact and gate only Strong Favorite publicly.
+    strong_fav_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΔΥΝΑΤΟ ΦΑΒΟΡΙ";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
-        f'IF($BG{row_number}<>"";$BG{row_number};'
-        f'IF($BH{row_number}<>"";$BH{row_number};'
+        f'IF(AND($BG{row_number}<>"";'
+        f'OR(NOT(REGEXMATCH(TO_TEXT($BG{row_number});"ΔΥΝΑΤΟ ΦΑΒΟΡΙ"));'
+        f'{strong_fav_public_enabled}));$BG{row_number};'
+        f'IF(AND($BH{row_number}<>"";'
+        f'OR(NOT(REGEXMATCH(TO_TEXT($BH{row_number});"ΔΥΝΑΤΟ ΦΑΒΟΡΙ"));'
+        f'{strong_fav_public_enabled}));$BH{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"";'
         f'{fav_turnover_public_enabled});$BN{row_number};'
