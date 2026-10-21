@@ -35,7 +35,8 @@ Both teams, league and kickoff bind fixtures to existing rows. New fallback rows
 reuse existing competition labels so turnover percentiles keep the same groups.
 These rows
 use `pinnodds:<id>` in R; existing APINN IDs are retained during standby. APINN
-recovery replaces fallback IDs on the same rows. Ambiguous matches are withheld.
+recovery keeps the Sheet ID stable for alert history and SofaScore cache links,
+using the real APINN request ID separately in memory. Ambiguous matches are withheld.
 Fallback IDs are never sent to APINN endpoints. Existing favorite sides, OPEN
 prices, recorded 90-minute prices, results and manual notes are preserved.
 Fallback quotes stop five minutes before kickoff. A missed 90-minute snapshot

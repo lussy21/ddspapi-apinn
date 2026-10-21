@@ -1732,12 +1732,13 @@ for match in matches:
 
     event_odds = match.get("_direct_event_odds")
     if event_odds is None:
-        if event_id_text.startswith(PINNODDS_ID_PREFIX):
+        request_event_id = match.get("_apinn_event_id", event_id)
+        if str(request_event_id).startswith(PINNODDS_ID_PREFIX):
             print("ODDS WITHHELD: fallback ID without cached markets")
             continue
         odds_response = apinn_get(
             ODDS_URL,
-            {"event_id": event_id},
+            {"event_id": request_event_id},
         )
         event_odds = odds_response.json() if odds_response is not None else []
 

@@ -225,10 +225,12 @@ class FallbackTests(unittest.TestCase):
         matches[0].pop("_provider")
         matches[0]["event_id"] = "new-apinn"
         changes = p.link_fixture_rows(rows, matches, {"pinnodds:2": 3})
-        self.assertEqual(changes, [{"range": "R3", "values": [["new-apinn"]]}])
+        self.assertEqual(changes, [])
+        self.assertEqual(matches[0]["event_id"], "pinnodds:2")
+        self.assertEqual(matches[0]["_apinn_event_id"], "new-apinn")
         self.assertEqual(len(rows), 3)
-        rows[2] = row("Lans", "Sporting lisbon", event_id="new-apinn")[:18]
-        p.link_fixture_rows(rows, matches, {"new-apinn": 3})
+        rows[2] = row("Lans", "Sporting lisbon", event_id="pinnodds:2")[:18]
+        p.link_fixture_rows(rows, matches, {"pinnodds:2": 3})
         self.assertEqual(len(matches), 1)
 
     def test_ambiguous_completed_and_wrong_youth_identity_are_not_linked(self):
@@ -304,12 +306,14 @@ class FallbackTests(unittest.TestCase):
         existing[4], existing[7] = 1.7, 2.2
         primary = {"event_id": 99, "runner_home": "Home", "runner_away": "Away",
                    "league_name": "UEFA - Champions League", "starts": fixture()["starts"],
-                   "odds": {"moneyline": {"odds1": 1.8, "odds2": 4}}, "_direct_event_odds": []}
+                   "odds": {"moneyline": {"odds1": 1.8, "odds2": 4}}}
         spreadsheet = FakeSpreadsheet([[], [], existing])
-        _, feeds, output = run_main(spreadsheet, [fixture()], primary=[primary])
+        calls, feeds, output = run_main(spreadsheet, [fixture()], primary=[primary])
         self.assertEqual(feeds, [])
         self.assertEqual(len(spreadsheet.main.rows), 3)
-        self.assertEqual(spreadsheet.main.rows[2][17], "99")
+        self.assertEqual(spreadsheet.main.rows[2][17], "pinnodds:1")
+        self.assertTrue(any(url.endswith('/odds') and params.get('event_id') == 99 for url, params in calls))
+        self.assertFalse(any('pinnodds:' in str(params) for _, params in calls))
         self.assertEqual(spreadsheet.main.rows[2][4], 1.7)
         self.assertEqual(spreadsheet.main.rows[2][7], 2.2)
         self.assertIn("ODDS SOURCE: APINN", output)

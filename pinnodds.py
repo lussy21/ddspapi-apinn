@@ -298,8 +298,9 @@ def choose_matches(matches, now, spreadsheet, api_key, accepts_league, enabled=T
 def link_fixture_rows(sheet_rows, matches, event_rows):
     """Bind both feeds to the same row; keep old APINN IDs during fallback.
 
-    A new fallback row has a namespaced ID. APINN may replace that ID on recovery;
-    quotes and fixed favorite/OPEN/90-minute snapshots are never changed here.
+    A new fallback row has a namespaced ID, retained when APINN returns so alert
+    history and SofaScore cache keys remain stable. The actual APINN request ID
+    travels separately in memory; fixed odds snapshots are never changed here.
     Ambiguous or completed fixtures are withheld instead of creating duplicates.
     """
     updates, accepted, seen = [], [], []
@@ -348,7 +349,9 @@ def link_fixture_rows(sheet_rows, matches, event_rows):
             # must not split one competition into separate statistical groups.
             match["league_name"] = str(row[0]).removeprefix("ΕΘΝΙΚΕΣ - ")
             old_id = str(row[17]).strip()
-            if match.get("_provider") == "pinnodds" and old_id:
+            if old_id:
+                if match.get("_provider") != "pinnodds":
+                    match["_apinn_event_id"] = match.get("_apinn_event_id", match["event_id"])
                 match["event_id"] = old_id
                 event_rows[old_id] = number
             else:
