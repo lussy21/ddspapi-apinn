@@ -32,6 +32,8 @@ corners, bookings, women/youth/reserves, specials and child markets are excluded
 Upcoming overnight fixtures belong to the betting day starting at 11:00 Athens.
 
 Both teams, league and kickoff bind fixtures to existing rows. New fallback rows
+reuse existing competition labels so turnover percentiles keep the same groups.
+These rows
 use `pinnodds:<id>` in R; existing APINN IDs are retained during standby. APINN
 recovery replaces fallback IDs on the same rows. Ambiguous matches are withheld.
 Fallback IDs are never sent to APINN endpoints. Existing favorite sides, OPEN

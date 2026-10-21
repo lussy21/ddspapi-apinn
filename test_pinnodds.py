@@ -246,6 +246,17 @@ class FallbackTests(unittest.TestCase):
         p.link_fixture_rows(rows, matches, {"pinnodds:1": 3})
         self.assertEqual(matches, [])
 
+    def test_league_aliases_keep_existing_statistical_groups(self):
+        old = row("Old Home", "Old Away", kickoff="2026-10-20T22:00:00+03:00")
+        old[0] = "Turkey - Super League"
+        existing = row()
+        existing[0] = "Turkey - Super League"
+        rows = [[], [], old, existing]
+        matches = normalized([fixture(1, league_name="Turkey - Super Lig"),
+                              fixture(2, "New Home", "New Away", league_name="Turkey - Super Lig")])
+        p.link_fixture_rows(rows, matches, {})
+        self.assertEqual([m["league_name"] for m in matches], ["Turkey - Super League"] * 2)
+
     def test_full_writer_adds_new_and_updates_manual_without_rewriting_snapshots(self):
         existing = row()
         existing[4:10] = [1.9, 1.85, 1.84, 2.2, 2.15, 2.14]

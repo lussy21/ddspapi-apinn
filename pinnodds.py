@@ -4,6 +4,7 @@ No collector runs on import. One scheduled bulk request supplies all fixtures;
 there are no per-event requests, retries, or substitutions for absent +0.5 odds.
 """
 
+from collections import Counter
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from difflib import SequenceMatcher
@@ -302,6 +303,11 @@ def link_fixture_rows(sheet_rows, matches, event_rows):
     Ambiguous or completed fixtures are withheld instead of creating duplicates.
     """
     updates, accepted, seen = [], [], []
+    labels = {}
+    for row in sheet_rows[2:]:
+        if len(row) > 2 and all(str(v).strip() for v in row[:3]):
+            label = str(row[0]).removeprefix("ΕΘΝΙΚΕΣ - ")
+            labels.setdefault(league_key(label), Counter())[label] += 1
     for original_match in matches:
         match = dict(original_match)
         event_id = str(match.get("event_id") or "").strip()
@@ -338,6 +344,9 @@ def link_fixture_rows(sheet_rows, matches, event_rows):
             row = sheet_rows[number - 1]
             if str(row[15]).strip():
                 continue
+            # Percentiles group by the literal Sheet league label. Feed aliases
+            # must not split one competition into separate statistical groups.
+            match["league_name"] = str(row[0]).removeprefix("ΕΘΝΙΚΕΣ - ")
             old_id = str(row[17]).strip()
             if match.get("_provider") == "pinnodds" and old_id:
                 match["event_id"] = old_id
@@ -350,6 +359,8 @@ def link_fixture_rows(sheet_rows, matches, event_rows):
                     if old_id:
                         event_rows.pop(old_id, None)
                     print("ODDS ROW LINKED:", number, "| source:", match.get("_provider", "apinn"))
+        elif match.get("_provider") == "pinnodds" and league in labels:
+            match["league_name"] = labels[league].most_common(1)[0][0]
         seen.append((league, home, away, kickoff))
         accepted.append(match)
     matches[:] = accepted
