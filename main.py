@@ -14,6 +14,9 @@ from arbworld import find_match as find_arbworld_match
 from arbworld import metrics as arbworld_metrics
 from arbworld import normalize_team as arbworld_normalize_team
 from arbworld import _team_score as arbworld_team_score
+from pinnodds import choose_matches as choose_odds_matches
+from pinnodds import link_fixture_rows
+from pinnodds import ID_PREFIX as PINNODDS_ID_PREFIX
 
 GREECE_TZ = ZoneInfo("Europe/Athens")
 # New market and statistics start after the 2026-10-20 migration (Greek time).
@@ -28,9 +31,10 @@ CREDS = Credentials.from_service_account_file(
     scopes=SCOPES,
 )
 GC = gspread.authorize(CREDS)
-SHEET = GC.open_by_key(
+SPREADSHEET = GC.open_by_key(
     "1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM"
-).worksheet("PINNACLE")
+)
+SHEET = SPREADSHEET.worksheet("PINNACLE")
 
 API_KEY = os.environ["APINN_API_KEY"]
 BOARD_URL = "https://api.apinn.io/api/board"
@@ -1139,35 +1143,8 @@ def independent_arbworld_updates(sheet_rows, arb_rows, now):
 
 
 def link_manual_apinn_rows(sheet_rows, matches, event_rows):
-    """Reuse manual fixtures when real APINN IDs return; preserve manual quotes."""
-    pending = []
-    for match in matches:
-        event_id = str(match.get("event_id") or "").strip()
-        kickoff = _arbworld_datetime(match.get("starts"), ZoneInfo("UTC"))
-        if not event_id or event_id in event_rows or kickoff is None:
-            continue
-        candidates = []
-        for number, row in enumerate(sheet_rows, 1):
-            if number < 3 or len(row) <= 76 or str(row[17]).strip():
-                continue
-            if str(row[15]).strip():
-                continue
-            original = _arbworld_datetime(row[76], GREECE_TZ)
-            if original is None or abs((kickoff - original).total_seconds()) > 300:
-                continue
-            if _arbworld_league_key(row[0]) != _arbworld_league_key(match.get("league_name")):
-                continue
-            if (_arbworld_team_key(row[1]) == _arbworld_team_key(match.get("runner_home"))
-                    and _arbworld_team_key(row[2]) == _arbworld_team_key(match.get("runner_away"))):
-                candidates.append(number)
-        if len(candidates) != 1:
-            continue
-        number = candidates[0]
-        event_rows[event_id] = number
-        sheet_rows[number - 1][17] = event_id
-        pending.append({"range": f"R{number}", "values": [[event_id]]})
-        print("APINN MANUAL ROW LINKED:", number, "| event:", event_id)
-    return pending
+    """Bind manual/APINN/fallback fixtures to one stable Sheet row."""
+    return link_fixture_rows(sheet_rows, matches, event_rows)
 
 
 NOW = datetime.now(GREECE_TZ)
@@ -1330,7 +1307,8 @@ arbworld_sheet_updates = independent_arbworld_updates(sheet_rows, ARBWORLD_ROWS,
 if board_successes == 0:
     probe_id = next(
         (str(row[17]).strip() for row in reversed(sheet_rows)
-         if len(row) > 17 and str(row[17]).strip()),
+         if len(row) > 17 and str(row[17]).strip()
+         and not str(row[17]).startswith(PINNODDS_ID_PREFIX)),
         None,
     )
     probe_targets = [
@@ -1470,6 +1448,8 @@ if board_successes == 0:
         if row_number < 3 or len(row) <= 76:
             continue
         event_id = str(row[17] or "").strip()
+        if event_id.startswith(PINNODDS_ID_PREFIX):
+            continue
         home, away = str(row[1] or "").strip(), str(row[2] or "").strip()
         kickoff_text = str(row[76] or "").strip()
         if not (event_id and home and away and kickoff_text):
@@ -1523,6 +1503,17 @@ if board_successes == 0:
     print("APINN EVENT FALLBACK SUMMARY:",
           "candidates:", len(candidates),
           "| recovered:", recovered, "| errors:", failed_direct)
+
+# Choose a single odds source before any odds rows/formulas are written.
+# Arbworld and SofaScore retain their independent schedule and collectors.
+matches = choose_odds_matches(
+    matches, datetime.now(GREECE_TZ), SPREADSHEET,
+    os.environ.get("PINNODDS_API_KEY", "").strip(),
+    lambda league: is_target_league_name(league) or is_national_team_competition(league),
+    enabled=os.environ.get("PINNODDS_FALLBACK_ENABLED", "false").strip().lower() == "true",
+)
+if any(match.get("_provider") == "pinnodds" for match in matches):
+    event_aliases = {}
 
 event_rows = {}
 last_real_match_row = 2
@@ -1724,13 +1715,26 @@ for match in matches:
         print("PINNACLE ODDS PENDING:", home, "vs", away)
         continue
 
-    favorite = "1" if odd1 < odd2 else "2"
+    event_id_text = str(event_id)
+    existing_number = event_rows.get(event_id_text)
+    existing_row = sheet_rows[existing_number - 1] if existing_number else []
+    if len(existing_row) > 15 and str(existing_row[15]).strip():
+        continue
+    minutes_to_kickoff = (kickoff - datetime.now(GREECE_TZ)).total_seconds() / 60
+    if match.get("_provider") == "pinnodds" and minutes_to_kickoff < 5:
+        continue
+    # An opened/manual favorite remains the same team when providers or prices change.
+    fixed_side = str(existing_row[3]).strip() if len(existing_row) > 3 else ""
+    favorite = ("1" if fixed_side == "H" else "2") if fixed_side in ("H", "A") else ("1" if odd1 < odd2 else "2")
     fav_side = "H" if favorite == "1" else "A"
     fav_odd = odd1 if favorite == "1" else odd2
     event_id_text = str(event_id)
 
     event_odds = match.get("_direct_event_odds")
     if event_odds is None:
+        if event_id_text.startswith(PINNODDS_ID_PREFIX):
+            print("ODDS WITHHELD: fallback ID without cached markets")
+            continue
         odds_response = apinn_get(
             ODDS_URL,
             {"event_id": event_id},
@@ -2113,20 +2117,26 @@ for match in matches:
     # Αν χαθεί το ακριβές 11:00 run, κρατάμε την πρώτη επιτυχημένη τιμή μετά.
     if NOW >= match_day_start and minutes_to_kickoff > 0 and not open_already:
         updates.append({"range": f"E{row_number}", "values": [[fav_odd]]})
-        updates.append({
-            "range": f"H{row_number}",
-            "values": [["" if contra is None else contra]],
-        })
+        if len(current_row) <= 7 or not str(current_row[7]).strip():
+            updates.append({
+                "range": f"H{row_number}",
+                "values": [["" if contra is None else contra]],
+            })
 
     # 90MIN: γράφεται μία φορά περίπου 90 λεπτά πριν.
     # Αν χαθεί το ακριβές 85-95' παράθυρο, κρατάμε την πρώτη
     # επιτυχημένη τιμή πριν τη σέντρα αντί να μείνει κενό.
-    if 0 < minutes_to_kickoff <= 95 and not min90_already:
+    # The fallback has no historical endpoint: a late current quote cannot
+    # recreate a missed 90-minute measurement. Existing snapshots stay locked.
+    valid_90_window = (85 <= minutes_to_kickoff <= 95 if match.get("_provider") == "pinnodds"
+                       else 0 < minutes_to_kickoff <= 95)
+    if valid_90_window and not min90_already:
         updates.append({"range": f"F{row_number}", "values": [[fav_odd]]})
-        updates.append({
-            "range": f"I{row_number}",
-            "values": [["" if contra is None else contra]],
-        })
+        if len(current_row) <= 8 or not str(current_row[8]).strip():
+            updates.append({
+                "range": f"I{row_number}",
+                "values": [["" if contra is None else contra]],
+            })
 
     # CLOSE: ανανεώνεται από το OPEN ΗΜΕΡΑΣ (11:00) μέχρι τη σέντρα,
     # ακόμη κι όταν η σέντρα είναι μετά τα μεσάνυχτα.
@@ -2295,5 +2305,6 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
 
