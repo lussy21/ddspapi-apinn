@@ -170,11 +170,12 @@ def main(argv=None):
         "api_requests_attempted": 0,
         "proposed_schedule_only": {
             "timezone": "Europe/Athens",
-            "window": "11:00-23:00 inclusive",
+            "single_requests_greece": ["11:00", "12:00"],
+            "ten_minute_window_greece": "13:00-22:30 inclusive",
             "interval_minutes": 10,
-            "base_requests_per_day": 73,
+            "base_requests_per_day": 60,
             "free_daily_limit": 100,
-            "remaining_for_checks_and_retries": 27,
+            "remaining_for_checks_and_retries": 40,
             "schedule_created": False,
         },
     }
