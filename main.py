@@ -1139,6 +1139,56 @@ except Exception as exc:
 
 sheet_rows = SHEET.get_all_values()
 
+# Read-only connection diagnostics during a board outage. These calls NEVER
+# change quotes, markets, alerts, or Sheet cells. Results contain only HTTP
+# codes and JSON shapes; neither credentials nor response bodies are logged.
+if board_successes == 0:
+    probe_id = next(
+        (str(row[17]).strip() for row in reversed(sheet_rows)
+         if len(row) > 17 and str(row[17]).strip()),
+        None,
+    )
+    probe_targets = [
+        ("status", "https://api.apinn.io/api/status", None, {}),
+        ("auth_sports", "https://api.apinn.io/api/sports", None, HEADERS),
+    ]
+    if probe_id:
+        probe_targets.append(
+            ("v3_odds", "https://api.apinn.io/v3/odds",
+             {"event_id": probe_id}, HEADERS)
+        )
+    for probe_name, probe_url, probe_params, probe_headers in probe_targets:
+        try:
+            probe_response = requests.get(
+                probe_url,
+                headers=probe_headers,
+                params=probe_params,
+                timeout=12,
+            )
+            response_shape = "not_parsed"
+            market_count = 0
+            if probe_response.status_code == 200:
+                try:
+                    probe_data = probe_response.json()
+                    response_shape = type(probe_data).__name__
+                    if isinstance(probe_data, dict):
+                        possible_markets = probe_data.get("markets")
+                        if isinstance(possible_markets, list):
+                            market_count = len(possible_markets)
+                    elif isinstance(probe_data, list):
+                        market_count = len(probe_data)
+                except ValueError:
+                    response_shape = "not_json"
+            print(
+                "APINN SAFE DIAG:", probe_name,
+                "| HTTP:", probe_response.status_code,
+                "| JSON shape:", response_shape,
+                "| count:", market_count,
+            )
+        except requests.RequestException as probe_exc:
+            print("APINN SAFE DIAG:", probe_name,
+                  "| network:", type(probe_exc).__name__)
+
 # An independent documented APINN endpoint can sometimes work when the
 # board is down. Recover only REAL current Pinnacle prices (never Sheet odds).
 # Limit direct calls so Starter's 1,000 requests/hour quota stays protected.
