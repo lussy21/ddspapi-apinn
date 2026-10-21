@@ -17,6 +17,8 @@ GREECE_TZ = ZoneInfo("Europe/Athens")
 # New market and statistics start after the 2026-10-20 migration (Greek time).
 # Earlier fixtures retain the old Strong Contra identity and historical outcome.
 OVER15_START = datetime(2026, 10, 20, 11, 41, tzinfo=GREECE_TZ)
+# Old Contra Reversal history stays intact; from this day the live pick is favorite.
+FAV_REVERSAL_START_DAY = "2026-10-21"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 CREDS = Credentials.from_service_account_file(
@@ -151,7 +153,7 @@ def _selector_second_division(row):
 SELECTOR_COL = "BX"
 SELECTOR_FAV_TOKENS = {
     "STRONG_FAV", "FAV", "WATCH_FAV", "FAV_TURN",
-    "FAV_SOFA_TURN", "FAV60", "FAV75", "TURN_UP",
+    "FAV_SOFA_TURN", "FAV60", "FAV75", "TURN_UP", "FAV_REVERSAL",
 }
 SELECTOR_CONTRA_TOKENS = {
     "STRONG_CONTRA", "STRONG_CONTRA10", "CONTRA",
@@ -242,6 +244,8 @@ def _selector_tokens_from_text(text):
             token = "STRONG_CONTRA10"
         elif "ΔΥΝΑΤΟ ΚΟΝΤΡΑ" in part:
             token = "STRONG_CONTRA"
+        elif "ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ" in part:
+            token = "FAV_REVERSAL"
         elif "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ" in part:
             token = "CONTRA_REVERSAL"
         elif "WATCH ΚΟΝΤΡΑ" in part:
@@ -322,7 +326,11 @@ def _selector_reconstructed_tokens(row):
         and 1.6 <= e <= 2.1 and f90 <= e and g >= f90
         and (k / w) >= 1.5
     ):
-        tokens.append("CONTRA_REVERSAL")
+        kickoff_iso = str(row[76]).strip() if len(row) > 76 else ""
+        tokens.append(
+            "FAV_REVERSAL" if kickoff_iso[:10] >= FAV_REVERSAL_START_DAY
+            else "CONTRA_REVERSAL"
+        )
 
     if bl is not None and bm is not None and bl <= 75 and bm > 75:
         tokens.append("TURN_UP")
@@ -1701,7 +1709,7 @@ for match in matches:
         '"🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ";"")'
     )
 
-    new_contra_reversal_formula = (
+    new_fav_reversal_formula = (
         f'=IF(AND('
         f'NOT(REGEXMATCH($A{row_number};"{excluded_new_alert_leagues}"));'
         f'ISNUMBER($E{row_number});$E{row_number}>=1,6;$E{row_number}<=2,1;'
@@ -1709,7 +1717,7 @@ for match in matches:
         f'$F{row_number}<=$E{row_number};$G{row_number}>=$F{row_number};'
         f'ISNUMBER($K{row_number});ISNUMBER($W{row_number});'
         f'$W{row_number}>0;IFERROR($K{row_number}/$W{row_number}>=1,5;FALSE));'
-        '"🔔💎 ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ";"")'
+        '"🔔💎 ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ";"")'
     )
 
     # Turnover alerts discovered from the historical PINNACLE sample.
@@ -1847,7 +1855,7 @@ for match in matches:
         "values": [[
             new_fav_turnover_formula,
             new_fav_sofa_turnover_formula,
-            new_contra_reversal_formula,
+            new_fav_reversal_formula,
         ]],
     })
     updates.append({
