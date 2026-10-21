@@ -147,7 +147,12 @@ def _matches(alert, row):
             and n is not None and n >= 82
             and bm is not None and bm >= 65
         )
-    if alert == "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ":
+    if alert in ("ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ", "ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ"):
+        # Legacy reversal remains research-only; the favorite variant starts at launch.
+        if alert == "ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ":
+            kickoff_iso = str(row[76]).strip() if len(row) > 76 else ""
+            if kickoff_iso[:10] < "2026-10-21":
+                return False
         return (
             _older_data_rule_scope(league)
             and e is not None and 1.6 <= e <= 2.1
