@@ -2026,6 +2026,13 @@ for match in matches:
         'MATCH("ΦΑΒΟΡΙ ΠΤΩΣΗ 2%";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # Keep the 84+P60 rule and internal statistics available for research.
+    # Public primary selection requires an explicitly active status.
+    fav_84_p60_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΦΑΒΟΡΙ 84+P60";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
         f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
@@ -2039,7 +2046,8 @@ for match in matches:
         f'{fav_sofa_3x_public_enabled});$CB{row_number};'
         f'IF(AND($CC{row_number}<>"";'
         f'{fav_drop_2_public_enabled});$CC{row_number};'
-        f'IF($BZ{row_number}<>"";$BZ{row_number};'
+        f'IF(AND($BZ{row_number}<>"";'
+        f'{fav_84_p60_public_enabled});$BZ{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
