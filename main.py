@@ -30,6 +30,7 @@ SHEET = GC.open_by_key(
 
 API_KEY = os.environ["APINN_API_KEY"]
 BOARD_URL = "https://api.apinn.io/api/board"
+FIXTURES_URL = "https://api.apinn.io/api/fixtures"
 ODDS_URL = "https://api.apinn.io/api/odds"
 HEADERS = {"X-API-Key": API_KEY}
 
@@ -994,6 +995,7 @@ TODAY = NOW.date()
 matches = []
 seen_events = set()
 board_successes = 0
+board_consecutive_failures = 0
 
 for league_id in TARGET_LEAGUE_IDS:
     response = apinn_get(
@@ -1007,9 +1009,16 @@ for league_id in TARGET_LEAGUE_IDS:
         },
     )
     if response is None:
+        board_consecutive_failures += 1
         print("APINN LEAGUE SKIPPED AFTER RETRIES:", league_id)
+        # Stop asking every league when the provider is repeatedly unavailable.
+        # The next normal cron cycle tries again automatically.
+        if board_consecutive_failures >= 2:
+            print("APINN BOARD CIRCUIT BREAKER: remaining leagues skipped")
+            break
         continue
 
+    board_consecutive_failures = 0
     board_successes += 1
     for match in response.json():
         event_id = match.get("event_id")
@@ -1129,6 +1138,92 @@ except Exception as exc:
     print("ARBWORLD ERROR:", repr(exc))
 
 sheet_rows = SHEET.get_all_values()
+
+# An independent documented APINN endpoint can sometimes work when the
+# board is down. Recover only REAL current Pinnacle prices (never Sheet odds).
+# Limit direct calls so Starter's 1,000 requests/hour quota stays protected.
+if board_successes == 0:
+    fixtures_reply = apinn_get(
+        FIXTURES_URL, {"sport_id": 29, "live": 0, "limit": 500}, attempts=1
+    )
+    fixture_candidates = []
+    if fixtures_reply is not None:
+        try:
+            fixtures_data = fixtures_reply.json()
+        except ValueError:
+            fixtures_data = []
+        if isinstance(fixtures_data, dict):
+            fixtures_data = next(
+                (fixtures_data[k] for k in ("data", "results", "fixtures", "items")
+                 if isinstance(fixtures_data.get(k), list)), []
+            )
+        if not isinstance(fixtures_data, list):
+            fixtures_data = []
+        sheet_ids = {
+            str(row[17]).strip(): str(row[5]).strip() if len(row) > 5 else ""
+            for row in sheet_rows if len(row) > 17 and str(row[17]).strip()
+        }
+        existing_ids = {str(m.get("event_id") or "") for m in matches}
+        for fixture in fixtures_data:
+            if not isinstance(fixture, dict):
+                continue
+            event_id = str(fixture.get("event_id") or fixture.get("id") or "").strip()
+            league = str(fixture.get("league_name") or "").strip()
+            home, away = fixture.get("runner_home"), fixture.get("runner_away")
+            starts = fixture.get("starts")
+            if not (event_id and home and away and league and starts):
+                continue
+            if event_id in existing_ids:
+                continue
+            if not (is_target_league_name(league) or is_national_team_competition(league)):
+                continue
+            if str(fixture.get("live", 0)).lower() in ("1", "true"):
+                continue
+            try:
+                kickoff = datetime.fromisoformat(str(starts).replace("Z", "+00:00"))
+                if kickoff.tzinfo is None:
+                    kickoff = kickoff.replace(tzinfo=ZoneInfo("UTC"))
+                kickoff = kickoff.astimezone(GREECE_TZ)
+            except (TypeError, ValueError):
+                continue
+            minutes = (kickoff - datetime.now(GREECE_TZ)).total_seconds() / 60
+            if not 0 < minutes <= 1440:
+                continue
+            priority = (0 if minutes <= 95 and not sheet_ids.get(event_id)
+                        else 1 if event_id in sheet_ids else 2)
+            fixture_candidates.append((priority, minutes, fixture, kickoff))
+        fixture_candidates.sort(key=lambda x: (x[0], x[1]))
+        print("APINN FIXTURES FALLBACK ELIGIBLE:", len(fixture_candidates))
+
+    recovered_fixtures, odds_errors = 0, 0
+    for _, _, fixture, kickoff in fixture_candidates[:24]:
+        event_id = str(fixture.get("event_id") or fixture.get("id") or "").strip()
+        odds_reply = apinn_get(ODDS_URL, {"event_id": event_id}, attempts=1)
+        if odds_reply is None:
+            odds_errors += 1
+            if odds_errors >= 2:
+                print("APINN FIXTURES FALLBACK STOPPED: odds endpoint unavailable")
+                break
+            continue
+        try:
+            odds_payload = odds_reply.json()
+        except ValueError:
+            continue
+        moneyline = moneyline_from_event_odds(odds_payload)
+        if not (_as_float(moneyline.get("odds1")) and _as_float(moneyline.get("odds2"))):
+            continue
+        recovered = dict(fixture)
+        recovered.update({
+            "event_id": event_id,
+            "starts": kickoff.isoformat(),
+            "odds": {"moneyline": moneyline},
+            "_direct_event_odds": odds_payload,
+        })
+        matches.append(recovered)
+        recovered_fixtures += 1
+    print("APINN FIXTURES FALLBACK SUMMARY:",
+          "recovered:", recovered_fixtures, "| errors:", odds_errors)
+
 
 # If all APINN board requests failed, use already-recorded event IDs (R)
 # and kickoff times (BY) to recover LIVE quotes from the separate odds
