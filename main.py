@@ -1070,6 +1070,7 @@ def independent_arbworld_updates(sheet_rows, arb_rows, now):
         default=2,
     )
     pending = []
+    rank_rows, rank90_rows = [], []
     count = 0
     for number, row in enumerate(sheet_rows, 1):
         if number < 3 or len(row) < 5 or not all(str(v).strip() for v in row[:3]):
@@ -1114,18 +1115,25 @@ def independent_arbworld_updates(sheet_rows, arb_rows, now):
         if not any(str(v).strip() for v in row[19:22]):
             put("T", 19, values)
         if minutes <= 95 and not any(str(v).strip() for v in row[22:25]):
-            rank90 = turnover_90_percentile(sheet_rows, number, row[0], arb["turnover"])
             put("W", 22, values)
-            if rank90 is not None:
-                put("BL", 63, [rank90])
-        rank = turnover_percentile(sheet_rows, number, row[0], arb["turnover"])
+            rank90_rows.append(number)
         put("K", 10, values)
-        if rank is not None:
-            put("BM", 64, [rank])
+        rank_rows.append(number)
         count += 1
         print("ARBWORLD INDEPENDENT MATCH:", number, row[1], "vs", row[2],
               "| turnover:", arb["turnover"], "| fav%:", arb["favorite_pct"],
               "| kickoff:", kickoff.isoformat())
+    # Rank all updated fixtures against the same complete, current snapshot.
+    for numbers, column, offset, value_offset, rank_fn in (
+        (rank90_rows, "BL", 63, 22, turnover_90_percentile),
+        (rank_rows, "BM", 64, 10, turnover_percentile),
+    ):
+        for number in numbers:
+            row = sheet_rows[number - 1]
+            rank = rank_fn(sheet_rows, number, row[0], row[value_offset])
+            if rank is not None:
+                row[offset] = rank
+                pending.append({"range": f"{column}{number}", "values": [[rank]]})
     print("ARBWORLD INDEPENDENT SUMMARY: updated:", count, "| ranges:", len(pending))
     return pending
 
