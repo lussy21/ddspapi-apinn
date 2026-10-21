@@ -16,6 +16,7 @@ try:
 except Exception:
     curl_requests = None
 from google.oauth2.service_account import Credentials
+from pinnodds import fallback_sheet_item
 
 GREECE_TZ = ZoneInfo("Europe/Athens")
 UTC_TZ = ZoneInfo("UTC")
@@ -918,6 +919,7 @@ def update_votes(
             "favorite_side": row[3] if len(row) > 3 else "",
             "league": row[0] if len(row) > 0 else "",
             "sofa_value": sofa_value,
+            "kickoff_iso": row[76] if len(row) > 76 else "",
         }
 
     if not sheet_by_event:
@@ -937,6 +939,8 @@ def update_votes(
     for match in board:
         event_id = str(match.get("event_id") or "").strip()
         sheet_item = sheet_by_event.get(event_id)
+        if sheet_item is None:
+            sheet_item = fallback_sheet_item(match, sheet_by_event.values())
         if not sheet_item:
             continue
         starts = match.get("starts")
@@ -1442,3 +1446,4 @@ if __name__ == "__main__":
     finally:
         if hasattr(signal, "SIGALRM"):
             signal.alarm(0)
+

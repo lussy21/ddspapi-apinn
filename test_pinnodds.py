@@ -364,6 +364,29 @@ class FallbackTests(unittest.TestCase):
                 p.read_board("test-secret-never-log")
         self.assertEqual(str(caught.exception), "HTTP 401; no retry.")
 
+    def test_sofa_snapshot_recognizes_stable_fallback_id_after_primary_recovery(self):
+        source = ast.parse(Path(__file__).with_name("sofascore_runner-1.py").read_text())
+        function = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "update_votes")
+        match = {"event_id": 99, "runner_home": "Home", "runner_away": "Away",
+                 "league_name": "UEFA - Champions League", "starts": fixture()["starts"]}
+        requests = types.SimpleNamespace(get=lambda *a, **kw: types.SimpleNamespace(
+            raise_for_status=lambda: None, json=lambda: [match]))
+        class CacheReached(Exception):
+            pass
+        # Stop at the cache boundary: a valid candidate must arrive there with
+        # the stable Sheet ID; no real SofaScore or Sheets call is possible.
+        namespace = {"datetime": datetime, "GREECE_TZ": p.ATHENS, "UTC_TZ": p.ZoneInfo("UTC"),
+                     "requests": requests, "APINN_BOARD_URL": "test-board", "fallback_sheet_item": p.fallback_sheet_item,
+                     "sofa_tournament_id": lambda *a: 7, "is_national_sheet_league": lambda *a: False,
+                     "load_sofa_cache": lambda *a: (_ for _ in ()).throw(CacheReached())}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), "sofascore_runner-1.py", "exec"), namespace)
+        rows = [[], [], row(event_id="pinnodds:1")]
+        with redirect_stdout(io.StringIO()), self.assertRaises(CacheReached):
+            namespace["update_votes"](FakeSheet(rows), rows, FakeSpreadsheet(rows), "test-token", "test-primary", NOW)
+        item = {"apinn_event_id": "pinnodds:1", "home": "Home", "away": "Away", "league": "UEFA - Champions League", "kickoff_iso": fixture()["starts"]}
+        self.assertIs(p.fallback_sheet_item(match, [item]), item)
+        self.assertIsNone(p.fallback_sheet_item(match, [item, dict(item)]))
+
 
 if __name__ == "__main__":
     unittest.main()

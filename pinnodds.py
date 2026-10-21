@@ -229,6 +229,29 @@ def primary_has_prices(matches, now):
     return False
 
 
+def fallback_sheet_item(match, sheet_items):
+    """Resolve a stable fallback Sheet ID for another collector's APINN board.
+
+    The SofaScore collector can retain its cache key when APINN returns with a
+    numeric ID. This lookup is read-only and never requests odds or writes cells.
+    """
+    kickoff = kickoff_time(match.get("starts"))
+    if kickoff is None:
+        return None
+    league = league_key(match.get("league_name"))
+    home, away = team_key(match.get("runner_home")), team_key(match.get("runner_away"))
+    found = []
+    for item in sheet_items:
+        if not str(item.get("apinn_event_id", "")).startswith(ID_PREFIX):
+            continue
+        original = kickoff_time(item.get("kickoff_iso"))
+        if original is None or abs((kickoff - original).total_seconds()) > 300:
+            continue
+        if (league, home, away) == (league_key(item.get("league")), team_key(item.get("home")), team_key(item.get("away"))):
+            found.append(item)
+    return found[0] if len(found) == 1 else None
+
+
 def _reserve_request(spreadsheet, slot):
     """Persistent budget across cron processes/deploys; Render serializes cron runs.
 

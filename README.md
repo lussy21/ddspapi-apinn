@@ -37,6 +37,8 @@ These rows
 use `pinnodds:<id>` in R; existing APINN IDs are retained during standby. APINN
 recovery keeps the Sheet ID stable for alert history and SofaScore cache links,
 using the real APINN request ID separately in memory. Ambiguous matches are withheld.
+The existing SofaScore daily collector resolves these stable IDs against both
+teams, league and kickoff when APINN returns; its schedule and writes are unchanged.
 Fallback IDs are never sent to APINN endpoints. Existing favorite sides, OPEN
 prices, recorded 90-minute prices, results and manual notes are preserved.
 Fallback quotes stop five minutes before kickoff. A missed 90-minute snapshot
