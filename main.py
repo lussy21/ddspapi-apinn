@@ -2052,6 +2052,17 @@ for match in matches:
         'MATCH("ΔΥΝΑΤΟ ΦΑΒΟΡΙ";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # Preserve WATCH conditions and internal history for research.
+    # BK also contains WATCH Contra, whose public behavior stays unchanged.
+    watch_fav_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("WATCH ΦΑΒΟΡΙ";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
+    watch_fav_public_expr = (
+        f'IF(OR(NOT(REGEXMATCH(TO_TEXT($BK{row_number});"WATCH ΦΑΒΟΡΙ"));'
+        f'{watch_fav_public_enabled});$BK{row_number};"")'
+    )
     primary_alert_expr = (
         f'IF(AND($BG{row_number}<>"";'
         f'OR(NOT(REGEXMATCH(TO_TEXT($BG{row_number});"ΔΥΝΑΤΟ ΦΑΒΟΡΙ"));'
@@ -2076,7 +2087,7 @@ for match in matches:
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
-        f'IF($BJ{row_number}<>"";$BJ{row_number};$BK{row_number}))))))))))))))'
+        f'IF($BJ{row_number}<>"";$BJ{row_number};{watch_fav_public_expr}))))))))))))))'
     )
     # O is the visual "at a glance" column: primary alert + selector strength.
     # The real alert state still lives in the helper columns; BX keeps the full score/stage.
