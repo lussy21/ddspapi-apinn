@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 from arbworld import fetch_today as fetch_arbworld_today
 from arbworld import find_match as find_arbworld_match
 from arbworld import metrics as arbworld_metrics
+from arbworld import normalize_team as arbworld_normalize_team
+from arbworld import _team_score as arbworld_team_score
 
 GREECE_TZ = ZoneInfo("Europe/Athens")
 # New market and statistics start after the 2026-10-20 migration (Greek time).
@@ -997,6 +999,169 @@ def dedupe_apinn_fixtures(items):
     return deduped, aliases, event_to_match
 
 
+def _arbworld_team_key(name):
+    key = arbworld_normalize_team(name)
+    # Common short names and the spellings used in manually entered rows.
+    return {
+        "manchester united": "man utd", "internazionale": "inter",
+        "shakhtar donetsk": "shakhtar", "real betis": "betis",
+        "lepsia": "rb leipzig", "lans": "lens", "vicking": "viking",
+        "bilbao": "athletic bilbao", "lask": "lask linz",
+    }.get(key, key)
+
+
+def _arbworld_league_key(name):
+    key = arbworld_normalize_team(name)
+    countries = {
+        "spain": "spanish", "england": "english", "germany": "german",
+        "italy": "italian", "france": "french", "scotland": "scottish",
+        "portugal": "portuguese", "belgium": "belgian", "greece": "greek",
+    }
+    parts = key.split(" ", 1)
+    if len(parts) == 2 and parts[0] in countries:
+        key = countries[parts[0]] + " " + parts[1]
+    return key
+
+
+def _arbworld_datetime(value, default_tz):
+    try:
+        result = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+        if result.tzinfo is None:
+            result = result.replace(tzinfo=default_tz)
+        return result.astimezone(GREECE_TZ)
+    except (TypeError, ValueError):
+        return None
+
+
+def _arbworld_sheet_match(row, arb_rows, kickoff=None):
+    """Match both teams AND competition; never mix senior and youth fixtures."""
+    league = _arbworld_league_key(row[0])
+    home, away = _arbworld_team_key(row[1]), _arbworld_team_key(row[2])
+    candidates = {}
+    for item in arb_rows:
+        if item.get("odds_type") != "MATCH_ODDS":
+            continue
+        if _arbworld_league_key(item.get("leage")) != league:
+            continue
+        starts = _arbworld_datetime(item.get("date"), ZoneInfo("UTC"))
+        if starts is None:
+            continue
+        if kickoff and abs((starts - kickoff).total_seconds()) > 300:
+            continue
+        ah, aa = _arbworld_team_key(item.get("home")), _arbworld_team_key(item.get("away"))
+        hs, aws = arbworld_team_score(home, ah), arbworld_team_score(away, aa)
+        if min(hs, aws) < 0.86 or (hs + aws) / 2 < 0.90:
+            continue
+        identity = (ah, aa, starts)
+        candidates[identity] = ((hs + aws) / 2, item, starts)
+    ranked = sorted(candidates.values(), key=lambda c: c[0], reverse=True)
+    if not ranked or (len(ranked) > 1 and ranked[0][0] - ranked[1][0] < 0.05):
+        return None
+    return ranked[0][1:]
+
+
+def independent_arbworld_updates(sheet_rows, arb_rows, now):
+    """Refresh existing Sheet fixtures without requiring APINN IDs or prices."""
+    if not arb_rows:
+        return []
+    last_dated_row = max(
+        (n for n, row in enumerate(sheet_rows, 1)
+         if len(row) > 76 and _arbworld_datetime(row[76], GREECE_TZ)),
+        default=2,
+    )
+    pending = []
+    count = 0
+    for number, row in enumerate(sheet_rows, 1):
+        if number < 3 or len(row) < 5 or not all(str(v).strip() for v in row[:3]):
+            continue
+        if len(row) > 15 and str(row[15]).strip():
+            continue
+        side = str(row[3]).strip().upper()
+        if side not in ("H", "A"):
+            continue
+        kickoff = _arbworld_datetime(row[76], GREECE_TZ) if len(row) > 76 else None
+        # Only newly appended manual rows may acquire a missing kickoff.
+        # Never reinterpret an undated historical row as today's fixture.
+        if kickoff is None and (
+            number <= last_dated_row or (len(row) > 17 and str(row[17]).strip())
+        ):
+            continue
+        if kickoff is not None and (kickoff - now).total_seconds() < 300:
+            continue
+        matched = _arbworld_sheet_match(row, arb_rows, kickoff)
+        if matched is None:
+            continue
+        arb_match, source_kickoff = matched
+        kickoff = kickoff or source_kickoff
+        minutes = (kickoff - now).total_seconds() / 60
+        if not 5 <= minutes <= 36 * 60 or now < betting_day_start_for(kickoff):
+            continue
+        arb = arbworld_metrics(arb_match, side)
+        if arb is None or not all(math.isfinite(arb[k]) for k in ("turnover", "favorite_pct", "contra_pct")):
+            continue
+        while len(row) < 77:
+            row.append("")
+
+        def put(column, offset, values):
+            end = column if len(values) == 1 else {"K": "M", "T": "V", "W": "Y"}[column]
+            target = f"{column}{number}" if len(values) == 1 else f"{column}{number}:{end}{number}"
+            pending.append({"range": target, "values": [values]})
+            row[offset:offset + len(values)] = values
+
+        values = [arb["turnover"], arb["favorite_pct"], arb["contra_pct"]]
+        if not str(row[76]).strip():
+            put("BY", 76, [kickoff.isoformat()])
+        if not any(str(v).strip() for v in row[19:22]):
+            put("T", 19, values)
+        if minutes <= 95 and not any(str(v).strip() for v in row[22:25]):
+            rank90 = turnover_90_percentile(sheet_rows, number, row[0], arb["turnover"])
+            put("W", 22, values)
+            if rank90 is not None:
+                put("BL", 63, [rank90])
+        rank = turnover_percentile(sheet_rows, number, row[0], arb["turnover"])
+        put("K", 10, values)
+        if rank is not None:
+            put("BM", 64, [rank])
+        count += 1
+        print("ARBWORLD INDEPENDENT MATCH:", number, row[1], "vs", row[2],
+              "| turnover:", arb["turnover"], "| fav%:", arb["favorite_pct"],
+              "| kickoff:", kickoff.isoformat())
+    print("ARBWORLD INDEPENDENT SUMMARY: updated:", count, "| ranges:", len(pending))
+    return pending
+
+
+def link_manual_apinn_rows(sheet_rows, matches, event_rows):
+    """Reuse manual fixtures when real APINN IDs return; preserve manual quotes."""
+    pending = []
+    for match in matches:
+        event_id = str(match.get("event_id") or "").strip()
+        kickoff = _arbworld_datetime(match.get("starts"), ZoneInfo("UTC"))
+        if not event_id or event_id in event_rows or kickoff is None:
+            continue
+        candidates = []
+        for number, row in enumerate(sheet_rows, 1):
+            if number < 3 or len(row) <= 76 or str(row[17]).strip():
+                continue
+            if str(row[15]).strip():
+                continue
+            original = _arbworld_datetime(row[76], GREECE_TZ)
+            if original is None or abs((kickoff - original).total_seconds()) > 300:
+                continue
+            if _arbworld_league_key(row[0]) != _arbworld_league_key(match.get("league_name")):
+                continue
+            if (_arbworld_team_key(row[1]) == _arbworld_team_key(match.get("runner_home"))
+                    and _arbworld_team_key(row[2]) == _arbworld_team_key(match.get("runner_away"))):
+                candidates.append(number)
+        if len(candidates) != 1:
+            continue
+        number = candidates[0]
+        event_rows[event_id] = number
+        sheet_rows[number - 1][17] = event_id
+        pending.append({"range": f"R{number}", "values": [[event_id]]})
+        print("APINN MANUAL ROW LINKED:", number, "| event:", event_id)
+    return pending
+
+
 NOW = datetime.now(GREECE_TZ)
 TODAY = NOW.date()
 
@@ -1146,6 +1311,10 @@ except Exception as exc:
     print("ARBWORLD ERROR:", repr(exc))
 
 sheet_rows = SHEET.get_all_values()
+
+# Arbworld is an independent source. Its current turnover must keep refreshing
+# for manually entered and existing fixtures even when APINN is unavailable.
+arbworld_sheet_updates = independent_arbworld_updates(sheet_rows, ARBWORLD_ROWS, NOW)
 
 # Read-only connection diagnostics during a board outage. These calls NEVER
 # change quotes, markets, alerts, or Sheet cells. Results contain only HTTP
@@ -1365,7 +1534,7 @@ for row_number, row in enumerate(sheet_rows, start=1):
         last_real_match_row = row_number
 
 next_row = max(3, last_real_match_row + 1)
-updates = []
+updates = list(arbworld_sheet_updates)
 
 # If APINN replaced a fixture with another event ID, reuse the existing Sheet
 # row instead of creating a duplicate. Also correct the league label to the
@@ -1434,6 +1603,8 @@ def strong_contra_bg_guard_formula(row_number, kickoff=None):
         f'$L{r}>=90;$N{r}>=82);'
         '"🔔🔥 ΔΥΝΑΤΟ ΦΑΒΟΡΙ";TRUE;""))'
     )
+
+updates.extend(link_manual_apinn_rows(sheet_rows, matches, event_rows))
 
 # Create today's/upcoming rows even when Pinnacle has not published both
 # moneyline sides yet. Odds/favorite fields are filled on later runs.
@@ -2083,4 +2254,5 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
