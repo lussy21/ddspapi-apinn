@@ -2033,6 +2033,13 @@ for match in matches:
         'MATCH("ΦΑΒΟΡΙ 84+P60";\'ALERT LEVELS\'!$A$2:$A$100;0));'
         '"RESEARCH_ONLY")="ACTIVE"'
     )
+    # Preserve the turnover-rise rule and tracking for research.
+    # Public primary selection requires an explicitly active status.
+    turnover_up_public_enabled = (
+        'IFERROR(INDEX(\'ALERT LEVELS\'!$E$2:$E$100;'
+        'MATCH("ΤΖΙΡΟΣ ↑";\'ALERT LEVELS\'!$A$2:$A$100;0));'
+        '"RESEARCH_ONLY")="ACTIVE"'
+    )
     primary_alert_expr = (
         f'IF($BG{row_number}<>"";$BG{row_number};'
         f'IF($BH{row_number}<>"";$BH{row_number};'
@@ -2048,7 +2055,8 @@ for match in matches:
         f'{fav_drop_2_public_enabled});$CC{row_number};'
         f'IF(AND($BZ{row_number}<>"";'
         f'{fav_84_p60_public_enabled});$BZ{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};'
+        f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"";'
+        f'{turnover_up_public_enabled});$BT{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
