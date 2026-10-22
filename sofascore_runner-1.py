@@ -550,7 +550,7 @@ def append_sofa_cache(cache_sheet, rows):
                 item["sofa_event_id"],
                 item["home"],
                 item["away"],
-                item["kickoff"].date().isoformat(),
+                item.get("result_date") or item["kickoff"].date().isoformat(),
                 "",
                 "",
             ]
@@ -909,8 +909,6 @@ def update_votes(
         if not event_id:
             continue
         sofa_value = row[13] if len(row) > 13 else ""
-        if only_blank and str(sofa_value).strip():
-            continue
         sheet_by_event[event_id] = {
             "row": row_number,
             "apinn_event_id": event_id,
@@ -926,22 +924,45 @@ def update_votes(
         print("SOFASCORE: no sheet events")
         return True
 
-    response = requests.get(
-        APINN_BOARD_URL,
-        headers={"X-API-Key": apinn_key},
-        params={"sport_id": 29, "live": 0, "limit": 500},
-        timeout=30,
-    )
-    response.raise_for_status()
-    board = response.json()
+    board = []
+    try:
+        response = requests.get(
+            APINN_BOARD_URL,
+            headers={"X-API-Key": apinn_key},
+            params={"sport_id": 29, "live": 0, "limit": 500},
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, list):
+            board = [m for m in payload if isinstance(m, dict)]
+    except (requests.RequestException, ValueError, TypeError) as exc:
+        # Fixture/odds outages must not stop the independent daily SofaScore
+        # snapshot or prevent its cache from being created for result updates.
+        print("SOFASCORE APINN BOARD UNAVAILABLE: using Sheet fixtures |", type(exc).__name__)
+
+    # The odds collector has already saved the real teams/league/kickoff in the
+    # Sheet, including Pinnodds fixtures. Reuse those identities even when APINN
+    # fails, omits a fixture, or returns no board. No extra odds/API request.
+    for item in sheet_by_event.values():
+        if not item.get("kickoff_iso") or item.get("favorite_side") not in ("H", "A"):
+            continue
+        board.append({
+            "event_id": item["apinn_event_id"],
+            "runner_home": item["home"], "runner_away": item["away"],
+            "league_name": item["league"], "starts": item["kickoff_iso"],
+        })
 
     candidates = []
+    seen_candidate_rows = set()
     for match in board:
         event_id = str(match.get("event_id") or "").strip()
         sheet_item = sheet_by_event.get(event_id)
         if sheet_item is None:
             sheet_item = fallback_sheet_item(match, sheet_by_event.values())
         if not sheet_item:
+            continue
+        if sheet_item["row"] in seen_candidate_rows:
             continue
         starts = match.get("starts")
         if not starts:
@@ -966,7 +987,7 @@ def update_votes(
                 continue
         tournament_id = sofa_tournament_id(
             match.get("league_id"), match.get("league_name")
-        )
+        ) or sheet_league_tournament_id(sheet_item.get("league"))
         national_match = is_national_sheet_league(sheet_item.get("league"))
         if not tournament_id and not national_match:
             print(
@@ -980,7 +1001,12 @@ def update_votes(
             "tournament_id": tournament_id,
             "national_match": national_match,
             "sofa_date": kickoff.astimezone(UTC_TZ).date().isoformat(),
+            # GAS's 08:00 result worker selects yesterday's snapshot date.
+            # Overnight fixtures belong to this daily batch, just as they do
+            # when GAS creates the cache itself, rather than a day later.
+            "result_date": now.date().isoformat() if include_next_morning else kickoff.date().isoformat(),
         })
+        seen_candidate_rows.add(sheet_item["row"])
 
     if not candidates:
         print("SOFASCORE: no upcoming matches for this snapshot")
@@ -1110,9 +1136,20 @@ def update_votes(
         print("SOFASCORE: no matched events")
         return False
 
+    # A manually filled N still needs a SofaScore identity for the independent
+    # result worker. Keep it in the fixture/cache phase, but never request or
+    # overwrite its vote snapshot when this run only fills blanks.
+    vote_matches = [
+        item for item in matched
+        if not only_blank or not str(item.get("sofa_value", "")).strip()
+    ]
+    if not vote_matches:
+        print("SOFASCORE: result cache ready; existing votes preserved")
+        return True
+
     vote_rows = fetch_votes(
         apify_token,
-        [item["sofa_event_id"] for item in matched],
+        [item["sofa_event_id"] for item in vote_matches],
         allow_paid_fallback=allow_paid_fallback,
     )
     votes_by_event = {
@@ -1122,7 +1159,7 @@ def update_votes(
 
     updates = []
     final_completed = []
-    for item in matched:
+    for item in vote_matches:
         vote_item = votes_by_event.get(str(item["sofa_event_id"]))
         if not vote_item:
             print("SOFASCORE VOTES NOT RETURNED:", item["home"], "vs", item["away"])
@@ -1446,4 +1483,5 @@ if __name__ == "__main__":
     finally:
         if hasattr(signal, "SIGALRM"):
             signal.alarm(0)
+
 
