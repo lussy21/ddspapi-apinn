@@ -1881,8 +1881,8 @@ for match in matches:
         })
 
     # NEW DATA-DRIVEN ALERTS.
-    # Existing strong alerts keep priority. These formulas are refreshed
-    # for each active match and only become eligible near the close.
+    # Existing strong alerts keep priority. Active rules become eligible
+    # whenever their required inputs meet the conditions on a live refresh.
     excluded_new_alert_leagues = (
         "^(Finland|Norway|Sweden|Denmark|Scotland|USA|Brazil|Argentina) - "
     )
@@ -1973,16 +1973,16 @@ for match in matches:
     # alerts count separately.
     alert_count_formula = (
         f'=IF(IF($BG{row_number}<>"";$BG{row_number};$BH{row_number})<>"";1;0)'
-        f'+IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");1;0)'
+        f'+IF($BO{row_number}<>"";1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");1;0)'
-        f'+IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");1;0)'
+        f'+IF($BP{row_number}<>"";1;0)'
         f'+IF($CA{row_number}<>"";1;0)'
         f'+IF($CB{row_number}<>"";1;0)'
         f'+IF($CC{row_number}<>"";1;0)'
         f'+IF($BZ{row_number}<>"";1;0)'
         f'+IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");1;0)'
-        f'+IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");1;0)'
-        f'+IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");1;0)'
+        f'+IF($BS{row_number}<>"";1;0)'
+        f'+IF($BR{row_number}<>"";1;0)'
         f'+IF(AND($BG{row_number}="";$BH{row_number}="";'
         f'IF($BI{row_number}<>"";$BI{row_number};$BJ{row_number})<>"");1;0)'
         f'+IF(AND($BG{row_number}="";$BH{row_number}="";'
@@ -1992,16 +1992,16 @@ for match in matches:
     alert_list_formula = (
         f'=TEXTJOIN(" | ";TRUE;'
         f'IF($BG{row_number}<>"";$BG{row_number};$BH{row_number});'
-        f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};"");'
+        f'IF($BO{row_number}<>"";$BO{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"");$BN{row_number};"");'
-        f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};"");'
+        f'IF($BP{row_number}<>"";$BP{row_number};"");'
         f'IF($CA{row_number}<>"";$CA{row_number};"");'
         f'IF($CB{row_number}<>"";$CB{row_number};"");'
         f'IF($CC{row_number}<>"";$CC{row_number};"");'
         f'IF($BZ{row_number}<>"";$BZ{row_number};"");'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"");$BT{row_number};"");'
-        f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};"");'
-        f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};"");'
+        f'IF($BS{row_number}<>"";$BS{row_number};"");'
+        f'IF($BR{row_number}<>"";$BR{row_number};"");'
         f'IF(AND($BG{row_number}="";$BH{row_number}="");'
         f'IF($BI{row_number}<>"";$BI{row_number};$BJ{row_number});"");'
         f'IF(AND($BG{row_number}="";$BH{row_number}="";'
@@ -2076,10 +2076,10 @@ for match in matches:
         f'IF(AND($BH{row_number}<>"";'
         f'OR(NOT(REGEXMATCH(TO_TEXT($BH{row_number});"ΔΥΝΑΤΟ ΦΑΒΟΡΙ"));'
         f'{strong_fav_public_enabled}));$BH{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BO{row_number}<>"");$BO{row_number};'
+        f'IF($BO{row_number}<>"";$BO{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BN{row_number}<>"";'
         f'{fav_turnover_public_enabled});$BN{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BP{row_number}<>"");$BP{row_number};'
+        f'IF($BP{row_number}<>"";$BP{row_number};'
         f'IF(AND($CA{row_number}<>"";'
         f'{fav_turnover_3x_public_enabled});$CA{row_number};'
         f'IF(AND($CB{row_number}<>"";'
@@ -2090,8 +2090,8 @@ for match in matches:
         f'{fav_84_p60_public_enabled});$BZ{row_number};'
         f'IF(AND($BQ{row_number}="CLOSE";$BT{row_number}<>"";'
         f'{turnover_up_public_enabled});$BT{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BS{row_number}<>"");$BS{row_number};'
-        f'IF(AND($BQ{row_number}="CLOSE";$BR{row_number}<>"");$BR{row_number};'
+        f'IF($BS{row_number}<>"";$BS{row_number};'
+        f'IF($BR{row_number}<>"";$BR{row_number};'
         f'IF($BI{row_number}<>"";$BI{row_number};'
         f'IF($BJ{row_number}<>"";$BJ{row_number};{watch_fav_public_expr}))))))))))))))'
     )
@@ -2152,9 +2152,8 @@ for match in matches:
         "values": [[comment_formula]],
     })
 
-    # With the 10-minute cron, the last turnover snapshot normally lands
-    # inside this window. Mark it as close-ready so the new rules do not
-    # flash hours before kickoff.
+    # Keep the close-stage marker for final snapshots, selector stages and
+    # legacy research rules. Active public alerts no longer wait for it.
     if 0 < minutes_to_kickoff <= 15:
         updates.append({
             "range": f"BQ{row_number}",
