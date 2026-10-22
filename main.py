@@ -8,6 +8,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from alert_formulas import legacy_alert_helper_updates
 
 from arbworld import fetch_today as fetch_arbworld_today
 from arbworld import find_match as find_arbworld_match
@@ -1830,6 +1831,11 @@ for match in matches:
         "range": f"BG{row_number}",
         "values": [[strong_contra_bg_guard_formula(row_number, kickoff)]],
     })
+    # Legacy BH:BK formulas previously ended at row 887. Refresh the helpers
+    # for every eligible live row, including newly created/manual fixtures.
+    updates.extend(legacy_alert_helper_updates(
+        row_number, use_over15=kickoff >= OVER15_START,
+    ))
     # Internal app metadata only: BY stores kickoff in Greek local ISO time.
     # Existing visible/core columns, including Q comments and R event id, stay unchanged.
     updates.append({
@@ -2349,6 +2355,7 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
 
 

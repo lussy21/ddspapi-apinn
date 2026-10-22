@@ -681,6 +681,20 @@ def normalize_display_alert(value):
             return left.strip()
     return text
 
+
+def read_alert_inputs(ws):
+    """Read all existing fixture rows instead of silently stopping at 1000."""
+    rows = ws.get(
+        f"A3:BE{max(3, ws.row_count)}",
+        value_render_option="FORMATTED_VALUE",
+    )
+    last_data_row = max(3, len(rows) + 2)
+    formulas = ws.get(
+        f"O3:O{last_data_row}",
+        value_render_option="FORMULA",
+    )
+    return rows, formulas
+
 def main():
 
     # Περιμένουμε λίγο ώστε η Google Sheet
@@ -709,17 +723,7 @@ def main():
         log_ws
     )
 
-    # Κανονικές τιμές
-    rows = ws.get(
-        "A3:BE1000",
-        value_render_option="FORMATTED_VALUE",
-    )
-
-    # Πραγματική φόρμουλα της O
-    formulas = ws.get(
-        "O3:O1000",
-        value_render_option="FORMULA",
-    )
+    rows, formulas = read_alert_inputs(ws)
 
     sheet_updates = []
     log_rows = []
@@ -1143,3 +1147,4 @@ if __name__ == "__main__":
             f"{type(exc).__name__}: "
             f"{exc}"
         )
+
