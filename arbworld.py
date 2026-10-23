@@ -32,6 +32,7 @@ ALIASES = {
     "psg": "paris st g",
     "atletico de madrid": "atletico madrid",
     "club atletico de madrid": "atletico madrid",
+    "mgladbach": "borussia monchengladbach",
 }
 
 
@@ -155,3 +156,4 @@ def metrics(item, favorite_side):
         "arb_home": item.get("home") or "",
         "arb_away": item.get("away") or "",
     }
+
