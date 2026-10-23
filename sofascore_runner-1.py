@@ -28,18 +28,17 @@ CACHE_SHEET_NAME = "SOFA CACHE"
 GOOGLE_CREDS = "/etc/secrets/google-credentials.json"
 
 APINN_BOARD_URL = "https://api.apinn.io/api/board"
-# The previous fixtures Actor returned HTTP 403 and an empty dataset on 2026-10-18.
-# This backup uses a browser-TLS client and rotates free Apify datacenter proxies.
-# It is ONLY used by the one-shot manual flow until independently verified.
+# Existing paid fixture fallback for the single daily snapshot and explicit
+# manual requests. The daily attempt marker prevents automatic paid retries.
 APIFY_FIXTURES_URL = (
     "https://api.apify.com/v2/acts/"
     "incognito_mode~sofascore-live-scores-scraper/"
     "run-sync-get-dataset-items"
 )
-APIFY_MATCH_URL = (
-    "https://api.apify.com/v2/acts/"
+APIFY_MATCH_RUNS_URL = (
+    "https://api.apify.com/v2/actors/"
     "incognito_mode~sofascore-match-analytics-scraper/"
-    "run-sync-get-dataset-items"
+    "runs"
 )
 
 SOFA_API_BASES = (
@@ -63,6 +62,9 @@ SOFA_HEADERS = {
 RUNNER_HARD_TIMEOUT_SECONDS = 240
 SOFA_BLOCK_HOURS = 6
 SOFA_DIRECT_BLOCKED = False
+RUNNER_DEADLINE = None
+APIFY_VOTE_WAIT_SECONDS = 100
+APIFY_VOTE_CONCURRENCY = 3
 
 
 def _runner_timeout_handler(signum, frame):
@@ -79,12 +81,15 @@ APINN_TO_SOFA_TOURNAMENT = {
 LEAGUE_NAME_TO_SOFA_TOURNAMENT = {
     "england - premier league": 17,
     "germany - bundesliga": 35,
+    "germany - bundesliga 2": 44,
+    "germany - 2. bundesliga": 44,
     "france - ligue 1": 34,
     "greece - super league": 185,
     "greece - super league 2": 186,
     "italy - serie a": 23,
     "spain - la liga": 8,
     "belgium - pro league": 38,
+    "belgium - challenger pro league": 9,
     "denmark - superliga": 39,
     "norway - eliteserien": 20,
     "netherlands - eredivisie": 37,
@@ -178,6 +183,8 @@ def sheet_league_tournament_id(league_name):
     if name in LEAGUE_NAME_TO_SOFA_TOURNAMENT:
         return LEAGUE_NAME_TO_SOFA_TOURNAMENT[name]
     checks = [
+        ("bundesliga 2", 44), ("2. bundesliga", 44),
+        ("challenger pro league", 9),
         ("premier league", 17), ("bundesliga", 35), ("ligue 1", 34),
         ("super league 2", 186), ("greece", 185), ("serie a", 23), ("la liga", 8),
         ("pro league", 38), ("superliga", 39), ("eliteserien", 20),
@@ -191,13 +198,19 @@ def sheet_league_tournament_id(league_name):
     return None
 
 
+def safe_error(exc):
+    """Never include provider URLs or credentials from exception messages."""
+    code = getattr(getattr(exc, "response", None), "status_code", None)
+    return f"{type(exc).__name__} HTTP {code}" if code else type(exc).__name__
+
+
 def apify_post(url, token, payload, timeout=180, attempts=3):
     """Call an Apify actor with bounded retries and useful diagnostics."""
     last_error = None
     for attempt in range(1, attempts + 1):
         response = requests.post(
-            url, params={"token": token}, json=payload,
-            headers={"Accept": "application/json"}, timeout=timeout,
+            url, json=payload,
+            headers={"Accept": "application/json", "Authorization": f"Bearer {token}"}, timeout=timeout,
         )
         if response.ok:
             data = response.json()
@@ -232,6 +245,101 @@ def apify_post(url, token, payload, timeout=180, attempts=3):
     if last_error is not None:
         raise last_error
     raise RuntimeError("Apify request failed")
+
+
+def apify_vote_batches(token, batches, wait_seconds=APIFY_VOTE_WAIT_SECONDS):
+    """Start each paid batch once, then only read those exact runs/datasets.
+
+    A synchronous HTTP read timeout does not stop an Actor. Keeping its run ID
+    lets slow batches finish past the old 45s limit without paying for a rerun.
+    Bound both Actor runtime and total waiting, leaving time for Sheet writes.
+    """
+    deadline = time.monotonic() + wait_seconds
+    if RUNNER_DEADLINE is not None:
+        deadline = min(deadline, RUNNER_DEADLINE - 20)
+    headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
+    pending, rows = [], []
+    queue = list(batches)
+    terminal = {"SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"}
+
+    def remaining():
+        return max(0.0, deadline - time.monotonic())
+
+    def dataset(run, ids):
+        dataset_id = run.get("defaultDatasetId")
+        if not dataset_id or remaining() < 2:
+            return False
+        try:
+            reply = requests.get(
+                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+                params={"clean": "true", "limit": len(ids)}, headers=headers,
+                timeout=min(10, remaining()),
+            )
+            reply.raise_for_status()
+            data = reply.json()
+            if not isinstance(data, list):
+                raise ValueError("Unexpected Apify dataset response")
+            wanted = {str(i) for i in ids}
+            rows.extend(item for item in data if isinstance(item, dict)
+                        and str(item.get("eventId")) in wanted)
+            print("SOFASCORE VOTES RUN READ:", run.get("id"),
+                  "| status:", run.get("status"), "| events:", ids, flush=True)
+            return True
+        except Exception as exc:
+            print("SOFASCORE VOTES DATASET ERROR:", run.get("id"), safe_error(exc))
+            return False
+
+    while (queue or pending) and remaining() >= 2:
+        while queue and len(pending) < APIFY_VOTE_CONCURRENCY and remaining() >= 15:
+            payload = queue.pop(0)
+            ids = payload["eventIds"]
+            try:
+                # This POST is never retried, even if its response is lost.
+                reply = requests.post(
+                    APIFY_MATCH_RUNS_URL,
+                    params={"waitForFinish": 0, "timeout": max(1, int(remaining()) - 5),
+                            "restartOnError": "false", "maxItems": len(ids)},
+                    headers=headers, json=payload, timeout=min(15, remaining() - 2),
+                )
+                reply.raise_for_status()
+                run = reply.json().get("data")
+                if not isinstance(run, dict) or not run.get("id"):
+                    raise ValueError("Apify start did not return a run ID")
+                print("SOFASCORE VOTES RUN STARTED:", run["id"], "| events:", ids, flush=True)
+                if run.get("status") not in terminal or not dataset(run, ids):
+                    pending.append((run, ids))
+            except Exception as exc:
+                print("SOFASCORE VOTES START FAILED (NO RETRY):", ids, safe_error(exc))
+
+        if not pending:
+            break
+        for run, ids in list(pending):
+            if remaining() < 2:
+                break
+            try:
+                if run.get("status") not in terminal:
+                    reply = requests.get(
+                        f"https://api.apify.com/v2/actor-runs/{run['id']}",
+                        params={"waitForFinish": min(5, max(0, int(remaining()) - 2))},
+                        headers=headers, timeout=min(10, remaining()),
+                    )
+                    reply.raise_for_status()
+                    current = reply.json().get("data")
+                    if not isinstance(current, dict) or current.get("id") != run["id"]:
+                        raise ValueError("Unexpected Apify run identity")
+                    run.update(current)
+                if run.get("status") in terminal and dataset(run, ids):
+                    pending.remove((run, ids))
+            except Exception as exc:
+                # A read can be retried within the deadline; no new Actor starts.
+                print("SOFASCORE VOTES RUN POLL ERROR:", run["id"], safe_error(exc))
+        if pending and remaining() >= 2:
+            time.sleep(min(1, remaining()))
+
+    if pending or queue:
+        print("SOFASCORE VOTES WAIT LIMIT: unfinished=", len(pending),
+              "| not started=", len(queue), "| no paid retries", flush=True)
+    return rows
 
 
 def sofa_get(path, attempts=3, timeout=20):
@@ -289,7 +397,7 @@ def sofa_get(path, attempts=3, timeout=20):
                     base,
                     path,
                     "| attempt:", attempt,
-                    "|", repr(exc),
+                    "|", safe_error(exc),
                 )
                 if status_code in (403, 404):
                     break
@@ -445,7 +553,7 @@ def fetch_votes(token, event_ids, allow_paid_fallback=False):
         try:
             item = fetch_sofa_votes_direct(event_id)
         except Exception as exc:
-            print("SOFASCORE DIRECT VOTES ERROR:", event_id, repr(exc))
+            print("SOFASCORE DIRECT VOTES ERROR:", event_id, safe_error(exc))
             item = None
         if item is not None:
             rows.append(item)
@@ -464,6 +572,7 @@ def fetch_votes(token, event_ids, allow_paid_fallback=False):
 
     print("SOFASCORE VOTES APIFY FALLBACK:", len(fallback_ids), "events")
     batch_size = 5
+    batches = []
     for start in range(0, len(fallback_ids), batch_size):
         batch = fallback_ids[start:start + batch_size]
         payload = {
@@ -485,18 +594,8 @@ def fetch_votes(token, event_ids, allow_paid_fallback=False):
             "includeHeatmaps": False,
             "maxItems": len(batch),
         }
-        try:
-            rows.extend(
-                apify_post(
-                    APIFY_MATCH_URL, token, payload,
-                    timeout=45, attempts=1,
-                )
-            )
-        except Exception as exc:
-            print(
-                "SOFASCORE VOTES FALLBACK BATCH FAILED:",
-                batch, repr(exc),
-            )
+        batches.append(payload)
+    rows.extend(apify_vote_batches(token, batches))
     return rows
 
 def load_sofa_cache(book):
@@ -604,7 +703,7 @@ def run_one_off_result_catchup(book, sheet, rows, apify_token, now):
             # Leave the marker pending so it can be repaired on a later run.
             print(
                 "SOFASCORE ONE-OFF RESULT CATCHUP ERROR:",
-                date_str, repr(exc),
+                date_str, safe_error(exc),
             )
             return False
         cache_sheet.update(
@@ -795,7 +894,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
             print(
                 "SOFASCORE DIRECT SCHEDULE ERROR:",
                 date_str,
-                repr(exc),
+                safe_error(exc),
             )
 
         if not fixtures:
@@ -850,7 +949,7 @@ def update_results(book, sheet, rows, apify_token, now, result_dates=None):
                         print(
                             "SOFASCORE DIRECT EVENT ERROR:",
                             sofa_id,
-                            repr(exc),
+                            safe_error(exc),
                         )
                 direct_match = exact_cache.get(key)
                 if direct_match and is_finished(direct_match):
@@ -896,8 +995,11 @@ def update_votes(
     sheet, rows, book, apify_token, apinn_key, now,
     only_blank=False, allow_fixture_lookup=True,
     minutes_window=None, mark_final=False,
-    allow_paid_fallback=False, include_next_morning=False,
+    allow_paid_fallback=False, include_next_morning=False, report=None,
 ):
+    stats = report if report is not None else {}
+    stats.update(eligible=0, matched=0, unmapped=0, unmatched=0,
+                 missing_votes=0, preserved=0, wrote=0)
     snapshot_label = f"{now.hour:02d}:00"
     print("SOFASCORE SNAPSHOT:", snapshot_label)
 
@@ -985,11 +1087,14 @@ def update_votes(
             low, high = minutes_window
             if not (low <= minutes_to_kickoff <= high):
                 continue
+        seen_candidate_rows.add(sheet_item["row"])
+        stats["eligible"] += 1
         tournament_id = sofa_tournament_id(
             match.get("league_id"), match.get("league_name")
         ) or sheet_league_tournament_id(sheet_item.get("league"))
         national_match = is_national_sheet_league(sheet_item.get("league"))
         if not tournament_id and not national_match:
+            stats["unmapped"] += 1
             print(
                 "SOFASCORE TOURNAMENT NOT MAPPED:",
                 match.get("league_name"), match.get("league_id"),
@@ -1006,11 +1111,10 @@ def update_votes(
             # when GAS creates the cache itself, rather than a day later.
             "result_date": now.date().isoformat() if include_next_morning else kickoff.date().isoformat(),
         })
-        seen_candidate_rows.add(sheet_item["row"])
 
     if not candidates:
         print("SOFASCORE: no upcoming matches for this snapshot")
-        return True
+        return stats["unmapped"] == 0
 
     cache_sheet, sofa_cache, final_done, cache_rows = load_sofa_cache(book)
 
@@ -1052,7 +1156,7 @@ def update_votes(
             except Exception as exc:
                 print(
                     "SOFASCORE DIRECT FIXTURES ERROR:",
-                    date_str, repr(exc),
+                    date_str, safe_error(exc),
                 )
 
             if not fixtures and allow_paid_fallback:
@@ -1088,7 +1192,7 @@ def update_votes(
                     fixtures = []
                     print(
                         "SOFASCORE APIFY FIXTURES FALLBACK ERROR:",
-                        date_str, repr(exc),
+                        date_str, safe_error(exc),
                     )
             elif not fixtures:
                 print(
@@ -1133,8 +1237,12 @@ def update_votes(
         )
 
     if not matched:
+        stats["unmatched"] = len(candidates)
         print("SOFASCORE: no matched events")
         return False
+
+    stats["matched"] = len(matched)
+    stats["unmatched"] = len(candidates) - len(matched)
 
     # A manually filled N still needs a SofaScore identity for the independent
     # result worker. Keep it in the fixture/cache phase, but never request or
@@ -1143,9 +1251,10 @@ def update_votes(
         item for item in matched
         if not only_blank or not str(item.get("sofa_value", "")).strip()
     ]
+    stats["preserved"] = len(matched) - len(vote_matches)
     if not vote_matches:
         print("SOFASCORE: result cache ready; existing votes preserved")
-        return True
+        return not (stats["unmapped"] or stats["unmatched"])
 
     vote_rows = fetch_votes(
         apify_token,
@@ -1157,9 +1266,22 @@ def update_votes(
         for item in vote_rows if item.get("eventId") is not None
     }
 
+    # A person may fill N while the Actor is running. Recheck both the stable
+    # identity and blank-cell guard immediately before constructing writes.
+    write_rows = sheet.get_all_values()
     updates = []
     final_completed = []
+    newly_preserved = 0
     for item in vote_matches:
+        index = item["row"] - 1
+        current = write_rows[index] if index < len(write_rows) else []
+        if (len(current) < 18 or str(current[17]).strip() != item["apinn_event_id"]
+                or current[1:4] != [item["home"], item["away"], item["favorite_side"]]):
+            print("SOFASCORE WRITE TARGET CHANGED:", item["apinn_event_id"])
+            continue
+        if only_blank and str(current[13] or "").strip():
+            newly_preserved += 1
+            continue
         vote_item = votes_by_event.get(str(item["sofa_event_id"]))
         if not vote_item:
             print("SOFASCORE VOTES NOT RETURNED:", item["home"], "vs", item["away"])
@@ -1198,7 +1320,24 @@ def update_votes(
     else:
         print("SOFASCORE: nothing to write")
 
-    return bool(updates)
+    stats["wrote"] = len(updates)
+    stats["preserved"] += newly_preserved
+    stats["missing_votes"] = len(vote_matches) - len(updates) - newly_preserved
+    print("SOFASCORE SNAPSHOT COVERAGE:", sofa_snapshot_summary(stats), flush=True)
+    return not (stats["unmapped"] or stats["unmatched"] or stats["missing_votes"])
+
+
+def sofa_snapshot_summary(stats):
+    missing = stats["unmapped"] + stats["unmatched"] + stats["missing_votes"]
+    if not stats["eligible"]:
+        status = "NO MATCHES"
+    elif missing:
+        status = "PARTIAL" if stats["wrote"] or stats["preserved"] else "NO DATA"
+    else:
+        status = "DONE"
+    return (f"{status} | wrote={stats['wrote']} | matched={stats['matched']}/{stats['eligible']}"
+            f" | unmapped={stats['unmapped']} | unmatched={stats['unmatched']}"
+            f" | votes_missing={stats['missing_votes']} | preserved={stats['preserved']}")
 
 
 def manual_full_sofa_run():
@@ -1209,6 +1348,8 @@ def manual_full_sofa_run():
     except Exception:
         pass
     print("SOFASCORE MANUAL FULL RUN START", flush=True)
+    global RUNNER_DEADLINE
+    RUNNER_DEADLINE = time.monotonic() + RUNNER_HARD_TIMEOUT_SECONDS
     if hasattr(signal, "SIGALRM"):
         signal.signal(signal.SIGALRM, _runner_timeout_handler)
         signal.alarm(RUNNER_HARD_TIMEOUT_SECONDS)
@@ -1226,14 +1367,16 @@ def manual_full_sofa_run():
     sheet = book.worksheet(SHEET_NAME)
     rows = sheet.get_all_values()
 
-    ok = update_votes(
+    report = {}
+    update_votes(
         sheet, rows, book, apify_token, apinn_key, now,
         only_blank=True,
         allow_fixture_lookup=True,
         allow_paid_fallback=True,
         include_next_morning=True,
+        report=report,
     )
-    print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
+    print("SOFASCORE MANUAL FULL RUN COMPLETE |", sofa_snapshot_summary(report), flush=True)
 
 
 def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_key, now):
@@ -1265,20 +1408,22 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
         return True
 
     try:
-        ok = update_votes(
+        report = {}
+        update_votes(
             sheet, rows, book, apify_token, apinn_key, now,
             only_blank=True,
             allow_fixture_lookup=True,
             allow_paid_fallback=True,
             include_next_morning=True,
+            report=report,
         )
         end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
         control.update(
             "M3",
-            [[f"DONE {end_stamp} | wrote={bool(ok)}"]],
+            [[f"{end_stamp} | {sofa_snapshot_summary(report)}"]],
             value_input_option="USER_ENTERED",
         )
-        print("SOFASCORE MANUAL FULL RUN COMPLETE | wrote:", bool(ok), flush=True)
+        print("SOFASCORE MANUAL FULL RUN COMPLETE |", sofa_snapshot_summary(report), flush=True)
     except Exception as exc:
         end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
         control.update(
@@ -1286,7 +1431,7 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
             [[f"FAILED {end_stamp}"]],
             value_input_option="USER_ENTERED",
         )
-        print("SOFASCORE MANUAL FULL RUN ERROR:", repr(exc), flush=True)
+        print("SOFASCORE MANUAL FULL RUN ERROR:", safe_error(exc), flush=True)
     return True
 
 
@@ -1367,13 +1512,15 @@ def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_
             for row in fresh_rows[2:]
             if len(row) > 17 and str(row[17]).strip()
         }
-        ok = update_votes(
+        report = {}
+        update_votes(
             sheet, fresh_rows, book, apify_token, apinn_key,
             datetime.now(GREECE_TZ),
             only_blank=True,
             allow_fixture_lookup=True,
             allow_paid_fallback=True,
             include_next_morning=True,
+            report=report,
         )
         after_rows = sheet.get_all_values()
         new_count = sum(
@@ -1383,23 +1530,23 @@ def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_
             and not before[str(row[17]).strip()]
             and len(row) > 13 and str(row[13]).strip()
         )
-        status = "DONE" if ok and new_count else "NO DATA"
+        summary = sofa_snapshot_summary(report)
         stamp = datetime.now(GREECE_TZ).strftime("%H:%M")
         control.update(
             range_name="P3",
-            values=[[f"{marker_prefix} {status} | {stamp} | wrote={new_count}"]],
+            values=[[f"{marker_prefix} {summary} | {stamp} | verified_new={new_count}"]],
             value_input_option="RAW",
         )
         print("SOFASCORE DAILY RENDER COMPLETE:",
-              status, "| wrote:", new_count, flush=True)
+              summary, "| verified_new:", new_count, flush=True)
     except Exception as exc:
         stamp = datetime.now(GREECE_TZ).strftime("%H:%M")
         control.update(
             range_name="P3",
-            values=[[f"{marker_prefix} ERROR | {stamp} | {str(exc)[:90]}"]],
+            values=[[f"{marker_prefix} ERROR | {stamp} | {safe_error(exc)}"]],
             value_input_option="RAW",
         )
-        print("SOFASCORE DAILY RENDER EXCEPTION:", repr(exc), flush=True)
+        print("SOFASCORE DAILY RENDER EXCEPTION:", safe_error(exc), flush=True)
     return True
 
 
@@ -1411,6 +1558,8 @@ def main():
         pass
 
     print("SOFASCORE RUNNER START", flush=True)
+    global RUNNER_DEADLINE
+    RUNNER_DEADLINE = time.monotonic() + RUNNER_HARD_TIMEOUT_SECONDS
     if hasattr(signal, "SIGALRM"):
         signal.signal(signal.SIGALRM, _runner_timeout_handler)
         signal.alarm(RUNNER_HARD_TIMEOUT_SECONDS)
@@ -1479,9 +1628,10 @@ if __name__ == "__main__":
         else:
             main()
     except Exception as exc:
-        print("SOFASCORE ERROR:", repr(exc), flush=True)
+        print("SOFASCORE ERROR:", safe_error(exc), flush=True)
     finally:
         if hasattr(signal, "SIGALRM"):
             signal.alarm(0)
+
 
 

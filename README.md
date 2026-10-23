@@ -59,3 +59,37 @@ python -m unittest -v test_pinnodds.py
 Tests execute the real writer with fake HTTP/Sheets boundaries and cover provider
 handoff, automatic discovery, fixed favorite sides, locked snapshots, missing
 markets, stale feeds, request budgets, schedule/DST, and independent turnover.
+
+## SofaScore daily snapshot
+
+Render fills blank N values once per day near 12:30 Europe/Athens, and stores
+stable fixture-to-SofaScore links in SOFA CACHE for the independent Google Apps
+Script result writer in P. Fixtures already saved in PINNACLE remain usable
+when APINN is unavailable. Manual N values are preserved, including values
+entered while collection is waiting. An overnight fixture stays in the current
+daily result batch. Neither the odds source order nor the paid schedule changes.
+
+Germany Bundesliga 2 maps to SofaScore tournament 44; Belgium Challenger Pro
+League maps to tournament 9, before their first-division name fragments.
+
+The existing vote batches still contain at most five events. Each paid batch is
+started once and returns a run ID; waiting and dataset retrieval use GETs for
+that same run. Up to three batches can be in progress, with a shared 100-second
+wait budget, a bounded Actor timeout and time reserved for Sheet writes before
+the runner's 240-second limit. A lost start response is never retried. Missing
+or unfinished batches remain blank; later ten-minute crons never repeat the
+daily paid attempt. No manual catch-up is implied by a deployment.
+
+ALERT STATS P3 reports matched/eligible, missing mappings, unmatched fixtures,
+missing votes, writes and preserved values. Partial coverage is PARTIAL or
+NO DATA, never DONE. These counts describe the snapshot; they do not prove that
+Google's separate result/fixture workers are healthy. A missing SofaScore link
+can still prevent that result worker from seeing a fixture. Provider failures
+and unknown team names may therefore still leave real gaps.
+
+Run the additional offline collector regressions with:
+
+```sh
+python -m unittest -v test_sofascore_candidates.py test_sofascore_reliability.py
+```
+
