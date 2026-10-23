@@ -9,6 +9,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from alert_formulas import legacy_alert_helper_updates
+from contra_priority import legacy_contra_guarded_expr
 
 from arbworld import fetch_today as fetch_arbworld_today
 from arbworld import find_match as find_arbworld_match
@@ -27,6 +28,8 @@ OVER15_START = datetime(2026, 10, 20, 11, 41, tzinfo=GREECE_TZ)
 FAV_REVERSAL_START_DAY = "2026-10-21"
 # Preserve older reconstruction profiles; the next live fixtures use home-only FAV60.
 FAV60_HOME_START_DAY = "2026-10-22"
+# New profile only: never rewrite the historical sample used to choose it.
+CONTRA_LEGACY_PRIORITY_START_DAY = "2026-10-24"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 CREDS = Credentials.from_service_account_file(
@@ -2100,8 +2103,13 @@ for match in matches:
     # Keep the existing working LET expression unmodified, and wrap it
     # with an explicit empty-string fallback for sub-1.39 opening odds.
     # Without an explicit IF false branch Google Sheets displays FALSE.
+    public_primary_expr = primary_alert_expr
+    if kickoff.date().isoformat() >= CONTRA_LEGACY_PRIORITY_START_DAY:
+        public_primary_expr = legacy_contra_guarded_expr(
+            primary_alert_expr, row_number,
+        )
     original_alert_formula = (
-        f'=LET(pa;{primary_alert_expr};'
+        f'=LET(pa;{public_primary_expr};'
         f'IF(pa<>"";pa&IF(AND($BX{row_number}<>"";REGEXMATCH(TO_TEXT($BX{row_number});"/10"));'
         f'" · "&IFERROR(LEFT($BX{row_number};FIND(" · ";$BX{row_number})-1);$BX{row_number});"");""))'
     )
@@ -2354,6 +2362,7 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
 
 
