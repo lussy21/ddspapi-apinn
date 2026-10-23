@@ -80,6 +80,11 @@ the runner's 240-second limit. A lost start response is never retried. Missing
 or unfinished batches remain blank; later ten-minute crons never repeat the
 daily paid attempt. No manual catch-up is implied by a deployment.
 
+An explicitly requested manual catch-up can reuse a successful fixture dataset
+from the preceding 15 minutes when every needed team pair and kickoff matches.
+It reads that existing run without starting another fixture Actor; normal daily
+collection is unchanged.
+
 ALERT STATS P3 reports matched/eligible, missing mappings, unmatched fixtures,
 missing votes, writes and preserved values. Partial coverage is PARTIAL or
 NO DATA, never DONE. These counts describe the snapshot; they do not prove that

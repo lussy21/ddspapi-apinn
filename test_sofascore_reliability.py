@@ -88,6 +88,16 @@ class SofaReliabilityTests(unittest.TestCase):
         self.assertEqual(match["id"], 99)
         self.assertIsNone(self.ns["find_sofa_match"]("Gimnasia Mendoza", "Sarmiento de Junin", start, [event]))
 
+    def test_lierse_full_sofa_name_matches_rsca_fixture(self):
+        start = datetime.fromisoformat("2026-10-23T21:00:00+03:00")
+        event = {"id": 99, "startTimestamp": int(start.timestamp()),
+                 "homeTeam": {"name": "RSCA Futures U23"},
+                 "awayTeam": {"name": "Koninklijke Lierse Sportkring"}}
+        match = self.ns["find_sofa_match"]("RSCA Futures", "K. Lierse SK", start, [event])
+        self.assertEqual(match["id"], 99)
+        self.assertEqual(self.ns["normalize_team"]("Lierse Kempenzonen"),
+                         self.ns["normalize_team"]("K. Lierse SK"))
+
     def test_backup_receives_correct_second_division_tournaments(self):
         german = fixtures.sheet_row(key="g", home="Bochum", away="Wolfsburg")
         german[0] = "Germany - Bundesliga 2"
@@ -103,6 +113,45 @@ class SofaReliabilityTests(unittest.TestCase):
             "fake-token", "2026-10-22", {9, 44}, timeout=75, attempts=1)
         self.assertEqual(stats["matched"], 2)
         self.assertEqual(len(cache.rows), 3)
+
+    def test_recent_fixture_dataset_is_read_without_starting_an_actor(self):
+        start = datetime.fromisoformat("2026-10-22T21:00:00+03:00")
+        event = {"id": 99, "startTimestamp": int(start.timestamp()),
+                 "homeTeam": {"name": "RSCA Futures U23"},
+                 "awayTeam": {"name": "Koninklijke Lierse Sportkring"}}
+        get = Mock(side_effect=[response({"data": {"id": "existing-run", "status": "SUCCEEDED",
+                     "startedAt": "2026-10-22T09:24:00Z", "defaultDatasetId": "existing-dataset"}}),
+                     response([event])])
+        post = Mock(side_effect=AssertionError("No paid fixture start"))
+        self.ns["requests"] = types.SimpleNamespace(get=get, post=post)
+        rows = self.ns["fetch_recent_fixture_run"]("fake-token", "2026-10-22", fixtures.NOW)
+        self.assertEqual(rows, [event])
+        self.assertEqual(get.call_count, 2)
+        post.assert_not_called()
+
+    def test_old_fixture_dataset_cannot_be_reused(self):
+        get = Mock(return_value=response({"data": {"id": "old-run", "status": "SUCCEEDED",
+                    "startedAt": "2026-10-21T09:24:00Z", "defaultDatasetId": "old-dataset"}}))
+        self.ns["requests"] = types.SimpleNamespace(get=get)
+        self.assertEqual(self.ns["fetch_recent_fixture_run"]("fake-token", "2026-10-22", fixtures.NOW), [])
+        self.assertEqual(get.call_count, 1)
+
+    def test_manual_lierse_catchup_uses_verified_recent_pool(self):
+        row = fixtures.sheet_row(key="lierse", home="RSCA Futures", away="K. Lierse SK",
+                                 kickoff="2026-10-22T21:00:00+03:00", side="A")
+        row[0] = "Belgium - Challenger Pro League"
+        sheet, cache, book = self.prepare([row])
+        event = {"id": 99, "startTimestamp": int(datetime.fromisoformat(row[76]).timestamp()),
+                 "homeTeam": {"name": "RSCA Futures U23"},
+                 "awayTeam": {"name": "Koninklijke Lierse Sportkring"}}
+        self.ns["fetch_sofa_schedule"] = Mock(side_effect=RuntimeError("blocked"))
+        self.ns["fetch_recent_fixture_run"] = Mock(return_value=[event])
+        self.ns["fetch_fixtures"] = Mock(side_effect=AssertionError("No second fixture Actor"))
+        stats = {}
+        self.assertTrue(self.collect(sheet, book, stats, allow_paid_fallback=True, reuse_recent_fixtures=True))
+        self.assertEqual(sheet.rows[2][13], 20)
+        self.assertEqual(cache.rows[1][1], 99)
+        self.ns["fetch_fixtures"].assert_not_called()
 
     def test_a_missing_match_is_partial_even_when_other_votes_write(self):
         rows = [fixtures.sheet_row(), fixtures.sheet_row(key="missing", home="Bochum", away="Wolfsburg")]

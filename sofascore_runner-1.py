@@ -127,6 +127,9 @@ ALIASES = {
     "inter": "inter milan",
     "gimnasia la plata": "gimnasia y esgrima",
     "gimnasia y esgrima la plata": "gimnasia y esgrima",
+    "k lierse sk": "koninklijke lierse sportkring",
+    "k lierse": "koninklijke lierse sportkring",
+    "lierse kempenzonen": "koninklijke lierse sportkring",
 }
 
 
@@ -526,6 +529,44 @@ def fetch_all_fixtures(token, date_str, timeout=75, attempts=1):
         token, date_str, tournament_ids=[],
         timeout=timeout, attempts=attempts,
     )
+
+
+def fetch_recent_fixture_run(token, date_str, now):
+    """Read an existing successful fixture run for a manual catch-up only."""
+    headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
+    try:
+        reply = requests.get(
+            "https://api.apify.com/v2/actors/incognito_mode~sofascore-live-scores-scraper/runs/last",
+            params={"status": "SUCCEEDED", "origin": "API"}, headers=headers, timeout=8,
+        )
+        reply.raise_for_status()
+        run = reply.json().get("data") or {}
+        started = datetime.fromisoformat(str(run.get("startedAt", "")).replace("Z", "+00:00"))
+        age = (now.astimezone(UTC_TZ) - started.astimezone(UTC_TZ)).total_seconds()
+        if run.get("status") != "SUCCEEDED" or not (0 <= age <= 15 * 60) or not run.get("defaultDatasetId"):
+            return []
+        reply = requests.get(
+            f"https://api.apify.com/v2/datasets/{run['defaultDatasetId']}/items",
+            params={"clean": "true", "limit": 200}, headers=headers, timeout=8,
+        )
+        reply.raise_for_status()
+        data = reply.json()
+        if not isinstance(data, list):
+            return []
+        valid = []
+        for row in data:
+            item = _normalize_apify_fixture(row)
+            if not item or not (item.get("id") or item.get("eventId")):
+                continue
+            start = parse_sofa_start(item)
+            if start is not None and start.tzinfo is not None and start.astimezone(UTC_TZ).date().isoformat() == date_str:
+                valid.append(item)
+        print("SOFASCORE EXISTING FIXTURE RUN READ:", run.get("id"),
+              "| age seconds:", int(age), "| fixtures:", len(valid), flush=True)
+        return valid
+    except Exception as exc:
+        print("SOFASCORE EXISTING FIXTURE RUN UNAVAILABLE:", safe_error(exc))
+        return []
 
 
 def is_national_sheet_league(value):
@@ -998,6 +1039,7 @@ def update_votes(
     only_blank=False, allow_fixture_lookup=True,
     minutes_window=None, mark_final=False,
     allow_paid_fallback=False, include_next_morning=False, report=None,
+    reuse_recent_fixtures=False,
 ):
     stats = report if report is not None else {}
     stats.update(eligible=0, matched=0, unmapped=0, unmatched=0,
@@ -1175,7 +1217,16 @@ def update_votes(
                     item.get("national_match") for item in date_items
                 )
                 try:
-                    if has_national:
+                    if reuse_recent_fixtures:
+                        fixtures = fetch_recent_fixture_run(apify_token, date_str, now)
+                        # Reuse only a pool that contains every required identity.
+                        # A recent unrelated Actor run cannot suppress discovery.
+                        if not all(find_sofa_match(item["home"], item["away"], item["kickoff"], fixtures)
+                                   for item in date_items):
+                            fixtures = []
+                    if fixtures:
+                        print("SOFASCORE MANUAL FIXTURES: reused existing dataset, no new Actor")
+                    elif has_national:
                         fixtures = fetch_all_fixtures(
                             apify_token, date_str,
                             timeout=75, attempts=1,
@@ -1377,6 +1428,7 @@ def manual_full_sofa_run():
         allow_paid_fallback=True,
         include_next_morning=True,
         report=report,
+        reuse_recent_fixtures=True,
     )
     print("SOFASCORE MANUAL FULL RUN COMPLETE |", sofa_snapshot_summary(report), flush=True)
 
@@ -1418,6 +1470,7 @@ def consume_manual_full_request(control, sheet, rows, book, apify_token, apinn_k
             allow_paid_fallback=True,
             include_next_morning=True,
             report=report,
+            reuse_recent_fixtures=True,
         )
         end_stamp = datetime.now(GREECE_TZ).strftime("%Y-%m-%d %H:%M")
         control.update(
