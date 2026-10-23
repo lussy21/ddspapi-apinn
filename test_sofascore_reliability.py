@@ -79,6 +79,15 @@ class SofaReliabilityTests(unittest.TestCase):
         self.assertEqual(self.ns["sofa_tournament_id"](None, "Germany - Bundesliga 2"), 44)
         self.assertEqual(self.ns["sofa_tournament_id"](None, "Belgium - Challenger Pro League"), 9)
 
+    def test_la_plata_alias_matches_sofa_without_confusing_mendoza(self):
+        start = datetime.fromisoformat("2026-10-24T00:00:00+03:00")
+        event = {"id": 99, "startTimestamp": int(start.timestamp()),
+                 "homeTeam": {"name": "Gimnasia y Esgrima"},
+                 "awayTeam": {"name": "Sarmiento"}}
+        match = self.ns["find_sofa_match"]("Gimnasia La Plata", "Sarmiento de Junin", start, [event])
+        self.assertEqual(match["id"], 99)
+        self.assertIsNone(self.ns["find_sofa_match"]("Gimnasia Mendoza", "Sarmiento de Junin", start, [event]))
+
     def test_backup_receives_correct_second_division_tournaments(self):
         german = fixtures.sheet_row(key="g", home="Bochum", away="Wolfsburg")
         german[0] = "Germany - Bundesliga 2"

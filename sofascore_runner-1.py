@@ -125,6 +125,8 @@ ALIASES = {
     "fc bayern munchen": "bayern munich",
     "internazionale": "inter milan",
     "inter": "inter milan",
+    "gimnasia la plata": "gimnasia y esgrima",
+    "gimnasia y esgrima la plata": "gimnasia y esgrima",
 }
 
 
