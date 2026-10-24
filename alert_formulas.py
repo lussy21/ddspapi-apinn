@@ -64,7 +64,7 @@ def legacy_alert_helper_updates(row_number, use_over15=False, side_goals=False):
         # Both goal signals may coexist with a primary market in the log.
         strong_continuation = strong_continuation.replace(
             '"OVER 1[.]5"',
-            '"(^|[|] )🔔 OVER 1[.]5($|[ ]*[(]ΚΟΝΤΡΑ[)]|[ ]*[|])"',
+            '"(^|[|] )(🔔 Over1[.]5k|🔔 OVER 1[.]5([ ]*[(]ΚΟΝΤΡΑ[)])?)($|[ ]*[|])"',
         )
         for label in ("🔔 ΚΟΝΤΡΑ", "🔔 ΦΑΒΟΡΙ"):
             simple_continuation = simple_continuation.replace(

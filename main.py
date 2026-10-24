@@ -376,7 +376,7 @@ def _selector_signature(row, prefer_visible=False):
 
 def _selector_side(tokens, alert_text=""):
     # Over 1.5 is a GOALS market. Never rank it as favorite/contra.
-    if str(alert_text or "").strip().startswith("🔔 OVER 1.5"):
+    if is_goal_alert(alert_text):
         return None
     # For a multi-alert row, the first visible signal is the same primary family
     # used by the sheet. This only resolves rare opposite-side combinations.
@@ -578,7 +578,7 @@ def _selector_backfill_strengths(all_rows):
         if fav_won is None:
             continue
         # Do not teach old 1X2-side rankings with new Over 1.5 results.
-        if str(_selector_visible_alert_text(row)).strip().startswith("🔔 OVER 1.5"):
+        if is_goal_alert(_selector_visible_alert_text(row)):
             continue
 
         tokens = _selector_signature(row, prefer_visible=False)
@@ -638,7 +638,7 @@ def update_selector_ranking(sheet, all_rows, matches, now):
         if fav_won is None:
             continue
         # Goal alerts have a different success definition from 1X2 sides.
-        if str(_selector_visible_alert_text(row)).strip().startswith("🔔 OVER 1.5"):
+        if is_goal_alert(_selector_visible_alert_text(row)):
             continue
         tokens = _selector_signature(row, prefer_visible=False)
         if not tokens:

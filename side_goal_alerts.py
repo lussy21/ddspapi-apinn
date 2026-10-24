@@ -8,9 +8,11 @@ from zoneinfo import ZoneInfo
 
 START_DAY = "2026-10-24"
 LEGACY_KEY = "🔔 OVER 1.5"
-LEGACY_DISPLAY = "🔔 OVER 1.5 (ΚΟΝΤΡΑ)"
-FLOW_DISPLAY = "🔔 OVER 1.5 (ΡΟΗ)"
-FLOW_CONFIG = "OVER 1.5 ΡΟΗ"
+LEGACY_DISPLAY = "🔔 Over1.5k"
+FLOW_DISPLAY = "🔔 Over1.5"
+# Keep the stored opening identity stable across user-facing renames.
+FLOW_KEY = "🔔 OVER 1.5 (ΡΟΗ)"
+FLOW_CONFIG = "Over1.5"
 FLOW_LEAGUES = frozenset({
     "UEFA - Champions League", "UEFA - Europa League", "UEFA - Conference League",
     "Netherlands - Eredivisie", "Finland - Veikkausliiga", "Scotland - Premiership",
@@ -22,11 +24,12 @@ FLOW_LEAGUES = frozenset({
 
 
 def is_goal_alert(text):
-    return bool(re.match(r"^🔔\s*OVER\s+1[.,]5\b", str(text or "").strip()))
+    return bool(re.match(r"^🔔\s*OVER\s*1[.,]5(?:k)?\b", str(text or "").strip(), re.IGNORECASE))
 
 
 def has_legacy_over(text):
-    return any(part.strip().split(" · ", 1)[0] in (LEGACY_KEY, LEGACY_DISPLAY)
+    return any(part.strip().split(" · ", 1)[0] in
+               (LEGACY_KEY, LEGACY_DISPLAY, "🔔 OVER 1.5 (ΚΟΝΤΡΑ)")
                for part in str(text or "").split("|"))
 
 
@@ -55,9 +58,9 @@ def side_goal_formula(primary_expression, row_number):
         f'TEXTJOIN(" | ";TRUE;'
         f'IF(pa<>"";pa&IF(AND($BX{r}<>"";REGEXMATCH(TO_TEXT($BX{r});"/10"));'
         f'" · "&IFERROR(LEFT($BX{r};FIND(" · ";$BX{r})-1);$BX{r});"");"");'
-        f'IF(AND({active_expr("OVER 1.5")};'
+        f'IF(AND({active_expr("Over1.5k")};'
         f'OR($BG{r}="{LEGACY_KEY}";$BH{r}="{LEGACY_KEY}"));"{LEGACY_DISPLAY}";"");'
-        f'IF({active_expr(FLOW_CONFIG)};$CE{r};"")));"")'
+        f'IF(AND({active_expr(FLOW_CONFIG)};$CE{r}<>"");"{FLOW_DISPLAY}";"")));"")'
     )
 
 
@@ -69,7 +72,7 @@ def primary_success_formula(row_number=3):
         f'$O{r});"|");1;1));scoretext;TO_TEXT($P{r});'
         'homegoals;VALUE(REGEXEXTRACT(scoretext;"^[ ]*([0-9]+)[ ]*-"));'
         'awaygoals;VALUE(REGEXEXTRACT(scoretext;"-[ ]*([0-9]+)[ ]*$"));'
-        'IF(REGEXMATCH(head;"OVER 1[.,]5");homegoals+awaygoals>=2;'
+        'IF(REGEXMATCH(head;"(?i)OVER[ ]*1[.,]5");homegoals+awaygoals>=2;'
         'OR(AND(REGEXMATCH(head;"ΚΟΝΤΡΑ");'
         f'OR(AND($D{r}="H";homegoals<=awaygoals);AND($D{r}="A";homegoals>=awaygoals)));'
         'AND(REGEXMATCH(head;"ΦΑΒΟΡΙ|ΦΑΒ 60|ΦΑΒ 75|ΤΖΙΡΟΣ ↑");'
@@ -173,6 +176,6 @@ def collect_flow_updates(rows, now, fresh_rows=None):
         evidence = flow_evidence(row, now)
         if evidence:
             updates.append({"range": f"CE{number}:CG{number}", "values": [[
-                FLOW_DISPLAY, evidence["asof"], json.dumps(evidence, ensure_ascii=False, separators=(",", ":")),
+                FLOW_KEY, evidence["asof"], json.dumps(evidence, ensure_ascii=False, separators=(",", ":")),
             ]]})
     return updates
