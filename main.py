@@ -2,6 +2,7 @@ import os
 import sys
 import bisect
 import math
+import re
 import time
 import requests
 import gspread
@@ -10,6 +11,10 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from alert_formulas import legacy_alert_helper_updates
 from contra_priority import legacy_contra_guarded_expr
+from side_goal_alerts import (
+    START_DAY as SIDE_GOALS_START_DAY, collect_flow_updates, has_legacy_over,
+    is_goal_alert, primary_without_goals, side_goal_formula, freshly_updated_rows,
+)
 
 from arbworld import fetch_today as fetch_arbworld_today
 from arbworld import find_match as find_arbworld_match
@@ -251,6 +256,8 @@ def _selector_tokens_from_text(text):
         part = raw.strip().upper()
         if not part:
             continue
+        if is_goal_alert(part):
+            continue
         token = None
         if "ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)" in part:
             token = "STRONG_CONTRA10"
@@ -288,6 +295,9 @@ def _selector_tokens_from_text(text):
 def _selector_visible_alert_text(row):
     primary = str(row[14]).strip() if len(row) > 14 else ""
     details = str(row[73]).strip() if len(row) > 73 else ""
+    kickoff = str(row[76]).strip() if len(row) > 76 else ""
+    if kickoff[:10] >= SIDE_GOALS_START_DAY:
+        return primary
     return details or primary
 
 
@@ -1822,7 +1832,8 @@ for match in matches:
     already_authorized = str(current_row[81]).strip() == "1" if len(current_row) > 81 else False
     if (
         not already_authorized and not prior_result
-        and prior_alert in ("🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ", "🔔 OVER 1.5")
+        and (prior_alert == "🔔🔥 ΔΥΝΑΤΟ ΚΟΝΤΡΑ"
+             or has_legacy_over(current_row[14]))
         and prior_contra is not None and prior_contra <= 2.40
     ):
         updates.append({"range": f"CD{row_number}", "values": [[1]]})
@@ -1838,6 +1849,7 @@ for match in matches:
     # for every eligible live row, including newly created/manual fixtures.
     updates.extend(legacy_alert_helper_updates(
         row_number, use_over15=kickoff >= OVER15_START,
+        side_goals=kickoff.date().isoformat() >= SIDE_GOALS_START_DAY,
     ))
     # Internal app metadata only: BY stores kickoff in Greek local ISO time.
     # Existing visible/core columns, including Q comments and R event id, stay unchanged.
@@ -2104,9 +2116,14 @@ for match in matches:
     # with an explicit empty-string fallback for sub-1.39 opening odds.
     # Without an explicit IF false branch Google Sheets displays FALSE.
     public_primary_expr = primary_alert_expr
+    side_goals = kickoff.date().isoformat() >= SIDE_GOALS_START_DAY
+    if side_goals:
+        public_primary_expr = primary_without_goals(public_primary_expr, row_number)
+        alert_count_formula += f'+IF($CE{row_number}<>"";1;0)'
+        alert_list_formula = alert_list_formula[:-1] + f';$CE{row_number})'
     if kickoff.date().isoformat() >= CONTRA_LEGACY_PRIORITY_START_DAY:
         public_primary_expr = legacy_contra_guarded_expr(
-            primary_alert_expr, row_number,
+            public_primary_expr, row_number,
         )
     original_alert_formula = (
         f'=LET(pa;{public_primary_expr};'
@@ -2117,6 +2134,8 @@ for match in matches:
         f'=IF(AND(ISNUMBER($E{row_number});$E{row_number}>=1,39);'
         f'{original_alert_formula[1:]};"")'
     )
+    if side_goals:
+        alert_formula = side_goal_formula(public_primary_expr, row_number)
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
         f'IF($BW{row_number}<>"";$BW{row_number}&" | ⚡"&$BU{row_number}&": "&$BV{row_number};'
@@ -2349,6 +2368,14 @@ else:
 time.sleep(1)
 try:
     selector_rows = SHEET.get_all_values()
+    # Use actual refreshed odds/turnover, never historical end-state backfills.
+    # Goal signals have their own immutable opening evidence beside the primary.
+    flow_updates = collect_flow_updates(
+        selector_rows, datetime.now(GREECE_TZ), fresh_rows=freshly_updated_rows(updates),
+    )
+    if flow_updates:
+        SHEET.batch_update(flow_updates, value_input_option="RAW")
+        print("FLOW OVER OPENINGS:", len(flow_updates))
     update_selector_ranking(SHEET, selector_rows, matches, NOW)
 except Exception as exc:
     # Ranking must never stop the odds/turnover collector.

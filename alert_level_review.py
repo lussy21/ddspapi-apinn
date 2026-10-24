@@ -378,6 +378,13 @@ def run_level_review_if_due(spreadsheet, force=False):
         status = str(row[4] or "").strip().upper() if len(row) > 4 else ""
         current_level = int(_num(row[2]) or 0)
 
+        if family == "GOALS":
+            # Dedicated goal counters own these results. 1X2-side ROI, prices
+            # and level suggestions cannot evaluate either Over market.
+            levels.update(range_name=f"L{sheet_row}:M{sheet_row}",
+                          values=[[today.isoformat(), next_date.isoformat()]], raw=True)
+            continue
+
         m = _metrics(alert, pin_rows)
 
         if status == "ADMIN_ONLY":
@@ -460,3 +467,4 @@ def run_level_review_if_due(spreadsheet, force=False):
         "changes": changed,
         "next": next_date.isoformat(),
     }
+

@@ -1,7 +1,7 @@
 """Legacy helper formulas for every live fixture; no HTTP or Sheet access."""
 
 
-def legacy_alert_helper_updates(row_number, use_over15=False):
+def legacy_alert_helper_updates(row_number, use_over15=False, side_goals=False):
     """Keep the existing strict, continuation and watch rules on new rows."""
     r = row_number
     # The previous fixed log endpoint (1498) stopped seeing newer alerts.
@@ -59,9 +59,25 @@ def legacy_alert_helper_updates(row_number, use_over15=False):
         f'AND(ISNUMBER($E{r});$E{r}>=1,25;$E{r}<=2,1;'
         f'$L{r}>=80;$N{r}>=75);"👀 WATCH ΦΑΒΟΡΙ";TRUE;""))'
     )
+    if side_goals:
+        # A FLOW goal signal alone must not activate the original Contra buffer.
+        # Both goal signals may coexist with a primary market in the log.
+        strong_continuation = strong_continuation.replace(
+            '"OVER 1[.]5"',
+            '"(^|[|] )🔔 OVER 1[.]5($|[ ]*[(]ΚΟΝΤΡΑ[)]|[ ]*[|])"',
+        )
+        for label in ("🔔 ΚΟΝΤΡΑ", "🔔 ΦΑΒΟΡΙ"):
+            simple_continuation = simple_continuation.replace(
+                f'$BF{r}="{label}"',
+                f'REGEXMATCH($BF{r};"^{label}($| [|])")',
+            )
+        strong_continuation = strong_continuation.replace(
+            f';$BF{r};TRUE;', f';TRIM(IFERROR(REGEXEXTRACT($BF{r};"^[^|]+");""));TRUE;',
+        )
     return [
         {"range": f"BF{r}", "values": [[previous]]},
         {"range": f"BH{r}:BK{r}", "values": [[
             strong_continuation, simple, simple_continuation, watch,
         ]]},
     ]
+

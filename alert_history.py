@@ -257,8 +257,8 @@ def make_snapshot(row, formula):
 
     values = {}
 
-    # A έως BA
-    for index in range(53):
+    # Retain goal opening evidence/helper state on new profiles too.
+    for index in range(max(53, min(len(row), 85))):
 
         letter = col_letter(
             index + 1
@@ -675,17 +675,18 @@ def opening_odds_eligible(row):
 def normalize_display_alert(value):
     """Remove the visual selector score suffix from column O for history logic."""
     text = str(value or "").strip()
-    if " · " in text:
-        left, right = text.split(" · ", 1)
-        if "/10" in right:
-            return left.strip()
-    return text
+    # Strip only each market's numeric strength, retaining adjacent goal names.
+    return " | ".join(
+        re.sub(r"\s+·\s+\d+(?:[.,]\d+)?/10(?:\s+·\s+(?:EARLY|90'|FINAL))?\s*$", "", part.strip()).strip()
+        for part in text.split("|") if part.strip()
+    )
 
 
 def read_alert_inputs(ws):
     """Read all existing fixture rows instead of silently stopping at 1000."""
+    last_column = "CG" if getattr(ws, "col_count", 57) >= 85 else "BE"
     rows = ws.get(
-        f"A3:BE{max(3, ws.row_count)}",
+        f"A3:{last_column}{max(3, ws.row_count)}",
         value_render_option="FORMATTED_VALUE",
     )
     last_data_row = max(3, len(rows) + 2)
@@ -1147,4 +1148,5 @@ if __name__ == "__main__":
             f"{type(exc).__name__}: "
             f"{exc}"
         )
+
 
