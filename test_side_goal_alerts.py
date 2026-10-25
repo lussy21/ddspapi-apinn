@@ -140,6 +140,34 @@ class SideGoalsTests(unittest.TestCase):
         finally:
             Clock.instant = datetime.fromisoformat("2026-10-21T20:30:00+03:00")
 
+    def test_real_writer_latches_after_gspread_qualifies_written_ranges(self):
+        # gspread 6.2.1 Worksheet.batch_update mutates the caller's range
+        # strings to sheet-qualified A1 addresses. Exercise that real boundary.
+        try:
+            Clock.instant = NOW
+            r = eligible()
+            book = FakeSpreadsheet([[], [], r])
+            original_write = book.main.batch_update
+
+            def write_and_qualify(updates, value_input_option=None):
+                original_write(updates, value_input_option=value_input_option)
+                for update in updates:
+                    update["range"] = "'PINNACLE'!" + update["range"]
+
+            book.main.batch_update = write_and_qualify
+            arb = {"date": "2026-10-24 19:00:00", "leage": r[0],
+                   "odds_type": "MATCH_ODDS", "home": r[1], "away": r[2],
+                   "volume_1": 160, "volume_x": 20, "volume_2": 20}
+            _, _, log = run_main(book, [fixture(starts=r[76])], arb_rows=[arb])
+            self.assertEqual(book.main.rows[2][82:84], [s.FLOW_KEY, NOW.isoformat()])
+            evidence = json.loads(book.main.rows[2][84])
+            self.assertEqual(evidence["new_money11"], 80)
+            self.assertEqual(evidence["minutes_before"], 90)
+            self.assertIn("FLOW OVER OPENINGS: 1", log)
+            self.assertNotIn("SELECTOR ERROR", log)
+        finally:
+            Clock.instant = datetime.fromisoformat("2026-10-21T20:30:00+03:00")
+
 
 if __name__ == "__main__":
     unittest.main()

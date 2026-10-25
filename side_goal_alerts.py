@@ -138,7 +138,9 @@ def flow_evidence(row, now):
 def freshly_updated_rows(updates):
     odds, turnover = set(), set()
     for update in updates:
-        address = update["range"]
+        # gspread qualifies this same mutable list during batch_update.
+        # Accept both G3 and 'PINNACLE'!G3 after a successful live write.
+        address = str(update["range"]).rsplit("!", 1)[-1].replace("$", "")
         match = re.fullmatch(r"G(\d+)", address)
         if match:
             odds.add(int(match[1]))
