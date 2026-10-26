@@ -47,7 +47,8 @@ SPREADSHEET = GC.open_by_key(
 )
 SHEET = SPREADSHEET.worksheet("PINNACLE")
 
-API_KEY = os.environ["APINN_API_KEY"]
+APINN_TEMP_DISABLED = True  # Temporary Pinnodds-only test; set False to restore APINN.
+API_KEY = os.environ.get("APINN_API_KEY", "")
 BOARD_URL = "https://api.apinn.io/api/board"
 FIXTURES_URL = "https://api.apinn.io/api/fixtures"
 ODDS_URL = "https://api.apinn.io/api/odds"
@@ -55,6 +56,8 @@ HEADERS = {"X-API-Key": API_KEY}
 
 def apinn_get(url, params, attempts=3):
     """APINN request with retry. Returns None after repeated temporary failures."""
+    if APINN_TEMP_DISABLED:
+        return None
     for attempt in range(1, attempts + 1):
         try:
             response = requests.get(
@@ -1323,7 +1326,7 @@ arbworld_sheet_updates = independent_arbworld_updates(sheet_rows, ARBWORLD_ROWS,
 # Read-only connection diagnostics during a board outage. These calls NEVER
 # change quotes, markets, alerts, or Sheet cells. Results contain only HTTP
 # codes and JSON shapes; neither credentials nor response bodies are logged.
-if board_successes == 0:
+if board_successes == 0 and not APINN_TEMP_DISABLED:
     probe_id = next(
         (str(row[17]).strip() for row in reversed(sheet_rows)
          if len(row) > 17 and str(row[17]).strip()
