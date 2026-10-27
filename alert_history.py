@@ -731,8 +731,8 @@ def main():
     # SofaScore runs before this script. Settle already recorded research picks
     # using its latest results; an empty freshness set cannot backfill an entry.
     try:
-        from contra_rise_research import update_research
-        update_research(spreadsheet, rows, datetime.now(ZoneInfo("Europe/Athens")), first_row=3)
+        from contra_rise_research import settle_results
+        settle_results(spreadsheet, ws, rows, datetime.now(ZoneInfo("Europe/Athens")))
     except Exception as exc:
         print("CONTRA RISE90 SETTLEMENT ERROR:", repr(exc))
     reset_alert_display(spreadsheet, ws, rows, first_row=3)
