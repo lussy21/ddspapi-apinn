@@ -368,6 +368,26 @@ class FallbackTests(unittest.TestCase):
         _, feeds, _ = run_main(spreadsheet, [fixture()], feed_error=p.FeedError("HTTP 503"))
         self.assertEqual(feeds, [])
 
+    def test_visible_90_columns_mirror_locked_snapshots_on_new_rows(self):
+        existing = row(event_id="pinnodds:1")
+        existing[4], existing[5], existing[8] = 1.8, 1.61, 1.82
+        spreadsheet = FakeSpreadsheet([[], [], existing])
+        run_main(spreadsheet, [fixture()])
+        actual = spreadsheet.main.rows[2]
+        self.assertEqual((actual[5], actual[8]), (1.61, 1.82))
+        self.assertEqual(actual[51:53], ['=IF(ISNUMBER($F3);$F3;"")', '=IF(ISNUMBER($I3);$I3;"")'])
+
+    def test_visible_90_mirrors_keep_manual_values_and_missing_late_snapshots(self):
+        Clock.instant = NOW + timedelta(minutes=30)
+        existing = row(event_id="pinnodds:1")
+        existing[51] = 1.777  # A deliberate hand-written visible value.
+        spreadsheet = FakeSpreadsheet([[], [], existing])
+        run_main(spreadsheet, [fixture()])
+        actual = spreadsheet.main.rows[2]
+        self.assertEqual((actual[5], actual[8]), ("", ""))
+        self.assertEqual(actual[51], 1.777)
+        self.assertEqual(actual[52], '=IF(ISNUMBER($I3);$I3;"")')
+
     def test_request_error_does_not_print_credential_or_retry(self):
         import urllib.error
         opener = types.SimpleNamespace(open=lambda *args, **kwargs: (_ for _ in ()).throw(urllib.error.HTTPError(p.ENDPOINT, 401, "Unauthorized", {}, None)))

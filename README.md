@@ -117,7 +117,10 @@ width at the minimum size; complete names remain in the actual cell value.
 The collector and history reader continue reading canonical unformatted O values.
 Font fitting runs after collector and history recalculation, including withdrawals
 and empty tails. The layout cleanup hides internal R:CG columns and clips Q
-comments without changing their values, formulas, or font.
+comments without changing their values, formulas, or font. AZ:BA are visible
+exceptions after Q: they show the real F/I 90-minute favorite and Contra +0.5
+snapshots. Missing mirror formulas are installed on new rows without replacing
+manual display values; they stay blank until a numeric snapshot exists.
 
 Offline presentation/recording regressions:
 

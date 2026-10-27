@@ -2186,6 +2186,16 @@ for match in matches:
         "values": [[comment_formula]],
     })
 
+    # The visible 90-minute columns are mirrors of the immutable F/I snapshots.
+    # New appended rows must receive these formulas too. Keep manual display
+    # values intact, and show blank until the real numeric snapshot exists.
+    for display_col, source_col, display_index in (("AZ", "F", 51), ("BA", "I", 52)):
+        if len(current_row) <= display_index or not str(current_row[display_index]).strip():
+            updates.append({
+                "range": f"{display_col}{row_number}",
+                "values": [[f'=IF(ISNUMBER(${source_col}{row_number});${source_col}{row_number};"")']],
+            })
+
     # Keep the close-stage marker for final snapshots, selector stages and
     # legacy research rules. Active public alerts no longer wait for it.
     if 0 < minutes_to_kickoff <= 15:
