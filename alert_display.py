@@ -6,6 +6,9 @@ import re
 ALERT_COLUMN = 14
 FIRST_FIXTURE_ROW = 3
 ROW_HEIGHT = 24
+COLUMN_WIDTH = 245
+MAX_FONT_SIZE = 11
+MIN_FONT_SIZE = 6
 LABELS = {
     "ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ": "ΓΥΡ",
     "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ": "ΚΓ",
@@ -70,6 +73,31 @@ def alert_number_format(value):
     return {"type": "NUMBER", "pattern": '0;-0;0;"' + escaped + '"'}
 
 
+def alert_font_size(value):
+    """Conservative bold-glyph estimate at 11pt; no extra runtime dependency."""
+    label = compact_alert(value)
+    if label is None:
+        return MAX_FONT_SIZE
+    width = 0
+    for char in label:
+        if char == " ":
+            width += 5.2
+        elif char in "|.,/":
+            width += 5.7
+        elif char in "🔔👀":
+            width += 18
+        elif char in "WΜΩ":
+            width += 15
+        elif char in "+↑":
+            width += 12.5
+        elif char.isdigit() or char.islower():
+            width += 10.5
+        else:
+            width += 12
+    available = COLUMN_WIDTH - 10
+    return max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(MAX_FONT_SIZE * available / max(1, width))))
+
+
 def canonical_alert_rows(sheet, rows, first_row=1):
     """Overlay only O with raw values; retain Greek money/percentage formatting."""
     if not rows:
@@ -109,8 +137,9 @@ def display_requests(sheet_id, values, first_row=FIRST_FIXTURE_ROW):
             "rows": [{"values": [{"userEnteredFormat": {
                 "numberFormat": alert_number_format(row[0] if row else ""),
                 "wrapStrategy": "CLIP",
+                "textFormat": {"fontSize": alert_font_size(row[0] if row else "")},
             }}]} for row in values],
-            "fields": "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy",
+            "fields": "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.fontSize",
         }},
         {"updateDimensionProperties": {
             "range": {"sheetId": sheet_id, "dimension": "ROWS",

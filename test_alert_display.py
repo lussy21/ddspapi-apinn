@@ -79,7 +79,7 @@ class CompactDisplayTests(unittest.TestCase):
         sheet.raw = [["🔔 ΦΑΒ 75+ · 6,5/10 | 🔔 Over1.5"]]
         d.refresh_alert_display(book, sheet, rows)
         update = book.writes[-1]["requests"][0]["updateCells"]
-        self.assertEqual(update["fields"], "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy")
+        self.assertEqual(update["fields"], "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.fontSize")
         self.assertIn("75+ 6,5/10 | O1.5", update["rows"][0]["values"][0]["userEnteredFormat"]["numberFormat"]["pattern"])
         self.assertNotIn("userEnteredValue", update["rows"][0]["values"][0])
 
@@ -106,6 +106,20 @@ class CompactDisplayTests(unittest.TestCase):
         sheet = Sheet([[CANONICAL]])
         self.assertFalse(d.reset_alert_display(UnavailableBook(), sheet, fixtures(1)))
         self.assertEqual(sheet.raw, [[CANONICAL]])
+
+    def test_font_shrinks_for_parallel_alerts_and_recovers_after_withdrawal(self):
+        short = "🔔 ΦΑΒ 75+ · 6,5/10"
+        long = ("🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ · 8,0/10 | 🔔 ΦΑΒ 75+ | "
+                "🔔 ΦΑΒ 60+ | 🔔 ΦΑΒΟΡΙ | 🔔 Over1.5k | 🔔 Over1.5")
+        self.assertGreater(d.alert_font_size(short), d.alert_font_size(long))
+        self.assertGreaterEqual(d.alert_font_size(long), d.MIN_FONT_SIZE)
+        sheet, book, rows = Sheet([[long]]), Book(), fixtures(1)
+        d.refresh_alert_display(book, sheet, rows)
+        sheet.raw = [[short]]
+        d.refresh_alert_display(book, sheet, rows)
+        cell = book.writes[-1]["requests"][0]["updateCells"]["rows"][0]["values"][0]
+        self.assertEqual(cell["userEnteredFormat"]["textFormat"]["fontSize"], d.MAX_FONT_SIZE)
+        self.assertNotIn("userEnteredValue", cell)
 
 
 if __name__ == "__main__":

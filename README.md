@@ -100,10 +100,18 @@ python -m unittest -v test_sofascore_candidates.py test_sofascore_reliability.py
 
 ## Compact alert presentation
 
-Column O displays short labels on one 24-pixel row, including the primary signal
-and both independent Over markets. `alert_display.py` updates only number formats
-and wrapping; the original formulas, canonical alert values, colors and fonts
-remain authoritative. The collector and history reader explicitly read O's
+Column O displays short labels on one 24-pixel row. From 27 October 2026,
+upcoming fixtures show all approved independent signals together with both Over
+markets. The old primary remains first and retains its existing strength; other
+signals are appended without inventing individual scores. The core strong/simple/
+watch family stays hierarchical and the actionable Contra guard still applies.
+Research-only rules stay hidden; ADMIN_ONLY WATCH Contra keeps its existing
+visibility on this personal sheet. Settled/past fixture formulas are untouched.
+
+`alert_display.py` adapts O's font from 11pt down to 6pt as labels grow, preserving
+the 245-pixel column and 24-pixel rows. It changes only number formats, wrapping,
+and font size; canonical values, colors and other font properties are preserved.
+The collector and history reader explicitly read O's
 unformatted value so visual aliases cannot change the selector or recorded events.
 Formats are cleared while inputs change, then rebuilt from the final calculated
 state after the collector and history stages, including withdrawals and empty tails.
@@ -111,7 +119,7 @@ state after the collector and history stages, including withdrawals and empty ta
 Offline presentation/recording regressions:
 
 ```sh
-python -m unittest -v test_alert_display.py test_alert_helpers.py test_side_goal_alerts.py
+python -m unittest -v test_alert_display.py test_parallel_alerts.py test_alert_helpers.py test_side_goal_alerts.py
 ```
 
 

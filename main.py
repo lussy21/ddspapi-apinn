@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from alert_formulas import legacy_alert_helper_updates
 from alert_display import canonical_alert_rows, reset_alert_display, refresh_alert_display
 from contra_priority import legacy_contra_guarded_expr
+from parallel_alerts import START_DAY as PARALLEL_ALERTS_START_DAY, parallel_alert_formula
 from side_goal_alerts import (
     START_DAY as SIDE_GOALS_START_DAY, collect_flow_updates, has_legacy_over,
     is_goal_alert, primary_without_goals, side_goal_formula, freshly_updated_rows,
@@ -2140,6 +2141,8 @@ for match in matches:
     )
     if side_goals:
         alert_formula = side_goal_formula(public_primary_expr, row_number)
+    if kickoff.date().isoformat() >= PARALLEL_ALERTS_START_DAY:
+        alert_formula = parallel_alert_formula(public_primary_expr, row_number)
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
         f'IF($BW{row_number}<>"";$BW{row_number}&" | ⚡"&$BU{row_number}&": "&$BV{row_number};'
