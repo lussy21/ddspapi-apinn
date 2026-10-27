@@ -1,5 +1,28 @@
 # ddspapi-apinn
 
+## Contra Rise90 research
+
+`ΚΟΝΤΡΑ ΑΝΟΔΟΥ 90′` is a separate prospective Contra +0.5 research rule from
+2026-10-27 22:37 Europe/Athens. It requires numeric F/G >1 and G >= F * 1.10,
+using the original favorite D. It covers exactly the existing ΜΕΓΑΛΑ and
+ΛΟΙΠΑ ΕΥΡΩΠΗΣ competitions. No opening-odds floor, turnover, money share,
+Sofa, home/away or clock-hour filter is added.
+
+The dedicated `ΚΟΝΤΡΑ ΑΝΟΔΟΥ 90` tab records fresh observations after the
+90-minute snapshot. A pick counts once at its first qualifying fresh quote
+between 30 and 5 minutes before kickoff, inclusive. Its entry, original side
+and actual available Contra +0.5 price are immutable, including when the
+condition later disappears. Early-only observations do not count. Missing
+entry prices remain unpriced; missing results remain pending. The live ledger
+starts at 0/0; the earlier 14/21 closing-snapshot study stays historical and
+uses a different observation convention.
+
+The collector writes observations only after actual G value updates. The
+post-Sofa history stage can settle existing entries but cannot create any.
+Provider-ID changes and physical row moves do not duplicate a fixture. Level
+review does not overwrite the ledger-owned metrics. This research rule does
+not enter live O or push notifications, and existing alerts are unchanged.
+
 The existing Render cron remains the only odds writer:
 
 ```sh
@@ -129,5 +152,6 @@ Offline presentation/recording regressions:
 ```sh
 python -m unittest -v test_alert_display.py test_parallel_alerts.py test_alert_helpers.py test_side_goal_alerts.py
 ```
+
 
 
