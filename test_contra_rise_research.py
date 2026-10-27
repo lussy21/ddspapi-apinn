@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from contra_rise_research import (
     ALERT_NAME, HEADERS, SHEET_NAME, START_AT, advance_record, category,
-    fixture, fresh_quote_rows, qualifies, result_for, update_research,
+    fixture, fresh_quote_rows, qualifies, result_for, settle_results, update_research,
 )
 
 
@@ -154,6 +154,24 @@ class FakeQuotes:
 
 
 class PersistenceTests(unittest.TestCase):
+    def test_no_pending_results_does_not_read_unneeded_kickoff_column(self):
+        class NoRead:
+            def get(self,*args,**kwargs):raise AssertionError("Unneeded Pinnacle read")
+        self.assertTrue(settle_results(FakeSpreadsheet(),NoRead(),[source_row()[:57]],NOW)["ok"])
+
+    def test_post_sofa_settlement_enriches_legacy_history_without_kickoff(self):
+        book=FakeSpreadsheet();row=source_row()
+        update_research(book,[row],NOW,{3},first_row=3,quote_sheet=FakeQuotes())
+        row[15]="0-0"
+        class HistorySheet:
+            def get(self,address,value_render_option):
+                self.address=address
+                return [[row[76]]]
+        sheet=HistorySheet()
+        settle_results(book,sheet,[row[:57]],NOW+timedelta(minutes=25))
+        self.assertEqual(sheet.address,"BY3:BY3")
+        self.assertEqual(book.ledger.values[6][15],"ΕΠΙΤΥΧΙΑ")
+
     def test_repeated_collector_then_result_stage_count_once_and_keep_entry(self):
         book=FakeSpreadsheet();row=source_row();quotes=FakeQuotes()
         update_research(book,[row],NOW,{1203},first_row=1203,quote_sheet=quotes)
