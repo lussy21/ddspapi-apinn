@@ -98,9 +98,9 @@ Run the additional offline collector regressions with:
 python -m unittest -v test_sofascore_candidates.py test_sofascore_reliability.py
 ```
 
-## Compact alert presentation
+## Alert font fitting
 
-Column O displays short labels on one 24-pixel row. From 27 October 2026,
+Column O displays the original full alert text. From 27 October 2026,
 upcoming fixtures show all approved independent signals together with both Over
 markets. The old primary remains first and retains its existing strength; other
 signals are appended without inventing individual scores. The core strong/simple/
@@ -108,13 +108,16 @@ watch family stays hierarchical and the actionable Contra guard still applies.
 Research-only rules stay hidden; ADMIN_ONLY WATCH Contra keeps its existing
 visibility on this personal sheet. Settled/past fixture formulas are untouched.
 
-`alert_display.py` adapts O's font from 11pt down to 6pt as labels grow, preserving
-the 245-pixel column and 24-pixel rows. It changes only number formats, wrapping,
-and font size; canonical values, colors and other font properties are preserved.
-The collector and history reader explicitly read O's
-unformatted value so visual aliases cannot change the selector or recorded events.
-Formats are cleared while inputs change, then rebuilt from the final calculated
-state after the collector and history stages, including withdrawals and empty tails.
+`alert_display.py` adapts only O's font from 11pt down to 6pt as the text grows.
+It uses embedded Carlito Bold glyph advances and preserves the existing column
+width, row heights, labels, colors, alignment and other font properties. It clears
+the former literal-label number formats to plain text. It never resizes rows or
+changes any neighboring cell. Very long combinations can still exceed the fixed
+width at the minimum size; complete names remain in the actual cell value.
+The collector and history reader continue reading canonical unformatted O values.
+Font fitting runs after collector and history recalculation, including withdrawals
+and empty tails. The layout cleanup hides internal R:CG columns and clips Q
+comments without changing their values, formulas, or font.
 
 Offline presentation/recording regressions:
 

@@ -1,101 +1,37 @@
-"""Compact PINNACLE presentation; canonical formula values remain untouched."""
+"""PINNACLE font fitting; names and canonical formula values stay intact."""
 
-import re
 
 
 ALERT_COLUMN = 14
 FIRST_FIXTURE_ROW = 3
-ROW_HEIGHT = 24
 COLUMN_WIDTH = 245
 MAX_FONT_SIZE = 11
 MIN_FONT_SIZE = 6
-LABELS = {
-    "ΦΑΒΟΡΙ ΓΥΡΙΣΜΑΤΟΣ": "ΓΥΡ",
-    "ΚΟΝΤΡΑ ΓΥΡΙΣΜΑΤΟΣ": "ΚΓ",
-    "ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ": "Σ+Τ",
-    "ΦΑΒΟΡΙ SOFA+3X": "Σ3X",
-    "ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X": "ΤΖ3X",
-    "ΦΑΒΟΡΙ ΠΤΩΣΗ 2%": "ΠΤ2%",
-    "ΦΑΒΟΡΙ 84+P60": "84+",
-    "ΦΑΒΟΡΙ ΤΖΙΡΟΥ": "ΤΖ",
-    "ΤΖΙΡΟΣ ↑": "ΤΖ↑",
-    "ΦΑΒ 75+": "75+",
-    "ΦΑΒ 60+": "60+",
-    "WATCH ΚΟΝΤΡΑ": "WΚ",
-    "WATCH ΦΑΒΟΡΙ": "WΦ",
-    "ΔΥΝΑΤΟ ΚΟΝΤΡΑ +10": "ΔΚ+10",
-    "ΔΥΝΑΤΟ ΚΟΝΤΡΑ (+10)": "ΔΚ+10",
-    "ΔΥΝΑΤΟ ΚΟΝΤΡΑ": "ΔΚ",
-    "ΔΥΝΑΤΟ ΦΑΒΟΡΙ": "ΔΦ",
-    "ΚΟΝΤΡΑ": "ΚΟΝ",
-    "ΦΑΒΟΡΙ": "ΦΑΒ",
-    "Over1.5k": "O1.5k",
-    "OVER 1.5": "O1.5k",
-    "OVER 1.5 (ΚΟΝΤΡΑ)": "O1.5k",
-    "Over1.5": "O1.5",
-    "OVER 1.5 (ΡΟΗ)": "O1.5",
-}
-STRENGTH = re.compile(r"\s+·\s+(\d+(?:[.,]\d+)?/10)(?:\s+·.*)?$")
+# Carlito Bold glyph advances at 11pt/96dpi, embedded without a runtime font dependency.
+_CHAR_WIDTHS = {' ': 3.316, '!': 4.777, '"': 6.431, '#': 7.305, '$': 7.434, '%': 10.692, '&': 10.334, "'": 3.423, '(': 4.569, ')': 4.569, '*': 7.305, '+': 7.305, ',': 3.781, '-': 4.49, '.': 3.917, '/': 6.302, '0': 7.434, '1': 7.434, '2': 7.434, '3': 7.434, '4': 7.434, '5': 7.434, '6': 7.434, '7': 7.434, '8': 7.434, '9': 7.434, ':': 4.046, ';': 4.046, '<': 7.305, '=': 7.305, '>': 7.305, '?': 6.796, '@': 13.177, 'A': 8.887, 'B': 8.221, 'C': 7.763, 'D': 9.245, 'E': 7.154, 'F': 6.732, 'G': 9.346, 'H': 9.253, 'I': 3.91, 'J': 4.855, 'K': 8.021, 'L': 6.202, 'M': 12.819, 'N': 9.661, 'O': 9.919, 'P': 7.806, 'Q': 10.062, 'R': 8.257, 'S': 6.932, 'T': 7.262, 'U': 9.575, 'V': 8.672, 'W': 13.292, 'X': 8.078, 'Y': 7.62, 'Z': 7.011, '[': 4.762, '\\': 6.302, ']': 4.762, '^': 7.305, '_': 7.305, '`': 4.404, 'a': 7.24, 'b': 7.87, 'c': 6.137, 'd': 7.87, 'e': 7.384, 'f': 4.641, 'g': 6.954, 'h': 7.87, 'i': 3.602, 'j': 3.745, 'k': 7.04, 'l': 3.602, 'm': 11.931, 'n': 7.87, 'o': 7.885, 'p': 7.87, 'q': 7.87, 'r': 5.214, 's': 5.851, 't': 5.085, 'u': 7.87, 'v': 6.939, 'w': 10.928, 'x': 6.739, 'y': 6.947, 'z': 5.829, '{': 5.042, '|': 6.968, '}': 5.042, '~': 7.305, 'Α': 8.887, 'Β': 8.221, 'Γ': 6.009, 'Δ': 8.472, 'Ε': 7.154, 'Ζ': 7.011, 'Η': 9.253, 'Θ': 9.919, 'Ι': 3.91, 'Κ': 8.021, 'Λ': 8.708, 'Μ': 12.819, 'Ν': 9.661, 'Ξ': 7.219, 'Ο': 9.919, 'Π': 9.253, 'Ρ': 7.806, '\u03a2': 7.434, 'Σ': 6.889, 'Τ': 7.262, 'Υ': 7.62, 'Φ': 11.752, 'Χ': 8.078, 'Ψ': 11.845, 'Ω': 9.983, '·': 3.925, '↑': 13.277}
 
 
 def compact_alert(value):
-    """Return a display label, or None for blanks/errors/unknown alert families."""
+    """Compatibility name: return the full original text, never an alias."""
     if not isinstance(value, str) or not value.strip() or value.startswith("#"):
         return None
-    parts = []
-    watching = False
-    for part in value.split("|"):
-        part = part.strip()
-        if not part:
-            continue
-        strength = STRENGTH.search(part)
-        name = part[:strength.start()] if strength else part
-        name = re.sub(r"^[^\w]+", "", name).strip()
-        label = LABELS.get(name)
-        if label is None:
-            # Preserve unfamiliar labels verbatim rather than conceal a new rule.
-            return None
-        watching = watching or name.startswith("WATCH")
-        parts.append(label + (" " + strength.group(1) if strength else ""))
-    if not parts:
-        return None
-    label = ("👀 " if watching else "🔔 ") + " | ".join(parts)
-    # Keep all markets visible at the existing width, including longer families.
-    # A score is still out of ten when the repeated unit is omitted for fit.
-    return label.replace("/10", "") if len(label) > 27 else label
+    return value
 
 
 def alert_number_format(value):
-    label = compact_alert(value)
-    if label is None:
-        return {"type": "TEXT", "pattern": "@"}
-    escaped = label.replace("\\", "\\\\").replace('"', '\\"')
-    return {"type": "NUMBER", "pattern": '0;-0;0;"' + escaped + '"'}
+    """Show actual formula text; clear former literal-label number formats."""
+    return {"type": "TEXT", "pattern": "@"}
 
 
 def alert_font_size(value):
-    """Conservative bold-glyph estimate at 11pt; no extra runtime dependency."""
     label = compact_alert(value)
     if label is None:
         return MAX_FONT_SIZE
-    width = 0
-    for char in label:
-        if char == " ":
-            width += 5.2
-        elif char in "|.,/":
-            width += 5.7
-        elif char in "🔔👀":
-            width += 18
-        elif char in "WΜΩ":
-            width += 15
-        elif char in "+↑":
-            width += 12.5
-        elif char.isdigit() or char.islower():
-            width += 10.5
-        else:
-            width += 12
+    width = sum(0 if char in "\ufe0e\ufe0f" else _CHAR_WIDTHS.get(char, 14.667)
+                for char in label)
     available = COLUMN_WIDTH - 10
-    return max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(MAX_FONT_SIZE * available / max(1, width))))
+    return max(MIN_FONT_SIZE, min(MAX_FONT_SIZE,
+               int(MAX_FONT_SIZE * available / max(1, width))))
 
 
 def canonical_alert_rows(sheet, rows, first_row=1):
@@ -125,6 +61,7 @@ def last_fixture_row(rows, first_row=1):
 
 
 def display_requests(sheet_id, values, first_row=FIRST_FIXTURE_ROW):
+    """Only O cell formats; never resize rows or alter neighboring columns."""
     if not values:
         return []
     start = first_row - 1
@@ -140,11 +77,6 @@ def display_requests(sheet_id, values, first_row=FIRST_FIXTURE_ROW):
                 "textFormat": {"fontSize": alert_font_size(row[0] if row else "")},
             }}]} for row in values],
             "fields": "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.fontSize",
-        }},
-        {"updateDimensionProperties": {
-            "range": {"sheetId": sheet_id, "dimension": "ROWS",
-                      "startIndex": start, "endIndex": end},
-            "properties": {"pixelSize": ROW_HEIGHT}, "fields": "pixelSize",
         }},
     ]
 

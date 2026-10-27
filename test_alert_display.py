@@ -34,21 +34,21 @@ def fixtures(n):
 
 
 class CompactDisplayTests(unittest.TestCase):
-    def test_approved_three_market_example_preserves_score(self):
-        self.assertEqual(d.compact_alert(CANONICAL), "🔔 ΓΥΡ 5,5/10 | O1.5k | O1.5")
-        self.assertEqual(d.compact_alert("🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ · 8,0/10 | 🔔 Over1.5"),
-                         "🔔 Σ+Τ 8,0/10 | O1.5")
+    def test_three_market_example_preserves_full_names_and_score(self):
+        self.assertEqual(d.compact_alert(CANONICAL), CANONICAL)
+        self.assertEqual(d.alert_number_format(CANONICAL), {"type": "TEXT", "pattern": "@"})
 
     def test_independent_goal_names_and_watch_are_distinct(self):
-        self.assertEqual(d.compact_alert("🔔 OVER 1.5"), "🔔 O1.5k")
-        self.assertEqual(d.compact_alert("🔔 OVER 1.5 (ΡΟΗ)"), "🔔 O1.5")
-        self.assertEqual(d.compact_alert("👀 WATCH ΚΟΝΤΡΑ · 5,7/10"), "👀 WΚ 5,7/10")
-        self.assertEqual(d.compact_alert("🔔 ΚΟΝΤΡΑ · 5,7/10"), "🔔 ΚΟΝ 5,7/10")
+        for value in ("🔔 Over1.5k", "🔔 Over1.5", "🔔 OVER 1.5 (ΡΟΗ)",
+                      "👀 WATCH ΚΟΝΤΡΑ · 5,7/10", "🔔 ΚΟΝΤΡΑ · 5,7/10"):
+            self.assertEqual(d.compact_alert(value), value)
 
     def test_unknown_labels_errors_and_blanks_remain_truthful(self):
-        for value in ("", None, False, "#REF!", "🔔 New rule", '🔔 "quoted rule"'):
+        for value in ("", None, False, "#REF!"):
             self.assertIsNone(d.compact_alert(value))
             self.assertEqual(d.alert_number_format(value), {"type": "TEXT", "pattern": "@"})
+        for value in ("🔔 New rule", '🔔 "quoted rule"'):
+            self.assertEqual(d.compact_alert(value), value)
 
     def test_recording_reads_raw_alerts_without_changing_other_formatted_fields(self):
         sheet = Sheet([[CANONICAL], []])
@@ -80,7 +80,8 @@ class CompactDisplayTests(unittest.TestCase):
         d.refresh_alert_display(book, sheet, rows)
         update = book.writes[-1]["requests"][0]["updateCells"]
         self.assertEqual(update["fields"], "userEnteredFormat.numberFormat,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.fontSize")
-        self.assertIn("75+ 6,5/10 | O1.5", update["rows"][0]["values"][0]["userEnteredFormat"]["numberFormat"]["pattern"])
+        self.assertEqual(update["rows"][0]["values"][0]["userEnteredFormat"]["numberFormat"],
+                         {"type": "TEXT", "pattern": "@"})
         self.assertNotIn("userEnteredValue", update["rows"][0]["values"][0])
 
     def test_reset_exposes_current_formula_text_before_input_writes(self):
@@ -92,11 +93,15 @@ class CompactDisplayTests(unittest.TestCase):
         self.assertEqual(reset["cell"]["userEnteredFormat"]["numberFormat"], {"type": "TEXT", "pattern": "@"})
         self.assertEqual(sheet.raw, [[CANONICAL]])
 
-    def test_longer_triple_market_keeps_every_market_and_score(self):
-        compact = d.compact_alert("🔔💎 ΦΑΒΟΡΙ ΠΤΩΣΗ 2% · 9,9/10 | 🔔 Over1.5k | 🔔 Over1.5")
-        self.assertIn("ΠΤ2% 9,9", compact)
-        self.assertTrue(compact.endswith("O1.5k | O1.5"))
-        self.assertLessEqual(len(compact), 27)
+    def test_formatting_is_scoped_to_alert_cells_without_dimension_or_neighbor_changes(self):
+        requests = d.display_requests(978226074, [[CANONICAL], ["🔔 ΦΑΒ 75+"]])
+        self.assertEqual(len(requests), 1)
+        update = requests[0]["updateCells"]
+        self.assertEqual(update["range"]["startColumnIndex"], 14)
+        self.assertEqual(update["range"]["endColumnIndex"], 15)
+        for row in update["rows"]:
+            self.assertEqual(set(row["values"][0]), {"userEnteredFormat"})
+            self.assertEqual(set(row["values"][0]["userEnteredFormat"]["textFormat"]), {"fontSize"})
 
     def test_presentation_failure_does_not_block_data_writer(self):
         class UnavailableBook:
