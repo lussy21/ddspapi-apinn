@@ -36,12 +36,11 @@ def parallel_alert_formula(primary_expression, row_number):
         f'AND(simplepick="🔔 ΚΟΝΤΡΑ";{active_expr("ΚΟΝΤΡΑ")});'
         f'AND(simplepick="🔔 ΦΑΒΟΡΙ";{active_expr("ΦΑΒΟΡΙ")}));simplepick;""))'
     )
-    # WATCH Contra was already visible to this personal/admin sheet.
-    watch_contra = active_expr("WATCH ΚΟΝΤΡΑ")
-    watch_contra = watch_contra.replace('="ACTIVE"', '="ADMIN_ONLY"')
+    # Live O contains usable ACTIVE signals only. ADMIN_ONLY observations stay
+    # in the helper/research view even when the legacy head still selects them.
     watch = (
         f'IF(OR(AND($BK{r}="👀 WATCH ΚΟΝΤΡΑ";'
-        f'OR({active_expr("WATCH ΚΟΝΤΡΑ")};{watch_contra}));'
+        f'{active_expr("WATCH ΚΟΝΤΡΑ")});'
         f'AND($BK{r}="👀 WATCH ΦΑΒΟΡΙ";{active_expr("WATCH ΦΑΒΟΡΙ")}));'
         f'$BK{r};"")'
     )

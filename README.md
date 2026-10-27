@@ -105,8 +105,10 @@ upcoming fixtures show all approved independent signals together with both Over
 markets. The old primary remains first and retains its existing strength; other
 signals are appended without inventing individual scores. The core strong/simple/
 watch family stays hierarchical and the actionable Contra guard still applies.
-Research-only rules stay hidden; ADMIN_ONLY WATCH Contra keeps its existing
-visibility on this personal sheet. Settled/past fixture formulas are untouched.
+Live O shows only configured ACTIVE signals. Research-only rules and ADMIN_ONLY
+WATCH Contra stay in the helper/research view. The current approved eight are
+Contra, Favorite, FAV60, FAV75, SOFA+turnover, Favorite reversal, Over1.5k and
+Over1.5. Settled/past fixture formulas are untouched.
 
 `alert_display.py` adapts only O's font from 11pt down to 6pt as the text grows.
 It uses embedded Carlito Bold glyph advances and preserves the existing column

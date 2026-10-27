@@ -48,8 +48,7 @@ def expression(active=ACTIVE):
     formula = parallel_alert_formula(old, 1017)
     for name in CONFIGS:
         formula = formula.replace(active_expr(name), "TRUE" if name in active else "FALSE")
-    admin = active_expr("WATCH ΚΟΝΤΡΑ").replace('="ACTIVE"', '="ADMIN_ONLY"')
-    return formula.replace(admin, "TRUE")
+    return formula
 
 
 class ParallelAlertTests(unittest.TestCase):
@@ -86,7 +85,12 @@ class ParallelAlertTests(unittest.TestCase):
                  "BS": "🔔 ΦΑΒ 75+"}
         result = self.evaluate(cells)
         self.assertEqual(result, "🔔 ΦΑΒ 75+ | 🔔 ΦΑΒΟΡΙ")
-        self.assertEqual(self.evaluate({"BK": "👀 WATCH ΚΟΝΤΡΑ"}), "👀 WATCH ΚΟΝΤΡΑ")
+        self.assertEqual(self.evaluate({"BK": "👀 WATCH ΚΟΝΤΡΑ"}), "")
+
+    def test_admin_watch_never_becomes_live_and_does_not_hide_an_active_goal(self):
+        cells = {"BK": "👀 WATCH ΚΟΝΤΡΑ", "BX": "5,0/10 · EARLY"}
+        self.assertEqual(self.evaluate(cells), "")
+        self.assertEqual(self.evaluate({**cells, "CE": "latched"}), "🔔 Over1.5")
 
     def test_disabled_configuration_and_opening_floor_remain_closed(self):
         self.assertEqual(self.evaluate({"BO": "🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ"}, set()), "")
