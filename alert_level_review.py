@@ -1,4 +1,5 @@
 import math
+from contra_rise_research import ALERT_NAME as CONTRA_RISE_NAME
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -374,6 +375,10 @@ def run_level_review_if_due(spreadsheet, force=False):
         alert = str(row[0] or "").strip()
         if not alert:
             continue
+        if alert == CONTRA_RISE_NAME:
+            # The prospective ledger owns this rule's frozen observations,
+            # entry prices and counters; never replace them with end-state fits.
+            continue
         family = str(row[1] or _family(alert)).strip().upper()
         status = str(row[4] or "").strip().upper() if len(row) > 4 else ""
         current_level = int(_num(row[2]) or 0)
@@ -467,4 +472,5 @@ def run_level_review_if_due(spreadsheet, force=False):
         "changes": changed,
         "next": next_date.isoformat(),
     }
+
 
