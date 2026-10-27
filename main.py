@@ -13,6 +13,7 @@ from alert_formulas import legacy_alert_helper_updates
 from alert_display import canonical_alert_rows, reset_alert_display, refresh_alert_display
 from contra_priority import legacy_contra_guarded_expr
 from parallel_alerts import START_DAY as PARALLEL_ALERTS_START_DAY, parallel_alert_formula
+from contra_rise_research import update_research as update_contra_rise_research, fresh_quote_rows
 from side_goal_alerts import (
     START_DAY as SIDE_GOALS_START_DAY, collect_flow_updates, has_legacy_over,
     is_goal_alert, primary_without_goals, side_goal_formula, freshly_updated_rows,
@@ -2387,6 +2388,13 @@ else:
 time.sleep(1)
 try:
     selector_rows = canonical_alert_rows(SHEET, SHEET.get_all_values())
+    try:
+        update_contra_rise_research(
+            SPREADSHEET, selector_rows, datetime.now(GREECE_TZ),
+            fresh_rows=fresh_quote_rows(updates), quote_sheet=SHEET,
+        )
+    except Exception as exc:
+        print("CONTRA RISE90 ERROR:", repr(exc))
     # Use actual refreshed odds/turnover, never historical end-state backfills.
     # Goal signals have their own immutable opening evidence beside the primary.
     flow_updates = collect_flow_updates(
@@ -2413,6 +2421,7 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
 
 
