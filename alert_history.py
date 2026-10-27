@@ -684,11 +684,13 @@ def normalize_display_alert(value):
 
 def read_alert_inputs(ws):
     """Read all existing fixture rows instead of silently stopping at 1000."""
+    from alert_display import canonical_alert_rows
     last_column = "CG" if getattr(ws, "col_count", 57) >= 85 else "BE"
     rows = ws.get(
         f"A3:{last_column}{max(3, ws.row_count)}",
         value_render_option="FORMATTED_VALUE",
     )
+    rows = canonical_alert_rows(ws, rows, first_row=3)
     last_data_row = max(3, len(rows) + 2)
     formulas = ws.get(
         f"O3:O{last_data_row}",
@@ -697,6 +699,7 @@ def read_alert_inputs(ws):
     return rows, formulas
 
 def main():
+    from alert_display import reset_alert_display, refresh_alert_display
 
     # Περιμένουμε λίγο ώστε η Google Sheet
     # να προλάβει να υπολογίσει τις φόρμουλες.
@@ -725,6 +728,7 @@ def main():
     )
 
     rows, formulas = read_alert_inputs(ws)
+    reset_alert_display(spreadsheet, ws, rows, first_row=3)
 
     sheet_updates = []
     log_rows = []
@@ -1121,6 +1125,11 @@ def main():
         )
 
 
+    try:
+        refresh_alert_display(spreadsheet, ws, rows, first_row=3)
+    except Exception as exc:
+        print("ALERT DISPLAY ERROR |", repr(exc))
+
     print(
         "alert_history OK | "
         f"sheet_updates={len(sheet_updates)} | "
@@ -1148,5 +1157,6 @@ if __name__ == "__main__":
             f"{type(exc).__name__}: "
             f"{exc}"
         )
+
 
 

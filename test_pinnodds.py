@@ -61,13 +61,19 @@ class MissingWorksheet(Exception):
 
 class FakeSheet:
     def __init__(self, rows=None):
+        self.id = 978226074
         self.rows = deepcopy(rows or [])
         self.writes = []
 
     def get_all_values(self):
         return deepcopy(self.rows)
 
-    def get(self, address):
+    def get(self, address, value_render_option=None):
+        match = re.fullmatch(r"O(\d+):O(\d+)", address)
+        if match:
+            start, end = map(int, match.groups())
+            return [[r[14]] if len(r) > 14 else []
+                    for r in self.rows[start - 1:end]]
         return [self.rows[1][:4]] if len(self.rows) > 1 else []
 
     def batch_update(self, updates, value_input_option=None):
@@ -102,6 +108,8 @@ class FakeSpreadsheet:
 
     def batch_update(self, body):
         self.structure_writes.append(deepcopy(body))
+        if not any("addSheet" in request for request in body["requests"]):
+            return {"replies": [{} for _ in body["requests"]]}
         self.state = FakeSheet()
         return {"replies": [{"addSheet": {"properties": {"sheetId": 123}}}]}
 
@@ -116,7 +124,7 @@ def fake_gspread(spreadsheet):
     return module
 
 
-def run_main(spreadsheet, events, primary=None, arb_rows=None, feed_error=None):
+def run_main(spreadsheet, events, primary=None, arb_rows=None, feed_error=None, apinn_disabled=None):
     """Execute the real main.py with a frozen clock and fake boundary adapters."""
     calls, feeds = [], []
     requests = types.ModuleType("requests")
@@ -155,6 +163,10 @@ def run_main(spreadsheet, events, primary=None, arb_rows=None, feed_error=None):
     for node in tree.body:
         if isinstance(node, ast.ImportFrom) and node.module == "datetime":
             node.names = [alias for alias in node.names if alias.name != "datetime"]
+        if (apinn_disabled is not None and isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "APINN_TEMP_DISABLED"
+                        for t in node.targets)):
+            node.value = ast.copy_location(ast.Constant(apinn_disabled), node.value)
     namespace = {"__name__": "__collector_test__", "datetime": Clock}
     modules = {"requests": requests, "gspread": fake_gspread(spreadsheet),
                "google": types.ModuleType("google"), "google.oauth2": types.ModuleType("google.oauth2"),
@@ -308,7 +320,7 @@ class FallbackTests(unittest.TestCase):
                    "league_name": "UEFA - Champions League", "starts": fixture()["starts"],
                    "odds": {"moneyline": {"odds1": 1.8, "odds2": 4}}}
         spreadsheet = FakeSpreadsheet([[], [], existing])
-        calls, feeds, output = run_main(spreadsheet, [fixture()], primary=[primary])
+        calls, feeds, output = run_main(spreadsheet, [fixture()], primary=[primary], apinn_disabled=False)
         self.assertEqual(feeds, [])
         self.assertEqual(len(spreadsheet.main.rows), 3)
         self.assertEqual(spreadsheet.main.rows[2][17], "pinnodds:1")
@@ -390,3 +402,4 @@ class FallbackTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

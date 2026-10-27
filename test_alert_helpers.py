@@ -92,13 +92,14 @@ class AlertPipelineTests(unittest.TestCase):
             return [values[column(a):column(b)+1] for values in result]
 
         sheet = types.SimpleNamespace(
+            id=978226074,
             row_count=9887, get=get,
             batch_update=lambda items, **kwargs: writes.extend(items),
         )
         log = types.SimpleNamespace(
             append_rows=lambda items, **kwargs: appended.extend(items),
         )
-        book = types.SimpleNamespace(worksheet=lambda _: sheet)
+        book = types.SimpleNamespace(worksheet=lambda _: sheet, batch_update=lambda _: None)
         ns.update({
             "SPREADSHEET_ID": "offline-only", "SHEET_NAME": "PINNACLE",
             "get_credentials": lambda: None,
@@ -111,7 +112,7 @@ class AlertPipelineTests(unittest.TestCase):
         })
         with redirect_stdout(io.StringIO()):
             ns["main"]()
-        self.assertEqual(reads, ["A3:BE9887", "O3:O1002"])
+        self.assertEqual(reads, ["A3:BE9887", "O3:O1002", "O3:O1002", "O3:O1002"])
         self.assertEqual(len(appended), 1)
         self.assertEqual(appended[0][1:3], ["pinnodds:after-1000", 1002])
         self.assertEqual(appended[0][5:7], ["ΑΝΟΙΞΕ", "🔔 OVER 1.5"])
@@ -120,4 +121,5 @@ class AlertPipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 

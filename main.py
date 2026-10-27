@@ -10,6 +10,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from alert_formulas import legacy_alert_helper_updates
+from alert_display import canonical_alert_rows, reset_alert_display, refresh_alert_display
 from contra_priority import legacy_contra_guarded_expr
 from side_goal_alerts import (
     START_DAY as SIDE_GOALS_START_DAY, collect_flow_updates, has_legacy_over,
@@ -1317,7 +1318,7 @@ except Exception as exc:
     ARBWORLD_ROWS = []
     print("ARBWORLD ERROR:", repr(exc))
 
-sheet_rows = SHEET.get_all_values()
+sheet_rows = canonical_alert_rows(SHEET, SHEET.get_all_values())
 
 # Arbworld is an independent source. Its current turnover must keep refreshing
 # for manually entered and existing fixtures even when APINN is unavailable.
@@ -2358,6 +2359,8 @@ for match in matches:
             print("ARBWORLD MATCH NOT FOUND:", home, "vs", away)
 
 if updates:
+    # Show live canonical text until all value/formula writes have finished.
+    reset_alert_display(SPREADSHEET, SHEET, sheet_rows)
     SHEET.batch_update(
         updates,
         value_input_option="USER_ENTERED",
@@ -2370,7 +2373,7 @@ else:
 # alert state. Only the integer rank is shown in BX; its internal score stays hidden.
 time.sleep(1)
 try:
-    selector_rows = SHEET.get_all_values()
+    selector_rows = canonical_alert_rows(SHEET, SHEET.get_all_values())
     # Use actual refreshed odds/turnover, never historical end-state backfills.
     # Goal signals have their own immutable opening evidence beside the primary.
     flow_updates = collect_flow_updates(
@@ -2384,6 +2387,11 @@ except Exception as exc:
     # Ranking must never stop the odds/turnover collector.
     print("SELECTOR ERROR:", repr(exc))
 
+try:
+    refresh_alert_display(SPREADSHEET, SHEET, sheet_rows)
+except Exception as exc:
+    print("ALERT DISPLAY ERROR:", repr(exc))
+
 # Render runs the collectors with shell &&. On some heavy 11:00 runs the
 # Python interpreter has remained alive after all synchronous work completed,
 # which prevents the SofaScore result runner from starting. All sheet writes
@@ -2392,6 +2400,7 @@ print("MAIN COMPLETE")
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)
+
 
 
 
