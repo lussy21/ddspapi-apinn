@@ -190,6 +190,26 @@ def advance_record(old, item, now, fresh=False, enabled=True):
     return record
 
 
+def settle_results(spreadsheet, pinnacle_sheet, history_rows, now):
+    """Enrich the legacy A:BE history input with BY; never create an entry."""
+    if now < START_AT or not history_rows:
+        return {"ok": True, "changed": 0, "counted": 0}
+    try:
+        ledger = spreadsheet.worksheet(SHEET_NAME).get_all_values()
+    except Exception:
+        return {"ok": False, "reason": "setup_missing"}
+    pending = [r for r in ledger[6:] if len(r) > 12 and r[12] and (len(r) <= 15 or not r[15])]
+    if not pending:
+        print("CONTRA RISE90 SETTLEMENT | pending=0")
+        return {"ok": True, "changed": 0, "reason": "no_pending_results"}
+    kickoffs = pinnacle_sheet.get(f"BY3:BY{len(history_rows) + 2}",
+                                 value_render_option="UNFORMATTED_VALUE")
+    rows = [list(row) + [""] * max(0, 77 - len(row)) for row in history_rows]
+    for i, values in enumerate(kickoffs[:len(rows)]):
+        rows[i][76] = values[0] if values else ""
+    return update_research(spreadsheet, rows, now, first_row=3)
+
+
 def update_research(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quote_sheet=None):
     """Read/write only the dedicated research tab; do not change PINNACLE/O."""
     if now.tzinfo is None:
