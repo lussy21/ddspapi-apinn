@@ -9,6 +9,7 @@ from favorite_maroon_research import DEFAULT_PROFILE, evidence, fixture
 from favorite_maroon80_research import PROFILE as MONEY_PROFILE
 from favorite_maroon170_research import PROFILE as PRICE_PROFILE
 from side_goal_alerts import active_expr
+from morning_favorite_live import LABELS as MORNING_LABELS
 
 PROFILES = (DEFAULT_PROFILE, MONEY_PROFILE, PRICE_PROFILE)
 LABELS = frozenset("🔔 " + profile.name for profile in PROFILES)
@@ -64,16 +65,16 @@ def retain_maroon_below_legacy_floor(alert, eligible):
     if eligible:
         return alert
     return " | ".join(part.strip() for part in str(alert or "").split("|")
-                      if part.strip() in LABELS)
+                      if part.strip() in LABELS | MORNING_LABELS)
 
 
-def refresh_live_alerts(spreadsheet, sheet, source_rows, now, first_row=1):
+def refresh_live_alerts(spreadsheet, sheet, source_rows, now, first_row=1, profiles=PROFILES):
     """Publish issued entries only, preserving settled history and original O."""
     config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE")
     statuses = {str(row[0]).strip(): str(row[4]).strip().upper()
                 for row in config if len(row) > 4}
     entries = {}
-    for profile in PROFILES:
+    for profile in profiles:
         if statuses.get(profile.name) != "ACTIVE":
             continue
         ledger = spreadsheet.worksheet(profile.sheet_name).get_all_values(value_render_option="UNFORMATTED_VALUE")
@@ -84,8 +85,8 @@ def refresh_live_alerts(spreadsheet, sheet, source_rows, now, first_row=1):
                                  and str(record[0]).startswith(profile.key_prefix)}
     targets = []
     for index, source in enumerate(source_rows, start=first_row):
-        profiles = []
-        for profile in PROFILES:
+        matched_profiles = []
+        for profile in profiles:
             if profile.name not in entries:
                 continue
             item = fixture(source, index, profile=profile)
@@ -94,9 +95,9 @@ def refresh_live_alerts(spreadsheet, sheet, source_rows, now, first_row=1):
                 continue
             record = entries[profile.name].get(item["key"])
             if record and evidence(record).get("favorite_side") == item["side"]:
-                profiles.append(profile)
-        if profiles:
-            targets.append((index, source, profiles))
+                matched_profiles.append(profile)
+        if matched_profiles:
+            targets.append((index, source, matched_profiles))
     if not targets:
         print("FAV MAROON LIVE OK | active=" + str(len(entries)) + " | visible=0 | changed=0")
         return {"ok": True, "active": len(entries), "visible": 0, "changed": 0}
