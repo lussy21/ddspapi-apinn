@@ -154,6 +154,25 @@ class FakeQuotes:
 
 
 class PersistenceTests(unittest.TestCase):
+    def test_new_fixture_does_not_overwrite_existing_entries_after_quote_read(self):
+        book=FakeSpreadsheet();first=source_row()
+        update_research(book,[first],NOW,{1203},first_row=1203,quote_sheet=FakeQuotes())
+        frozen=copy.deepcopy(book.ledger.values[6])
+        second=source_row();second[1]="Second Home"
+        result=update_research(book,[first,second],NOW+timedelta(minutes=1),
+                               {1204},first_row=1203,quote_sheet=FakeQuotes())
+        self.assertEqual(result["counted"],2)
+        self.assertEqual(book.ledger.values[6],frozen)
+        self.assertNotEqual(book.ledger.values[6][0],book.ledger.values[7][0])
+
+    def test_repeated_fresh_read_preserves_first_entry_timestamp(self):
+        book=FakeSpreadsheet();row=source_row()
+        update_research(book,[row],NOW,{1203},first_row=1203,quote_sheet=FakeQuotes())
+        original=book.ledger.values[6][12:14]
+        update_research(book,[row],NOW+timedelta(minutes=1),{1203},
+                        first_row=1203,quote_sheet=FakeQuotes())
+        self.assertEqual(book.ledger.values[6][12:14],original)
+
     def test_no_pending_results_does_not_read_unneeded_kickoff_column(self):
         class NoRead:
             def get(self,*args,**kwargs):raise AssertionError("Unneeded Pinnacle read")
