@@ -2425,8 +2425,18 @@ try:
     except Exception as exc:
         print("FAV MAROON170 ERROR:", repr(exc))
     try:
-        from favorite_maroon_live import refresh_live_alerts
-        refresh_live_alerts(SPREADSHEET, SHEET, selector_rows, datetime.now(GREECE_TZ))
+        from morning_favorite_live import update_live as update_morning_favorites
+        update_morning_favorites(
+            SPREADSHEET, selector_rows, datetime.now(GREECE_TZ),
+            fresh_rows=fresh_quote_rows(updates), quote_sheet=SHEET,
+        )
+    except Exception as exc:
+        print("MORNING FAVORITE LIVE ERROR:", repr(exc))
+    try:
+        from favorite_maroon_live import PROFILES as MAROON_PROFILES, refresh_live_alerts
+        from morning_favorite_live import PROFILES as MORNING_PROFILES
+        refresh_live_alerts(SPREADSHEET, SHEET, selector_rows, datetime.now(GREECE_TZ),
+                            profiles=MAROON_PROFILES + MORNING_PROFILES)
     except Exception as exc:
         print("FAV MAROON LIVE ERROR:", repr(exc))
     # Use actual refreshed odds/turnover, never historical end-state backfills.
