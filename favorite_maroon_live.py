@@ -9,7 +9,7 @@ from favorite_maroon_research import DEFAULT_PROFILE, evidence, fixture
 from favorite_maroon80_research import PROFILE as MONEY_PROFILE
 from favorite_maroon170_research import PROFILE as PRICE_PROFILE
 from side_goal_alerts import active_expr
-from morning_favorite_live import LABELS as MORNING_LABELS
+from morning_favorite_live import LABELS as MORNING_LABELS, load_profiles
 
 PROFILES = (DEFAULT_PROFILE, MONEY_PROFILE, PRICE_PROFILE)
 LABELS = frozenset("🔔 " + profile.name for profile in PROFILES)
@@ -70,14 +70,12 @@ def retain_maroon_below_legacy_floor(alert, eligible):
 
 def refresh_live_alerts(spreadsheet, sheet, source_rows, now, first_row=1, profiles=PROFILES):
     """Publish issued entries only, preserving settled history and original O."""
-    config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE")
-    statuses = {str(row[0]).strip(): str(row[4]).strip().upper()
-                for row in config if len(row) > 4}
+    statuses, _, ledgers = load_profiles(spreadsheet, profiles)
     entries = {}
     for profile in profiles:
         if statuses.get(profile.name) != "ACTIVE":
             continue
-        ledger = spreadsheet.worksheet(profile.sheet_name).get_all_values(value_render_option="UNFORMATTED_VALUE")
+        ledger = ledgers[profile.name]
         if len(ledger) < 6 or ledger[5][:len(profile.headers)] != profile.headers:
             raise ValueError("Maroon live ledger header mismatch: " + profile.name)
         entries[profile.name] = {record[0]: record for record in ledger[6:]
