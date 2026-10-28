@@ -700,6 +700,7 @@ def read_alert_inputs(ws):
 
 def main():
     from alert_display import reset_alert_display, refresh_alert_display
+    from favorite_maroon_live import retain_maroon_below_legacy_floor
 
     # Περιμένουμε λίγο ώστε η Google Sheet
     # να προλάβει να υπολογίσει τις φόρμουλες.
@@ -794,10 +795,11 @@ def main():
         )
         # Apply this NEW minimum only to matches not yet settled.
         # Old settled match records and their audit log must remain untouched.
-        # For an active low-price match, this passes an empty alert to the
-        # existing state machine so its active baseline is closed normally.
+        # Below the legacy floor, only the three approved Maroon identities
+        # survive. Their rules have no opening-price floor; unrelated signals
+        # remain excluded from history and the existing notification path.
         if not str(row[15]).strip() and not opening_odds_eligible(row):
-            alert = ""
+            alert = retain_maroon_below_legacy_floor(alert, eligible=False)
 
         event_id = str(
             row[17]
