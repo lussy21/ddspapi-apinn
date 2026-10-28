@@ -148,7 +148,7 @@ class MorningTests(unittest.TestCase):
         for p in (morning.PROFILES[0], morning.PROFILES[3]):
             self.assertEqual(len(book.ledgers[p.name].values), 7)
         refresh_live_alerts(book, sheet, [row], NOW, first_row=3, profiles=MAROON_PROFILES + morning.PROFILES)
-        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (2, 2))
+        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (1, 2))
         self.assertEqual(len(book.batch_reads[1]), 9)
         self.assertEqual(len(text(row[14], row).split(" | ")), 2)
         empty = BatchBook()
@@ -163,7 +163,7 @@ class MorningTests(unittest.TestCase):
         before = (book.metadata_reads, len(book.batch_reads))
         row[15] = "2-0"
         morning.settle_results(book, sheet, [row], NOW + timedelta(minutes=11))
-        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (before[0] + 1, before[1] + 1))
+        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (before[0], before[1] + 1))
         for p in (morning.PROFILES[0], morning.PROFILES[3]):
             record = book.ledgers[p.name].values[6]
             self.assertEqual((record[15], record[17]), ("ΕΠΙΤΥΧΙΑ", .15))
