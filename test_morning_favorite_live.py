@@ -101,6 +101,35 @@ class Sheet:
             self.rows[int(change["range"][1:]) - 3][14] = change["values"][0][0]
 
 
+class BatchBook(Book):
+    def __init__(self):
+        super().__init__()
+        self.metadata_reads = 0
+        self.batch_reads = []
+        for name, sheet in self.ledgers.items():
+            sheet.title = name
+
+    def worksheets(self):
+        self.metadata_reads += 1
+        return list(self.ledgers.values())
+
+    def worksheet(self, name):
+        raise AssertionError("Individual worksheet metadata lookup: " + name)
+
+    def values_batch_get(self, ranges, params):
+        assert params == {"valueRenderOption": "UNFORMATTED_VALUE"}
+        self.batch_reads.append(ranges[:])
+        out = []
+        for address in ranges:
+            if address == "'ALERT LEVELS'!A2:E100":
+                vals = [[name, "FAVORITE", 0, "🔔", status] for name, status in self.status.items()]
+            else:
+                name = address.split("!", 1)[0][1:-1].replace("''", "'")
+                vals = self.ledgers[name].values
+            out.append({"range": address, "values": copy.deepcopy(vals)})
+        return {"valueRanges": out}
+
+
 def text(formula, row, active=None):
     active = set(p.name for p in MAROON_PROFILES + morning.PROFILES) if active is None else active
     for p in MAROON_PROFILES + morning.PROFILES:
@@ -110,6 +139,24 @@ def text(formula, row, active=None):
 
 
 class MorningTests(unittest.TestCase):
+    def test_production_batch_path_limits_reads_and_preserves_independent_openings(self):
+        row = source(share=90); row[14] = '=""'
+        book = BatchBook(); sheet = Sheet([row])
+        morning.update_live(book, [row], NOW, {3}, first_row=3, quote_sheet=sheet)
+        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (1, 1))
+        self.assertEqual(len(book.batch_reads[0]), 6)
+        for p in (morning.PROFILES[0], morning.PROFILES[3]):
+            self.assertEqual(len(book.ledgers[p.name].values), 7)
+        refresh_live_alerts(book, sheet, [row], NOW, first_row=3, profiles=MAROON_PROFILES + morning.PROFILES)
+        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (2, 2))
+        self.assertEqual(len(book.batch_reads[1]), 9)
+        self.assertEqual(len(text(row[14], row).split(" | ")), 2)
+        empty = BatchBook()
+        result = morning.settle_results(empty, sheet, [row], NOW + timedelta(days=1))
+        self.assertEqual(result["reason"], "no_pending_results")
+        self.assertEqual((empty.metadata_reads, len(empty.batch_reads)), (1, 1))
+        self.assertEqual(len(empty.batch_reads[0]), 5)
+
     def test_each_exact_color_and_league_scope_and_inclusive_money_threshold(self):
         for profile in morning.PROFILES:
             row = source(profile, share=profile.threshold)
