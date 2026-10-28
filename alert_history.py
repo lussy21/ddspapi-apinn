@@ -740,6 +740,11 @@ def main():
         settle_maroon_results(spreadsheet, ws, rows, datetime.now(ZoneInfo("Europe/Athens")))
     except Exception as exc:
         print("FAV MAROON2 SETTLEMENT ERROR:", repr(exc))
+    try:
+        from favorite_maroon80_research import settle_results as settle_maroon80_results
+        settle_maroon80_results(spreadsheet, ws, rows, datetime.now(ZoneInfo("Europe/Athens")))
+    except Exception as exc:
+        print("FAV MAROON80 SETTLEMENT ERROR:", repr(exc))
     reset_alert_display(spreadsheet, ws, rows, first_row=3)
 
     sheet_updates = []
