@@ -155,3 +155,11 @@ python -m unittest -v test_alert_display.py test_parallel_alerts.py test_alert_h
 
 
 
+
+# ΦΑΒΟΡΙ ΜΠΟΡΝΤΟ −2%: prospective research
+
+From 2026-10-28 02:45 Europe/Athens, this rule independently records original-favorite wins for the seven `BIG_LEAGUES`: current K turnover percentile strictly above 87 within the same league and fresh G <= F * 0.98 after the stored approximately -90-minute F snapshot. Only existing collector observations are consumed; no provider requests or extra scheduled runs are added.
+
+The first qualifying fresh quote between -90 and -5 minutes inclusive is counted once. Entry G, original favorite side, F, K, percentile, league sample size and capture time are frozen in the dedicated `ΦΑΒΟΡΙ ΜΠΟΡΝΤΟ −2%` sheet. Later departures, rerankings or quote changes never remove an entry or replace its entry price. Draws are favorite failures. Missing results stay pending. The historical 12/13 study remains separate; prospective counters start at 0/0.
+
+This is `RESEARCH_ONLY` in ALERT LEVELS. It has no opening-odds, latest-odds-range, money-share, Sofa, home/away or clock-hour filter. It does not enter public O or notifications, and it does not change the existing ΦΑΒΟΡΙ ΠΤΩΣΗ 2% rule. After Sofa updates, alert_history settles existing research records; the level review preserves ledger-owned counters. The existing Contra Rise90 ledger also preserves its original entries across subsequent exact-quote reads.
