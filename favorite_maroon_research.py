@@ -1,4 +1,4 @@
-"""Prospective Maroon Favorite research; consumes existing Sheet observations only."""
+"""Prospective Maroon Favorite ledger; consumes existing Sheet observations only."""
 
 import hashlib
 import json
@@ -198,7 +198,7 @@ def advance_record(old, item, now, fresh=False, enabled=True, profile=DEFAULT_PR
 
 def update_research(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quote_sheet=None,
                     profile=DEFAULT_PROFILE):
-    """Write the dedicated research ledger only; existing O and alerts stay separate."""
+    """Write the dedicated entry ledger; public display consumes it separately."""
     if now.tzinfo is None:
         raise ValueError("now must include a timezone")
     if now < profile.start_at:
