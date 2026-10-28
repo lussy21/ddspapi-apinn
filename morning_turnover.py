@@ -1,6 +1,6 @@
 """Freeze the first T turnover's same-league classification; no provider I/O."""
 
-from bisect import bisect_right
+from bisect import bisect_right, insort
 from collections import defaultdict
 from datetime import datetime
 import json
@@ -10,10 +10,12 @@ from statistics import fmean
 from zoneinfo import ZoneInfo
 
 ATHENS = ZoneInfo("Europe/Athens")
-VERSION = "morning-turnover-frozen-v1"
+VERSION = "morning-turnover-frozen-v2"
+LEGACY_VERSION = "morning-turnover-frozen-v1"
 START_COLUMN = 86  # CI, after the existing CH analyst notes.
 END_COLUMN = 95    # CQ inclusive.
 HISTORICAL = "HISTORICAL_BASELINE"
+HISTORICAL_ROW_ORDER = "HISTORICAL_ROW_ORDER"
 FIRST_OBSERVATION = "FIRST_OBSERVATION"
 HEADERS = ["ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΚΑΤΑΤΑΞΗ", "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΧΡΩΜΑ",
            "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΚΛΕΙΔΩΜΑ", "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΔΕΙΓΜΑ",
@@ -60,26 +62,34 @@ def lock_matches(row):
             and cell(row, 92) == cell(row, 19) and cell(row, 93) == identity(row))
 
 
-def build_lock_updates(rows, now, targets=None, mode=HISTORICAL):
-    """Use all numeric morning T amounts per exact league; never rerank a lock."""
-    if now.tzinfo is None or mode not in (HISTORICAL, FIRST_OBSERVATION):
+def build_lock_updates(rows, now, targets=None, mode=HISTORICAL_ROW_ORDER):
+    """Use only same-league T values through this physical row; freeze once.
+
+    HISTORICAL is retained solely to reproduce the archived v1 full-sample
+    baseline. The default historical rebuild and new first observations use
+    row prefixes. Historical row order does not claim original capture times.
+    """
+    if now.tzinfo is None or mode not in (HISTORICAL, HISTORICAL_ROW_ORDER, FIRST_OBSERVATION):
         raise ValueError("Classification requires a timezone and a known capture mode")
     populations = defaultdict(list)
-    for number, row in enumerate(rows, start=1):
-        if number >= 3 and eligible(row):
-            populations[str(row[0])].append(row[19])
-    for values in populations.values():
-        values.sort()
+    prefix = mode != HISTORICAL
+    if not prefix:
+        for number, row in enumerate(rows, start=1):
+            if number >= 3 and eligible(row):
+                populations[str(row[0])].append(row[19])
+        for values in populations.values():
+            values.sort()
     selected = set(targets) if targets is not None else set(range(3, len(rows) + 1))
     stamp = now.astimezone(ATHENS).isoformat()
     updates = []
-    for number in sorted(selected):
-        if number < 3 or number > len(rows):
-            continue
-        row = rows[number-1]
-        if not eligible(row) or has_lock(row):
+    for number, row in enumerate(rows, start=1):
+        if number < 3 or not eligible(row):
             continue
         league, amount = str(row[0]), row[19]
+        if prefix:
+            insort(populations[league], amount)
+        if number not in selected or has_lock(row):
+            continue
         values = populations[league]
         n = len(values)
         # Exactly the current K empirical-rank convention, including tied values
@@ -87,13 +97,16 @@ def build_lock_updates(rows, now, targets=None, mode=HISTORICAL):
         rank = 100 * (bisect_right(values, amount) - 1) / max(1, n - 1)
         color = color_for(rank)
         mean = fmean(values)
-        evidence = {"version": VERSION, "classified_at": stamp, "mode": mode,
+        evidence = {"version": VERSION if prefix else LEGACY_VERSION, "classified_at": stamp, "mode": mode,
                     "first_observed_at": stamp if mode == FIRST_OBSERVATION else None,
                     "league": league, "fixture_identity": identity(row), "source_column": "T",
                     "source_row": number, "T": amount, "rank": rank, "color": color,
                     "population": n, "population_mean": mean,
                     "population_min": values[0], "population_max": values[-1],
-                    "scope": "all_PINNACLE_morning_T_within_same_league",
+                    "scope": "PINNACLE_morning_T_same_league_rows_3_through_current" if prefix else "all_PINNACLE_morning_T_within_same_league",
+                    "reference_last_row": number if prefix else len(rows),
+                    "capture_time_known": mode == FIRST_OBSERVATION,
+                    "reference_order": "PINNACLE_PHYSICAL_ROWS" if prefix else "FULL_SAVED_SAMPLE",
                     "boundaries": [35, 75, 87], "immutable": True}
         record = [rank, color, stamp, n, mean, mode, amount, identity(row),
                   json.dumps(evidence, ensure_ascii=False, sort_keys=True)]
@@ -153,7 +166,7 @@ def attach_morning_locks(sheet, source_rows, pending, now):
     """
     targets = t_rows(pending)
     if not targets:
-        print("MORNING TURNOVER LOCK OK | new=0")
+        print(f"MORNING TURNOVER LOCK OK | new=0 | version={VERSION}")
         return list(pending)
     try:
         last = max(len(source_rows), max(targets))
@@ -173,7 +186,7 @@ def attach_morning_locks(sheet, source_rows, pending, now):
         locks = build_lock_updates(rows, now, targets, FIRST_OBSERVATION)
         if len(locks) != sum(not has_lock(rows[number-1]) for number in targets):
             raise ValueError("Missing first-observation lock")
-        print(f"MORNING TURNOVER LOCK OK | new={len(locks)} | atomic=True")
+        print(f"MORNING TURNOVER LOCK OK | new={len(locks)} | atomic=True | version={VERSION}")
         return list(pending) + locks
     except Exception as exc:
         print("MORNING TURNOVER LOCK ERROR | morning_snapshot_withheld |", repr(exc))
