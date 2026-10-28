@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import json
 import unittest
 
-from morning_turnover import (COLORS, FIRST_OBSERVATION, HISTORICAL, attach_morning_locks,
+from morning_turnover import (COLORS, FIRST_OBSERVATION, HISTORICAL, HISTORICAL_ROW_ORDER, attach_morning_locks,
                               build_lock_updates, color_for, color_formula, overlay)
 from test_pinnodds import Clock, FakeSheet, FakeSpreadsheet, NOW, fixture, row, run_main
 import pinnodds as p
@@ -33,7 +33,8 @@ class ClassificationTests(unittest.TestCase):
         actual = records(first)
         self.assertEqual(actual[3][0:2], [0, COLORS[0]])
         self.assertEqual(actual[4][0:2], [100, COLORS[3]])
-        self.assertEqual(actual[3][3:5], [2, 150])
+        self.assertEqual(actual[3][3:5], [1, 100])
+        self.assertEqual(actual[4][3:5], [2, 150])
         self.assertEqual(actual[5][3:5], [1, 999999])
         changed = deepcopy(rows)
         for value in changed[2:]:
@@ -55,7 +56,7 @@ class ClassificationTests(unittest.TestCase):
     def test_historical_seed_does_not_claim_original_observation_time(self):
         record = records(build_lock_updates([[],[],morning(100)], STAMP))[3]
         details = json.loads(record[8])
-        self.assertEqual(record[5], HISTORICAL)
+        self.assertEqual(record[5], HISTORICAL_ROW_ORDER)
         self.assertIsNone(details["first_observed_at"])
         self.assertEqual(details["classified_at"], STAMP.isoformat())
 
@@ -69,7 +70,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertNotIn(3, records(later))
         self.assertNotIn(4, records(later))
         self.assertEqual(rows[2][86:95], old)
-        self.assertEqual(records(later)[5][3], 22)
+        self.assertEqual(records(later)[5][3], 3)
 
     def test_every_color_formula_is_t_only_and_uses_frozen_key_and_source_amount(self):
         for color in COLORS:
@@ -81,32 +82,56 @@ class ClassificationTests(unittest.TestCase):
             self.assertNotIn("$K", formula)
             self.assertNotIn("$W", formula)
 
+    def test_appending_later_rows_cannot_change_any_earlier_initial_classification(self):
+        rows=[[],[],morning(200,name="First"),morning(100,name="Second")]
+        initial=records(build_lock_updates(rows,STAMP))
+        extended=records(build_lock_updates(rows+[morning(1000000,name="Future")],STAMP))
+        self.assertEqual(initial[3],extended[3])
+        self.assertEqual(initial[4],extended[4])
+        self.assertEqual(initial[3][3:5],[1,200])
+        self.assertEqual(initial[4][3:5],[2,150])
+        self.assertEqual(extended[5][3],3)
+
+    def test_default_prefix_differs_from_legacy_full_sample_but_final_mean_is_identical(self):
+        rows=[[],[],morning(200,name="First"),morning(100,name="Second")]
+        prefix=records(build_lock_updates(rows,STAMP))
+        legacy=records(build_lock_updates(rows,STAMP,mode=HISTORICAL))
+        self.assertEqual(prefix[3][0:2],[0,COLORS[0]])
+        self.assertEqual(legacy[3][0:2],[100,COLORS[3]])
+        self.assertEqual(prefix[4][4],legacy[4][4])
+        self.assertEqual(prefix[4][4],150)
+        details=json.loads(prefix[3][8])
+        self.assertEqual(details['reference_last_row'],3)
+        self.assertEqual(details['reference_order'],'PINNACLE_PHYSICAL_ROWS')
+        self.assertFalse(details['capture_time_known'])
+
 
 class AtomicWriterTests(unittest.TestCase):
     def test_first_capture_and_its_lock_share_one_batch_with_exact_raw_precision(self):
-        rows = [[],[],morning("",name="New"),morning(100.00000001,name="Old")]
+        rows = [[],[],morning(100.00000001,name="Old"),morning("",name="New")]
         sheet = FakeSheet(rows)
-        pending = [{"range":"T3:V3","values":[[100,85,15]]},
-                   {"range":"G3","values":[[1.55]]}]
+        pending = [{"range":"T4:V4","values":[[100,85,15]]},
+                   {"range":"G4","values":[[1.55]]}]
         updates = attach_morning_locks(sheet, rows, pending, STAMP)
-        record = records([u for u in updates if u["range"].startswith("CI")])[3]
-        self.assertEqual(record[0], 0)  # No display rounding into a tied maximum.
+        record = records([u for u in updates if u["range"].startswith("CI")])[4]
+        self.assertEqual(record[0], 0)  # Native precision separates the two values.
         self.assertEqual(record[3], 2)
         self.assertEqual(record[5], FIRST_OBSERVATION)
         self.assertEqual(json.loads(record[8])["first_observed_at"], STAMP.isoformat())
         self.assertEqual(updates[:2], pending)
         sheet.batch_update(updates)
-        self.assertEqual(sheet.rows[2][19], sheet.rows[2][92])
+        self.assertEqual(sheet.rows[3][19], sheet.rows[3][92])
 
-    def test_multiple_first_snapshots_use_the_same_complete_cohort_independent_of_order(self):
+    def test_multiple_first_snapshots_use_row_prefixes_independent_of_pending_write_order(self):
         rows = [[],[],morning("",name="A"),morning("",name="B"),morning(50,name="Old")]
         pending = [{"range":"T3:V3","values":[[100,80,20]]}, {"range":"T4:V4","values":[[200,90,10]]}]
         for order in (pending, list(reversed(pending))):
             changes = attach_morning_locks(FakeSheet(rows),rows,order,STAMP)
             actual = records([u for u in changes if u["range"].startswith("CI")])
-            self.assertEqual(actual[3][0:2], [50, COLORS[1]])
+            self.assertEqual(actual[3][0:2], [0, COLORS[0]])
             self.assertEqual(actual[4][0:2], [100, COLORS[3]])
-            self.assertEqual(actual[3][3], 3)
+            self.assertEqual(actual[3][3], 1)
+            self.assertEqual(actual[4][3], 2)
 
     def test_new_row_identity_and_kickoff_are_overlaid_before_first_lock(self):
         rows = [[],[],morning(50,name="Old")]
