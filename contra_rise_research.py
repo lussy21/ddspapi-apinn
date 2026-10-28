@@ -243,11 +243,11 @@ def update_research(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1,
         if len(raw) != len(relevant):
             raise ValueError("Incomplete unformatted quote response")
         for index, result in zip(relevant, raw):
-            values = result[0] if result else []
+            quote_values = result[0] if result else []
             r = source_rows[index - first_row]
             r += [""] * max(0, 10 - len(r))
             for target, offset in [(5, 0), (6, 1), (9, 4)]:
-                r[target] = values[offset] if len(values) > offset else ""
+                r[target] = quote_values[offset] if len(quote_values) > offset else ""
     existing = {}
     for index, record in enumerate(values[6:], start=FIRST_DATA_ROW):
         if record and str(record[0]).startswith("rise90:"):
