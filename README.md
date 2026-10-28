@@ -169,3 +169,9 @@ From 2026-10-28 03:04 Europe/Athens, variant B independently tracks original-fav
 
 The shared research engine preserves variant A's criteria, identity, start time and ledger. B uses a separate `maroon80:` identity and 22-column ledger, freezes total money share and category alongside entry odds/color, and counts the first qualifying fresh observation from -90 to -5 inclusive once. New counters start at 0/0 separately for BIG and OTHER EUROPE. The historical 26/29 and 4/5 from row1020 remain benchmarks only. B remains RESEARCH_ONLY, with no public O/notifications or additional provider runs. Existing level review never overwrites its prospective counters.
 
+# ΦΑΒΟΡΙ ΜΠΟΡΝΤΟ ≤1,70: prospective variant C
+
+From 2026-10-28 13:11 Europe/Athens, variant C independently tracks original-favorite wins in BIG and OTHER EUROPE: current same-league K rank >87, total current favorite money L >=80%, and fresh current odds 1 < G <=1.70. It does not compare G with F. Rising odds and a missing F snapshot are allowed. Existing A/B definitions, identities, launch times and counters remain unchanged.
+
+The first qualifying fresh quote from -90 to -5 minutes inclusive is counted once, freezing original favorite, entry G, K color/rank, total L, category and capture time in its own 22-column ledger. Optional F and price movement are informational only. Draws are failures; unknown scores stay pending. Prospective counters start at 0/0, apart from historical study benchmarks. The rule is RESEARCH_ONLY: it does not enter public O or notifications and adds no provider requests or scheduled executions. Existing result and review integration settles only recorded picks and preserves the dedicated counters.
+
