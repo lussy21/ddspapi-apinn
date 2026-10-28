@@ -3,6 +3,7 @@ from contra_rise_research import ALERT_NAME as CONTRA_RISE_NAME
 from favorite_maroon_research import ALERT_NAME as FAV_MAROON_NAME
 from favorite_maroon80_research import ALERT_NAME as FAV_MAROON80_NAME
 from favorite_maroon170_research import ALERT_NAME as FAV_MAROON170_NAME
+from morning_favorite_live import PROFILES as MORNING_PROFILES
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -378,7 +379,7 @@ def run_level_review_if_due(spreadsheet, force=False):
         alert = str(row[0] or "").strip()
         if not alert:
             continue
-        if alert in (CONTRA_RISE_NAME, FAV_MAROON_NAME, FAV_MAROON80_NAME, FAV_MAROON170_NAME):
+        if alert in (CONTRA_RISE_NAME, FAV_MAROON_NAME, FAV_MAROON80_NAME, FAV_MAROON170_NAME) or alert in {p.name for p in MORNING_PROFILES}:
             # The prospective ledger owns this rule's frozen observations,
             # entry prices and counters; never replace them with end-state fits.
             continue
