@@ -1,4 +1,4 @@
-"""Variant B: maroon, total favorite money >=80%, and G <= F; research only."""
+"""Variant B: maroon, total favorite money >=80%, and G <= F."""
 
 from datetime import datetime
 
