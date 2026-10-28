@@ -36,10 +36,14 @@ class ResearchProfile:
     log_tag: str
     money80: bool = False
     include_other: bool = False
+    max_price: float | None = None
 
     @property
     def headers(self):
-        return HEADERS + (["ΧΡΗΜΑΤΑ ΦΑΒΟΡΙ ΣΤΗΝ ΕΙΣΟΔΟ", "ΚΑΤΗΓΟΡΙΑ"] if self.money80 else [])
+        labels = HEADERS + (["ΧΡΗΜΑΤΑ ΦΑΒΟΡΙ ΣΤΗΝ ΕΙΣΟΔΟ", "ΚΑΤΗΓΟΡΙΑ"] if self.money80 else [])
+        if self.max_price is not None:
+            labels[10] = "ΜΕΤΑΒΟΛΗ ΑΠΟ −90′ ΣΤΗΝ ΕΙΣΟΔΟ"
+        return labels
 
     @property
     def leagues(self):
@@ -85,13 +89,19 @@ def turnover_ranks(leagues, turnovers, first_row=3):
 
 
 def qualifies(f90, current, rank, money_share=None, profile=DEFAULT_PROFILE):
-    if any(value is None or not math.isfinite(value) for value in (f90, current, rank)):
+    if any(value is None or not math.isfinite(value) for value in (current, rank)):
         return False
-    if f90 <= 1 or current <= 1 or rank <= 87:
+    if current <= 1 or rank <= 87:
         return False
     if profile.money80:
-        return (money_share is not None and math.isfinite(money_share) and 80 <= money_share <= 100
-                and Decimal(str(current)) <= Decimal(str(f90)))
+        if money_share is None or not math.isfinite(money_share) or not 80 <= money_share <= 100:
+            return False
+    if profile.max_price is not None:
+        return Decimal(str(current)) <= Decimal(str(profile.max_price))
+    if f90 is None or not math.isfinite(f90) or f90 <= 1:
+        return False
+    if profile.money80:
+        return Decimal(str(current)) <= Decimal(str(f90))
     return Decimal(str(current)) <= Decimal(str(f90)) * Decimal("0.98")
 
 
@@ -140,8 +150,12 @@ def advance_record(old, item, now, fresh=False, enabled=True, profile=DEFAULT_PR
         record[:9] = [item["key"], item["row"], item["league"],
                       item["home"] + " – " + item["away"],
                       item["home"] if item["side"] == "H" else item["away"],
-                      item["kickoff"].isoformat(), now.isoformat(), now.isoformat(), item["F"]]
-        record[9:14] = [item["G"], 1 - item["G"] / item["F"], item["K"],
+                      item["kickoff"].isoformat(), now.isoformat(), now.isoformat(),
+                      item["F"] if item["F"] is not None else ""]
+        change = ""
+        if item["F"] is not None and item["F"] > 1:
+            change = item["G"] / item["F"] - 1 if profile.max_price is not None else 1 - item["G"] / item["F"]
+        record[9:14] = [item["G"], change, item["K"],
                          item["rank"], item["G"]]
         record[18] = json.dumps({
             "rule": profile.version, "favorite_side": item["side"], "observed_at": now.isoformat(),
@@ -155,13 +169,15 @@ def advance_record(old, item, now, fresh=False, enabled=True, profile=DEFAULT_PR
             record[20:22] = [item["L"], item["category"]]
             captured = evidence(record)
             captured.update(L=item["L"], category=item["category"], money_basis="total_favorite_share")
+            if profile.max_price is not None:
+                captured.update(max_price=profile.max_price, comparison_to_F=False)
             record[18] = json.dumps(captured, ensure_ascii=False, sort_keys=True)
     frozen = evidence(record)
     side = frozen.get("favorite_side")
     if observable and side != item["side"]:
         record[16] = "ΕΛΕΓΧΟΣ ΑΡΧΙΚΗΣ ΠΛΕΥΡΑΣ"
         return record
-    if observable and item["F"] != number(frozen.get("F")):
+    if observable and profile.max_price is None and item["F"] != number(frozen.get("F")):
         record[16] = "ΕΛΕΓΧΟΣ ΣΤΙΓΜΙΟΤΥΠΟΥ −90′"
         return record
     if observable:
