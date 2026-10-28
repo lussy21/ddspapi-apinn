@@ -60,6 +60,31 @@ PROFILES = (
 LABELS = frozenset("🔔 " + profile.name for profile in PROFILES)
 
 
+def load_profiles(spreadsheet, profiles, include_config=True):
+    """Read all ledgers in one request and resolve worksheet metadata once."""
+    if hasattr(spreadsheet, "worksheets") and hasattr(spreadsheet, "values_batch_get"):
+        sheets = {sheet.title: sheet for sheet in spreadsheet.worksheets()}
+        ranges = ["'ALERT LEVELS'!A2:E100"] if include_config else []
+        for profile in profiles:
+            sheet = sheets[profile.sheet_name]
+            quoted = "'" + profile.sheet_name.replace("'", "''") + "'"
+            ranges.append(f"{quoted}!A1:{chr(64 + len(profile.headers))}{sheet.row_count}")
+        response = spreadsheet.values_batch_get(ranges, params={"valueRenderOption": "UNFORMATTED_VALUE"})
+        blocks = response.get("valueRanges", [])
+        if len(blocks) != len(ranges):
+            raise ValueError("Incomplete batched color-alert ledger response")
+        config = blocks[0].get("values", []) if include_config else []
+        ledger_blocks = blocks[1:] if include_config else blocks
+        ledgers = {profile.name: block.get("values", []) for profile, block in zip(profiles, ledger_blocks)}
+    else:
+        config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE") if include_config else []
+        sheets = {profile.sheet_name: spreadsheet.worksheet(profile.sheet_name) for profile in profiles}
+        ledgers = {profile.name: sheets[profile.sheet_name].get_all_values(value_render_option="UNFORMATTED_VALUE")
+                   for profile in profiles}
+    statuses = {str(row[0]).strip(): str(row[4]).strip().upper() for row in config if len(row) > 4}
+    return statuses, sheets, ledgers
+
+
 def cell(row, index):
     return row[index] if len(row) > index else ""
 
@@ -185,8 +210,7 @@ def update_live(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quo
         raise ValueError("now must include a timezone")
     if now < START_AT or not pinnacle_rows:
         return {"ok": True, "counted": 0, "changed": 0, "reason": "before_start_or_empty"}
-    config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE")
-    statuses = {str(row[0]).strip(): str(row[4]).strip().upper() for row in config if len(row) > 4}
+    statuses, sheets, ledgers = load_profiles(spreadsheet, PROFILES)
     source_rows = [list(row) for row in pinnacle_rows]
     fresh = set(fresh_rows)
     relevant = set()
@@ -205,8 +229,8 @@ def update_live(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quo
         source_rows = raw_sources(quote_sheet, source_rows, first_row)
     counts, total_changed = {}, 0
     for profile in PROFILES:
-        sheet = spreadsheet.worksheet(profile.sheet_name)
-        ledger = sheet.get_all_values(value_render_option="UNFORMATTED_VALUE")
+        sheet = sheets[profile.sheet_name]
+        ledger = ledgers[profile.name]
         if len(ledger) < 6 or ledger[5][:len(HEADERS)] != HEADERS:
             raise ValueError("Morning favorite ledger header mismatch: " + profile.name)
         existing = {}
@@ -247,12 +271,13 @@ def update_live(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quo
 def settle_results(spreadsheet, pinnacle_sheet, history_rows, now):
     if now < START_AT or not history_rows:
         return {"ok": True, "changed": 0}
+    try:
+        _, _, ledgers = load_profiles(spreadsheet, PROFILES, include_config=False)
+    except (KeyError, AttributeError):
+        return {"ok": False, "changed": 0, "reason": "setup_missing"}
     pending = False
     for profile in PROFILES:
-        try:
-            ledger = spreadsheet.worksheet(profile.sheet_name).get_all_values(value_render_option="UNFORMATTED_VALUE")
-        except Exception:
-            return {"ok": False, "changed": 0, "reason": "setup_missing"}
+        ledger = ledgers[profile.name]
         if len(ledger) < 6 or ledger[5][:len(HEADERS)] != HEADERS:
             return {"ok": False, "changed": 0, "reason": "header_mismatch"}
         pending = pending or any(len(record) > 6 and record[6] and (len(record) <= 15 or not record[15])
