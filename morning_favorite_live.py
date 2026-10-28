@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from contra_rise_research import ATHENS, BIG_LEAGUES, OTHER_LEAGUES, number, parse_time
-from favorite_maroon_research import evidence, fixture as base_fixture, money_percentage, result_for
+from favorite_maroon_research import evidence, fixture as base_fixture, ledger_sheet, money_percentage, result_for
 from morning_turnover import VERSION as LOCK_VERSION, identity, lock_matches
 
 START_AT = datetime.fromisoformat("2026-10-29T01:05:00+02:00")
@@ -63,7 +63,7 @@ LABELS = frozenset("🔔 " + profile.name for profile in PROFILES)
 def load_profiles(spreadsheet, profiles, include_config=True):
     """Read all ledgers in one request and resolve worksheet metadata once."""
     if hasattr(spreadsheet, "worksheets") and hasattr(spreadsheet, "values_batch_get"):
-        sheets = {sheet.title: sheet for sheet in spreadsheet.worksheets()}
+        sheets = {profile.sheet_name: ledger_sheet(spreadsheet, profile.sheet_name) for profile in profiles}
         ranges = ["'ALERT LEVELS'!A2:E100"] if include_config else []
         for profile in profiles:
             sheet = sheets[profile.sheet_name]
@@ -77,10 +77,10 @@ def load_profiles(spreadsheet, profiles, include_config=True):
         ledger_blocks = blocks[1:] if include_config else blocks
         ledgers = {profile.name: block.get("values", []) for profile, block in zip(profiles, ledger_blocks)}
     else:
-        sheets = {profile.sheet_name: spreadsheet.worksheet(profile.sheet_name) for profile in profiles}
+        sheets = {profile.sheet_name: ledger_sheet(spreadsheet, profile.sheet_name) for profile in profiles}
         ledgers = {profile.name: sheets[profile.sheet_name].get_all_values(value_render_option="UNFORMATTED_VALUE")
                    for profile in profiles}
-        config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE") if include_config else []
+        config = ledger_sheet(spreadsheet, "ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE") if include_config else []
     statuses = {str(row[0]).strip(): str(row[4]).strip().upper() for row in config if len(row) > 4}
     return statuses, sheets, ledgers
 
