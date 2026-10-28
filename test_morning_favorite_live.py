@@ -155,7 +155,19 @@ class MorningTests(unittest.TestCase):
         result = morning.settle_results(empty, sheet, [row], NOW + timedelta(days=1))
         self.assertEqual(result["reason"], "no_pending_results")
         self.assertEqual((empty.metadata_reads, len(empty.batch_reads)), (1, 1))
-        self.assertEqual(len(empty.batch_reads[0]), 5)
+        self.assertEqual(len(empty.batch_reads[0]), 6)
+
+    def test_pending_batch_settlement_reuses_ledger_snapshot_and_settles_both_entries(self):
+        row = source(share=90, minutes=10); book = BatchBook(); sheet = Sheet([row])
+        morning.update_live(book, [row], NOW, {3}, first_row=3, quote_sheet=sheet)
+        before = (book.metadata_reads, len(book.batch_reads))
+        row[15] = "2-0"
+        morning.settle_results(book, sheet, [row], NOW + timedelta(minutes=11))
+        self.assertEqual((book.metadata_reads, len(book.batch_reads)), (before[0] + 1, before[1] + 1))
+        for p in (morning.PROFILES[0], morning.PROFILES[3]):
+            record = book.ledgers[p.name].values[6]
+            self.assertEqual((record[15], record[17]), ("ΕΠΙΤΥΧΙΑ", .15))
+            self.assertEqual(len(book.ledgers[p.name].values), 7)
 
     def test_each_exact_color_and_league_scope_and_inclusive_money_threshold(self):
         for profile in morning.PROFILES:
