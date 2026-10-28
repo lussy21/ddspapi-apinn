@@ -15,6 +15,7 @@ from contra_priority import legacy_contra_guarded_expr
 from parallel_alerts import START_DAY as PARALLEL_ALERTS_START_DAY, parallel_alert_formula
 from contra_rise_research import update_research as update_contra_rise_research, fresh_quote_rows
 from favorite_maroon_research import update_research as update_favorite_maroon_research
+from favorite_maroon80_research import update_research as update_favorite_maroon80_research
 from side_goal_alerts import (
     START_DAY as SIDE_GOALS_START_DAY, collect_flow_updates, has_legacy_over,
     is_goal_alert, primary_without_goals, side_goal_formula, freshly_updated_rows,
@@ -2403,6 +2404,13 @@ try:
         )
     except Exception as exc:
         print("FAV MAROON2 ERROR:", repr(exc))
+    try:
+        update_favorite_maroon80_research(
+            SPREADSHEET, selector_rows, datetime.now(GREECE_TZ),
+            fresh_rows=fresh_quote_rows(updates), quote_sheet=SHEET,
+        )
+    except Exception as exc:
+        print("FAV MAROON80 ERROR:", repr(exc))
     # Use actual refreshed odds/turnover, never historical end-state backfills.
     # Goal signals have their own immutable opening evidence beside the primary.
     flow_updates = collect_flow_updates(
