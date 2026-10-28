@@ -77,10 +77,10 @@ def load_profiles(spreadsheet, profiles, include_config=True):
         ledger_blocks = blocks[1:] if include_config else blocks
         ledgers = {profile.name: block.get("values", []) for profile, block in zip(profiles, ledger_blocks)}
     else:
-        config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE") if include_config else []
         sheets = {profile.sheet_name: spreadsheet.worksheet(profile.sheet_name) for profile in profiles}
         ledgers = {profile.name: sheets[profile.sheet_name].get_all_values(value_render_option="UNFORMATTED_VALUE")
                    for profile in profiles}
+        config = spreadsheet.worksheet("ALERT LEVELS").get("A2:E100", value_render_option="UNFORMATTED_VALUE") if include_config else []
     statuses = {str(row[0]).strip(): str(row[4]).strip().upper() for row in config if len(row) > 4}
     return statuses, sheets, ledgers
 
@@ -205,12 +205,12 @@ def raw_sources(quote_sheet, source_rows, first_row):
     return rows
 
 
-def update_live(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quote_sheet=None):
+def update_live(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1, quote_sheet=None, loaded=None):
     if now.tzinfo is None:
         raise ValueError("now must include a timezone")
     if now < START_AT or not pinnacle_rows:
         return {"ok": True, "counted": 0, "changed": 0, "reason": "before_start_or_empty"}
-    statuses, sheets, ledgers = load_profiles(spreadsheet, PROFILES)
+    statuses, sheets, ledgers = loaded if loaded is not None else load_profiles(spreadsheet, PROFILES)
     source_rows = [list(row) for row in pinnacle_rows]
     fresh = set(fresh_rows)
     relevant = set()
@@ -272,7 +272,8 @@ def settle_results(spreadsheet, pinnacle_sheet, history_rows, now):
     if now < START_AT or not history_rows:
         return {"ok": True, "changed": 0}
     try:
-        _, _, ledgers = load_profiles(spreadsheet, PROFILES, include_config=False)
+        loaded = load_profiles(spreadsheet, PROFILES)
+        _, _, ledgers = loaded
     except (KeyError, AttributeError):
         return {"ok": False, "changed": 0, "reason": "setup_missing"}
     pending = False
@@ -289,4 +290,4 @@ def settle_results(spreadsheet, pinnacle_sheet, history_rows, now):
     kickoffs = pinnacle_sheet.get(f"BY3:BY{len(rows) + 2}", value_render_option="UNFORMATTED_VALUE")
     for i, row in enumerate(rows):
         row[76] = kickoffs[i][0] if i < len(kickoffs) and kickoffs[i] else ""
-    return update_live(spreadsheet, rows, now, first_row=3)
+    return update_live(spreadsheet, rows, now, first_row=3, loaded=loaded)
