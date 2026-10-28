@@ -10,12 +10,14 @@ from statistics import fmean
 from zoneinfo import ZoneInfo
 
 ATHENS = ZoneInfo("Europe/Athens")
-VERSION = "morning-turnover-frozen-v2"
+VERSION = "morning-turnover-frozen-v3"
 LEGACY_VERSION = "morning-turnover-frozen-v1"
+ROW_ORDER_VERSION = "morning-turnover-frozen-v2"
 START_COLUMN = 86  # CI, after the existing CH analyst notes.
 END_COLUMN = 95    # CQ inclusive.
 HISTORICAL = "HISTORICAL_BASELINE"
 HISTORICAL_ROW_ORDER = "HISTORICAL_ROW_ORDER"
+HISTORICAL_COMMON_REFERENCE = "HISTORICAL_COMMON_REFERENCE"
 FIRST_OBSERVATION = "FIRST_OBSERVATION"
 HEADERS = ["ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΚΑΤΑΤΑΞΗ", "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΧΡΩΜΑ",
            "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΚΛΕΙΔΩΜΑ", "ΠΡΩΙΝΟΣ ΤΖΙΡΟΣ ΔΕΙΓΜΑ",
@@ -62,17 +64,21 @@ def lock_matches(row):
             and cell(row, 92) == cell(row, 19) and cell(row, 93) == identity(row))
 
 
-def build_lock_updates(rows, now, targets=None, mode=HISTORICAL_ROW_ORDER):
-    """Use only same-league T values through this physical row; freeze once.
+def build_lock_updates(rows, now, targets=None, mode=HISTORICAL_COMMON_REFERENCE):
+    """Use one common same-league morning-T reference available now; freeze once.
 
-    HISTORICAL is retained solely to reproduce the archived v1 full-sample
-    baseline. The default historical rebuild and new first observations use
-    row prefixes. Historical row order does not claim original capture times.
+    Historical v1 full-sample and v2 row-order modes remain reproducible for
+    their backups. The v3 historical rebuild uses the complete saved cohort;
+    real first captures use all same-league T observations already available
+    in the current atomic batch, regardless of physical row position. Later
+    captures never rewrite an existing lock. Historical modes do not claim
+    original capture times or a reference available at those original times.
     """
-    if now.tzinfo is None or mode not in (HISTORICAL, HISTORICAL_ROW_ORDER, FIRST_OBSERVATION):
+    if now.tzinfo is None or mode not in (HISTORICAL, HISTORICAL_ROW_ORDER,
+                                        HISTORICAL_COMMON_REFERENCE, FIRST_OBSERVATION):
         raise ValueError("Classification requires a timezone and a known capture mode")
     populations = defaultdict(list)
-    prefix = mode != HISTORICAL
+    prefix = mode == HISTORICAL_ROW_ORDER
     if not prefix:
         for number, row in enumerate(rows, start=1):
             if number >= 3 and eligible(row):
@@ -97,17 +103,25 @@ def build_lock_updates(rows, now, targets=None, mode=HISTORICAL_ROW_ORDER):
         rank = 100 * (bisect_right(values, amount) - 1) / max(1, n - 1)
         color = color_for(rank)
         mean = fmean(values)
-        evidence = {"version": VERSION if prefix else LEGACY_VERSION, "classified_at": stamp, "mode": mode,
+        version = (LEGACY_VERSION if mode == HISTORICAL else
+                   ROW_ORDER_VERSION if prefix else VERSION)
+        evidence = {"version": version, "classified_at": stamp, "mode": mode,
                     "first_observed_at": stamp if mode == FIRST_OBSERVATION else None,
                     "league": league, "fixture_identity": identity(row), "source_column": "T",
                     "source_row": number, "T": amount, "rank": rank, "color": color,
                     "population": n, "population_mean": mean,
                     "population_min": values[0], "population_max": values[-1],
-                    "scope": "PINNACLE_morning_T_same_league_rows_3_through_current" if prefix else "all_PINNACLE_morning_T_within_same_league",
+                    "scope": ("PINNACLE_morning_T_same_league_rows_3_through_current" if prefix else
+                              "all_PINNACLE_morning_T_within_same_league" if mode == HISTORICAL else
+                              "all_available_PINNACLE_morning_T_within_same_league"),
                     "reference_last_row": number if prefix else len(rows),
                     "capture_time_known": mode == FIRST_OBSERVATION,
-                    "reference_order": "PINNACLE_PHYSICAL_ROWS" if prefix else "FULL_SAVED_SAMPLE",
+                    "reference_order": ("PINNACLE_PHYSICAL_ROWS" if prefix else
+                                        "FULL_SAVED_SAMPLE" if mode == HISTORICAL else
+                                        "COMMON_LEAGUE_REFERENCE"),
                     "boundaries": [35, 75, 87], "immutable": True}
+        if mode in (HISTORICAL_COMMON_REFERENCE, FIRST_OBSERVATION):
+            evidence["reference_as_of"] = stamp
         record = [rank, color, stamp, n, mean, mode, amount, identity(row),
                   json.dumps(evidence, ensure_ascii=False, sort_keys=True)]
         updates.append({"range": f"CI{number}:CQ{number}", "values": [record]})
