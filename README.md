@@ -181,3 +181,11 @@ The first qualifying fresh quote from -90 to -5 minutes inclusive is counted onc
 
 Publication wraps and preserves the existing O formula, checks the fixture's league, teams, original side and kickoff to prevent row reuse, honors each ACTIVE status independently, and never rewrites started/settled matches. The existing 1.39 opening floor remains inside the legacy formula; it is not imposed on Maroon A/B/C. History retains only these three exact approved identities below that floor and routes them through the existing alert log/notification workflow. Dedicated ledger metrics and all historical benchmarks remain separate.
 
+## Frozen first morning-turnover colors
+
+`morning_turnover.py` classifies the first stored T turnover across all PINNACLE competitions, separately per exact league, against all numeric nonnegative morning T snapshots in that league. It uses the same empirical-rank convention and 35/75/87 boundaries as current K colors. Closing K, -90 W, money shares and Sofa never influence this classification.
+
+Hidden CI:CQ stores the immutable rank, hex color, lock time, sample size, league mean, capture mode, original T, fixture identity and JSON evidence. Existing T snapshots are classified once as HISTORICAL_BASELINE at the actual installation time; this does not claim their original morning colors or capture timestamps. New FIRST_OBSERVATION locks accompany the actual first T:V write in the same collector batch. Adding later matches cannot re-rank old locks. Both the independent Arbworld and regular odds paths share this final batch hook, with no provider calls or schedule changes.
+
+Only T receives the new conditional colors. Its existing numeric format and all K/W/O rules stay intact. Missing/non-numeric/negative T remains uncolored; a changed T or reused fixture identity cannot inherit another observation's color. If preparing a first lock fails, the new T:V snapshot is withheld for retry while the rest of the live update continues. Historical benchmarks, alerts A/B/C, entry evidence and their counters are unchanged.
+
