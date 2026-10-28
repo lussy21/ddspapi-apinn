@@ -2375,6 +2375,9 @@ for match in matches:
         else:
             print("ARBWORLD MATCH NOT FOUND:", home, "vs", away)
 
+from morning_turnover import attach_morning_locks
+updates = attach_morning_locks(SHEET, sheet_rows, updates, datetime.now(GREECE_TZ))
+
 if updates:
     # Show live canonical text until all value/formula writes have finished.
     reset_alert_display(SPREADSHEET, SHEET, sheet_rows)
