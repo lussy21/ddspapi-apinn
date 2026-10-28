@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 import json
 import unittest
 
-from morning_turnover import (COLORS, FIRST_OBSERVATION, HISTORICAL, HISTORICAL_ROW_ORDER, attach_morning_locks,
+from morning_turnover import (COLORS, FIRST_OBSERVATION, HISTORICAL, HISTORICAL_ROW_ORDER,
+                              HISTORICAL_COMMON_REFERENCE, VERSION, attach_morning_locks,
                               build_lock_updates, color_for, color_formula, overlay)
 from test_pinnodds import Clock, FakeSheet, FakeSpreadsheet, NOW, fixture, row, run_main
 import pinnodds as p
@@ -33,7 +34,7 @@ class ClassificationTests(unittest.TestCase):
         actual = records(first)
         self.assertEqual(actual[3][0:2], [0, COLORS[0]])
         self.assertEqual(actual[4][0:2], [100, COLORS[3]])
-        self.assertEqual(actual[3][3:5], [1, 100])
+        self.assertEqual(actual[3][3:5], [2, 150])
         self.assertEqual(actual[4][3:5], [2, 150])
         self.assertEqual(actual[5][3:5], [1, 999999])
         changed = deepcopy(rows)
@@ -56,9 +57,11 @@ class ClassificationTests(unittest.TestCase):
     def test_historical_seed_does_not_claim_original_observation_time(self):
         record = records(build_lock_updates([[],[],morning(100)], STAMP))[3]
         details = json.loads(record[8])
-        self.assertEqual(record[5], HISTORICAL_ROW_ORDER)
+        self.assertEqual(record[5], HISTORICAL_COMMON_REFERENCE)
         self.assertIsNone(details["first_observed_at"])
         self.assertEqual(details["classified_at"], STAMP.isoformat())
+        self.assertEqual(details["reference_order"], "COMMON_LEAGUE_REFERENCE")
+        self.assertEqual(details["version"], VERSION)
 
     def test_later_population_changes_never_rewrite_a_locked_record(self):
         rows = [[],[],morning(100),morning(200,name="Other")]
@@ -70,7 +73,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertNotIn(3, records(later))
         self.assertNotIn(4, records(later))
         self.assertEqual(rows[2][86:95], old)
-        self.assertEqual(records(later)[5][3], 3)
+        self.assertEqual(records(later)[5][3], 22)
 
     def test_every_color_formula_is_t_only_and_uses_frozen_key_and_source_amount(self):
         for color in COLORS:
@@ -82,28 +85,39 @@ class ClassificationTests(unittest.TestCase):
             self.assertNotIn("$K", formula)
             self.assertNotIn("$W", formula)
 
-    def test_appending_later_rows_cannot_change_any_earlier_initial_classification(self):
+    def test_archived_row_order_mode_remains_reproducible(self):
         rows=[[],[],morning(200,name="First"),morning(100,name="Second")]
-        initial=records(build_lock_updates(rows,STAMP))
-        extended=records(build_lock_updates(rows+[morning(1000000,name="Future")],STAMP))
+        initial=records(build_lock_updates(rows,STAMP,mode=HISTORICAL_ROW_ORDER))
+        extended=records(build_lock_updates(rows+[morning(1000000,name="Future")],STAMP,mode=HISTORICAL_ROW_ORDER))
         self.assertEqual(initial[3],extended[3])
         self.assertEqual(initial[4],extended[4])
         self.assertEqual(initial[3][3:5],[1,200])
         self.assertEqual(initial[4][3:5],[2,150])
         self.assertEqual(extended[5][3],3)
 
-    def test_default_prefix_differs_from_legacy_full_sample_but_final_mean_is_identical(self):
+    def test_default_common_reference_matches_full_sample_arithmetic(self):
         rows=[[],[],morning(200,name="First"),morning(100,name="Second")]
-        prefix=records(build_lock_updates(rows,STAMP))
+        common=records(build_lock_updates(rows,STAMP))
+        prefix=records(build_lock_updates(rows,STAMP,mode=HISTORICAL_ROW_ORDER))
         legacy=records(build_lock_updates(rows,STAMP,mode=HISTORICAL))
         self.assertEqual(prefix[3][0:2],[0,COLORS[0]])
+        self.assertEqual(common[3][0:2],[100,COLORS[3]])
         self.assertEqual(legacy[3][0:2],[100,COLORS[3]])
+        self.assertEqual(common[3][3:5],[2,150])
         self.assertEqual(prefix[4][4],legacy[4][4])
         self.assertEqual(prefix[4][4],150)
         details=json.loads(prefix[3][8])
         self.assertEqual(details['reference_last_row'],3)
         self.assertEqual(details['reference_order'],'PINNACLE_PHYSICAL_ROWS')
         self.assertFalse(details['capture_time_known'])
+
+    def test_common_rank_color_sample_and_mean_do_not_depend_on_physical_row_order(self):
+        fixtures=[morning(200,name="High"),morning(100,name="Low"),
+                  morning(150,name="Middle"),morning(9999,league="Other",name="Separate")]
+        def values_by_identity(items):
+            found=records(build_lock_updates([[],[]]+items,STAMP))
+            return {r[7]:(r[:2],r[3:5]) for r in found.values()}
+        self.assertEqual(values_by_identity(fixtures),values_by_identity(list(reversed(fixtures))))
 
 
 class AtomicWriterTests(unittest.TestCase):
@@ -122,16 +136,28 @@ class AtomicWriterTests(unittest.TestCase):
         sheet.batch_update(updates)
         self.assertEqual(sheet.rows[3][19], sheet.rows[3][92])
 
-    def test_multiple_first_snapshots_use_row_prefixes_independent_of_pending_write_order(self):
+    def test_multiple_first_snapshots_share_common_reference_independent_of_pending_write_order(self):
         rows = [[],[],morning("",name="A"),morning("",name="B"),morning(50,name="Old")]
         pending = [{"range":"T3:V3","values":[[100,80,20]]}, {"range":"T4:V4","values":[[200,90,10]]}]
         for order in (pending, list(reversed(pending))):
             changes = attach_morning_locks(FakeSheet(rows),rows,order,STAMP)
             actual = records([u for u in changes if u["range"].startswith("CI")])
-            self.assertEqual(actual[3][0:2], [0, COLORS[0]])
+            self.assertEqual(actual[3][0:2], [50, COLORS[1]])
             self.assertEqual(actual[4][0:2], [100, COLORS[3]])
-            self.assertEqual(actual[3][3], 1)
-            self.assertEqual(actual[4][3], 2)
+            self.assertEqual(actual[3][3], 3)
+            self.assertEqual(actual[4][3], 3)
+
+    def test_first_capture_uses_available_same_league_turnover_even_below_target_row(self):
+        rows=[[],[],morning("",name="New"),morning(100,name="Already captured below")]
+        pending=[{"range":"T3:V3","values":[[200,85,15]]}]
+        changes=attach_morning_locks(FakeSheet(rows),rows,pending,STAMP)
+        record=records([u for u in changes if u["range"].startswith("CI")])[3]
+        self.assertEqual(record[0:2],[100,COLORS[3]])
+        self.assertEqual(record[3:5],[2,150])
+        evidence=json.loads(record[8])
+        self.assertEqual(evidence["reference_order"],"COMMON_LEAGUE_REFERENCE")
+        self.assertEqual(evidence["reference_as_of"],STAMP.isoformat())
+        self.assertTrue(evidence["capture_time_known"])
 
     def test_new_row_identity_and_kickoff_are_overlaid_before_first_lock(self):
         rows = [[],[],morning(50,name="Old")]
