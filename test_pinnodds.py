@@ -68,6 +68,23 @@ class FakeSheet:
     def get_all_values(self):
         return deepcopy(self.rows)
 
+    def batch_get(self, ranges, value_render_option=None):
+        def column(text):
+            result = 0
+            for char in text:
+                result = result * 26 + ord(char) - 64
+            return result - 1
+        output = []
+        for address in ranges:
+            match = re.fullmatch(r"([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?", address)
+            if not match:
+                raise AssertionError(address)
+            first_col, first_row, last_col, last_row = match.groups()
+            a, b = column(first_col), column(last_col or first_col)
+            first, last = int(first_row), int(last_row or first_row)
+            output.append([row[a:b+1] for row in deepcopy(self.rows[first-1:last])])
+        return output
+
     def get(self, address, value_render_option=None):
         match = re.fullmatch(r"O(\d+):O(\d+)", address)
         if match:
@@ -422,4 +439,5 @@ class FallbackTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 
