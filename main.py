@@ -2377,6 +2377,8 @@ for match in matches:
 
 from morning_turnover import attach_morning_locks
 updates = attach_morning_locks(SHEET, sheet_rows, updates, datetime.now(GREECE_TZ))
+from final_turnover import attach_final_locks
+updates = attach_final_locks(SHEET, sheet_rows, updates, datetime.now(GREECE_TZ))
 
 if updates:
     # Show live canonical text until all value/formula writes have finished.
