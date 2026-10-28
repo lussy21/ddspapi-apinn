@@ -751,6 +751,11 @@ def main():
         settle_maroon170_results(spreadsheet, ws, rows, datetime.now(ZoneInfo("Europe/Athens")))
     except Exception as exc:
         print("FAV MAROON170 SETTLEMENT ERROR:", repr(exc))
+    try:
+        from morning_favorite_live import settle_results as settle_morning_results
+        settle_morning_results(spreadsheet, ws, rows, datetime.now(ZoneInfo("Europe/Athens")))
+    except Exception as exc:
+        print("MORNING FAVORITE SETTLEMENT ERROR:", repr(exc))
     reset_alert_display(spreadsheet, ws, rows, first_row=3)
 
     sheet_updates = []
