@@ -2419,6 +2419,11 @@ try:
         )
     except Exception as exc:
         print("FAV MAROON170 ERROR:", repr(exc))
+    try:
+        from favorite_maroon_live import refresh_live_alerts
+        refresh_live_alerts(SPREADSHEET, SHEET, selector_rows, datetime.now(GREECE_TZ))
+    except Exception as exc:
+        print("FAV MAROON LIVE ERROR:", repr(exc))
     # Use actual refreshed odds/turnover, never historical end-state backfills.
     # Goal signals have their own immutable opening evidence beside the primary.
     flow_updates = collect_flow_updates(
