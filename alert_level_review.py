@@ -1,6 +1,7 @@
 import math
 from contra_rise_research import ALERT_NAME as CONTRA_RISE_NAME
 from favorite_maroon_research import ALERT_NAME as FAV_MAROON_NAME
+from favorite_maroon80_research import ALERT_NAME as FAV_MAROON80_NAME
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -376,7 +377,7 @@ def run_level_review_if_due(spreadsheet, force=False):
         alert = str(row[0] or "").strip()
         if not alert:
             continue
-        if alert in (CONTRA_RISE_NAME, FAV_MAROON_NAME):
+        if alert in (CONTRA_RISE_NAME, FAV_MAROON_NAME, FAV_MAROON80_NAME):
             # The prospective ledger owns this rule's frozen observations,
             # entry prices and counters; never replace them with end-state fits.
             continue
