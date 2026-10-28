@@ -53,6 +53,18 @@ class ResearchProfile:
 DEFAULT_PROFILE = ResearchProfile(ALERT_NAME, SHEET_NAME, RULE_VERSION, START_AT, "maroon2:", "FAV MAROON2")
 
 
+def ledger_sheet(spreadsheet, name):
+    """Cache worksheet objects within one process, never the live cell values."""
+    cache = getattr(spreadsheet, "_color_ledger_sheet_cache", None)
+    if cache is None:
+        cache = ({sheet.title: sheet for sheet in spreadsheet.worksheets()}
+                 if hasattr(spreadsheet, "worksheets") else {})
+        spreadsheet._color_ledger_sheet_cache = cache
+    if name not in cache:
+        cache[name] = spreadsheet.worksheet(name)
+    return cache[name]
+
+
 def fixture(row, sheet_row, profile=DEFAULT_PROFILE):
     def cell(index):
         return row[index] if len(row) > index else ""
@@ -204,8 +216,8 @@ def update_research(spreadsheet, pinnacle_rows, now, fresh_rows=(), first_row=1,
     if now < profile.start_at:
         return {"ok": True, "reason": "before_start", "changed": 0, "counted": 0}
     try:
-        sheet = spreadsheet.worksheet(profile.sheet_name)
-        levels = spreadsheet.worksheet("ALERT LEVELS")
+        sheet = ledger_sheet(spreadsheet, profile.sheet_name)
+        levels = ledger_sheet(spreadsheet, "ALERT LEVELS")
     except Exception as exc:
         print(profile.log_tag + " SKIP | setup_missing |", type(exc).__name__)
         return {"ok": False, "reason": "setup_missing"}
@@ -296,7 +308,7 @@ def settle_results(spreadsheet, pinnacle_sheet, history_rows, now, profile=DEFAU
     if now < profile.start_at or not history_rows:
         return {"ok": True, "changed": 0, "counted": 0}
     try:
-        ledger = spreadsheet.worksheet(profile.sheet_name).get_all_values(value_render_option="UNFORMATTED_VALUE")
+        ledger = ledger_sheet(spreadsheet, profile.sheet_name).get_all_values(value_render_option="UNFORMATTED_VALUE")
     except Exception:
         return {"ok": False, "reason": "setup_missing"}
     pending = [row for row in ledger[6:] if len(row) > 6 and row[6] and (len(row) <= 15 or not row[15])]
