@@ -273,5 +273,47 @@ def matches():
     return _response({"ok": False, "state": "loading", "rows": [],
         "retryAfterSeconds": 3, "message": "Γίνεται ασφαλής ανάκτηση του Excel."})
 
+
+@app.get("/api/deltio/odds")
+def deltio_odds():
+    token = os.getenv("DELTIO_READ_TOKEN", "").strip()
+    supplied = request.headers.get("Authorization", "").encode("utf-8")
+    if len(token) < 32 or not hmac.compare_digest(supplied, ("Bearer " + token).encode("utf-8")):
+        return _response({"ok": False, "error": "unauthorized"}, 401)
+
+    with lock:
+        payload = cache["payload"]
+        age = time.monotonic() - cache["time"]
+    if not payload or age >= CACHE_TTL:
+        _ensure_refresh()
+    if not payload or not payload.get("ok") or age > 15 * 60:
+        return _response({"ok": False, "error": "odds_unavailable"}, 503)
+
+    now = time.time()
+    rows = []
+    for row in payload["rows"]:
+        if len(row) <= 76:
+            continue
+        try:
+            kickoff = datetime.fromisoformat(str(row[76]))
+            if kickoff.utcoffset() is None:
+                continue
+            starts_at = kickoff.timestamp()
+        except (ValueError, TypeError, OverflowError):
+            continue
+        if not now < starts_at <= now + 3 * 86400:
+            continue
+        rows.append({
+            "league": row[0], "home": row[1], "away": row[2], "side": row[3],
+            "kickoff": kickoff.isoformat(), "open": row[4], "ninety": row[5],
+            "win": row[6], "contra": row[9], "turnover": row[10],
+            "favoriteShare": row[11], "morningTurnover": row[19], "morningShare": row[20],
+            "ninetyTurnover": row[22], "ninetyShare": row[23],
+        })
+    return _response({
+        "ok": True, "capturedAt": payload.get("serverFetchedAt"),
+        "stale": age >= CACHE_TTL, "rows": rows,
+    })
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT","10000")))
