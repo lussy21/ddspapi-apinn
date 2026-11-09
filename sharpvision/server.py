@@ -6,7 +6,7 @@ import secrets
 import threading
 import gzip
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import urlparse
 from flask import Flask, jsonify, request, session, send_from_directory, make_response
@@ -328,7 +328,20 @@ def deltio_odds():
     })
 
 _SHEET_FINAL_SCORE = re.compile(r"\s*(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*")
+_SHEETS_EPOCH = date(1899, 12, 30)
 _ATHENS = ZoneInfo("Europe/Athens")
+
+
+def _sheet_final_score(value):
+    if isinstance(value, str):
+        match = _SHEET_FINAL_SCORE.fullmatch(value)
+        return (int(match[1]), int(match[2])) if match else None
+    # Column P can store a displayed score such as 3-2 as a day/month date serial.
+    if type(value) in (int, float) and 0 <= value < 100_000 and value == int(value):
+        recorded = _SHEETS_EPOCH + timedelta(days=int(value))
+        if recorded.year >= 2000:
+            return recorded.day, recorded.month
+    return None
 
 
 @app.get("/api/deltio/results")
@@ -351,11 +364,12 @@ def deltio_results():
     days = set(requested)
     rows = []
     for row in payload["rows"]:
-        if len(row) <= 76 or not isinstance(row[15], str):
+        if len(row) <= 76:
             continue
-        final_score = _SHEET_FINAL_SCORE.fullmatch(row[15])
+        final_score = _sheet_final_score(row[15])
         if final_score is None:
             continue
+        home_goals, away_goals = final_score
         try:
             kickoff = datetime.fromisoformat(str(row[76]))
             if kickoff.utcoffset() is None or kickoff.timestamp() >= now:
@@ -366,7 +380,7 @@ def deltio_results():
             continue
         rows.append({
             "league": row[0], "home": row[1], "away": row[2], "kickoff": kickoff.isoformat(),
-            "homeGoals": int(final_score[1]), "awayGoals": int(final_score[2]),
+            "homeGoals": home_goals, "awayGoals": away_goals,
         })
 
     return _response({"ok": True, "capturedAt": payload.get("serverFetchedAt"), "rows": rows})
