@@ -548,7 +548,52 @@ function resultTargets_(dates) {
   return {pin:pin,targets:out};
 }
 
+function fetchSofaResultBatch_(targets) {
+  const requests=targets.map(t=>({
+    url: SOFA_CFG.apiBase+'/event/'+t.sofaId,
+    method: 'get',
+    muteHttpExceptions: true,
+    followRedirects: true
+  }));
+  return UrlFetchApp.fetchAll(requests).map(response=>{
+    const code=response.getResponseCode();
+    let event=null;
+    if (code===200) {
+      try { event=JSON.parse(response.getContentText()).event; } catch (err) {}
+    }
+    return {code:code,event:event};
+  });
+}
+
+function writeSofaResultBatch_(pin, updates) {
+  if (!updates.length) return 0;
+  const first=updates[0].row;
+  const count=updates[updates.length-1].row-first+1;
+  const rows=pin.getRange(first,2,count,17).getValues(); // B:R
+  const formulas=pin.getRange(first,16,count,1).getFormulas();
+  let written=0;
+
+  updates.forEach(t=>{
+    const index=t.row-first;
+    const row=rows[index];
+    if (String(row[0]||'').trim()!==t.home ||
+        String(row[1]||'').trim()!==t.away ||
+        String(row[16]||'').trim()!==t.apinn ||
+        String(row[14]).trim() || formulas[index][0]) return;
+    const cell=pin.getRange(t.row,16);
+    cell.setNumberFormat('@');
+    cell.setValue(t.result);
+    written++;
+  });
+
+  // Flush each batch so earlier scores survive a later timeout or API failure.
+  if (written) SpreadsheetApp.flush();
+  return written;
+}
+
 function runSofaResultsForDates_(dates,label) {
+  const deadline=Date.now()+4*60*1000;
+  const batchSize=8;
   const lock=LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
 
@@ -557,56 +602,60 @@ function runSofaResultsForDates_(dates,label) {
     control_('Q2','RUNNING '+stamp_()+' | '+label);
 
     const data=resultTargets_(dates);
+    const targets=data.targets.sort((a,b)=>a.row-b.row);
+    const httpErrors={};
     let checked=0,written=0,pending=0,errors=0,mismatch=0;
 
-    data.targets.forEach(t=>{
-      checked++;
-      const r=sofaFetchJson_('/event/'+t.sofaId);
-      if (r.code!==200 || !r.json || !r.json.event) {
-        errors++;
-        Utilities.sleep(80);
-        return;
-      }
+    for (let start=0; start<targets.length && Date.now()<deadline; start+=batchSize) {
+      const batch=targets.slice(start,start+batchSize);
+      const responses=fetchSofaResultBatch_(batch);
+      const updates=[];
 
-      const e=r.json.event;
-      const sofaHome=String(e.homeTeam&&e.homeTeam.name||'');
-      const sofaAway=String(e.awayTeam&&e.awayTeam.name||'');
-      const hs=score_(t.home,sofaHome), as=score_(t.away,sofaAway);
-      if (hs<0.68 || as<0.68 || ((hs+as)/2)<0.76) {
-        mismatch++;
-        Utilities.sleep(80);
-        return;
-      }
+      batch.forEach((t,i)=>{
+        checked++;
+        const response=responses[i];
+        if (response.code!==200 || !response.event) {
+          if (response.code!==200) httpErrors[response.code]=(httpErrors[response.code]||0)+1;
+          errors++;
+          return;
+        }
 
-      if (!finishedEvent_(e)) {
-        pending++;
-        Utilities.sleep(80);
-        return;
-      }
+        const e=response.event;
+        const sofaHome=String(e.homeTeam&&e.homeTeam.name||'');
+        const sofaAway=String(e.awayTeam&&e.awayTeam.name||'');
+        const hs=score_(t.home,sofaHome), as=score_(t.away,sofaAway);
+        if (Number(e.id)!==t.sofaId || hs<0.68 || as<0.68 || ((hs+as)/2)<0.76) {
+          mismatch++;
+          return;
+        }
 
-      const h=scoreValue_(e.homeScore);
-      const a=scoreValue_(e.awayScore);
-      if (h===null || a===null) {
-        errors++;
-        Utilities.sleep(80);
-        return;
-      }
+        if (!finishedEvent_(e)) {
+          pending++;
+          return;
+        }
 
-      t.cell=data.pin.getRange(t.row,16);
-      if (String(t.cell.getValue()||'').trim()) {
-        Utilities.sleep(80);
-        return;
-      }
+        const h=scoreValue_(e.homeScore);
+        const a=scoreValue_(e.awayScore);
+        if (h===null || a===null) {
+          errors++;
+          return;
+        }
 
-      t.cell.setValue(String(h)+'-'+String(a));
-      written++;
-      Utilities.sleep(80);
-    });
+        updates.push({...t,result:String(h)+'-'+String(a)});
+      });
 
-    SpreadsheetApp.flush();
-    const status=(errors===0 && mismatch===0) ? 'DONE' : 'PARTIAL';
-    control_('Q2',status+' '+stamp_()+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
-    Logger.log('RESULTS '+status+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
+      written+=writeSofaResultBatch_(data.pin,updates);
+      Logger.log('RESULTS BATCH | checked='+checked+'/'+targets.length+' | wrote='+written);
+      if (httpErrors[429]) break;
+    }
+
+    const remaining=targets.length-checked;
+    const status=(errors===0 && mismatch===0 && remaining===0) ? 'DONE' : 'PARTIAL';
+    const http=Object.keys(httpErrors).map(code=>code+':'+httpErrors[code]).join(',');
+    const summary=label+' | checked='+checked+' | wrote='+written+' | pending='+pending+
+      ' | mismatch='+mismatch+' | errors='+errors+' | remaining='+remaining+(http?' | HTTP '+http:'');
+    control_('Q2',status+' '+stamp_()+' | '+summary);
+    Logger.log('RESULTS '+status+' | '+summary);
   } catch(e) {
     control_('Q2','ERROR '+stamp_()+' | '+label+' | '+String(e).slice(0,120));
     throw e;
