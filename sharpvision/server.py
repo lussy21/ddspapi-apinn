@@ -5,7 +5,9 @@ import time
 import secrets
 import threading
 import gzip
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse
 from flask import Flask, jsonify, request, session, send_from_directory, make_response
 import requests
@@ -274,19 +276,29 @@ def matches():
         "retryAfterSeconds": 3, "message": "Γίνεται ασφαλής ανάκτηση του Excel."})
 
 
-@app.get("/api/deltio/odds")
-def deltio_odds():
+def _deltio_authorized():
     token = os.getenv("DELTIO_READ_TOKEN", "").strip()
     supplied = request.headers.get("Authorization", "").encode("utf-8")
-    if len(token) < 32 or not hmac.compare_digest(supplied, ("Bearer " + token).encode("utf-8")):
-        return _response({"ok": False, "error": "unauthorized"}, 401)
+    return len(token) >= 32 and hmac.compare_digest(supplied, ("Bearer " + token).encode("utf-8"))
 
+
+def _deltio_snapshot():
     with lock:
         payload = cache["payload"]
         age = time.monotonic() - cache["time"]
     if not payload or age >= CACHE_TTL:
         _ensure_refresh()
     if not payload or not payload.get("ok") or age > 15 * 60:
+        return None, age
+    return payload, age
+
+
+@app.get("/api/deltio/odds")
+def deltio_odds():
+    if not _deltio_authorized():
+        return _response({"ok": False, "error": "unauthorized"}, 401)
+    payload, age = _deltio_snapshot()
+    if payload is None:
         return _response({"ok": False, "error": "odds_unavailable"}, 503)
 
     now = time.time()
@@ -314,6 +326,51 @@ def deltio_odds():
         "ok": True, "capturedAt": payload.get("serverFetchedAt"),
         "stale": age >= CACHE_TTL, "rows": rows,
     })
+
+_SHEET_FINAL_SCORE = re.compile(r"\s*(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*")
+_ATHENS = ZoneInfo("Europe/Athens")
+
+
+@app.get("/api/deltio/results")
+def deltio_results():
+    if not _deltio_authorized():
+        return _response({"ok": False, "error": "unauthorized"}, 401)
+
+    requested = request.args.getlist("day")
+    try:
+        if not 1 <= len(requested) <= 14 or any(date.fromisoformat(day).isoformat() != day for day in requested):
+            raise ValueError("invalid day")
+    except ValueError:
+        return _response({"ok": False, "error": "invalid_days"}, 400)
+
+    payload, _ = _deltio_snapshot()
+    if payload is None:
+        return _response({"ok": False, "error": "results_unavailable"}, 503)
+
+    now = time.time()
+    days = set(requested)
+    rows = []
+    for row in payload["rows"]:
+        if len(row) <= 76 or not isinstance(row[15], str):
+            continue
+        final_score = _SHEET_FINAL_SCORE.fullmatch(row[15])
+        if final_score is None:
+            continue
+        try:
+            kickoff = datetime.fromisoformat(str(row[76]))
+            if kickoff.utcoffset() is None or kickoff.timestamp() >= now:
+                continue
+            if kickoff.astimezone(_ATHENS).date().isoformat() not in days:
+                continue
+        except (ValueError, TypeError, OverflowError):
+            continue
+        rows.append({
+            "league": row[0], "home": row[1], "away": row[2], "kickoff": kickoff.isoformat(),
+            "homeGoals": int(final_score[1]), "awayGoals": int(final_score[2]),
+        })
+
+    return _response({"ok": True, "capturedAt": payload.get("serverFetchedAt"), "rows": rows})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT","10000")))
