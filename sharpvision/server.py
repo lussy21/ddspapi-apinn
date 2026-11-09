@@ -320,6 +320,7 @@ def deltio_odds():
             "kickoff": kickoff.isoformat(), "open": row[4], "ninety": row[5],
             "win": row[6], "contra": row[9], "turnover": row[10],
             "favoriteShare": row[11], "morningTurnover": row[19], "morningShare": row[20],
+            "publicAlert": row[14] if isinstance(row[14], str) else "",
             "ninetyTurnover": row[22], "ninetyShare": row[23],
         })
     return _response({
