@@ -5,7 +5,7 @@ import re
 import unittest
 
 from contra_priority import legacy_contra_guarded_expr
-from parallel_alerts import parallel_alert_formula
+from parallel_alerts import NATIONAL_OVER25_CONFIG, parallel_alert_formula
 from side_goal_alerts import active_expr, primary_without_goals
 from test_contra_priority import GateFormula
 from test_early_alerts import generated_formulas
@@ -16,7 +16,7 @@ ACTIVE = {"ΚΟΝΤΡΑ", "ΦΑΒΟΡΙ", "ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ", "Φ�
           "ΦΑΒ 75+", "ΦΑΒ 60+", "Over1.5k", "Over1.5"}
 CONFIGS = ACTIVE | {"ΔΥΝΑΤΟ ΦΑΒΟΡΙ", "WATCH ΦΑΒΟΡΙ", "WATCH ΚΟΝΤΡΑ",
                     "ΦΑΒΟΡΙ ΤΖΙΡΟΥ", "ΦΑΒΟΡΙ ΤΖΙΡΟΥ 3X", "ΦΑΒΟΡΙ SOFA+3X",
-                    "ΦΑΒΟΡΙ ΠΤΩΣΗ 2%", "ΦΑΒΟΡΙ 84+P60", "ΤΖΙΡΟΣ ↑"}
+                    "ΦΑΒΟΡΙ ΠΤΩΣΗ 2%", "ΦΑΒΟΡΙ 84+P60", "ΤΖΙΡΟΣ ↑", NATIONAL_OVER25_CONFIG}
 
 
 class ParallelFormula(GateFormula):
@@ -42,10 +42,10 @@ class ParallelFormula(GateFormula):
         return super().evaluate(node)
 
 
-def expression(active=ACTIVE):
+def expression(active=ACTIVE, **scope):
     old = generated_formulas()["primary_alert_expr"]
     old = legacy_contra_guarded_expr(primary_without_goals(old, 1017), 1017)
-    formula = parallel_alert_formula(old, 1017)
+    formula = parallel_alert_formula(old, 1017, **scope)
     for name in CONFIGS:
         formula = formula.replace(active_expr(name), "TRUE" if name in active else "FALSE")
     return formula
@@ -96,6 +96,45 @@ class ParallelAlertTests(unittest.TestCase):
         self.assertEqual(self.evaluate({"BO": "🔔💎 ΦΑΒΟΡΙ SOFA+ΤΖΙΡΟΥ"}, set()), "")
         self.assertEqual(self.evaluate({"E": 1.389, "BS": "🔔 ΦΑΒ 75+", "CE": "latched"}), "")
         self.assertEqual(self.evaluate({"E": "", "BS": "🔔 ΦΑΒ 75+"}), "")
+
+    def test_national_over25_uses_numeric_odds_and_both_turnover_snapshots(self):
+        active = ACTIVE | {NATIONAL_OVER25_CONFIG}
+        formula = expression(active, add_national_over25=True)
+        eligible = {"E": 1.39, "X": 80, "L": 80}
+        display = "🔔 Over2.5 Εθνικών"
+        self.assertEqual(ParallelFormula(formula, eligible).result(), display)
+        self.assertEqual(ParallelFormula(formula, {**eligible, "E": 2.40}).result(), display)
+        for changes in ({"E": 1.38}, {"E": 2.41}, {"X": 79.9}, {"X": ""},
+                        {"L": 79.9}, {"L": ""}, {"X": "80"}, {"L": "80"}):
+            with self.subTest(changes=changes):
+                self.assertEqual(ParallelFormula(formula, {**eligible, **changes}).result(), "")
+        off = expression(ACTIVE, add_national_over25=True)
+        self.assertEqual(ParallelFormula(off, eligible).result(), "")
+        self.assertEqual(ParallelFormula(expression(active), eligible).result(), "")
+
+    def test_writer_installs_national_over25_for_leagues_a_and_b_from_launch(self):
+        previous_instant = Clock.instant
+        cases = (
+            ("2026-11-14", "UEFA - Nations League A", False),
+            ("2026-11-15", "UEFA - Nations League A", True),
+            ("2026-11-15", "UEFA - Nations League B", True),
+            ("2026-11-15", "UEFA - Nations League C", False),
+            ("2026-11-15", "UEFA - Champions League", False),
+        )
+        try:
+            for day, league, expected in cases:
+                with self.subTest(day=day, league=league):
+                    Clock.instant = datetime.fromisoformat(day + "T20:30:00+02:00")
+                    kickoff = day + "T22:00:00+02:00"
+                    live = row(event_id="pinnodds:1", kickoff=kickoff)
+                    live[0] = f"ΕΘΝΙΚΕΣ - {league}" if "Nations League" in league else league
+                    book = FakeSpreadsheet([[], [], live])
+                    run_main(book, [fixture(starts=kickoff, league_name=league)])
+                    formula = book.main.rows[2][14]
+                    self.assertIn("LET(rawhead;", formula)
+                    self.assertEqual("🔔 Over2.5 Εθνικών" in formula, expected)
+        finally:
+            Clock.instant = previous_instant
 
     def test_real_writer_uses_new_formula_only_for_upcoming_cutover_fixtures(self):
         try:

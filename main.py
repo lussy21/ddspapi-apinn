@@ -12,7 +12,10 @@ from zoneinfo import ZoneInfo
 from alert_formulas import legacy_alert_helper_updates
 from alert_display import canonical_alert_rows, reset_alert_display, refresh_alert_display
 from contra_priority import legacy_contra_guarded_expr
-from parallel_alerts import START_DAY as PARALLEL_ALERTS_START_DAY, parallel_alert_formula
+from parallel_alerts import (
+    NATIONAL_OVER25_LEAGUES, NATIONAL_OVER25_START_DAY,
+    START_DAY as PARALLEL_ALERTS_START_DAY, parallel_alert_formula,
+)
 from contra_rise_research import update_research as update_contra_rise_research, fresh_quote_rows
 from favorite_maroon_research import update_research as update_favorite_maroon_research
 from favorite_maroon80_research import update_research as update_favorite_maroon80_research
@@ -2146,7 +2149,13 @@ for match in matches:
     if side_goals:
         alert_formula = side_goal_formula(public_primary_expr, row_number)
     if kickoff.date().isoformat() >= PARALLEL_ALERTS_START_DAY:
-        alert_formula = parallel_alert_formula(public_primary_expr, row_number)
+        alert_formula = parallel_alert_formula(
+            public_primary_expr, row_number,
+            add_national_over25=(
+                league_name in NATIONAL_OVER25_LEAGUES
+                and kickoff.date().isoformat() >= NATIONAL_OVER25_START_DAY
+            ),
+        )
     comment_formula = (
         f'=IF($BU{row_number}>=2;'
         f'IF($BW{row_number}<>"";$BW{row_number}&" | ⚡"&$BU{row_number}&": "&$BV{row_number};'

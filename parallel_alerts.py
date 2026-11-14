@@ -5,9 +5,14 @@ from side_goal_alerts import active_expr, LEGACY_KEY, LEGACY_DISPLAY, FLOW_DISPL
 
 
 START_DAY = "2026-10-27"
+NATIONAL_OVER25_START_DAY = "2026-11-15"
+NATIONAL_OVER25_CONFIG = "Over2.5 Εθνικών"
+NATIONAL_OVER25_LEAGUES = frozenset({
+    "UEFA - Nations League A", "UEFA - Nations League B",
+})
 
 
-def parallel_alert_formula(primary_expression, row_number):
+def parallel_alert_formula(primary_expression, row_number, *, add_national_over25=False):
     """Keep the old primary/strength; append each other approved signal once.
 
     Core strong/simple/watch remains one family. Research helpers never become
@@ -69,6 +74,13 @@ def parallel_alert_formula(primary_expression, row_number):
         f'" · "&IFERROR(LEFT($BX{r};FIND(" · ";$BX{r})-1);$BX{r});"")'
     )
     extra = ";".join(f'IF({name}<>pa;{name};"")' for name, _ in candidates)
+    national_over25 = ""
+    if add_national_over25:
+        national_over25 = (
+            f';IF(AND({active_expr(NATIONAL_OVER25_CONFIG)};$E{r}<=2,40;'
+            f'ISNUMBER($X{r});$X{r}>=80;ISNUMBER($L{r});$L{r}>=80);'
+            f'"🔔 {NATIONAL_OVER25_CONFIG}";"")'
+        )
     return (
         f'=IF(AND(ISNUMBER($E{r});$E{r}>=1,39);'
         f'LET(rawhead;{primary_expression};{bindings}'
@@ -76,5 +88,6 @@ def parallel_alert_formula(primary_expression, row_number):
         f'TEXTJOIN(" | ";TRUE;IF(pa<>"";pa&{strength};"");{extra};'
         f'IF(AND({active_expr("Over1.5k")};'
         f'OR($BG{r}="{LEGACY_KEY}";$BH{r}="{LEGACY_KEY}"));"{LEGACY_DISPLAY}";"");'
-        f'IF(AND({active_expr("Over1.5")};$CE{r}<>"");"{FLOW_DISPLAY}";"")));"")'
+        f'IF(AND({active_expr("Over1.5")};$CE{r}<>"");"{FLOW_DISPLAY}";"")'
+        f'{national_over25}));"")'
     )
