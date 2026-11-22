@@ -323,100 +323,122 @@ function dryRunSofaAllToday() {
 }
 
 function runSofaDaily() {
+  // This function is called by the existing sofaDaily Apps Script trigger.
+  // The former sport-wide /scheduled-events endpoint now returns HTTP 404.
+  // Work from VERIFIED APINN -> Sofa event IDs already in SOFA CACHE.
   const lock=LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return;
-  try {
+  if(!lock.tryLock(1000))return;
+  try{
     const props=PropertiesService.getScriptProperties();
     const today=today_();
-    if (props.getProperty('SOFA_VOTES_DONE_DATE')===today) {
-      control_('P2','SKIPPED '+stamp_()+' | already done today');
+    const now=Date.now(),until=now+24*60*60*1000;
+    const previousDay=props.getProperty('SOFA_VOTE_CALL_DAY');
+    let calls=previousDay===today?Number(props.getProperty('SOFA_VOTE_CALLS')||0):0;
+    if(previousDay!==today){
+      props.setProperty('SOFA_VOTE_CALL_DAY',today);
+      props.setProperty('SOFA_VOTE_CALLS','0');
+      props.deleteProperty('SOFA_VOTE_NEXT_AT');
+      props.setProperty('SOFA_VOTES_CURSOR','0');
+    }
+    control_('P2','RUNNING '+stamp_()+' | cache-first; no paid API');
+    const ss=ss_(),pin=ss.getSheetByName(SOFA_CFG.pinnacleSheet);
+    const cached=loadCache_(); // existing event IDs, no tournament fetch required
+    const rowCount=Math.max(0,pin.getLastRow()-2);
+    if(!rowCount){
+      control_('P2','IDLE '+stamp_()+' | PINNACLE empty');
       return;
     }
-
-    control_('P2','RUNNING '+stamp_());
-    const nowMs=Date.now();
-    const fixtures=allToday_().filter(f =>
-      Number(f.startTimestamp || 0) * 1000 > nowMs
-    );
-    if (!fixtures.length) {
-      control_('P2','STOPPED '+stamp_()+' | fixtures=0');
+    const eventIds=pin.getRange(3,18,rowCount,1).getDisplayValues();
+    const kickoffs=pin.getRange(3,77,rowCount,1).getValues();
+    let first=-1,last=-1,unmapped=0;
+    for(let i=0;i<rowCount;i++){
+      const timestamp=new Date(kickoffs[i][0]).getTime();
+      if(!Number.isFinite(timestamp)||timestamp<=now||timestamp>until)continue;
+      const eventId=String(eventIds[i][0]||'').trim();
+      if(!eventId)continue;
+      if(cached.map[eventId]){
+        if(first<0)first=i;
+        last=i;
+      }else unmapped++;
+    }
+    if(first<0){
+      control_('P2','NO CACHED TARGETS '+stamp_()+
+        ' | unmapped_future='+unmapped+' | HTTP schedule 404 bypassed');
       return;
     }
-
-    const byId={}; fixtures.forEach(f=>{byId[Number(f.id)]=f;});
-    const sh=ss_().getSheetByName(SOFA_CFG.pinnacleSheet);
-    const last=sh.getLastRow();
-    const rows=last>=3 ? sh.getRange(3,1,last-2,77).getValues() : [];
-    const cache=loadCache_();
-    const limitMs=nowMs+24*60*60*1000;
-
-    let matched=0,written=0,cached=0,errors=0;
-    control_('P2','FETCHED '+stamp_()+' | fixtures='+fixtures.length);
-
-    rows.forEach((row,i)=>{
-      const rowNo=i+3;
-      const home=String(row[1]||'').trim(), away=String(row[2]||'').trim();
-      const fav=String(row[3]||'').trim().toUpperCase();
-      const result=String(row[15]||'').trim(), apinn=String(row[17]||'').trim();
-
-      if (!home||!away||!apinn||result||(fav!=='H'&&fav!=='A')) return;
-      // Historic blank results must never trigger today's API requests.
-      const kickoffMs=new Date(row[76]).getTime();
-      if (!Number.isFinite(kickoffMs)||kickoffMs<=nowMs||kickoffMs>limitMs) return;
-
-      let f=null, sofaId=null;
-      const cachedInfo=cache.map[apinn];
-      if (cachedInfo && byId[cachedInfo.sofaId]) {
-        sofaId=cachedInfo.sofaId;
-        f=byId[sofaId];
-      } else {
-        f=findFixture_(home,away,fixtures);
-        if (f&&f.id) sofaId=Number(f.id);
-      }
-      if (!f||!sofaId) return;
-
-      matched++;
-
-      if (!cachedInfo) {
-        cache.sheet.appendRow([apinn,sofaId,home,away,today_()]);
-        cache.map[apinn]={sofaId:sofaId};
-        cached++;
-      }
-
-      const vr=sofaFetchJson_('/event/'+sofaId+'/votes');
-      if (vr.code!==200||!vr.json) {errors++;return;}
-      const p=pct_(vr.json,fav);
-      if (p===null) {errors++;return;}
-
-      const oldRaw=row[13];
-      const oldNum=(typeof oldRaw==='number')
-        ? oldRaw
-        : Number(String(oldRaw||'').replace('%','').replace(',','.').trim());
-      const val=p;
-      const cell=sh.getRange(rowNo,14);
-      if (!Number.isFinite(oldNum) || oldNum!==val || typeof oldRaw!=='number') {
-        cell.setValue(val);
-        written++;
-      }
-      cell.setNumberFormat('0"%"');
-      Utilities.sleep(80);
+    const from=first+3,len=last-first+1;
+    const rows=pin.getRange(from,1,len,18).getValues();
+    const times=pin.getRange(from,77,len,1).getValues();
+    const targets=[];
+    rows.forEach((r,i)=>{
+      const id=String(r[17]||'').trim();
+      const entry=cached.map[id];
+      const timestamp=new Date(times[i][0]).getTime();
+      const side=String(r[3]||'').trim().toUpperCase();
+      const vote=r[13],result=String(r[15]||'').trim();
+      if(!entry||!Number.isFinite(timestamp)||timestamp<=now||timestamp>until||
+        (side!=='H'&&side!=='A')||result||!r[1]||!r[2]||
+        (vote!==''&&vote!==null&&vote!==undefined))return;
+      targets.push({row:from+i,sofaId:entry.sofaId,fav:side});
     });
-
-    // Do not mark an empty (or throttled) run as successfully completed.
-    if (errors===0 && matched>0) {
-      props.setProperty('SOFA_VOTES_DONE_DATE',today);
-      control_('P2','DONE '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors=0');
-    } else {
-      control_('P2','PARTIAL '+stamp_()+' | fixtures='+fixtures.length+' | matched='+matched+' | cache+='+cached+' | wrote='+written+' | errors='+errors);
+    targets.sort((a,b)=>a.row-b.row);
+    const maxCalls=Math.min(16,Math.max(0,80-calls),targets.length);
+    const began=Date.now(),deadline=230000;
+    const offset=targets.length?
+      Number(props.getProperty('SOFA_VOTES_CURSOR')||0)%targets.length:0;
+    let checked=0,written=0,errors=0,blocked=false;
+    for(let i=0;i<maxCalls;i++){
+      if(Date.now()-began>deadline)break;
+      const t=targets[(offset+i)%targets.length];let res;
+      try{res=sofaFetchJson_('/event/'+t.sofaId+'/votes');}
+      catch(err){errors++;Logger.log('SOFA VOTE FETCH FAILED | '+t.row+' | '+err);break;}
+      checked++;calls++;
+      props.setProperty('SOFA_VOTE_CALLS',String(calls));
+      if(res.code===401||res.code===403||res.code===429){
+        blocked=true;
+        Logger.log('SOFA VOTES BLOCKED | HTTP '+res.code+' | row='+t.row);
+        break;
+      }
+      if(res.code!==200||!res.json){errors++;continue;}
+      const payload=res.json.vote||res.json.votes||res.json;
+      const pct=pct_(payload,t.fav);
+      if(pct===null||!Number.isFinite(pct)||pct<0||pct>100){errors++;continue;}
+      const cell=pin.getRange(t.row,14);
+      if(String(cell.getDisplayValue()||'').trim())continue;
+      cell.setValue(pct);
+      cell.setNumberFormat('0"%"');
+      written++;
+      Logger.log('SOFA VOTE SAVED | '+t.row+' | '+pct+'%');
     }
-  } catch(e) {
-    control_('P2','ERROR '+stamp_()+' | '+String(e).slice(0,120));
-    throw e;
-  } finally {
-    lock.releaseLock();
-  }
+    SpreadsheetApp.flush();
+    if(targets.length&&checked){
+      props.setProperty('SOFA_VOTES_CURSOR',String((offset+checked)%targets.length));
+    }
+    // Resume incomplete daily work in a separate short execution. No new
+    // permanent triggers, Apify calls or paid proxies.
+    let queued=false;
+    if(!blocked&&checked>0&&targets.length>checked&&calls<80){
+      const next=Number(props.getProperty('SOFA_VOTE_NEXT_AT')||0);
+      if(next<=Date.now()){
+        try{
+          ScriptApp.newTrigger('sofaDaily').timeBased().after(10*60*1000).create();
+          props.setProperty('SOFA_VOTE_NEXT_AT',String(Date.now()+10*60*1000));
+          queued=true;
+        }catch(err){Logger.log('SOFA VOTE CONTINUATION UNAVAILABLE | '+err);}
+      }
+    }
+    const status=blocked?'BLOCKED':errors?'PARTIAL':queued?'CONTINUE':
+      targets.length===0?'DONE':'CHECKED';
+    control_('P2',status+' '+stamp_()+
+      ' | cache='+Object.keys(cached.map).length+
+      ' | candidates='+targets.length+' | checked='+checked+' | wrote='+written+
+      ' | unmapped='+unmapped+' | errors='+errors+' | calls_today='+calls+
+      ' | next='+queued);
+  }catch(err){
+    control_('P2','ERROR '+stamp_()+' | '+String(err).slice(0,160));
+    throw err;
+  }finally{lock.releaseLock();}
 }
-
 
 function repairTodayNumericVotes() {
   const book=ss_();
