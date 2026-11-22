@@ -322,6 +322,85 @@ function dryRunSofaAllToday() {
   Logger.log('DRY RUN DONE | fixtures='+fixtures.length+' | matched='+matched+' | withVotes='+withVotes+' | WRITES=0');
 }
 
+function sofaDiscoverCachedFixtures_(missing,cache,teamScoreFn) {
+  let added=0,requests=0,blocked=false;
+  const discoveryStart=Date.now(),discoveryLimitMs=85000;
+  const grouped={};
+  missing.forEach(r=>{
+    const day=Utilities.formatDate(new Date(r.kickoff),SOFA_CFG.tz,'yyyy-MM-dd');
+    if(!grouped[day])grouped[day]=[];
+    grouped[day].push(r);
+  });
+  const categoryKey=s=>String(s||'').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ').trim();
+  const matchCountry=(league,category)=>{
+    let pref=categoryKey(String(league||'').split(' - ')[0]);
+    let cat=categoryKey(category);
+    if(pref==='uefa')pref='europe';
+    if(pref==='usa')pref='united states';
+    if(pref==='turkey')pref='turkiye';
+    if(pref==='scotland')pref='scotland';
+    return !!(pref&&cat&&(pref===cat||pref.indexOf(cat)>=0||cat.indexOf(pref)>=0));
+  };
+  const used={};
+  Object.keys(grouped).slice(0,2).forEach(day=>{
+    if(blocked||requests>=12||Date.now()-discoveryStart>discoveryLimitMs)return;
+    let schedule;
+    try{
+      schedule=sofaFetchJson_('/sport/football/scheduled-tournaments/'+day+'/page/1');
+      requests++;
+    }catch(e){Logger.log('SOFA DISCOVERY SCHEDULE ERROR | '+e);return;}
+    if(schedule.code===401||schedule.code===403||schedule.code===429){
+      blocked=true;return;
+    }
+    const tournaments=schedule.json&&schedule.json.tournaments;
+    if(schedule.code!==200||!Array.isArray(tournaments)){
+      Logger.log('SOFA DISCOVERY SCHEDULE HTTP '+schedule.code+' | '+day);
+      return;
+    }
+    const cats={};
+    tournaments.forEach(t=>{
+      const c=(t.tournament&&t.tournament.category)||t.category||
+        (t.uniqueTournament&&t.uniqueTournament.category)||{};
+      if(!c.id||!c.name)return;
+      if(grouped[day].some(r=>matchCountry(r.league,c.name)))cats[c.id]=c;
+    });
+    Object.keys(cats).forEach(catId=>{
+      if(blocked||requests>=12||Date.now()-discoveryStart>discoveryLimitMs)return;
+      let result;
+      try{
+        result=sofaFetchJson_('/category/'+catId+'/scheduled-events/'+day);
+        requests++;
+      }catch(e){Logger.log('SOFA DISCOVERY CATEGORY ERROR | '+e);return;}
+      if(result.code===401||result.code===403||result.code===429){blocked=true;return;}
+      const events=result.json&&result.json.events;
+      if(result.code!==200||!Array.isArray(events))return;
+      grouped[day].forEach(t=>{
+        if(cache.map[t.apinn])return;
+        const candidates=events.filter(e=>
+          e&&e.id&&e.homeTeam&&e.awayTeam &&
+          Number.isFinite(Number(e.startTimestamp)) &&
+          Math.abs(Number(e.startTimestamp)*1000-t.kickoff)<=2*3600*1000
+        );
+        const event=findFixture_(t.home,t.away,candidates);
+        if(!event||used[event.id])return;
+        const hs=teamScoreFn(t.home,event.homeTeam.name);
+        const as=teamScoreFn(t.away,event.awayTeam.name);
+        if(hs<0.86||as<0.86)return;
+        cache.sheet.appendRow([t.apinn,Number(event.id),t.home,t.away,day]);
+        cache.map[t.apinn]={sofaId:Number(event.id)};
+        used[event.id]=true;
+        added++;
+        Logger.log('SOFA DISCOVERY VERIFIED | '+t.home+' - '+t.away+
+          ' | apinn='+t.apinn+' | sofa='+event.id);
+      });
+    });
+  });
+  Logger.log('SOFA DISCOVERY | found='+added+' | calls='+requests+' | blocked='+blocked);
+  return {added:added,calls:requests,blocked:blocked};
+}
+
 function runSofaDaily() {
   // This function is called by the existing sofaDaily Apps Script trigger.
   // The former sport-wide /scheduled-events endpoint now returns HTTP 404.
@@ -329,6 +408,7 @@ function runSofaDaily() {
   const lock=LockService.getScriptLock();
   if(!lock.tryLock(1000))return;
   try{
+    const runStarted=Date.now();
     const props=PropertiesService.getScriptProperties();
     const today=today_();
     const now=Date.now(),until=now+24*60*60*1000;
@@ -350,6 +430,30 @@ function runSofaDaily() {
     }
     const eventIds=pin.getRange(3,18,rowCount,1).getDisplayValues();
     const kickoffs=pin.getRange(3,77,rowCount,1).getValues();
+    const unknownIndexes=[];
+    for(let i=0;i<rowCount;i++){
+      const timestamp=new Date(kickoffs[i][0]).getTime();
+      if(!Number.isFinite(timestamp)||timestamp<=now||timestamp>until)continue;
+      const eventId=String(eventIds[i][0]||'').trim();
+      if(eventId&&!cached.map[eventId])unknownIndexes.push(i);
+    }
+    let discovered=0;
+    // Discovery is best-effort and runs once per day, not on every
+    // short continuation. Cached votes continue even if discovery fails.
+    if(unknownIndexes.length&&props.getProperty('SOFA_DISCOVERY_DAY')!==today){
+      props.setProperty('SOFA_DISCOVERY_DAY',today);
+      try{
+        const names=pin.getRange(3,1,rowCount,3).getValues();
+        const missing=unknownIndexes.map(i=>({
+          apinn:String(eventIds[i][0]||'').trim(),
+          home:String(names[i][1]||'').trim(),
+          away:String(names[i][2]||'').trim(),
+          league:String(names[i][0]||'').trim(),
+          kickoff:new Date(kickoffs[i][0]).getTime()
+        })).filter(r=>r.home&&r.away&&r.league);
+        discovered=sofaDiscoverCachedFixtures_(missing,cached,score_).added;
+      }catch(err){Logger.log('SOFA DISCOVERY SKIPPED | '+err);}
+    }
     let first=-1,last=-1,unmapped=0;
     for(let i=0;i<rowCount;i++){
       const timestamp=new Date(kickoffs[i][0]).getTime();
@@ -383,12 +487,12 @@ function runSofaDaily() {
     });
     targets.sort((a,b)=>a.row-b.row);
     const maxCalls=Math.min(16,Math.max(0,80-calls),targets.length);
-    const began=Date.now(),deadline=230000;
+    const deadline=260000;
     const offset=targets.length?
       Number(props.getProperty('SOFA_VOTES_CURSOR')||0)%targets.length:0;
     let checked=0,written=0,errors=0,blocked=false;
     for(let i=0;i<maxCalls;i++){
-      if(Date.now()-began>deadline)break;
+      if(Date.now()-runStarted>deadline)break;
       const t=targets[(offset+i)%targets.length];let res;
       try{res=sofaFetchJson_('/event/'+t.sofaId+'/votes');}
       catch(err){errors++;Logger.log('SOFA VOTE FETCH FAILED | '+t.row+' | '+err);break;}
@@ -432,7 +536,7 @@ function runSofaDaily() {
     control_('P2',status+' '+stamp_()+
       ' | cache='+Object.keys(cached.map).length+
       ' | candidates='+targets.length+' | checked='+checked+' | wrote='+written+
-      ' | unmapped='+unmapped+' | errors='+errors+' | calls_today='+calls+
+      ' | unmapped='+unmapped+' | discovered='+discovered+' | errors='+errors+' | calls_today='+calls+
       ' | next='+queued);
   }catch(err){
     control_('P2','ERROR '+stamp_()+' | '+String(err).slice(0,160));
