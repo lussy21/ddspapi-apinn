@@ -306,6 +306,7 @@ function appendCache_(cacheSheet, apinnId, sofaId, home, away, dateKey) {
  */
 function sofaDiscoverCachedFixtures_(missing,cache,teamScoreFn) {
   let added=0,requests=0,blocked=false;
+  const discoveryStart=Date.now(),discoveryLimitMs=85000;
   const grouped={};
   missing.forEach(r=>{
     const day=Utilities.formatDate(new Date(r.kickoff),SOFA_CFG.tz,'yyyy-MM-dd');
@@ -326,7 +327,7 @@ function sofaDiscoverCachedFixtures_(missing,cache,teamScoreFn) {
   };
   const used={};
   Object.keys(grouped).slice(0,2).forEach(day=>{
-    if(blocked||requests>=12)return;
+    if(blocked||requests>=12||Date.now()-discoveryStart>discoveryLimitMs)return;
     let schedule;
     try{
       schedule=sofaFetchJson_('/sport/football/scheduled-tournaments/'+day+'/page/1');
@@ -348,7 +349,7 @@ function sofaDiscoverCachedFixtures_(missing,cache,teamScoreFn) {
       if(grouped[day].some(r=>matchCountry(r.league,c.name)))cats[c.id]=c;
     });
     Object.keys(cats).forEach(catId=>{
-      if(blocked||requests>=12)return;
+      if(blocked||requests>=12||Date.now()-discoveryStart>discoveryLimitMs)return;
       let result;
       try{
         result=sofaFetchJson_('/category/'+catId+'/scheduled-events/'+day);
@@ -389,6 +390,7 @@ function runSofaDaily() {
   const lock=LockService.getScriptLock();
   if(!lock.tryLock(1000))return;
   try{
+    const runStarted=Date.now();
     const props=PropertiesService.getScriptProperties();
     const today=todayKey_();
     const now=Date.now(),until=now+24*60*60*1000;
@@ -467,12 +469,12 @@ function runSofaDaily() {
     });
     targets.sort((a,b)=>a.row-b.row);
     const maxCalls=Math.min(16,Math.max(0,80-calls),targets.length);
-    const began=Date.now(),deadline=230000;
+    const deadline=260000;
     const offset=targets.length?
       Number(props.getProperty('SOFA_VOTES_CURSOR')||0)%targets.length:0;
     let checked=0,written=0,errors=0,blocked=false;
     for(let i=0;i<maxCalls;i++){
-      if(Date.now()-began>deadline)break;
+      if(Date.now()-runStarted>deadline)break;
       const t=targets[(offset+i)%targets.length];let res;
       try{res=sofaFetchJson_('/event/'+t.sofaId+'/votes');}
       catch(err){errors++;Logger.log('SOFA VOTE FETCH FAILED | '+t.row+' | '+err);break;}
