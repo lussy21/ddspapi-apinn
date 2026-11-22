@@ -297,6 +297,91 @@ function appendCache_(cacheSheet, apinnId, sofaId, home, away, dateKey) {
  * - Only writes PINNACLE column N and SOFA CACHE mapping rows.
  * - If schedule discovery fails, it stops cleanly.
  */
+
+/**
+ * Optional discovery of NEW SofaScore IDs after the old all-football
+ * scheduled-events route was retired. Uses the newer scheduled-tournaments
+ * and category date routes, without paying for proxies. Failure is nonfatal:
+ * cached IDs are still handled by the votes worker.
+ */
+function sofaDiscoverCachedFixtures_(missing,cache,teamScoreFn) {
+  let added=0,requests=0,blocked=false;
+  const grouped={};
+  missing.forEach(r=>{
+    const day=Utilities.formatDate(new Date(r.kickoff),SOFA_CFG.tz,'yyyy-MM-dd');
+    if(!grouped[day])grouped[day]=[];
+    grouped[day].push(r);
+  });
+  const categoryKey=s=>String(s||'').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ').trim();
+  const matchCountry=(league,category)=>{
+    let pref=categoryKey(String(league||'').split(' - ')[0]);
+    let cat=categoryKey(category);
+    if(pref==='uefa')pref='europe';
+    if(pref==='usa')pref='united states';
+    if(pref==='turkey')pref='turkiye';
+    if(pref==='scotland')pref='scotland';
+    return !!(pref&&cat&&(pref===cat||pref.indexOf(cat)>=0||cat.indexOf(pref)>=0));
+  };
+  const used={};
+  Object.keys(grouped).slice(0,2).forEach(day=>{
+    if(blocked||requests>=12)return;
+    let schedule;
+    try{
+      schedule=sofaFetchJson_('/sport/football/scheduled-tournaments/'+day+'/page/1');
+      requests++;
+    }catch(e){Logger.log('SOFA DISCOVERY SCHEDULE ERROR | '+e);return;}
+    if(schedule.code===401||schedule.code===403||schedule.code===429){
+      blocked=true;return;
+    }
+    const tournaments=schedule.json&&schedule.json.tournaments;
+    if(schedule.code!==200||!Array.isArray(tournaments)){
+      Logger.log('SOFA DISCOVERY SCHEDULE HTTP '+schedule.code+' | '+day);
+      return;
+    }
+    const cats={};
+    tournaments.forEach(t=>{
+      const c=(t.tournament&&t.tournament.category)||t.category||
+        (t.uniqueTournament&&t.uniqueTournament.category)||{};
+      if(!c.id||!c.name)return;
+      if(grouped[day].some(r=>matchCountry(r.league,c.name)))cats[c.id]=c;
+    });
+    Object.keys(cats).forEach(catId=>{
+      if(blocked||requests>=12)return;
+      let result;
+      try{
+        result=sofaFetchJson_('/category/'+catId+'/scheduled-events/'+day);
+        requests++;
+      }catch(e){Logger.log('SOFA DISCOVERY CATEGORY ERROR | '+e);return;}
+      if(result.code===401||result.code===403||result.code===429){blocked=true;return;}
+      const events=result.json&&result.json.events;
+      if(result.code!==200||!Array.isArray(events))return;
+      grouped[day].forEach(t=>{
+        if(cache.byApinn[t.apinn])return;
+        const candidates=events.filter(e=>
+          e&&e.id&&e.homeTeam&&e.awayTeam &&
+          Number.isFinite(Number(e.startTimestamp)) &&
+          Math.abs(Number(e.startTimestamp)*1000-t.kickoff)<=2*3600*1000
+        );
+        const event=findFixture_(t.home,t.away,candidates);
+        if(!event||used[event.id])return;
+        const hs=teamScoreFn(t.home,event.homeTeam.name);
+        const as=teamScoreFn(t.away,event.awayTeam.name);
+        if(hs<0.86||as<0.86)return;
+        cache.sheet.appendRow([t.apinn,Number(event.id),t.home,t.away,day]);
+        cache.byApinn[t.apinn]={sofaId:Number(event.id)};
+        used[event.id]=true;
+        added++;
+        Logger.log('SOFA DISCOVERY VERIFIED | '+t.home+' - '+t.away+
+          ' | apinn='+t.apinn+' | sofa='+event.id);
+      });
+    });
+  });
+  Logger.log('SOFA DISCOVERY | found='+added+' | calls='+requests+' | blocked='+blocked);
+  return {added:added,calls:requests,blocked:blocked};
+}
+
 function runSofaDaily() {
   // This function is called by the existing sofaDaily Apps Script trigger.
   // The former sport-wide /scheduled-events endpoint now returns HTTP 404.
@@ -325,6 +410,30 @@ function runSofaDaily() {
     }
     const eventIds=pin.getRange(3,18,rowCount,1).getDisplayValues();
     const kickoffs=pin.getRange(3,77,rowCount,1).getValues();
+    const unknownIndexes=[];
+    for(let i=0;i<rowCount;i++){
+      const timestamp=new Date(kickoffs[i][0]).getTime();
+      if(!Number.isFinite(timestamp)||timestamp<=now||timestamp>until)continue;
+      const eventId=String(eventIds[i][0]||'').trim();
+      if(eventId&&!cached.byApinn[eventId])unknownIndexes.push(i);
+    }
+    let discovered=0;
+    // Discovery is best-effort and runs once per day, not on every
+    // short continuation. Cached votes continue even if discovery fails.
+    if(unknownIndexes.length&&props.getProperty('SOFA_DISCOVERY_DAY')!==today){
+      props.setProperty('SOFA_DISCOVERY_DAY',today);
+      try{
+        const names=pin.getRange(3,1,rowCount,3).getValues();
+        const missing=unknownIndexes.map(i=>({
+          apinn:String(eventIds[i][0]||'').trim(),
+          home:String(names[i][1]||'').trim(),
+          away:String(names[i][2]||'').trim(),
+          league:String(names[i][0]||'').trim(),
+          kickoff:new Date(kickoffs[i][0]).getTime()
+        })).filter(r=>r.home&&r.away&&r.league);
+        discovered=sofaDiscoverCachedFixtures_(missing,cached,teamScore_).added;
+      }catch(err){Logger.log('SOFA DISCOVERY SKIPPED | '+err);}
+    }
     let first=-1,last=-1,unmapped=0;
     for(let i=0;i<rowCount;i++){
       const timestamp=new Date(kickoffs[i][0]).getTime();
@@ -407,7 +516,7 @@ function runSofaDaily() {
     setControl_('P2',status+' '+nowStamp_()+
       ' | cache='+Object.keys(cached.byApinn).length+
       ' | candidates='+targets.length+' | checked='+checked+' | wrote='+written+
-      ' | unmapped='+unmapped+' | errors='+errors+' | calls_today='+calls+
+      ' | unmapped='+unmapped+' | discovered='+discovered+' | errors='+errors+' | calls_today='+calls+
       ' | next='+queued);
   }catch(err){
     setControl_('P2','ERROR '+nowStamp_()+' | '+String(err).slice(0,160));
