@@ -703,12 +703,13 @@ function runSofaResultsForDates_(dates,label) {
   const lock=LockService.getScriptLock();
   if(!lock.tryLock(1000))return;
   try {
+    const runStarted=Date.now();
     const props=PropertiesService.getScriptProperties();
     control_('Q2','RUNNING '+stamp_()+' | '+label);
     const data=resultTargets_(dates);
     const targets=data.targets;
     // Small batches can finish even if one SofaScore request is slow.
-    const started=Date.now(),maxCalls=12,maxTimeMs=230000;
+    const maxCalls=12,maxTimeMs=260000;
     const today=today_();
     const previous=props.getProperty('SOFA_RESULT_CALL_DAY');
     let calls=previous===today?Number(props.getProperty('SOFA_RESULT_CALLS')||0):0;
@@ -721,7 +722,7 @@ function runSofaResultsForDates_(dates,label) {
       Number(props.getProperty('SOFA_RESULTS_CURSOR')||0)%targets.length:0;
     let checked=0,written=0,pending=0,errors=0,mismatch=0,blocked=false;
     for(let i=0;i<targets.length;i++) {
-      if(checked>=maxCalls||calls>=96||Date.now()-started>maxTimeMs)break;
+      if(checked>=maxCalls||calls>=96||Date.now()-runStarted>maxTimeMs)break;
       const t=targets[(startIndex+i)%targets.length];
       let r;
       try {r=sofaFetchJson_('/event/'+t.sofaId);}
