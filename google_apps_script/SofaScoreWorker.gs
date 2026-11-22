@@ -298,161 +298,115 @@ function appendCache_(cacheSheet, apinnId, sofaId, home, away, dateKey) {
  * - If schedule discovery fails, it stops cleanly.
  */
 function runSofaDaily() {
-  const lock = LockService.getDocumentLock();
-  if (!lock.tryLock(1000)) return;
-
-  try {
-    const dateKey = todayKey_();
-    setControl_('P2', 'RUNNING ' + nowStamp_());
-
-    // Two predictable, low-cost calls instead of scanning many tournaments.
-    // Include early next-day matches before the daily 12:30 snapshot.
-    const nextDay = Utilities.formatDate(
-      new Date(Date.now()+24*60*60*1000), SOFA_CFG.tz, 'yyyy-MM-dd'
-    );
-    const fixtureMap = {};
-    let firstHttp = 0, availableDays = 0;
-    [dateKey, nextDay].forEach((day, index) => {
-      let schedule = sofaFetchJson_('/sport/football/scheduled-events/' + day);
-      if (schedule.code !== 200) {
-        const backupUrl = 'https://www.sofascore.com/api/v1/sport/football/scheduled-events/' + day;
-        const backup = UrlFetchApp.fetch(backupUrl, {
-          method: 'get', muteHttpExceptions: true, followRedirects: true,
-          headers: SOFA_CFG.requestHeaders
-        });
-        let json = null;
-        try { json = JSON.parse(backup.getContentText()); } catch (ignore) {}
-        if (backup.getResponseCode()===200 && json) {
-          schedule={code:200,json:json};
-        } else {
-          if (index===0) firstHttp = schedule.code || backup.getResponseCode();
-          Logger.log('SOFASCORE SCHEDULE ' + day + ' HTTP ' +
-            schedule.code + '/' + backup.getResponseCode());
-          return;
-        }
-      }
-      if (!schedule.json || !Array.isArray(schedule.json.events)) return;
-      availableDays++;
-      schedule.json.events.forEach(event => {
-        if (event && event.id && !fixtureMap[event.id]) fixtureMap[event.id]=event;
-      });
+  // This function is called by the existing sofaDaily Apps Script trigger.
+  // The former sport-wide /scheduled-events endpoint now returns HTTP 404.
+  // Work from VERIFIED APINN -> Sofa event IDs already in SOFA CACHE.
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(1000))return;
+  try{
+    const props=PropertiesService.getScriptProperties();
+    const today=todayKey_();
+    const now=Date.now(),until=now+24*60*60*1000;
+    const previousDay=props.getProperty('SOFA_VOTE_CALL_DAY');
+    let calls=previousDay===today?Number(props.getProperty('SOFA_VOTE_CALLS')||0):0;
+    if(previousDay!==today){
+      props.setProperty('SOFA_VOTE_CALL_DAY',today);
+      props.setProperty('SOFA_VOTE_CALLS','0');
+      props.deleteProperty('SOFA_VOTE_NEXT_AT');
+    }
+    setControl_('P2','RUNNING '+nowStamp_()+' | cache-first; no paid API');
+    const ss=ss_(),pin=ss.getSheetByName(SOFA_CFG.pinnacleSheet);
+    const cached=loadCache_(); // existing event IDs, no tournament fetch required
+    const rowCount=Math.max(0,pin.getLastRow()-2);
+    if(!rowCount){
+      setControl_('P2','IDLE '+nowStamp_()+' | PINNACLE empty');
+      return;
+    }
+    const eventIds=pin.getRange(3,18,rowCount,1).getDisplayValues();
+    const kickoffs=pin.getRange(3,77,rowCount,1).getValues();
+    let first=-1,last=-1,unmapped=0;
+    for(let i=0;i<rowCount;i++){
+      const timestamp=new Date(kickoffs[i][0]).getTime();
+      if(!Number.isFinite(timestamp)||timestamp<=now||timestamp>until)continue;
+      const eventId=String(eventIds[i][0]||'').trim();
+      if(!eventId)continue;
+      if(cached.byApinn[eventId]){
+        if(first<0)first=i;
+        last=i;
+      }else unmapped++;
+    }
+    if(first<0){
+      setControl_('P2','NO CACHED TARGETS '+nowStamp_()+
+        ' | unmapped_future='+unmapped+' | HTTP schedule 404 bypassed');
+      return;
+    }
+    const from=first+3,len=last-first+1;
+    const rows=pin.getRange(from,1,len,18).getValues();
+    const times=pin.getRange(from,77,len,1).getValues();
+    const targets=[];
+    rows.forEach((r,i)=>{
+      const id=String(r[17]||'').trim();
+      const entry=cached.byApinn[id];
+      const timestamp=new Date(times[i][0]).getTime();
+      const side=String(r[3]||'').trim().toUpperCase();
+      const vote=r[13],result=String(r[15]||'').trim();
+      if(!entry||!Number.isFinite(timestamp)||timestamp<=now||timestamp>until||
+        (side!=='H'&&side!=='A')||result||!r[1]||!r[2]||
+        (vote!==''&&vote!==null&&vote!==undefined))return;
+      targets.push({row:from+i,sofaId:entry.sofaId,fav:side});
     });
-    const horizon=Date.now()+24*60*60*1000;
-    const fixtures=Object.keys(fixtureMap).map(k=>fixtureMap[k])
-      .filter(e=>Number(e.startTimestamp||0)*1000 > Date.now() &&
-        Number(e.startTimestamp||0)*1000 <= horizon);
-
-    if (!availableDays || !fixtures.length) {
-      setControl_('P2','STOPPED '+nowStamp_()+
-        ' | Sofa schedule HTTP '+firstHttp+
-        ' | availableDays='+availableDays+' | events='+fixtures.length);
-      return;
-    }
-
-    const ss = ss_();
-    const pinnacle = ss.getSheetByName(SOFA_CFG.pinnacleSheet);
-    const lastRow = pinnacle.getLastRow();
-    if (lastRow < 3) {
-      setControl_('P2', 'DONE ' + nowStamp_() + ' | no rows');
-      return;
-    }
-
-    const rows = pinnacle.getRange(3, 1, lastRow - 2, 77).getValues();
-    const cache = loadCache_();
-    const nowMs=Date.now(),cutoff=nowMs+24*60*60*1000;
-    setControl_('P2','FETCHED '+nowStamp_()+' | events='+fixtures.length);
-
-    let matched = 0;
-    let written = 0;
-    let cached = 0;
-    let voteErrors = 0;
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const rowNumber = i + 3;
-      const home = String(row[1] || '').trim();
-      const away = String(row[2] || '').trim();
-      const favoriteSide = String(row[3] || '').trim().toUpperCase();
-      const resultValue = String(row[15] || '').trim();
-      const apinnId = String(row[17] || '').trim();
-
-      if (!home || !away || !apinnId) continue;
-      if (favoriteSide !== 'H' && favoriteSide !== 'A') continue;
-      if (resultValue) continue; // historical match; do not touch
-      const kickoffMs=new Date(row[76]).getTime();
-      if (!Number.isFinite(kickoffMs)||kickoffMs<=nowMs||kickoffMs>cutoff) continue;
-
-      let sofaId = cache.byApinn[apinnId]
-        ? cache.byApinn[apinnId].sofaId
-        : null;
-
-      if (!sofaId) {
-        const fixture = findFixture_(home, away, fixtures);
-        if (!fixture || !fixture.id) continue;
-
-        sofaId = Number(fixture.id);
-        appendCache_(
-          cache.sheet, apinnId, sofaId, home, away, dateKey
-        );
-        cache.byApinn[apinnId] = { sofaId: sofaId };
-        cached++;
+    targets.sort((a,b)=>a.row-b.row);
+    const maxCalls=Math.min(16,Math.max(0,80-calls),targets.length);
+    const began=Date.now(),deadline=230000;
+    let checked=0,written=0,errors=0,blocked=false;
+    for(let i=0;i<maxCalls;i++){
+      if(Date.now()-began>deadline)break;
+      const t=targets[i];let res;
+      try{res=sofaFetchJson_('/event/'+t.sofaId+'/votes');}
+      catch(err){errors++;Logger.log('SOFA VOTE FETCH FAILED | '+t.row+' | '+err);break;}
+      checked++;calls++;
+      props.setProperty('SOFA_VOTE_CALLS',String(calls));
+      if(res.code===401||res.code===403||res.code===429){
+        blocked=true;
+        Logger.log('SOFA VOTES BLOCKED | HTTP '+res.code+' | row='+t.row);
+        break;
       }
-
-      matched++;
-
-      let votesResult;
-      try {
-        votesResult = sofaFetchJson_('/event/' + sofaId + '/votes');
-      } catch (e) {
-        voteErrors++;
-        continue;
-      }
-
-      if (votesResult.code !== 200 || !votesResult.json) {
-        voteErrors++;
-        if (votesResult.code===403 || votesResult.code===429) {
-          setControl_('P2','PARTIAL '+nowStamp_()+
-            ' | Sofa votes HTTP '+votesResult.code+' | wrote='+written);
-          return; // Stop immediately; do not hammer a blocked provider.
-        }
-        continue;
-      }
-
-      const votesPayload =
-        votesResult.json.vote ||
-        votesResult.json.votes ||
-        votesResult.json;
-
-      const pct = favoritePct_(votesPayload, favoriteSide);
-      if (pct === null) {
-        voteErrors++;
-        continue;
-      }
-
-      const cell=pinnacle.getRange(rowNumber,14); // N only
+      if(res.code!==200||!res.json){errors++;continue;}
+      const payload=res.json.vote||res.json.votes||res.json;
+      const pct=favoritePct_(payload,t.fav);
+      if(pct===null||!Number.isFinite(pct)||pct<0||pct>100){errors++;continue;}
+      const cell=pin.getRange(t.row,14);
+      if(String(cell.getDisplayValue()||'').trim())continue;
       cell.setValue(pct);
       cell.setNumberFormat('0"%"');
       written++;
+      Logger.log('SOFA VOTE SAVED | '+t.row+' | '+pct+'%');
     }
-
-    setControl_(
-      'P2',
-      (written>0?'DONE ':'PARTIAL ') + nowStamp_() +
-      ' | schedule=' + fixtures.length +
-      ' | matched=' + matched +
-      ' | cache+=' + cached +
-      ' | wrote=' + written +
-      ' | vote_errors=' + voteErrors
-    );
-  } catch (err) {
-    setControl_(
-      'P2',
-      'ERROR ' + nowStamp_() + ' | ' + String(err).slice(0, 140)
-    );
+    SpreadsheetApp.flush();
+    // Resume incomplete daily work in a separate short execution. No new
+    // permanent triggers, Apify calls or paid proxies.
+    let queued=false;
+    if(!blocked&&errors===0&&checked>0&&targets.length>checked&&calls<80){
+      const next=Number(props.getProperty('SOFA_VOTE_NEXT_AT')||0);
+      if(next<=Date.now()){
+        try{
+          ScriptApp.newTrigger('sofaDaily').timeBased().after(10*60*1000).create();
+          props.setProperty('SOFA_VOTE_NEXT_AT',String(Date.now()+10*60*1000));
+          queued=true;
+        }catch(err){Logger.log('SOFA VOTE CONTINUATION UNAVAILABLE | '+err);}
+      }
+    }
+    const status=blocked?'BLOCKED':errors?'PARTIAL':queued?'CONTINUE':
+      targets.length===0?'DONE':'CHECKED';
+    setControl_('P2',status+' '+nowStamp_()+
+      ' | cache='+Object.keys(cached.byApinn).length+
+      ' | candidates='+targets.length+' | checked='+checked+' | wrote='+written+
+      ' | unmapped='+unmapped+' | errors='+errors+' | calls_today='+calls+
+      ' | next='+queued);
+  }catch(err){
+    setControl_('P2','ERROR '+nowStamp_()+' | '+String(err).slice(0,160));
     throw err;
-  } finally {
-    lock.releaseLock();
-  }
+  }finally{lock.releaseLock();}
 }
 
 /**
