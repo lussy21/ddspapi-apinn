@@ -11,8 +11,9 @@
  *    This is a separate third-party service: its credits, terms and availability
  *    are independent of the user's Apify subscription.
  *
- * Writes ONLY PINNACLE!N on PRE-KICKOFF rows where N is blank, and
- * ALERT STATS!O2/P2 for progress. Never writes odds, turnover, result P,
+ * Votes worker writes PINNACLE!N (only blank pre-kickoff rows).
+ * Optional result catch-up writes PINNACLE!P (only verified finished matches).
+ * Workers write ALERT STATS!O2/P2/Q2 for progress. Never writes odds, turnover, result P,
  * alerts, SOFA CACHE, or previous Sofa percentages.
  *
  * Run svProbeSofaVotes() first. If it returns 403 or 429, do not run
@@ -221,6 +222,175 @@ function svRecoverSofaVotes() {
       ' ' + day + ' | tested=' + tested + ' | wrote=' + written +
       ' | failed=' + failures + ' | calls_today=' + used +
       ' | remaining_cached=' + Math.max(0, data.targets.length - written));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/**
+ * Manual, free, bounded SofaScore result catch-up for PINNACLE column P.
+ * Uses SOFA CACHE event IDs, verifies both teams and finished status, and
+ * never overwrites scores. Run svRecoverFinishedScores once per attempt.
+ * This is NOT installed as a trigger and makes NO Apify requests.
+ */
+function svResultsTeamKey_(name) {
+  return String(name || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(fc|cf|afc|sc|fk) /, '')
+    .replace(/ (fc|cf|afc|sc|fk)$/, '');
+}
+
+function svResultsTeamEqual_(a, b) {
+  var x = svResultsTeamKey_(a), y = svResultsTeamKey_(b);
+  return !!(x && y && (x === y ||
+    (x.length >= 7 && y.length >= 7 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0))));
+}
+
+function svResultsScore_(score) {
+  if (score === null || score === undefined) return null;
+  if (typeof score === 'number') return Number.isInteger(score) && score >= 0 ? score : null;
+  if (typeof score !== 'object') return null;
+  var keys = ['current','display','normaltime','normalTime'];
+  for (var i=0; i<keys.length; i++) {
+    var v = score[keys[i]];
+    if (v !== null && v !== undefined && v !== '') {
+      var n = Number(v);
+      if (Number.isInteger(n) && n >= 0) return n;
+    }
+  }
+  return null;
+}
+
+function svResultsMissingTargets_() {
+  var ss = SpreadsheetApp.openById(SV_SOFA_RECOVERY.spreadsheetId);
+  var pin = ss.getSheetByName('PINNACLE');
+  var cache = ss.getSheetByName('SOFA CACHE');
+  var today = Utilities.formatDate(new Date(), SV_SOFA_RECOVERY.tz, 'yyyy-MM-dd');
+  var yesterday = Utilities.formatDate(new Date(Date.now() - 24*3600*1000),
+    SV_SOFA_RECOVERY.tz, 'yyyy-MM-dd');
+  var map = {};
+  var cacheRows = cache.getLastRow() >= 2
+    ? cache.getRange(2,1,cache.getLastRow()-1,5).getValues() : [];
+  cacheRows.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    var sid = Number(r[1] || 0);
+    var day = svSofaDate_(r[4]);
+    if (id && sid && (day === today || day === yesterday)) map[id] = sid;
+  });
+  var n = Math.max(0, pin.getLastRow() - 2);
+  if (!n || !Object.keys(map).length) return {pin:pin,targets:[]};
+  var eventIds = pin.getRange(3,18,n,1).getDisplayValues(); // R
+  var first = -1, last = -1;
+  eventIds.forEach(function(cell,i){
+    if (Object.prototype.hasOwnProperty.call(map, String(cell[0]||'').trim())) {
+      if (first < 0) first=i;
+      last=i;
+    }
+  });
+  if (first < 0) return {pin:pin,targets:[]};
+  var firstRow = first+3, count=last-first+1;
+  var rows = pin.getRange(firstRow,1,count,18).getValues();
+  var kickoffs = pin.getRange(firstRow,77,count,1).getValues(); // BY
+  var now = Date.now();
+  var targets=[];
+  rows.forEach(function(r,i){
+    var apinn=String(r[17]||'').trim();
+    var sid=map[apinn];
+    var kickoff=svSofaKickoff_(kickoffs[i] && kickoffs[i][0]);
+    var d=svSofaDate_(kickoffs[i] && kickoffs[i][0]);
+    if (!sid || !kickoff || kickoff > now - 60*60*1000 ||
+        (d!==today && d!==yesterday) ||
+        !r[1] || !r[2] || String(r[15]||'').trim()) return;
+    targets.push({row:firstRow+i,id:sid,home:String(r[1]),away:String(r[2]),kickoff:kickoff});
+  });
+  targets.sort(function(a,b){return a.kickoff-b.kickoff;});
+  return {pin:pin,targets:targets};
+}
+
+function svRecoverFinishedScores() {
+  var lock=LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return 'BUSY';
+  try {
+    var data=svResultsMissingTargets_();
+    var props=PropertiesService.getScriptProperties();
+    var today=Utilities.formatDate(new Date(),SV_SOFA_RECOVERY.tz,'yyyy-MM-dd');
+    var prev=props.getProperty('SV_RESULTS_DAY');
+    var calls=prev===today?Number(props.getProperty('SV_RESULTS_CALLS')||0):0;
+    if (prev!==today) {
+      props.setProperty('SV_RESULTS_DAY',today);
+      props.setProperty('SV_RESULTS_CALLS','0');
+      props.deleteProperty('SV_RESULTS_CURSOR');
+    }
+    var maxCalls=Math.min(6,Math.max(0,72-calls),data.targets.length);
+    if (!maxCalls) {
+      svSofaStatus_('Q2','SOFA RESULT RECOVERY IDLE | missing='+
+        data.targets.length+' | calls_today='+calls);
+      return 'NO_TARGETS';
+    }
+    var cursor=Number(props.getProperty('SV_RESULTS_CURSOR')||0);
+    var checked=0,written=0,pending=0,mismatch=0,errors=0,blocked=false;
+    var n=data.targets.length;
+    for (var i=0;i<maxCalls;i++) {
+      var idx=(cursor+i)%n, t=data.targets[idx];
+      var response;
+      try {
+        response=UrlFetchApp.fetch(
+          'https://api.sofascore.com/api/v1/event/'+encodeURIComponent(t.id),
+          {method:'get',muteHttpExceptions:true,followRedirects:true,
+            headers:{Accept:'application/json'}}
+        );
+      } catch(e) {
+        errors++;
+        Logger.log('SOFA RESULTS CONNECTION ERROR | '+t.row+' | '+e);
+        break;
+      }
+      checked++;
+      calls++;
+      props.setProperty('SV_RESULTS_CALLS',String(calls));
+      var code=response.getResponseCode();
+      if (code===403 || code===401 || code===429) {
+        blocked=true;
+        Logger.log('SOFA RESULTS BLOCKED | HTTP '+code+' | row='+t.row);
+        break;
+      }
+      if (code!==200) {errors++;continue;}
+      var event;
+      try {event=JSON.parse(response.getContentText()).event;}
+      catch(e) {errors++;continue;}
+      if (!event || !event.status ||
+          String(event.status.type||'').toLowerCase()!=='finished') {
+        pending++;
+        continue;
+      }
+      if (!svResultsTeamEqual_(t.home,event.homeTeam&&event.homeTeam.name) ||
+          !svResultsTeamEqual_(t.away,event.awayTeam&&event.awayTeam.name)) {
+        mismatch++;
+        Logger.log('SOFA RESULTS NAME MISMATCH | '+t.home+' - '+t.away+
+          ' vs '+(event.homeTeam&&event.homeTeam.name)+' - '+
+          (event.awayTeam&&event.awayTeam.name));
+        continue;
+      }
+      var h=svResultsScore_(event.homeScore);
+      var a=svResultsScore_(event.awayScore);
+      if (h===null || a===null) {errors++;continue;}
+      var cell=data.pin.getRange(t.row,16); // P only
+      if (String(cell.getDisplayValue()||'').trim()) continue;
+      cell.setValue(String(h)+'-'+String(a));
+      written++;
+      Logger.log('SOFA RESULT SAVED | row='+t.row+' | '+
+        t.home+' - '+t.away+' | '+h+'-'+a);
+    }
+    props.setProperty('SV_RESULTS_CURSOR', String(n?(cursor+checked)%n:0));
+    var status=blocked?'BLOCKED':errors||mismatch?'PARTIAL':'DONE';
+    var message='SOFA RESULT '+status+' | checked='+checked+' | wrote='+written+
+      ' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors+
+      ' | missing_at_start='+n+' | calls_today='+calls;
+    svSofaStatus_('Q2',message);
+    Logger.log(message);
+    return status;
   } finally {
     lock.releaseLock();
   }
