@@ -578,19 +578,30 @@ function runSofaResultsForDates_(dates,label) {
   if(!lock.tryLock(1000))return;
   try {
     const props=PropertiesService.getScriptProperties();
-    props.deleteProperty('SOFA_RESULTS_NEXT_AT');
     control_('Q2','RUNNING '+stamp_()+' | '+label);
     const data=resultTargets_(dates);
     const targets=data.targets;
     // Small batches can finish even if one SofaScore request is slow.
     const started=Date.now(),maxCalls=12,maxTimeMs=230000;
+    const today=today_();
+    const previous=props.getProperty('SOFA_RESULT_CALL_DAY');
+    let calls=previous===today?Number(props.getProperty('SOFA_RESULT_CALLS')||0):0;
+    if(previous!==today){
+      props.setProperty('SOFA_RESULT_CALL_DAY',today);
+      props.setProperty('SOFA_RESULT_CALLS','0');
+      props.setProperty('SOFA_RESULTS_CURSOR','0');
+    }
+    const startIndex=targets.length?
+      Number(props.getProperty('SOFA_RESULTS_CURSOR')||0)%targets.length:0;
     let checked=0,written=0,pending=0,errors=0,mismatch=0,blocked=false;
-    for(const t of targets) {
-      if(checked>=maxCalls||Date.now()-started>maxTimeMs)break;
+    for(let i=0;i<targets.length;i++) {
+      if(checked>=maxCalls||calls>=96||Date.now()-started>maxTimeMs)break;
+      const t=targets[(startIndex+i)%targets.length];
       let r;
       try {r=sofaFetchJson_('/event/'+t.sofaId);}
       catch(err){errors++;Logger.log('SOFA RESULT FETCH ERROR row='+t.row+' | '+err);break;}
-      checked++;
+      checked++;calls++;
+      props.setProperty('SOFA_RESULT_CALLS',String(calls));
       if(r.code===401||r.code===403||r.code===429){
         blocked=true;
         Logger.log('SOFA RESULT HTTP BLOCK '+r.code+' | row='+t.row);
@@ -612,9 +623,13 @@ function runSofaResultsForDates_(dates,label) {
       Logger.log('SOFA RESULTS SAVED | row='+t.row+' | '+h+'-'+a);
     }
     SpreadsheetApp.flush();
+    if(targets.length&&checked){
+      props.setProperty('SOFA_RESULTS_CURSOR',
+        String((startIndex+checked)%targets.length));
+    }
     const remaining=Math.max(0,targets.length-written);
     let queued=false;
-    if(!blocked&&!errors&&!mismatch&&remaining>0&&checked>0&&targets.length>checked){
+    if(!blocked&&remaining>0&&checked>0&&targets.length>checked&&calls<96){
       queued=sofaResultsScheduleNext_();
     }
     const state=blocked?'BLOCKED':errors||mismatch?'PARTIAL':
@@ -622,7 +637,7 @@ function runSofaResultsForDates_(dates,label) {
     const msg=state+' '+stamp_()+' | '+label+
       ' | checked='+checked+' | wrote='+written+' | candidates='+targets.length+
       ' | pending='+pending+' | errors='+errors+' | mismatch='+mismatch+
-      ' | next='+queued;
+      ' | calls_today='+calls+' | next='+queued;
     control_('Q2',msg);
     Logger.log('SOFA RESULTS '+msg);
   }catch(err){
