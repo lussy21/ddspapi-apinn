@@ -313,6 +313,7 @@ function runSofaDaily() {
       props.setProperty('SOFA_VOTE_CALL_DAY',today);
       props.setProperty('SOFA_VOTE_CALLS','0');
       props.deleteProperty('SOFA_VOTE_NEXT_AT');
+      props.setProperty('SOFA_VOTES_CURSOR','0');
     }
     setControl_('P2','RUNNING '+nowStamp_()+' | cache-first; no paid API');
     const ss=ss_(),pin=ss.getSheetByName(SOFA_CFG.pinnacleSheet);
@@ -358,10 +359,12 @@ function runSofaDaily() {
     targets.sort((a,b)=>a.row-b.row);
     const maxCalls=Math.min(16,Math.max(0,80-calls),targets.length);
     const began=Date.now(),deadline=230000;
+    const offset=targets.length?
+      Number(props.getProperty('SOFA_VOTES_CURSOR')||0)%targets.length:0;
     let checked=0,written=0,errors=0,blocked=false;
     for(let i=0;i<maxCalls;i++){
       if(Date.now()-began>deadline)break;
-      const t=targets[i];let res;
+      const t=targets[(offset+i)%targets.length];let res;
       try{res=sofaFetchJson_('/event/'+t.sofaId+'/votes');}
       catch(err){errors++;Logger.log('SOFA VOTE FETCH FAILED | '+t.row+' | '+err);break;}
       checked++;calls++;
@@ -383,10 +386,13 @@ function runSofaDaily() {
       Logger.log('SOFA VOTE SAVED | '+t.row+' | '+pct+'%');
     }
     SpreadsheetApp.flush();
+    if(targets.length&&checked){
+      props.setProperty('SOFA_VOTES_CURSOR',String((offset+checked)%targets.length));
+    }
     // Resume incomplete daily work in a separate short execution. No new
     // permanent triggers, Apify calls or paid proxies.
     let queued=false;
-    if(!blocked&&errors===0&&checked>0&&targets.length>checked&&calls<80){
+    if(!blocked&&checked>0&&targets.length>checked&&calls<80){
       const next=Number(props.getProperty('SOFA_VOTE_NEXT_AT')||0);
       if(next<=Date.now()){
         try{
