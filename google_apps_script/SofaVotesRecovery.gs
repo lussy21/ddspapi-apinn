@@ -23,9 +23,9 @@
 var SV_SOFA_RECOVERY = {
   spreadsheetId: '1cabkyN1Nl74fIi-IhZ6Xxsbx2MeccjXHM3TSAvy-vzM',
   tz: 'Europe/Athens',
-  maxCallsPerRun: 15,
+  maxCallsPerRun: 10,
   maxCallsPerDay: 60,
-  minimumIntervalMs: 12500
+  minimumIntervalMs: 1500
 };
 
 function svSofaDate_(value) {
@@ -60,9 +60,28 @@ function svSofaCandidates_() {
     });
   }
 
+
+  // Read ONLY the APINN-ID column first. A full A:R read of the historical
+  // PINNACLE sheet can reach Apps Script's 6-minute execution limit.
   var n = Math.max(0, pin.getLastRow() - 2);
-  var rows = n ? pin.getRange(3, 1, n, 18).getValues() : [];
-  var kickoffs = n ? pin.getRange(3, 77, n, 1).getValues() : []; // BY
+  var todayIds = Object.keys(map);
+  if (!n || !todayIds.length) return {ss: ss, pin: pin, targets: []};
+  var ids = pin.getRange(3, 18, n, 1).getDisplayValues(); // R
+  var first = -1, last = -1;
+  for (var i = 0; i < ids.length; i++) {
+    if (Object.prototype.hasOwnProperty.call(map, String(ids[i][0] || '').trim())) {
+      if (first < 0) first = i;
+      last = i;
+    }
+  }
+  if (first < 0) return {ss: ss, pin: pin, targets: []};
+
+  // Most cached games for a date occupy a compact block near each other.
+  // Fetch just that block, not the entire years-long sheet.
+  var fromRow = first + 3;
+  var count = last - first + 1;
+  var rows = pin.getRange(fromRow, 1, count, 18).getValues();
+  var kickoffs = pin.getRange(fromRow, 77, count, 1).getValues(); // BY
   var now = Date.now(), targets = [];
   rows.forEach(function(r, i) {
     var apinnId = String(r[17] || '').trim();
@@ -74,7 +93,7 @@ function svSofaCandidates_() {
     if (!sofaId || !kickoff || kickoff <= now || hasResult ||
         votesAlreadyPresent || (fav !== 'H' && fav !== 'A')) return;
     if (svSofaDate_(kickoffs[i] && kickoffs[i][0]) !== today) return;
-    targets.push({row: i + 3, id: sofaId, fav: fav, kickoff: kickoff});
+    targets.push({row: fromRow + i, id: sofaId, fav: fav, kickoff: kickoff});
   });
   targets.sort(function(a, b) {return a.kickoff - b.kickoff;});
   return {ss: ss, pin: pin, targets: targets};
