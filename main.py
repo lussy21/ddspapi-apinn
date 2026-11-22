@@ -1428,6 +1428,19 @@ for match in matches:
 
     minutes_to_kickoff = (kickoff - NOW).total_seconds() / 60
 
+    # Audit real 90-minute turnover coverage. Never use the latest K value
+    # as a substitute for a missing historical W:Y snapshot.
+    snapshot90_missing = (
+        len(current_row) < 23 or not str(current_row[22]).strip()
+    )
+    snapshot90_due = (0 < minutes_to_kickoff <= 95 and snapshot90_missing)
+    if snapshot90_due and not ARBWORLD_ROWS:
+        print(
+            "ARBWORLD SNAPSHOT90 NOT AVAILABLE | source_empty |",
+            home, "vs", away,
+            "| minutes_before_kickoff:", round(minutes_to_kickoff, 1),
+        )
+
     # Preserve any hand-written note in Q. Automatic multi-alert details are
     # rendered from hidden helpers, while the original manual text lives in BW.
     existing_comment = (
@@ -1761,6 +1774,9 @@ for match in matches:
                         "| turnover:", turnover,
                         "| fav%:", favorite_pct,
                         "| contra%:", contra_pct,
+                        "| minutes_before_kickoff:",
+                        round(minutes_to_kickoff, 1),
+                        "| source: ARBWORLD",
                     )
                     print(
                         "TURNOVER 90 PERCENTILE:",
@@ -1813,8 +1829,20 @@ for match in matches:
                     "| fav%:", favorite_pct,
                     "| contra%:", contra_pct,
                 )
+            elif snapshot90_due:
+                print(
+                    "ARBWORLD SNAPSHOT90 NOT AVAILABLE | invalid_metrics |",
+                    home, "vs", away,
+                    "| minutes_before_kickoff:", round(minutes_to_kickoff, 1),
+                )
         else:
             print("ARBWORLD MATCH NOT FOUND:", home, "vs", away)
+            if snapshot90_due:
+                print(
+                    "ARBWORLD SNAPSHOT90 NOT AVAILABLE | no_matching_fixture |",
+                    home, "vs", away,
+                    "| minutes_before_kickoff:", round(minutes_to_kickoff, 1),
+                )
 
 if updates:
     SHEET.batch_update(
