@@ -496,123 +496,139 @@ function finishedEvent_(e) {
 }
 
 function scoreValue_(obj) {
-  if (obj===null || obj===undefined) return null;
-  if (typeof obj==='number' && Number.isFinite(obj)) return obj;
-  if (typeof obj==='object') {
-    const keys=['current','display','normaltime','normalTime','period2'];
-    for (let i=0;i<keys.length;i++) {
-      const n=Number(obj[keys[i]]);
-      if (Number.isFinite(n)) return n;
+  if (obj === null || obj === undefined || obj === '') return null;
+  if (typeof obj === 'number') return Number.isInteger(obj) && obj>=0 ? obj : null;
+  if (typeof obj === 'object') {
+    const keys=['current','display','normaltime','normalTime'];
+    for (const key of keys) {
+      const v=obj[key];
+      if (v===null||v===undefined||v==='') continue;
+      const n=Number(v);
+      if (Number.isInteger(n)&&n>=0) return n;
     }
+    return null;
   }
   const n=Number(obj);
-  return Number.isFinite(n) ? n : null;
+  return Number.isInteger(n)&&n>=0?n:null;
 }
 
 function resultTargets_(dates) {
+  // Read the small cache first; a 9,000-row A:R scan made the old
+  // 08:00 job exceed the Google Apps Script six-minute runtime limit.
   const book=ss_();
   const pin=book.getSheetByName(SOFA_CFG.pinnacleSheet);
   const cache=book.getSheetByName(SOFA_CFG.cacheSheet);
-
-  const pinLast=pin.getLastRow();
-  const pinRows=pinLast>=3 ? pin.getRange(3,1,pinLast-2,18).getValues() : [];
-  const byApinn={};
-  pinRows.forEach((r,i)=>{
-    const apinn=String(r[17]||'').trim();
-    if (apinn) byApinn[apinn]={row:i+3,data:r};
-  });
-
   const wanted=new Set(dates);
   const cacheLast=cache.getLastRow();
-  const cacheRows=cacheLast>=2 ? cache.getRange(2,1,cacheLast-1,5).getValues() : [];
-  const out=[];
-  const seen={};
-
+  const cacheRows=cacheLast>=2?cache.getRange(2,1,cacheLast-1,5).getValues():[];
+  const ids={};
   cacheRows.forEach(r=>{
     const apinn=String(r[0]||'').trim();
-    const sofaId=Number(r[1]||0);
-    const d=cacheDate_(r[4]);
-    if (!apinn || !sofaId || !wanted.has(d) || seen[apinn]) return;
-    const p=byApinn[apinn];
-    if (!p) return;
-
-    const home=String(p.data[1]||'').trim();
-    const away=String(p.data[2]||'').trim();
-    const result=String(p.data[15]||'').trim();
-    if (!home || !away || result) return;
-
-    seen[apinn]=1;
-    out.push({apinn:apinn,sofaId:sofaId,date:d,row:p.row,home:home,away:away});
+    const sid=Number(r[1]||0);
+    const day=cacheDate_(r[4]);
+    if(apinn&&sid&&wanted.has(day)) ids[apinn]=sid;
   });
+  const count=Math.max(0,pin.getLastRow()-2);
+  if(!count||!Object.keys(ids).length) return {pin:pin,targets:[]};
+  const idCells=pin.getRange(3,18,count,1).getDisplayValues(); // R only
+  let first=-1,last=-1;
+  idCells.forEach((r,i)=>{
+    if(!Object.prototype.hasOwnProperty.call(ids,String(r[0]||'').trim()))return;
+    if(first<0)first=i;
+    last=i;
+  });
+  if(first<0)return {pin:pin,targets:[]};
+  const startRow=first+3,span=last-first+1;
+  const rows=pin.getRange(startRow,1,span,18).getValues();
+  const kickoffs=pin.getRange(startRow,77,span,1).getValues(); // BY
+  const now=Date.now(),targets=[];
+  rows.forEach((r,i)=>{
+    const apinn=String(r[17]||'').trim(),sid=ids[apinn];
+    const home=String(r[1]||'').trim(),away=String(r[2]||'').trim();
+    const result=String(r[15]||'').trim();
+    const raw=kickoffs[i]&&kickoffs[i][0];
+    const kickoff=new Date(raw).getTime();
+    if(!sid||!home||!away||result||!Number.isFinite(kickoff)||kickoff>=now)return;
+    targets.push({sofaId:sid,row:startRow+i,home:home,away:away,kickoff:kickoff});
+  });
+  targets.sort((a,b)=>a.kickoff-b.kickoff);
+  return {pin:pin,targets:targets};
+}
 
-  return {pin:pin,targets:out};
+function sofaResultsScheduleNext_() {
+  // The bootstrap project's already-installed handler is sofaResults0800.
+  // Queue one continuation only when more cached finished games remain.
+  // Never call the paid Apify actor or install another daily trigger.
+  try {
+    const props=PropertiesService.getScriptProperties();
+    const now=Date.now(),next=Number(props.getProperty('SOFA_RESULTS_NEXT_AT')||0);
+    if(next>now)return false;
+    ScriptApp.newTrigger('sofaResults0800').timeBased()
+      .after(15*60*1000).create();
+    props.setProperty('SOFA_RESULTS_NEXT_AT',String(now+15*60*1000));
+    return true;
+  }catch(err){
+    Logger.log('SOFA RESULTS CONTINUATION UNAVAILABLE | '+err);
+    return false;
+  }
 }
 
 function runSofaResultsForDates_(dates,label) {
   const lock=LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return;
-
+  if(!lock.tryLock(1000))return;
   try {
-    control_('Q1','SOFA GOOGLE RESULTS');
+    const props=PropertiesService.getScriptProperties();
+    props.deleteProperty('SOFA_RESULTS_NEXT_AT');
     control_('Q2','RUNNING '+stamp_()+' | '+label);
-
     const data=resultTargets_(dates);
-    let checked=0,written=0,pending=0,errors=0,mismatch=0;
-
-    data.targets.forEach(t=>{
+    const targets=data.targets;
+    // Small batches can finish even if one SofaScore request is slow.
+    const started=Date.now(),maxCalls=12,maxTimeMs=230000;
+    let checked=0,written=0,pending=0,errors=0,mismatch=0,blocked=false;
+    for(const t of targets) {
+      if(checked>=maxCalls||Date.now()-started>maxTimeMs)break;
+      let r;
+      try {r=sofaFetchJson_('/event/'+t.sofaId);}
+      catch(err){errors++;Logger.log('SOFA RESULT FETCH ERROR row='+t.row+' | '+err);break;}
       checked++;
-      const r=sofaFetchJson_('/event/'+t.sofaId);
-      if (r.code!==200 || !r.json || !r.json.event) {
-        errors++;
-        Utilities.sleep(80);
-        return;
+      if(r.code===401||r.code===403||r.code===429){
+        blocked=true;
+        Logger.log('SOFA RESULT HTTP BLOCK '+r.code+' | row='+t.row);
+        break;
       }
-
+      if(r.code!==200||!r.json||!r.json.event){errors++;continue;}
       const e=r.json.event;
       const sofaHome=String(e.homeTeam&&e.homeTeam.name||'');
       const sofaAway=String(e.awayTeam&&e.awayTeam.name||'');
-      const hs=score_(t.home,sofaHome), as=score_(t.away,sofaAway);
-      if (hs<0.68 || as<0.68 || ((hs+as)/2)<0.76) {
-        mismatch++;
-        Utilities.sleep(80);
-        return;
-      }
-
-      if (!finishedEvent_(e)) {
-        pending++;
-        Utilities.sleep(80);
-        return;
-      }
-
-      const h=scoreValue_(e.homeScore);
-      const a=scoreValue_(e.awayScore);
-      if (h===null || a===null) {
-        errors++;
-        Utilities.sleep(80);
-        return;
-      }
-
-      t.cell=data.pin.getRange(t.row,16);
-      if (String(t.cell.getValue()||'').trim()) {
-        Utilities.sleep(80);
-        return;
-      }
-
-      t.cell.setValue(String(h)+'-'+String(a));
+      const hs=score_(t.home,sofaHome),as=score_(t.away,sofaAway);
+      if(hs<0.68||as<0.68||(hs+as)/2<0.76){mismatch++;continue;}
+      if(!finishedEvent_(e)){pending++;continue;}
+      const h=scoreValue_(e.homeScore),a=scoreValue_(e.awayScore);
+      if(h===null||a===null){errors++;continue;}
+      const cell=data.pin.getRange(t.row,16); // P only; preserve manual scores
+      if(String(cell.getDisplayValue()||'').trim())continue;
+      cell.setValue(String(h)+'-'+String(a));
       written++;
-      Utilities.sleep(80);
-    });
-
+      Logger.log('SOFA RESULTS SAVED | row='+t.row+' | '+h+'-'+a);
+    }
     SpreadsheetApp.flush();
-    const status=(errors===0 && mismatch===0) ? 'DONE' : 'PARTIAL';
-    control_('Q2',status+' '+stamp_()+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
-    Logger.log('RESULTS '+status+' | '+label+' | checked='+checked+' | wrote='+written+' | pending='+pending+' | mismatch='+mismatch+' | errors='+errors);
-  } catch(e) {
-    control_('Q2','ERROR '+stamp_()+' | '+label+' | '+String(e).slice(0,120));
-    throw e;
-  } finally {
-    lock.releaseLock();
-  }
+    const remaining=Math.max(0,targets.length-written);
+    let queued=false;
+    if(!blocked&&!errors&&!mismatch&&remaining>0&&checked>0&&targets.length>checked){
+      queued=sofaResultsScheduleNext_();
+    }
+    const state=blocked?'BLOCKED':errors||mismatch?'PARTIAL':
+      remaining===0?'DONE':queued?'CONTINUE':'PENDING';
+    const msg=state+' '+stamp_()+' | '+label+
+      ' | checked='+checked+' | wrote='+written+' | candidates='+targets.length+
+      ' | pending='+pending+' | errors='+errors+' | mismatch='+mismatch+
+      ' | next='+queued;
+    control_('Q2',msg);
+    Logger.log('SOFA RESULTS '+msg);
+  }catch(err){
+    control_('Q2','ERROR '+stamp_()+' | '+label+' | '+String(err).slice(0,120));
+    throw err;
+  }finally{lock.releaseLock();}
 }
 
 function runSofaResultsYesterday() {
