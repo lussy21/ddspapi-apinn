@@ -126,7 +126,7 @@ def pending_matches(match, team_id, limit):
     """Only call the provider for completed fixtures lacking an official XI."""
     with db() as conn:
         return conn.execute(
-            "SELECT m.match_id,m.kickoff_utc FROM season_matches m "
+            "SELECT m.* FROM season_matches m "
             "LEFT JOIN season_complete_xi x ON x.match_id=m.match_id AND x.team_id=%s "
             "LEFT JOIN season_lineup_attempts a ON a.match_id=m.match_id "
             "WHERE m.season_id=%s AND m.competition_id=%s AND m.status='finished' "
@@ -183,7 +183,7 @@ def summary(match, team_id):
         ).fetchone()["n"]
     played, official = summary_row["played"], summary_row["official"]
     # A truncated/inconsistent listing must never be labeled complete.
-    complete = (played == state["total_finished"] and played == official)
+    complete = (played > 0 and played == state["total_finished"] and played == official)
     return {"ready": True, "played": played, "official": official,
             "starts": {r["player_id"]: r["starts"] for r in starts_rows},
             "verified": complete, "missing": max(0, played-official),
