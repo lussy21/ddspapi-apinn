@@ -268,4 +268,5 @@ if os.getenv("ENABLE_SCHEDULER")=="1":
     threading.Thread(target=monitor,daemon=True,name="lineup-monitor").start()
 
 if __name__=="__main__":
-    app.run(host="0.0.0.0",port=int(os.getenv("PORT","8000")),debug=False,use_reloader=False)
+    from waitress import serve
+    serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
