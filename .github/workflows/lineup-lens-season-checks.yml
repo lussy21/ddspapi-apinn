@@ -6,6 +6,12 @@ on:
     paths:
       - "lineup_lens/**"
       - ".github/workflows/lineup-lens-season-checks.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-lens-season-checks.yml"
   workflow_dispatch:
 jobs:
   verify:
