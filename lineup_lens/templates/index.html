@@ -25,22 +25,23 @@
 <p class="footnote" style="margin-bottom:0">Πηγή ιστορικού: <a href="https://github.com/fm-devlab/11footy-dataset" style="color:var(--lime)">11footy</a> (CC BY-NC 4.0). Αποθηκευμένες πραγματικές βασικές ενδεκάδες, χωρίς κλήσεις Soccer Data. Στοιχεία έως την τελευταία ημερομηνία του αρχείου — όχι σημερινές προβλέψεις.</p>
 </section>
 <section class="panel match-head"><div class="comp" id="competition">ΔΟΚΙΜΑΣΤΙΚΗ ΠΡΟΒΟΛΗ</div><div class="vs" id="matchTitle">Ομάδα Α – Ομάδα Β</div><div class="time" id="kickoff">Ενδεικτική σύνθεση • όχι πραγματικός αγώνας</div><div class="info"><span class="pill" id="lineupStatus">Επίδειξη ενδεκάδας</span><span class="pill grey" id="statsStatus">Δεδομένα παραδείγματος</span></div></section>
-<div class="topbar"><strong>Οι 11 βασικοί</strong><small>Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
+<div class="topbar"><strong id="pitchHeading">Οι 11 βασικοί</strong><small id="pitchSubheading">Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
 <div class="tabs"><button class="active" id="homeTab">Ομάδα Α<span>4-3-3</span></button><button id="awayTab">Ομάδα Β<span>4-2-3-1</span></button></div>
-<div class="banner" id="demoWarning">Δεν εμφανίζουμε υποθετικές ενδεκάδες ή στατιστικά. Διάλεξε ημερομηνία και πραγματικό αγώνα για να ξεκινήσεις.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
+<div class="banner predicted hidden" id="archiveWarning" role="status"></div><div class="banner" id="demoWarning">Δεν εμφανίζουμε υποθετικές ενδεκάδες ή στατιστικά. Διάλεξε ημερομηνία και πραγματικό αγώνα για να ξεκινήσεις.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
 <section class="pitch" aria-label="Παίκτες πάνω στο γήπεδο"><div class="goal top"></div><div class="goal bottom"></div><div class="midline"></div><div class="lines" id="pitchLines"></div></section>
-<div class="summary"><div class="mini"><b id="coreCount">—</b><span>Σταθεροί βασικοί (≥70% όλης της σεζόν)</span></div><div class="mini"><b id="rareCount">—</b><span>Λίγες ενάρξεις φέτος (&lt;30%)</span></div></div>
+<div class="summary"><div class="mini"><b id="coreCount">—</b><span id="coreLabel">Σταθεροί βασικοί (≥70% όλης της σεζόν)</span></div><div class="mini"><b id="rareCount">—</b><span id="rareLabel">Λίγες ενάρξεις φέτος (&lt;30%)</span></div></div>
 <div class="action"><button class="primary" id="loadStats" disabled>Συλλογή ενδεκάδων σεζόν</button><button id="refresh">Έλεγξε ενδεκάδα</button><button id="watch">Αυτόματος έλεγχος</button></div><div class="message" id="message"></div>
-<p class="footnote">Μετράμε βασικές συμμετοχές από τις ΕΠΙΣΗΜΕΣ ενδεκάδες ολόκληρης της τρέχουσας σεζόν, στην ίδια διοργάνωση. Αν λείπουν προηγούμενες 11άδες, το «≥» σημαίνει τουλάχιστον τόσες επιβεβαιωμένες ενάρξεις — όχι πλήρες αποτέλεσμα. Το κουμπί συλλέγει μέχρι 5 επιπλέον αγώνες ανά πάτημα, με προστασία του δωρεάν ορίου API. Οι προβλεπόμενες σημερινές ενδεκάδες παραμένουν μη επιβεβαιωμένες.</p>
+<p class="footnote" id="pitchFootnote">Μετράμε βασικές συμμετοχές από τις ΕΠΙΣΗΜΕΣ ενδεκάδες ολόκληρης της τρέχουσας σεζόν, στην ίδια διοργάνωση. Αν λείπουν προηγούμενες 11άδες, το «≥» σημαίνει τουλάχιστον τόσες επιβεβαιωμένες ενάρξεις — όχι πλήρες αποτέλεσμα. Το κουμπί συλλέγει μέχρι 5 επιπλέον αγώνες ανά πάτημα, με προστασία του δωρεάν ορίου API. Οι προβλεπόμενες σημερινές ενδεκάδες παραμένουν μη επιβεβαιωμένες.</p>
 </main><script>
 const $=id=>document.getElementById(id);
 const demoNames=['Τερματοφύλακας','Αμυντικός 1','Αμυντικός 2','Αμυντικός 3','Αμυντικός 4','Μέσος 1','Μέσος 2','Μέσος 3','Επιθετικός 1','Επιθετικός 2','Επιθετικός 3'];
 const demo=(offset,formation)=>({id:null,name:offset?'Ομάδα Β':'Ομάδα Α',formation:'',played:null,starting_xi:[]});
-let teams=[demo(0,''),demo(1,'')],side=0,real=false,selected=null,statsLoading=false,schedulerEnabled=false;
+let teams=[demo(0,''),demo(1,'')],side=0,real=false,selected=null,statsLoading=false,schedulerEnabled=false,dataMode='demo';
+const livePitchFootnote=$('pitchFootnote').textContent;
 $('day').value=new Date().toLocaleDateString('en-CA');
 function say(t){$('message').textContent=t||''}
 function arrange(list,formation){let parts=(formation||'').split('-').map(Number).filter(x=>Number.isFinite(x)&&x>0);let rows=[]; if(parts.reduce((a,b)=>a+b,0)===10){let at=0;rows.push(list.slice(0,1));at=1;for(let n of parts){rows.push(list.slice(at,at+n));at+=n}return rows}const groups=['G','D','M','F'];return groups.map(p=>list.filter(x=>x.position===p)).filter(x=>x.length)}
-function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0&&t.verified===true?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.3?'low':ratio<.7?'mid':'');st.textContent=val===null?'—':t.played?`${t.verified===true?'':'≥'}${val}/${t.played}`:`${val}/—`;d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.7).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.3).length:'—';$('loadStats').disabled=!real||!t.starting_xi.length||statsLoading;$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('mode').textContent=real?'LIVE API':'DEMO'}
+function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0&&t.verified===true?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.3?'low':ratio<.7?'mid':'');st.textContent=val===null?'—':t.played?`${t.verified===true?'':'≥'}${val}/${t.played}`:`${val}/—`;d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.7).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.3).length:'—';$('loadStats').disabled=dataMode==='archive'||!real||!t.starting_xi.length||statsLoading;$('refresh').disabled=dataMode==='archive';$('watch').disabled=dataMode==='archive';$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',dataMode==='archive'||!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('archiveWarning').classList.toggle('hidden',dataMode!=='archive');$('mode').textContent=dataMode==='archive'?'ΙΣΤΟΡΙΚΟ':real?'API':'DEMO';$('pitchHeading').textContent=dataMode==='archive'?'Πραγματική 11άδα παλιού αγώνα':'Οι 11 βασικοί';$('pitchSubheading').textContent=dataMode==='archive'?'Θέσεις παικτών • 11footy ιστορικό':'Επίσημες ενάρξεις σε ολόκληρη τη σεζόν';$('coreLabel').textContent=dataMode==='archive'?'Σταθεροί βασικοί (≥70% ιστορικού)':'Σταθεροί βασικοί (≥70% όλης της σεζόν)';$('rareLabel').textContent=dataMode==='archive'?'Λίγες εκκινήσεις (<30% ιστορικού)':'Λίγες ενάρξεις φέτος (<30%)';$('pitchFootnote').textContent=dataMode==='archive'?'Οι παίκτες και οι θέσεις είναι από την τελευταία αποθηκευμένη πραγματική ενδεκάδα. Οι αριθμοί αναφέρονται στους προηγούμενους αγώνες μαζί με αυτόν, έως την ημερομηνία που φαίνεται επάνω. Το σχήμα προκύπτει από τις καταγεγραμμένες θέσεις. Δεν είναι πρόβλεψη ή σημερινή 11άδα. Πηγή 11footy (CC BY-NC 4.0).':livePitchFootnote}
 async function api(path){let r=await fetch(path);let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Σφάλμα σύνδεσης '+r.status);return d}
 async function listMatches(){try{say('Φορτώνονται οι αγώνες της ημέρας…');let d=await api('/api/matches?date='+encodeURIComponent($('day').value));let sel=$('fixture');sel.replaceChildren();sel.add(new Option('— Επίλεξε αγώνα —',''));for(let m of d.data||[]){let time=new Date(m.utc_date).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});sel.add(new Option(`${time} • ${m.home_team.name} – ${m.away_team.name}`,m.id))}sel._matches=d.data||[];say(`Βρέθηκαν ${d.data.length} αγώνες σε αυτή τη σελίδα. Διάλεξε έναν.`)}catch(e){say(e.message+' • Η επίδειξη παραμένει διαθέσιμη.')}}
 async function getLineup(){
@@ -51,14 +52,14 @@ async function getLineup(){
   let d=await api('/api/lineup?match_id='+encodeURIComponent(id));
   selected=id;
   if(!d.ready){
-   real=true; let m=($('fixture')._matches||[]).find(x=>x.id===id);
+   real=true;dataMode='live'; let m=($('fixture')._matches||[]).find(x=>x.id===id);
    teams=[{id:null,name:m?.home_team?.name||'Γηπεδούχος',formation:'',played:null,starting_xi:[]},
           {id:null,name:m?.away_team?.name||'Φιλοξενούμενος',formation:'',played:null,starting_xi:[]}];
    $('matchTitle').textContent=teams[0].name+' – '+teams[1].name;
    $('lineupStatus').textContent='Δεν έχει ανακοινωθεί ακόμη';$('lineupStatus').dataset.confirmed='';
    $('statsStatus').textContent='Αναμονή πραγματικών ενδεκάδων';view();say(d.message);return
   }
-  real=true;teams=[d.home,d.away];side=0;
+  real=true;dataMode='live';teams=[d.home,d.away];side=0;
   $('matchTitle').textContent=d.home.name+' – '+d.away.name;
   $('competition').textContent='ΕΠΙΛΕΓΜΕΝΟΣ ΑΓΩΝΑΣ • SOCCER DATA';
   $('kickoff').textContent=d.kickoff?new Date(d.kickoff).toLocaleString('el-GR',{dateStyle:'medium',timeStyle:'short'}):'—';
@@ -159,6 +160,26 @@ async function showArchiveTeam(){
    table.appendChild(tr);
   }
   root.appendChild(table);
+  // The history table and the football pitch now use the SAME real Neon record.
+  // This is the latest archived match, NOT the current announced starting XI.
+  if(d.latest_match && d.latest_match.historical &&
+     (d.latest_match.home?.starting_xi?.length===11) &&
+     (d.latest_match.away?.starting_xi?.length===11)){
+     const snapshot=d.latest_match;
+     teams=[snapshot.home,snapshot.away];
+     side=Number(snapshot.away.id)===tid?1:0;
+     real=true;dataMode='archive';selected=null;
+     $('matchTitle').textContent=snapshot.home.name+' – '+snapshot.away.name;
+     $('competition').textContent='11FOOTY • ΠΡΑΓΜΑΤΙΚΗ ΙΣΤΟΡΙΚΗ ΕΝΔΕΚΑΔΑ';
+     $('kickoff').textContent='Αποθηκευμένος αγώνας: '+snapshot.date+' • όχι σημερινός';
+     $('lineupStatus').textContent='ΕΠΙΒΕΒΑΙΩΜΕΝΗ 11ΑΔΑ ΑΡΧΕΙΟΥ';
+     $('lineupStatus').dataset.confirmed='yes';
+     $('statsStatus').textContent='Βασικός έως '+snapshot.date+' • '+teams[side].played+' αγώνες';
+     $('archiveWarning').textContent='ΙΣΤΟΡΙΚΟ: Οι παίκτες στο γήπεδο είναι οι πραγματικοί βασικοί του '+snapshot.date+' και οι αριθμοί μετρούν μόνο τους αγώνες μέχρι τότε. Η σημερινή ενδεκάδα μπορεί να είναι διαφορετική.';
+     say('Εμφανίστηκαν στο γήπεδο 11 πραγματικοί βασικοί ανά ομάδα, από το ιστορικό ματς '+snapshot.date+'. Η διάταξη προκύπτει από τις καταγεγραμμένες θέσεις.');
+     view();
+     $('matchTitle').scrollIntoView({behavior:'smooth',block:'start'});
+  }
  }catch(e){root.textContent='Δεν φορτώθηκε το ιστορικό: '+e.message;}
 }
 $('archiveLeague').onchange=()=>{ $('archiveResults').textContent='';loadArchiveTeams()};
