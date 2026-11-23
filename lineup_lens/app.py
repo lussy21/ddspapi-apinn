@@ -6,6 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 import requests
 from flask import Flask, jsonify, render_template, request, Response
+import season_db
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -231,6 +232,11 @@ def verified_team_snap(mid,m,tid):
 def sheet(mid):
     m=match(mid)
     s=lineup_raw(mid)
+    # Capture newly announced official XI for future seasonal history.
+    # A DB outage must never prevent displaying today's lineup.
+    if isinstance(s,dict) and s.get("confirmed") and s.get("type") in ("played","team_sheet") and season_db.enabled():
+        try: season_db.record_confirmed(m,s,"soccer-data:"+mid)
+        except Exception: app.logger.exception("Could not persist official XI for %s",mid)
     if not s or not isinstance(s,dict):
         return {"ready":False,"confirmed":False,"kickoff":m.get("utc_date"),"message":"Δεν έχει ανακοινωθεί ενδεκάδα."}
     out=[]
@@ -240,6 +246,15 @@ def sheet(mid):
         tid=part.get("id") or mpart.get("id")
         ts=cache_get("team-snapshot:"+mid+":"+str(tid))
         verified=cache_get("verified-v2:"+mid+":"+str(tid))
+        # Prefer persistent whole-season history over the temporary last-5 sample.
+        if season_db.enabled() and tid:
+            try:
+                season_report=season_db.summary(m,tid)
+                if season_report.get("ready"):
+                    verified={"starts":season_report["starts"],"played":season_report["played"],
+                              "verified":season_report["verified"],"eligible":season_report["official"],
+                              "window":"season","official":season_report["official"]}
+            except Exception: app.logger.exception("Could not load Neon season summary for %s",tid)
         starts=verified.get("starts",{}) if isinstance(verified,dict) else {}
         players=[]
         for p in part.get("starting_xi") or []:
@@ -254,7 +269,7 @@ def index(): return render_template("index.html")
 def health(): return jsonify(ok=True)
 
 @app.get("/api/status")
-def status(): return jsonify(configured=bool(KEY),usage=usage(),verification_window=VERIFY_WINDOW,verification_reserve=VERIFY_RESERVE,scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1")
+def status(): return jsonify(configured=bool(KEY),usage=usage(),verification_window=VERIFY_WINDOW,verification_reserve=VERIFY_RESERVE,scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1",season_db_connected=season_db.enabled())
 
 @app.get("/api/matches")
 def matches():
@@ -272,6 +287,86 @@ def matches():
 @app.get("/api/lineup")
 def lineup():
     return jsonify(sheet(valid(request.args.get("match_id"),"match")))
+
+@app.get("/api/season-team")
+def season_team():
+    if not season_db.enabled(): raise Problem("Η μόνιμη βάση Lineup Lens δεν έχει συνδεθεί.",503)
+    mid=valid(request.args.get("match_id"),"match")
+    tid=valid(request.args.get("team_id"),"team")
+    m=match(mid)
+    if tid not in ((m.get("home_team") or {}).get("id"),(m.get("away_team") or {}).get("id")):
+        raise Problem("Η ομάδα δεν ανήκει στον αγώνα.",400)
+    try: return jsonify(season_db.summary(m,tid))
+    except Exception:
+        app.logger.exception("Neon season read failed")
+        raise Problem("Η βάση ιστορικού δεν είναι διαθέσιμη.",503)
+
+
+@app.post("/api/season-team")
+def collect_season_team():
+    """Explicit, conservative on-demand full-season backfill.
+
+    Each click handles at most five historical XIs and preserves a minimum
+    reserve of ten provider calls. On Render Free there is no guaranteed
+    continuously running worker, so collection resumes on the next click.
+    """
+    if not season_db.enabled(): raise Problem("Η μόνιμη βάση Lineup Lens δεν έχει συνδεθεί.",503)
+    payload=request.get_json(silent=True) or {}
+    mid=valid(payload.get("match_id"),"match")
+    tid=valid(payload.get("team_id"),"team")
+    m=match(mid)
+    if tid not in ((m.get("home_team") or {}).get("id"),(m.get("away_team") or {}).get("id")):
+        raise Problem("Η ομάδα δεν ανήκει στον αγώνα.",400)
+    try:
+        scan=season_db.last_scan(m,tid)
+        need_scan=scan is None or (datetime.now(timezone.utc)-scan["fixture_list_at"]).total_seconds()>6*3600
+        if need_scan:
+            sid=valid(m.get("season_id"),"season")
+            cid=valid(m.get("competition_id"),"competition")
+            listing=api("/matches",{"team_id":tid,"competition_id":cid,"season_id":sid,
+                                   "status":"finished","sort":"-utc_date","per_page":100},ttl=6*3600)
+            season_db.record_fixture_list(m,tid,listing)
+        allowance=usage()
+        remaining=max(0,LIMIT-allowance["calls"])
+        if allowance["remote_remaining"] is not None:
+            remaining=min(remaining,allowance["remote_remaining"])
+        batch=min(5,max(0,remaining-VERIFY_RESERVE))
+        candidates=season_db.pending_matches(m,tid,batch) if batch else []
+        fetched=0
+        unavailable=0
+        stopped=None
+        for item in candidates:
+            hid=item["match_id"]
+            try:
+                raw=api("/matches/"+valid(hid,"match")+"/lineups",ttl=30*86400,allow404=True)
+                if not isinstance(raw,dict):
+                    season_db.record_missing(hid)
+                    unavailable+=1
+                    continue
+                previous={"id":hid,"season_id":item["season_id"],
+                          "competition_id":item["competition_id"],"utc_date":item["kickoff_utc"].isoformat(),
+                          "home_team":{"id":item["home_team_id"]},
+                          "away_team":{"id":item["away_team_id"]},"status":"finished"}
+                try:
+                    season_db.record_confirmed(previous,raw,"soccer-data:"+hid)
+                    fetched+=1
+                except season_db.InvalidXI:
+                    season_db.record_missing(hid)
+                    unavailable+=1
+            except Problem as e:
+                stopped=str(e)
+                break
+        report=season_db.summary(m,tid)
+        report.update(imported=fetched,unavailable=unavailable,api_remaining=remaining,
+                      stopped=stopped,batch_size=batch)
+        return jsonify(report)
+    except Problem: raise
+    except (ValueError,KeyError,TypeError) as e:
+        raise Problem("Αδυναμία συλλογής ιστορικού: "+str(e),422)
+    except Exception:
+        app.logger.exception("Neon season collection failed")
+        raise Problem("Η συλλογή ιστορικού απέτυχε. Τα ήδη αποθηκευμένα στοιχεία παραμένουν.",503)
+
 
 @app.get("/api/team")
 def team():
