@@ -10,22 +10,22 @@
 <header><div class="brand"><div class="logo">XI</div><div><b>Lineup Lens</b><small>SEASON STARTS ANALYZER</small></div></div><div class="tag" id="mode">DEMO</div></header>
 <section class="panel"><p class="eyebrow">ΕΠΙΛΟΓΗ ΑΓΩΝΑ</p><div class="chooser"><input id="day" type="date" aria-label="Ημερομηνία αγώνων"><button id="search">Αγώνες</button><select id="fixture" aria-label="Επιλογή αγώνα"><option value="">— Δοκιμαστικό παράδειγμα —</option></select></div><p class="subtle" id="fixtureHint">Σύνδεση με πραγματικούς αγώνες όταν προστεθεί κλειδί API στον server.</p></section>
 <section class="panel match-head"><div class="comp" id="competition">ΔΟΚΙΜΑΣΤΙΚΗ ΠΡΟΒΟΛΗ</div><div class="vs" id="matchTitle">Ομάδα Α – Ομάδα Β</div><div class="time" id="kickoff">Ενδεικτική σύνθεση • όχι πραγματικός αγώνας</div><div class="info"><span class="pill" id="lineupStatus">Επίδειξη ενδεκάδας</span><span class="pill grey" id="statsStatus">Δεδομένα παραδείγματος</span></div></section>
-<div class="topbar"><strong>Οι 11 βασικοί</strong><small>Επαλήθευση τελευταίων 5 αγώνων</small></div>
+<div class="topbar"><strong>Οι 11 βασικοί</strong><small>Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
 <div class="tabs"><button class="active" id="homeTab">Ομάδα Α<span>4-3-3</span></button><button id="awayTab">Ομάδα Β<span>4-2-3-1</span></button></div>
-<div class="banner" id="demoWarning">ΕΠΙΔΕΙΞΗ: Όλοι οι παίκτες και οι αριθμοί αυτής της οθόνης είναι υποθετικοί. Με πραγματικό API θα αντικατασταθούν από επιβεβαιωμένα δεδομένα.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
+<div class="banner" id="demoWarning">Δεν εμφανίζουμε υποθετικές ενδεκάδες ή στατιστικά. Διάλεξε ημερομηνία και πραγματικό αγώνα για να ξεκινήσεις.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
 <section class="pitch" aria-label="Παίκτες πάνω στο γήπεδο"><div class="goal top"></div><div class="goal bottom"></div><div class="midline"></div><div class="lines" id="pitchLines"></div></section>
-<div class="summary"><div class="mini"><b id="coreCount">—</b><span>Συνηθισμένοι βασικοί (≥70% στους 5 τελευταίους)</span></div><div class="mini"><b id="rareCount">—</b><span>Λίγες ενάρξεις στους 5 τελευταίους (&lt;30%)</span></div></div>
-<div class="action"><button class="primary" id="loadStats" disabled>Έλεγξε 5 αγώνες</button><button id="refresh">Έλεγξε ενδεκάδα</button><button id="watch">Αυτόματος έλεγχος</button></div><div class="message" id="message"></div>
-<p class="footnote">Μετά τον έλεγχο, το 4/5 σημαίνει 4 επίσημες ενάρξεις στους 5 πιο πρόσφατους προηγούμενους αγώνες με διαθέσιμη επίσημη ενδεκάδα. Αν λείπουν επίσημες ενδεκάδες, φαίνεται η μικρότερη κάλυψη. Δεν πρόκειται για συνολικές συμμετοχές σεζόν. Πριν από τον έλεγχο εμφανίζεται «—». Η σημερινή προβλεπόμενη ενδεκάδα δεν είναι επίσημη. Για την προστασία του δωρεάν API ελέγχουμε έως 5 παλιούς αγώνες και κρατάμε 10 κλήσεις για την κανονική λειτουργία.</p>
+<div class="summary"><div class="mini"><b id="coreCount">—</b><span>Σταθεροί βασικοί (≥70% όλης της σεζόν)</span></div><div class="mini"><b id="rareCount">—</b><span>Λίγες ενάρξεις φέτος (&lt;30%)</span></div></div>
+<div class="action"><button class="primary" id="loadStats" disabled>Συλλογή ενδεκάδων σεζόν</button><button id="refresh">Έλεγξε ενδεκάδα</button><button id="watch">Αυτόματος έλεγχος</button></div><div class="message" id="message"></div>
+<p class="footnote">Μετράμε βασικές συμμετοχές από τις ΕΠΙΣΗΜΕΣ ενδεκάδες ολόκληρης της τρέχουσας σεζόν, στην ίδια διοργάνωση. Αν λείπουν προηγούμενες 11άδες, το «≥» σημαίνει τουλάχιστον τόσες επιβεβαιωμένες ενάρξεις — όχι πλήρες αποτέλεσμα. Το κουμπί συλλέγει μέχρι 5 επιπλέον αγώνες ανά πάτημα, με προστασία του δωρεάν ορίου API. Οι προβλεπόμενες σημερινές ενδεκάδες παραμένουν μη επιβεβαιωμένες.</p>
 </main><script>
 const $=id=>document.getElementById(id);
 const demoNames=['Τερματοφύλακας','Αμυντικός 1','Αμυντικός 2','Αμυντικός 3','Αμυντικός 4','Μέσος 1','Μέσος 2','Μέσος 3','Επιθετικός 1','Επιθετικός 2','Επιθετικός 3'];
-const demo=(offset,formation,starts)=>({id:'demo'+offset,name:offset?'Ομάδα Β':'Ομάδα Α',formation,played:12,starting_xi:demoNames.map((n,i)=>({id:'d'+offset+i,name:n,number:i+1,position:i===0?'G':i<5?'D':i<8?'M':'F',starts:starts[i]}))});
-let teams=[demo(0,'4-3-3',[12,11,9,12,4,10,8,2,12,7,1]),demo(1,'4-2-3-1',[12,10,5,12,11,9,8,3,11,2,6])],side=0,real=false,selected=null,statsLoading=false,schedulerEnabled=false;
+const demo=(offset,formation)=>({id:null,name:offset?'Ομάδα Β':'Ομάδα Α',formation:'',played:null,starting_xi:[]});
+let teams=[demo(0,''),demo(1,'')],side=0,real=false,selected=null,statsLoading=false,schedulerEnabled=false;
 $('day').value=new Date().toLocaleDateString('en-CA');
 function say(t){$('message').textContent=t||''}
 function arrange(list,formation){let parts=(formation||'').split('-').map(Number).filter(x=>Number.isFinite(x)&&x>0);let rows=[]; if(parts.reduce((a,b)=>a+b,0)===10){let at=0;rows.push(list.slice(0,1));at=1;for(let n of parts){rows.push(list.slice(at,at+n));at+=n}return rows}const groups=['G','D','M','F'];return groups.map(p=>list.filter(x=>x.position===p)).filter(x=>x.length)}
-function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.3?'low':ratio<.7?'mid':'');st.textContent=val===null?'—':t.played?`${val}/${t.played}`:`${val}/—`;d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.7).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.3).length:'—';$('loadStats').disabled=!real||!t.starting_xi.length||statsLoading;$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('mode').textContent=real?'LIVE API':'DEMO'}
+function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0&&t.verified===true?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.3?'low':ratio<.7?'mid':'');st.textContent=val===null?'—':t.played?`${t.verified===true?'':'≥'}${val}/${t.played}`:`${val}/—`;d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.7).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.3).length:'—';$('loadStats').disabled=!real||!t.starting_xi.length||statsLoading;$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('mode').textContent=real?'LIVE API':'DEMO'}
 async function api(path){let r=await fetch(path);let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Σφάλμα σύνδεσης '+r.status);return d}
 async function listMatches(){try{say('Φορτώνονται οι αγώνες της ημέρας…');let d=await api('/api/matches?date='+encodeURIComponent($('day').value));let sel=$('fixture');sel.replaceChildren();sel.add(new Option('— Επίλεξε αγώνα —',''));for(let m of d.data||[]){let time=new Date(m.utc_date).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});sel.add(new Option(`${time} • ${m.home_team.name} – ${m.away_team.name}`,m.id))}sel._matches=d.data||[];say(`Βρέθηκαν ${d.data.length} αγώνες σε αυτή τη σελίδα. Διάλεξε έναν.`)}catch(e){say(e.message+' • Η επίδειξη παραμένει διαθέσιμη.')}}
 async function getLineup(){
@@ -52,29 +52,36 @@ async function getLineup(){
   $('lineupStatus').dataset.confirmed=confirmed?'yes':'';
   $('statsStatus').textContent='Ελέγχω τα στοιχεία της σεζόν…';
   view();
-  if(!confirmed){say('ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα. Μπορείς να φορτώσεις πραγματικές βασικές συμμετοχές, αλλά οι προβλεπόμενοι παίκτες μπορεί να αλλάξουν.')}
+  if(!confirmed){say('ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα. Οι παίκτες μπορεί να αλλάξουν. Οι ενάρξεις του ιστορικού είναι πραγματικές όταν υπάρχει επαλήθευση.')}
   // No automatic team stats calls: only verification provides the denominator.
   view();
-  let cached=teams.map(t=>t.starting_xi.filter(p=>Number.isFinite(p.starts)).length).reduce((a,b)=>a+b,0);
-  $('statsStatus').textContent=cached?`Ελεγμένες ενάρξεις: ${cached}/22`:'Πάτησε «Έλεγξε 5 αγώνες»';
-  say((confirmed?'ΕΠΙΣΗΜΗ':'ΠΡΟΒΛΕΠΟΜΕΝΗ')+' ενδεκάδα. Έλεγξε μόνο τους τελευταίους 5 προηγούμενους αγώνες της ομάδας που θέλεις. Η λειτουργία απαιτεί έως 6 κλήσεις όταν δεν υπάρχει cache και διατηρεί απόθεμα 10 κλήσεων.');
+  let hist=teams.find(t=>t.window==='season'&&Number.isInteger(t.played));
+  $('statsStatus').textContent=hist?`Ιστορικό σεζόν: ${hist.eligible||0}/${hist.played} επίσημες 11άδες`:'Πάτησε «Συλλογή ενδεκάδων σεζόν»';
+  say((confirmed?'ΕΠΙΣΗΜΗ':'ΠΡΟΒΛΕΠΟΜΕΝΗ')+' ενδεκάδα. Πάτησε «Συλλογή ενδεκάδων σεζόν» για τις πραγματικές ενάρξεις από την αρχή της σεζόν. Κάθε πάτημα ανακτά έως 5 παλιούς αγώνες και κρατά απόθεμα 10 API κλήσεων.');
  }catch(e){say(e.message)}
 }
 async function loadStarts(){
  if(!real||statsLoading||!teams[side]?.starting_xi?.length)return;
  let t=teams[side];statsLoading=true;view();
  try{
-  say('Μετράω τις ενάρξεις από τις επίσημες ενδεκάδες των προηγούμενων αγώνων. Ο έλεγχος χρησιμοποιεί διαθέσιμες API κλήσεις…');
-  let r=await api('/api/verified-team?'+new URLSearchParams({team_id:t.id,match_id:selected}));
-  t.played=r.played;t.eligible=r.eligible;t.verified=r.verified;
-  for(const p of t.starting_xi){p.starts=Number.isInteger(r.starts[p.id])?r.starts[p.id]:0}
+  say('Συλλέγω πραγματικές επίσημες ενδεκάδες από την αρχή της σεζόν. Έως 5 ανά πάτημα…');
+  let res=await fetch('/api/season-team',{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({team_id:t.id,match_id:selected})});
+  let r=await res.json().catch(()=>({}));
+  if(!res.ok)throw Error(r.error||'Αποτυχία ελέγχου βάσης');
+  t.played=r.played;t.eligible=r.official;t.verified=r.verified;t.window='season';
+  for(const p of t.starting_xi){
+   p.starts=r.official>0?(Number.isInteger(r.starts[p.id])?r.starts[p.id]:0):null;
+  }
+  const coverage=`${r.official||0}/${r.played||0}`;
+  $('statsStatus').textContent='Σεζόν • επίσημες 11άδες: '+coverage;
   view();
-  const coverage=`${r.played}/${r.eligible}`;
-  $('statsStatus').textContent=(r.verified?'Ελεγμένοι':'Μερική κάλυψη')+': '+coverage+' τελευταίοι αγώνες';
-  say(r.verified?
-      'Ελέγχθηκαν οι '+coverage+' τελευταίοι αγώνες. Οι αριθμοί αφορούν μόνο αυτό το δείγμα, όχι όλη τη σεζόν.':
-      'ΠΡΟΣΟΧΗ: Υπάρχει διαθέσιμη επίσημη ενδεκάδα μόνο σε '+coverage+' προηγούμενους αγώνες. Οι αριθμοί αφορούν μόνο όσους ελέγχθηκαν.');
- }catch(e){say('Η επαλήθευση δεν ολοκληρώθηκε: '+e.message+' • Δεν παρουσιάζω μη επαληθευμένα στοιχεία.')}
+  if(r.verified){
+   say('ΠΛΗΡΗΣ ΣΕΖΟΝ: Ελέγχθηκαν όλες οι '+r.played+' επίσημες ενδεκάδες της ομάδας, πριν τον σημερινό αγώνα.');
+  }else{
+   say('ΜΕΡΙΚΟ ΙΣΤΟΡΙΚΟ: '+coverage+' αγώνες με επίσημη ενδεκάδα. Τα ≥ δίπλα στους παίκτες σημαίνουν τουλάχιστον τόσες ενάρξεις. '+(r.pending?'Πάτησε ξανά για την επόμενη ομάδα αγώνων. ':'')+(r.batch_size===0?'Το δωρεάν όριο API δεν επιτρέπει άλλες κλήσεις σήμερα. ':'')+(r.stopped?r.stopped:''));
+  }
+ }catch(e){say('Δεν ολοκληρώθηκε η συλλογή ιστορικού: '+e.message+' • Κανένας αριθμός δεν επινοήθηκε.')}
  finally{statsLoading=false;view()}
 }
 async function setWatch(){
@@ -85,7 +92,7 @@ async function setWatch(){
   say(d.enabled?'Ο αγώνας μπήκε σε αυτόματο έλεγχο 65–0 λεπτά πριν τη σέντρα.':'Ο αγώνας αποθηκεύτηκε, αλλά ο αυτόματος έλεγχος είναι ΑΝΕΝΕΡΓΟΣ στον server. Χρειάζεται ENABLE_SCHEDULER=1 και υπηρεσία που δεν κοιμάται.');
  }catch(e){say(e.message)}
 }
-async function checkStatus(){try{let d=await api('/api/status');schedulerEnabled=d.scheduler_enabled; if(d.configured){let rem=d.usage.remote_remaining;let available=Math.max(0,Math.min(d.usage.local_limit-d.usage.calls,rem===null?Infinity:rem));$('fixtureHint').textContent=`API ενεργό • Κλήσεις σήμερα: ${d.usage.calls}/${d.usage.local_limit} • Διαθέσιμες: ${available} • Απόθεμα για αγώνες: ${d.verification_reserve||10} • ${d.scheduler_enabled?'Αυτόματος έλεγχος ενεργός':'Αυτόματος έλεγχος ανενεργός'}`;}}
+async function checkStatus(){try{let d=await api('/api/status');schedulerEnabled=d.scheduler_enabled; if(d.configured){let rem=d.usage.remote_remaining;let available=Math.max(0,Math.min(d.usage.local_limit-d.usage.calls,rem===null?Infinity:rem));$('fixtureHint').textContent=`API ενεργό • Κλήσεις σήμερα: ${d.usage.calls}/${d.usage.local_limit} • Διαθέσιμες: ${available} • Βάση σεζόν: ${d.season_db_connected?'Neon συνδεδεμένο':'όχι συνδεδεμένο'} • Απόθεμα API: ${d.verification_reserve||10}`;}}
  catch(e){} }
 $('search').onclick=listMatches;$('fixture').onchange=getLineup;$('homeTab').onclick=()=>{side=0;view()};$('awayTab').onclick=()=>{side=1;view()};$('refresh').onclick=()=>selected?getLineup():say('Επέλεξε αγώνα ή δες τη δοκιμαστική ενδεκάδα.');$('loadStats').onclick=loadStarts;$('watch').onclick=setWatch;
 view();checkStatus();
