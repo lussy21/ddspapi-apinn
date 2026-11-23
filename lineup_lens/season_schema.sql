@@ -30,3 +30,16 @@ CREATE OR REPLACE VIEW season_finished_fixtures AS
  UNION ALL
  SELECT match_id,season_id,competition_id,away_team_id AS team_id
  FROM season_matches WHERE status='finished';
+
+-- Metadata needed for incremental free-API-safe whole-season collection.
+CREATE TABLE IF NOT EXISTS season_sync_state (
+ team_id TEXT NOT NULL, season_id TEXT NOT NULL, competition_id TEXT NOT NULL,
+ fixture_list_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), total_finished INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY(team_id,season_id,competition_id)
+);
+CREATE TABLE IF NOT EXISTS season_lineup_attempts (
+ match_id TEXT PRIMARY KEY REFERENCES season_matches(match_id) ON DELETE CASCADE,
+ checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ result TEXT NOT NULL CHECK(result IN ('confirmed','missing')),
+ retry_after TIMESTAMPTZ
+);
