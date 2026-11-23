@@ -656,6 +656,10 @@ function resultTargets_(dates) {
   });
   const count=Math.max(0,pin.getLastRow()-2);
   if(!count||!Object.keys(ids).length) return {pin:pin,targets:[]};
+  // Search cached event IDs on the server, not a full column download.
+  const lookupStarted=Date.now();
+  const quote=id=>String(id).replace(/[^a-zA-Z0-9_:-]/g,'\\  const count=Math.max(0,pin.getLastRow()-2);
+  if(!count||!Object.keys(ids).length) return {pin:pin,targets:[]};
   const idCells=pin.getRange(3,18,count,1).getDisplayValues(); // R only
   let first=-1,last=-1;
   idCells.forEach((r,i)=>{
@@ -673,11 +677,45 @@ function resultTargets_(dates) {
     const home=String(r[1]||'').trim(),away=String(r[2]||'').trim();
     const result=String(r[15]||'').trim();
     const raw=kickoffs[i]&&kickoffs[i][0];
+    const kickoff=new Date(raw).getTime();');
+  const pattern='^(?:'+Object.keys(ids).map(quote).join('|')+')
+    if(!sid||!home||!away||result||!Number.isFinite(kickoff)||kickoff>=now)return;
+    targets.push({sofaId:sid,row:startRow+i,home:home,away:away,kickoff:kickoff});
+  });
+  targets.sort((a,b)=>a.kickoff-b.kickoff);
+  return {pin:pin,targets:targets};
+}
+
+;
+  const matches=pin.getRange(3,18,count,1).createTextFinder(pattern)
+    .useRegularExpression(true).matchCase(true).findAll()||[];
+  let first=-1,last=-1;
+  matches.forEach(cell=>{
+    const index=cell.getRow()-3;
+    if(first<0||index<first)first=index;
+    if(index>last)last=index;
+  });
+  if(first<0){
+    Logger.log('SOFA RESULT TARGETS NO MATCH | cached='+Object.keys(ids).length);
+    return {pin:pin,targets:[]};
+  }
+  const startRow=first+3,span=last-first+1;
+  // One bounded read instead of separate values and kickoff round trips.
+  const rows=pin.getRange(startRow,1,span,77).getValues();
+  const now=Date.now(),targets=[];
+  rows.forEach((r,i)=>{
+    const apinn=String(r[17]||'').trim(),sid=ids[apinn];
+    const home=String(r[1]||'').trim(),away=String(r[2]||'').trim();
+    const result=String(r[15]||'').trim();
+    const raw=r[76];
     const kickoff=new Date(raw).getTime();
     if(!sid||!home||!away||result||!Number.isFinite(kickoff)||kickoff>=now)return;
     targets.push({sofaId:sid,row:startRow+i,home:home,away:away,kickoff:kickoff});
   });
   targets.sort((a,b)=>a.kickoff-b.kickoff);
+  Logger.log('SOFA RESULT TARGETS | cache='+Object.keys(ids).length+
+    ' | found='+matches.length+' | eligible='+targets.length+
+    ' | lookup_ms='+(Date.now()-lookupStarted));
   return {pin:pin,targets:targets};
 }
 
@@ -717,6 +755,7 @@ function runSofaResultsForDates_(dates,label) {
       props.setProperty('SOFA_RESULT_CALL_DAY',today);
       props.setProperty('SOFA_RESULT_CALLS','0');
       props.setProperty('SOFA_RESULTS_CURSOR','0');
+      props.setProperty('SOFA_RESULT_EMPTY_RETRIES','0');
     }
     const startIndex=targets.length?
       Number(props.getProperty('SOFA_RESULTS_CURSOR')||0)%targets.length:0;
@@ -756,8 +795,17 @@ function runSofaResultsForDates_(dates,label) {
     }
     const remaining=Math.max(0,targets.length-written);
     let queued=false;
-    if(!blocked&&remaining>0&&checked>0&&targets.length>checked&&calls<96){
-      queued=sofaResultsScheduleNext_();
+    if(!blocked&&remaining>0&&calls<96){
+      if(checked>0&&targets.length>checked){
+        queued=sofaResultsScheduleNext_();
+      }else if(checked===0&&targets.length){
+        // Retry a zero-check execution only once; no unbounded triggers.
+        const attempts=Number(props.getProperty('SOFA_RESULT_EMPTY_RETRIES')||0);
+        if(attempts<1){
+          props.setProperty('SOFA_RESULT_EMPTY_RETRIES',String(attempts+1));
+          queued=sofaResultsScheduleNext_();
+        }
+      }
     }
     const state=blocked?'BLOCKED':errors||mismatch?'PARTIAL':
       remaining===0?'DONE':queued?'CONTINUE':'PENDING';
