@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "season": "2026-27",
+  "ordered_by_user": true,
+  "goal": "Official confirmed starting XI on pitch with all season-to-date starts for both teams, by competition and combined, and explicitly separated from predictions.",
+  "historical_snapshot_source": "11footy-2026-11-10",
+  "license": "CC BY-NC 4.0 (private noncommercial research only)",
+  "competitions": [
+    {
+      "priority": 1,
+      "id": "UCL",
+      "name": "UEFA Champions League",
+      "archive": "european-cups.champions-league.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 2,
+      "id": "UEL",
+      "name": "UEFA Europa League",
+      "archive": "european-cups.europa-league.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 3,
+      "id": "UECL",
+      "name": "UEFA Conference League",
+      "archive": "european-cups.conference-league.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 4,
+      "id": "BL1",
+      "name": "Bundesliga (Germany)",
+      "archive": "germany.bundesliga.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 5,
+      "id": "LL",
+      "name": "La Liga (Spain)",
+      "archive": "spain.la-liga.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 6,
+      "id": "SA",
+      "name": "Serie A (Italy)",
+      "archive": "italy.serie-a.db.xz",
+      "status": "imported_through_2026_11_08"
+    },
+    {
+      "priority": 7,
+      "id": "PL",
+      "name": "Premier League (England)",
+      "archive": "england.premier-league.db.xz",
+      "status": "imported_through_2026_11_08"
+    },
+    {
+      "priority": 8,
+      "id": "L1",
+      "name": "Ligue 1 (France)",
+      "archive": "france.ligue-1.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 9,
+      "id": "GR1",
+      "name": "Super League Greece",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 10,
+      "id": "BE1",
+      "name": "Belgian Pro League (First Division)",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 11,
+      "id": "DK1",
+      "name": "Danish Superliga",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 12,
+      "id": "BL2",
+      "name": "2. Bundesliga (Germany)",
+      "archive": "germany.2-bundesliga.db.xz",
+      "status": "asset_found_not_imported"
+    },
+    {
+      "priority": 13,
+      "id": "NO1",
+      "name": "Norwegian Eliteserien",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 14,
+      "id": "NL1",
+      "name": "Eredivisie (Netherlands)",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 15,
+      "id": "TR1",
+      "name": "Süper Lig (Turkey)",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 16,
+      "id": "SC1",
+      "name": "Scottish Premiership",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    },
+    {
+      "priority": 17,
+      "id": "SE1",
+      "name": "Allsvenskan (Sweden)",
+      "archive": null,
+      "status": "confirmed_xi_source_needed"
+    }
+  ],
+  "notes": [
+    "Sources with only fixtures/odds cannot be counted as verified lineups.",
+    "Full-season starts are only complete if each preceding match has 11 confirmed starters for both teams.",
+    "European + domestic totals require global player and club identity matching, plus no duplicate fixture IDs.",
+    "2026-11-10 release includes matches no later than 2026-11-08; automatic current-day XI still unimplemented.",
+    "Free Render sleeps, so scheduled pre-kickoff polling needs independent reliable execution."
+  ]
+}
