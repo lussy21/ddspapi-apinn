@@ -1,0 +1,21 @@
+name: Lineup Lens UEFA archive coverage check
+on:
+  push:
+    branches:
+      - feature/lineup-uefa-coverage-20261124
+    paths:
+      - "lineup_lens/research_uefa_coverage.py"
+      - ".github/workflows/lineup-uefa-coverage-check.yml"
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r lineup_lens/requirements.txt
+      - name: Check three UEFA cups against actual 2026/27 archive (read-only)
+        run: PYTHONPATH=lineup_lens python lineup_lens/research_uefa_coverage.py
