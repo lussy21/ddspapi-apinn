@@ -1,0 +1,23 @@
+name: Lineup Lens season checks
+on:
+  push:
+    branches:
+      - feature/lineup-season-history-20261123
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-lens-season-checks.yml"
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r lineup_lens/requirements.txt
+      - name: Verify Python syntax
+        run: python -m compileall -q lineup_lens
+      - name: Verify confirmed XI counting
+        run: PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p "test_season_core.py" -v
