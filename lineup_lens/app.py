@@ -148,6 +148,81 @@ def player_snap(mid,m,pid):
     cache_put(k,snapshot,365*86400)
     return snapshot
 
+
+def verified_team_snap(mid,m,tid):
+    """Count starts from prior FINISHED matches' official lineups, not player season totals.
+    One fixture-list request plus up to one cached lineup request per prior match.
+    """
+    valid(mid,"match")
+    valid(tid,"team")
+    k="verified-team:"+mid+":"+tid
+    cached=cache_get(k)
+    if cached is not None:
+        return cached
+    if not before_kickoff(m):
+        raise Problem("Η επαλήθευση αφορά αγώνες πριν τη σέντρα.",409)
+    sid=valid(m.get("season_id"),"season")
+    cid=valid(m.get("competition_id"),"competition")
+    kickoff=datetime.fromisoformat(m["utc_date"].replace("Z","+00:00"))
+    listing=api("/matches",{
+        "team_id":tid,"competition_id":cid,"season_id":sid,
+        "status":"finished","sort":"-utc_date","per_page":100
+    },ttl=900)
+    if not isinstance(listing,list):
+        raise Problem("Μη αναγνωρίσιμη λίστα προηγούμενων αγώνων.",502)
+    prior=[]
+    for item in listing:
+        if not isinstance(item,dict) or not isinstance(item.get("id"),str):
+            continue
+        try:
+            game_time=datetime.fromisoformat(item["utc_date"].replace("Z","+00:00"))
+            if item["id"]!=mid and game_time<kickoff and item.get("season_id")==sid and item.get("competition_id")==cid:
+                prior.append(item)
+        except (KeyError,TypeError,ValueError):
+            continue
+    prior.sort(key=lambda x:x["utc_date"],reverse=True)
+    if not prior:
+        raise Problem("Δεν βρέθηκαν ολοκληρωμένοι αγώνες στην ίδια διοργάνωση και σεζόν.",404)
+    # Protect the daily call allowance: no partial run when the required uncached
+    # official lineups exceed the remaining local or provider quota.
+    missing=0
+    for item in prior:
+        path="/matches/"+valid(item["id"],"match")+"/lineups"
+        api_key="api:"+json.dumps([path,[]],ensure_ascii=False)
+        if cache_get(api_key) is None:
+            missing+=1
+    allowance=usage()
+    remaining=LIMIT-allowance["calls"]
+    if allowance["remote_remaining"] is not None:
+        remaining=min(remaining,allowance["remote_remaining"])
+    if missing>remaining:
+        raise Problem("Ανεπαρκείς διαθέσιμες κλήσεις για επαλήθευση ("+str(missing)+" χρειάζονται, "+str(remaining)+" απομένουν).",429)
+    counts={}
+    official=0
+    for item in prior:
+        historical=api("/matches/"+item["id"]+"/lineups",ttl=30*86400,allow404=True)
+        if not isinstance(historical,dict) or historical.get("type") not in ("played","team_sheet") or not historical.get("confirmed"):
+            continue
+        team=next((historical.get(side) for side in ("home","away")
+                  if isinstance(historical.get(side),dict) and historical[side].get("id")==tid),None)
+        xi=team.get("starting_xi") if team else None
+        if not isinstance(xi,list) or len(xi)!=11:
+            continue
+        ids=[p.get("id") for p in xi if isinstance(p,dict)]
+        if len(ids)!=11 or any(not isinstance(pid,str) or not ID.fullmatch(pid) or not pid.startswith("player_") for pid in ids) or len(set(ids))!=11:
+            continue
+        official+=1
+        for pid in ids:
+            counts[pid]=counts.get(pid,0)+1
+    if official==0:
+        raise Problem("Οι προηγούμενοι αγώνες δεν έχουν διαθέσιμες επίσημες ενδεκάδες.",404)
+    report={"starts":counts,"played":official,"eligible":len(prior),
+            "verified":official==len(prior),"source":"past_official_lineups",
+            "unavailable":len(prior)-official}
+    cache_put(k,report,900)
+    app.logger.info("Verified lineup sample match=%s team=%s official=%d prior=%d",mid,tid,official,len(prior))
+    return report
+
 def sheet(mid):
     m=match(mid)
     s=lineup_raw(mid)
@@ -159,11 +234,12 @@ def sheet(mid):
         mpart=m.get(side+"_team") or {}
         tid=part.get("id") or mpart.get("id")
         ts=cache_get("team-snapshot:"+mid+":"+str(tid))
+        verified=cache_get("verified-team:"+mid+":"+str(tid))
+        starts=verified.get("starts",{}) if isinstance(verified,dict) else {}
         players=[]
         for p in part.get("starting_xi") or []:
-            ps=cache_get("player-snapshot:"+mid+":"+str(p.get("id")))
-            players.append({"id":p.get("id"),"name":p.get("name"),"number":p.get("jersey_number"),"position":p.get("position"),"starts":ps.get("starts") if isinstance(ps,dict) else None})
-        out.append({"id":tid,"name":part.get("name") or mpart.get("name") or "Ομάδα","formation":part.get("formation") or "","played":ts.get("played") if isinstance(ts,dict) else None,"starting_xi":players})
+            players.append({"id":p.get("id"),"name":p.get("name"),"number":p.get("jersey_number"),"position":p.get("position"),"starts":starts.get(p.get("id")) if verified else None})
+        out.append({"id":tid,"name":part.get("name") or mpart.get("name") or "Ομάδα","formation":part.get("formation") or "","played":verified.get("played") if verified else (ts.get("played") if isinstance(ts,dict) else None),"verified":verified.get("verified") if verified else None,"eligible":verified.get("eligible") if verified else None,"starting_xi":players})
     return {"ready":True,"confirmed":bool(s.get("confirmed")) and s.get("type") in ("team_sheet","played"),"type":s.get("type"),"kickoff":m.get("utc_date"),"home":out[0],"away":out[1]}
 
 @app.get("/")
@@ -197,6 +273,12 @@ def team():
     mid=valid(request.args.get("match_id"),"match")
     tid=valid(request.args.get("team_id"),"team")
     return jsonify(played=team_snap(mid,match(mid),tid))
+
+@app.get("/api/verified-team")
+def verified_team():
+    mid=valid(request.args.get("match_id"),"match")
+    tid=valid(request.args.get("team_id"),"team")
+    return jsonify(verified_team_snap(mid,match(mid),tid))
 
 @app.get("/api/player")
 def player():
