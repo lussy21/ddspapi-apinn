@@ -656,37 +656,10 @@ function resultTargets_(dates) {
   });
   const count=Math.max(0,pin.getLastRow()-2);
   if(!count||!Object.keys(ids).length) return {pin:pin,targets:[]};
-  // Search cached event IDs on the server, not a full column download.
+  // Search verified cache IDs on the server; avoid full column transfer.
   const lookupStarted=Date.now();
-  const quote=id=>String(id).replace(/[^a-zA-Z0-9_:-]/g,'\\  const count=Math.max(0,pin.getLastRow()-2);
-  if(!count||!Object.keys(ids).length) return {pin:pin,targets:[]};
-  const idCells=pin.getRange(3,18,count,1).getDisplayValues(); // R only
-  let first=-1,last=-1;
-  idCells.forEach((r,i)=>{
-    if(!Object.prototype.hasOwnProperty.call(ids,String(r[0]||'').trim()))return;
-    if(first<0)first=i;
-    last=i;
-  });
-  if(first<0)return {pin:pin,targets:[]};
-  const startRow=first+3,span=last-first+1;
-  const rows=pin.getRange(startRow,1,span,18).getValues();
-  const kickoffs=pin.getRange(startRow,77,span,1).getValues(); // BY
-  const now=Date.now(),targets=[];
-  rows.forEach((r,i)=>{
-    const apinn=String(r[17]||'').trim(),sid=ids[apinn];
-    const home=String(r[1]||'').trim(),away=String(r[2]||'').trim();
-    const result=String(r[15]||'').trim();
-    const raw=kickoffs[i]&&kickoffs[i][0];
-    const kickoff=new Date(raw).getTime();');
-  const pattern='^(?:'+Object.keys(ids).map(quote).join('|')+')
-    if(!sid||!home||!away||result||!Number.isFinite(kickoff)||kickoff>=now)return;
-    targets.push({sofaId:sid,row:startRow+i,home:home,away:away,kickoff:kickoff});
-  });
-  targets.sort((a,b)=>a.kickoff-b.kickoff);
-  return {pin:pin,targets:targets};
-}
-
-;
+  const quote=id=>String(id).replace(/[^a-zA-Z0-9_:-]/g,'\\$&');
+  const pattern='^(?:'+Object.keys(ids).map(quote).join('|')+')$';
   const matches=pin.getRange(3,18,count,1).createTextFinder(pattern)
     .useRegularExpression(true).matchCase(true).findAll()||[];
   let first=-1,last=-1;
@@ -700,7 +673,6 @@ function resultTargets_(dates) {
     return {pin:pin,targets:[]};
   }
   const startRow=first+3,span=last-first+1;
-  // One bounded read instead of separate values and kickoff round trips.
   const rows=pin.getRange(startRow,1,span,77).getValues();
   const now=Date.now(),targets=[];
   rows.forEach((r,i)=>{
@@ -799,7 +771,7 @@ function runSofaResultsForDates_(dates,label) {
       if(checked>0&&targets.length>checked){
         queued=sofaResultsScheduleNext_();
       }else if(checked===0&&targets.length){
-        // Retry a zero-check execution only once; no unbounded triggers.
+        // Retry a zero-check execution once only; no repeated triggers.
         const attempts=Number(props.getProperty('SOFA_RESULT_EMPTY_RETRIES')||0);
         if(attempts<1){
           props.setProperty('SOFA_RESULT_EMPTY_RETRIES',String(attempts+1));
