@@ -13,6 +13,8 @@ KEY=os.getenv("SOCCER_DATA_KEY","").strip()
 PASS=os.getenv("APP_ACCESS_PASS","")
 DB=os.getenv("LINEUP_DB_PATH","/tmp/lineup_lens.sqlite3")
 LIMIT=int(os.getenv("MAX_DAY_CALLS","46"))
+VERIFY_WINDOW=5  # Small sample on the 50/day free plan
+VERIFY_RESERVE=10  # Preserve quota for fixtures and lineups
 ID=re.compile(r"^(match|team|player|season|competition)_[A-Za-z0-9]{5,32}$")
 lock=threading.Lock()
 last_call=0.0
@@ -87,8 +89,10 @@ def api(path,params=None,ttl=900,allow404=False):
         found=cache_get(k)
         if found is not None: return found["data"]
         u=usage()
-        if u["calls"]>=LIMIT or u["remote_remaining"]==0:
-            raise Problem("Το ημερήσιο όριο κλήσεων εξαντλήθηκε.",429)
+        if u["calls"]>=LIMIT:
+            raise Problem("Έφτασες στο εσωτερικό όριο ασφαλείας ("+str(u["calls"])+"/"+str(LIMIT)+" κλήσεις σήμερα).",429)
+        if u["remote_remaining"]==0:
+            raise Problem("Εξαντλήθηκε το ημερήσιο όριο κλήσεων του Soccer Data API.",429)
         wait=max(0,6.2-(time.monotonic()-last_call))
         if wait: time.sleep(wait)
         try:
@@ -155,7 +159,7 @@ def verified_team_snap(mid,m,tid):
     """
     valid(mid,"match")
     valid(tid,"team")
-    k="verified-team:"+mid+":"+tid
+    k="verified-v2:"+mid+":"+tid
     cached=cache_get(k)
     if cached is not None:
         return cached
@@ -181,6 +185,7 @@ def verified_team_snap(mid,m,tid):
         except (KeyError,TypeError,ValueError):
             continue
     prior.sort(key=lambda x:x["utc_date"],reverse=True)
+    prior=prior[:VERIFY_WINDOW]
     if not prior:
         raise Problem("Δεν βρέθηκαν ολοκληρωμένοι αγώνες στην ίδια διοργάνωση και σεζόν.",404)
     # Protect the daily call allowance: no partial run when the required uncached
@@ -195,8 +200,8 @@ def verified_team_snap(mid,m,tid):
     remaining=LIMIT-allowance["calls"]
     if allowance["remote_remaining"] is not None:
         remaining=min(remaining,allowance["remote_remaining"])
-    if missing>remaining:
-        raise Problem("Ανεπαρκείς διαθέσιμες κλήσεις για επαλήθευση ("+str(missing)+" χρειάζονται, "+str(remaining)+" απομένουν).",429)
+    if missing>max(0,remaining-VERIFY_RESERVE):
+        raise Problem("Δεν υπάρχουν αρκετές διαθέσιμες κλήσεις για έλεγχο. Χρειάζονται "+str(missing)+" και απομένουν "+str(remaining)+". Κρατάμε "+str(VERIFY_RESERVE)+" για τους σημερινούς αγώνες.",429)
     counts={}
     official=0
     for item in prior:
@@ -216,10 +221,10 @@ def verified_team_snap(mid,m,tid):
             counts[pid]=counts.get(pid,0)+1
     if official==0:
         raise Problem("Οι προηγούμενοι αγώνες δεν έχουν διαθέσιμες επίσημες ενδεκάδες.",404)
-    report={"starts":counts,"played":official,"eligible":len(prior),
+    report={"starts":counts,"played":official,"eligible":len(prior),"window":"last_5",
             "verified":official==len(prior),"source":"past_official_lineups",
             "unavailable":len(prior)-official}
-    cache_put(k,report,900)
+    cache_put(k,report,3600)
     app.logger.info("Verified lineup sample match=%s team=%s official=%d prior=%d",mid,tid,official,len(prior))
     return report
 
@@ -234,12 +239,12 @@ def sheet(mid):
         mpart=m.get(side+"_team") or {}
         tid=part.get("id") or mpart.get("id")
         ts=cache_get("team-snapshot:"+mid+":"+str(tid))
-        verified=cache_get("verified-team:"+mid+":"+str(tid))
+        verified=cache_get("verified-v2:"+mid+":"+str(tid))
         starts=verified.get("starts",{}) if isinstance(verified,dict) else {}
         players=[]
         for p in part.get("starting_xi") or []:
             players.append({"id":p.get("id"),"name":p.get("name"),"number":p.get("jersey_number"),"position":p.get("position"),"starts":starts.get(p.get("id")) if verified else None})
-        out.append({"id":tid,"name":part.get("name") or mpart.get("name") or "Ομάδα","formation":part.get("formation") or "","played":verified.get("played") if verified else (ts.get("played") if isinstance(ts,dict) else None),"verified":verified.get("verified") if verified else None,"eligible":verified.get("eligible") if verified else None,"starting_xi":players})
+        out.append({"id":tid,"name":part.get("name") or mpart.get("name") or "Ομάδα","formation":part.get("formation") or "","played":verified.get("played") if verified else (ts.get("played") if isinstance(ts,dict) else None),"verified":verified.get("verified") if verified else None,"eligible":verified.get("eligible") if verified else None,"window":verified.get("window") if verified else None,"starting_xi":players})
     return {"ready":True,"confirmed":bool(s.get("confirmed")) and s.get("type") in ("team_sheet","played"),"type":s.get("type"),"kickoff":m.get("utc_date"),"home":out[0],"away":out[1]}
 
 @app.get("/")
@@ -249,7 +254,7 @@ def index(): return render_template("index.html")
 def health(): return jsonify(ok=True)
 
 @app.get("/api/status")
-def status(): return jsonify(configured=bool(KEY),usage=usage(),scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1")
+def status(): return jsonify(configured=bool(KEY),usage=usage(),verification_window=VERIFY_WINDOW,verification_reserve=VERIFY_RESERVE,scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1")
 
 @app.get("/api/matches")
 def matches():
@@ -327,12 +332,7 @@ def monitor_tick():
             with database() as c: c.execute("UPDATE watch SET status='fetching' WHERE match_id=?",(mid,))
             m=match(mid)
             if not before_kickoff(m): continue
-            for side in ("home","away"):
-                part=s[side]
-                tid=valid(part.get("id"),"team")
-                team_snap(mid,m,tid)
-                for p in part["starting_xi"]:
-                    player_snap(mid,m,valid(p.get("id"),"player"))
+            # Do not spend 22 per-player stat calls when the official XI arrives.
             with database() as c: c.execute("UPDATE watch SET status='ready' WHERE match_id=?",(mid,))
         except Problem as e:
             app.logger.warning("Monitor %s: %s",mid,e)
