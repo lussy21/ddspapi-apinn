@@ -1,0 +1,44 @@
+name: Lineup Lens historical pitch integration
+on:
+  push:
+    branches:
+      - feature/lineup-archive-pitch-20261124
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-archive-pitch-checks.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-archive-pitch-checks.yml"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install only Lineup Lens dependencies
+        run: pip install -r lineup_lens/requirements.txt
+      - name: Compile isolated Python modules
+        run: python -m compileall -q lineup_lens
+      - name: Validate formation layouts and historical importer
+        run: |
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_pitch.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_11footy.py' -v
+      - name: Validate embedded UI JavaScript syntax
+        run: |
+          python - <<'PY'
+          import pathlib
+          p=pathlib.Path('lineup_lens/templates/index.html').read_text(encoding='utf-8')
+          assert p.count('<script>')==1 and p.count('</script>')==1
+          js=p.split('<script>')[1].split('</script>')[0]
+          pathlib.Path('/tmp/lineup-archive-ui.js').write_text(js,encoding='utf-8')
+          assert 'dataMode=\'archive\'' in js
+          assert "scrollIntoView" in js
+          PY
+          node --check /tmp/lineup-archive-ui.js

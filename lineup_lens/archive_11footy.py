@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 import season_db
+from archive_pitch import pitch_from_codes, ROLE
 
 RELEASE = "11footy-2026-11-10"
 BASE_URL = ("https://github.com/fm-devlab/11footy-dataset/"
@@ -296,4 +297,81 @@ def team_history(competition: str, team_id: int):
             "last_verified_date":str(played["latest"]) if played["latest"] else None,
             "is_full_current_season":False,
             "players":list(rows),"source":ARCHIVE_SOURCE,"release":RELEASE,
+            "latest_match":latest_archive_match(competition,team_id),
             "note":"Συμμετοχές ΒΑΣΙΚΩΝ έως την ημερομηνία αρχείου, όχι έως σήμερα."}
+
+
+def latest_archive_match(competition: str, team_id: int) -> dict | None:
+    """Last REAL archived team match with both XIs and matching starts at that date.
+
+    Never returns a predicted or today's lineup. The denominator is exactly
+    the validated fixture count through this match in the stored archive.
+    """
+    if competition not in SPLITS or not isinstance(team_id,int) or team_id<=0:
+        raise ArchiveProblem("Invalid team request")
+    with season_db.db() as db:
+        m=db.execute(
+            "SELECT m.match_id,m.kickoff_utc,m.local_date,m.home_team_id,m.away_team_id,"
+            "ht.team_name AS home_name, at.team_name AS away_name "
+            "FROM archive_matches m "
+            "JOIN archive_teams ht ON ht.team_id=m.home_team_id "
+            "JOIN archive_teams at ON at.team_id=m.away_team_id "
+            "WHERE m.season_year=2026 AND m.competition_code=%s "
+            "AND (m.home_team_id=%s OR m.away_team_id=%s) "
+            "ORDER BY m.kickoff_utc DESC,m.match_id DESC LIMIT 1",
+            (competition,team_id,team_id)
+        ).fetchone()
+        if not m: return None
+        xi=db.execute(
+            "SELECT s.team_id,s.player_id,p.player_name,"
+            "s.position_code,s.jersey_number "
+            "FROM archive_starters s JOIN archive_players p ON p.player_id=s.player_id "
+            "WHERE s.match_id=%s ORDER BY s.team_id,s.player_id",
+            (m["match_id"],)
+        ).fetchall()
+        counts=db.execute(
+            "SELECT s.team_id,s.player_id,COUNT(DISTINCT s.match_id)::int AS starts "
+            "FROM archive_starters s JOIN archive_matches m ON m.match_id=s.match_id "
+            "WHERE m.season_year=2026 AND m.competition_code=%s "
+            "AND m.kickoff_utc <= %s AND s.team_id IN (%s,%s) "
+            "GROUP BY s.team_id,s.player_id",
+            (competition,m["kickoff_utc"],m["home_team_id"],m["away_team_id"])
+        ).fetchall()
+        played={}
+        for tid in (m["home_team_id"],m["away_team_id"]):
+            played[tid]=db.execute(
+                "SELECT COUNT(*)::int AS n FROM archive_matches "
+                "WHERE competition_code=%s AND season_year=2026 AND kickoff_utc<=%s "
+                "AND (home_team_id=%s OR away_team_id=%s)",
+                (competition,m["kickoff_utc"],tid,tid)
+            ).fetchone()["n"]
+    starts={(r["team_id"],r["player_id"]):r["starts"] for r in counts}
+    sides={}
+    for side,tid,name in (("home",m["home_team_id"],m["home_name"]),
+                          ("away",m["away_team_id"],m["away_name"])):
+        records=[dict(x) for x in xi if x["team_id"]==tid]
+        try:
+            formation,ordered=pitch_from_codes(records)
+        except ValueError as exc:
+            raise ArchiveProblem("Stored match has incomplete position data") from exc
+        sides[side]={
+            "id":tid,"name":name,"formation":formation,
+            "played":played[tid],"verified":True, "archive":True,
+            "starting_xi":[{
+                "id":p["player_id"],"name":p["player_name"],
+                "number":p["jersey_number"],"position":ROLE[p["position_code"]],
+                "position_code":p["position_code"],
+                "starts":starts.get((tid,p["player_id"]),0)
+            } for p in ordered]
+        }
+    return {
+        "match_id":m["match_id"],"date":str(m["local_date"]),
+        "competition":competition,
+        "home":sides["home"],"away":sides["away"],
+        "formation_is_derived":True,
+        "source":ARCHIVE_SOURCE,
+        "historical":True,
+        "current_lineup":False,
+        "note":"Τελευταία καταγεγραμμένη επίσημη 11άδα, με θέσεις και ενάρξεις "
+               "μέχρι την ημέρα του συγκεκριμένου ιστορικού αγώνα."
+    }
