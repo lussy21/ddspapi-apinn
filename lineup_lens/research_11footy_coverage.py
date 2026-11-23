@@ -27,6 +27,11 @@ def check():
         print("Decompressed database size:", database_file.stat().st_size,flush=True)
         con=sqlite3.connect(str(database_file))
         con.row_factory=sqlite3.Row
+        # Inspect exact historical SQLite structure before writing a real importer.
+        for table in ("matches", "match_players", "teams", "players", "seasons"):
+            print("SCHEMA", table, [dict(r) for r in con.execute("PRAGMA table_info("+table+")")], flush=True)
+        for table in ("matches", "match_players", "teams", "players"):
+            print("SAMPLE", table, [dict(r) for r in con.execute("SELECT * FROM "+table+" LIMIT 2")], flush=True)
         versions=con.execute("SELECT * FROM format_version").fetchall()
         print("Dataset version:",[dict(r) for r in versions],flush=True)
         print("Recent seasons:",[
