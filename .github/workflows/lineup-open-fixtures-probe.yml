@@ -1,0 +1,43 @@
+name: Lineup Lens free fixtures prototype
+on:
+  push:
+    branches:
+      - feature/lineup-open-fixtures-probe-20261123
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-open-fixtures-probe.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-open-fixtures-probe.yml"
+  workflow_dispatch:
+jobs:
+  fixture-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project requirements
+        run: pip install -r lineup_lens/requirements.txt
+      - name: Syntax check
+        run: python -m compileall -q lineup_lens
+      - name: Fixture parser unit tests
+        run: PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p "test_open_matchday.py" -v
+      - name: Check official free source response (not paid API)
+        env:
+          PYTHONPATH: lineup_lens
+        run: |
+          python - <<'PY'
+          from open_matchday import fetch_day
+          d = fetch_day('2026-11-23', ('england', 'italy'))
+          print('Attempted leagues:',d['attempted_leagues'])
+          print('Fixtures:',[(x['home'],x['away']) for x in d['fixtures']])
+          print('Unavailable:',d['unavailable_leagues'])
+          assert not d['unavailable_leagues'], 'One or more public fixture CSVs unavailable'
+          assert any(x['home']=='Brentford' and x['away']=='Everton' for x in d['fixtures'])
+          assert any(x['home']=='Monza' and x['away']=='Fiorentina' for x in d['fixtures'])
+          PY
