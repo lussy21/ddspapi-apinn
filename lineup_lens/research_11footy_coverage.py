@@ -1,4 +1,4 @@
-"""Read-only audit of the published CC BY-NC 4.0 11footy EPL SQLite snapshot.
+"""Read-only audit of the published CC BY-NC 4.0 11footy Serie A SQLite snapshot.
 
 Downloads temporary file in GitHub Actions only. Never imports player data
 or writes the user's Neon database. Intended for personal source evaluation.
@@ -13,12 +13,12 @@ from urllib.request import Request, urlopen
 
 URL = (
     "https://github.com/fm-devlab/11footy-dataset/releases/download/"
-    "11footy-2026-11-10/england.premier-league.db.xz"
+    "11footy-2026-11-10/italy.serie-a.db.xz"
 )
 
 def check():
     with TemporaryDirectory() as folder:
-        database_file=Path(folder)/"epl.db"
+        database_file=Path(folder)/"seriea.db"
         req=Request(URL,headers={"User-Agent":"LineupLens-Research-Audit/1.0"})
         print("Downloading 11footy dated release for a read-only coverage audit",flush=True)
         with urlopen(req,timeout=90) as resp:
