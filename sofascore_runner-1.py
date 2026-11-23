@@ -641,6 +641,30 @@ def fetch_votes(token, event_ids, allow_paid_fallback=False):
     rows.extend(apify_vote_batches(token, batches))
     return rows
 
+def read_sofa_rows(sheet):
+    """Read only the columns used by the SofaScore runner, in one Sheets request.
+
+    The PINNACLE worksheet is wide; repeated get_all_values() reads previously
+    exhausted the runner's 240s deadline before Apify vote batches could start.
+    Preserve original 0-based column positions for the existing matching guards.
+    """
+    last = sheet.row_count
+    ranges = [
+        f"A1:D{last}", f"N1:N{last}", f"P1:P{last}",
+        f"R1:R{last}", f"BY1:BY{last}",
+    ]
+    blocks = sheet.batch_get(ranges, value_render_option="FORMATTED_VALUE")
+    starts_and_widths = [(0, 4), (13, 1), (15, 1), (17, 1), (76, 1)]
+    height = max((len(block) for block in blocks), default=0)
+    rows = [[""] * 77 for _ in range(height)]
+    for block, (start, width) in zip(blocks, starts_and_widths):
+        for row_index, values in enumerate(block):
+            for offset, value in enumerate(values[:width]):
+                rows[row_index][start + offset] = value
+    print("SOFASCORE SLIM SHEET READ:", height, "rows", flush=True)
+    return rows
+
+
 def load_sofa_cache(book):
     try:
         cache_sheet = book.worksheet(CACHE_SHEET_NAME)
@@ -1070,26 +1094,10 @@ def update_votes(
         print("SOFASCORE: no sheet events")
         return True
 
+    # The odds collector has already saved teams, league and kickoff in BY.
+    # Prefer those identities, especially when APINN is down. A blocking board
+    # request previously wasted the small daily vote-collection window.
     board = []
-    try:
-        response = requests.get(
-            APINN_BOARD_URL,
-            headers={"X-API-Key": apinn_key},
-            params={"sport_id": 29, "live": 0, "limit": 500},
-            timeout=30,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, list):
-            board = [m for m in payload if isinstance(m, dict)]
-    except (requests.RequestException, ValueError, TypeError) as exc:
-        # Fixture/odds outages must not stop the independent daily SofaScore
-        # snapshot or prevent its cache from being created for result updates.
-        print("SOFASCORE APINN BOARD UNAVAILABLE: using Sheet fixtures |", type(exc).__name__)
-
-    # The odds collector has already saved the real teams/league/kickoff in the
-    # Sheet, including Pinnodds fixtures. Reuse those identities even when APINN
-    # fails, omits a fixture, or returns no board. No extra odds/API request.
     for item in sheet_by_event.values():
         if not item.get("kickoff_iso") or item.get("favorite_side") not in ("H", "A"):
             continue
@@ -1098,6 +1106,21 @@ def update_votes(
             "runner_home": item["home"], "runner_away": item["away"],
             "league_name": item["league"], "starts": item["kickoff_iso"],
         })
+
+    if not board:
+        try:
+            response = requests.get(
+                APINN_BOARD_URL,
+                headers={"X-API-Key": apinn_key},
+                params={"sport_id": 29, "live": 0, "limit": 500},
+                timeout=15,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if isinstance(payload, list):
+                board = [m for m in payload if isinstance(m, dict)]
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            print("SOFASCORE APINN BOARD UNAVAILABLE:", type(exc).__name__)
 
     candidates = []
     seen_candidate_rows = set()
@@ -1281,7 +1304,10 @@ def update_votes(
         append_sofa_cache(cache_sheet, newly_cached)
         if newly_cached:
             print("SOFASCORE CACHE SAVED:", len(newly_cached), "matches")
-            cache_sheet, sofa_cache, final_done, cache_rows = load_sofa_cache(book)
+            # Normal vote snapshots only need the IDs already held in memory.
+            # Re-reading the cache here used to consume another ~minute.
+            if mark_final:
+                cache_sheet, sofa_cache, final_done, cache_rows = load_sofa_cache(book)
     elif needs_lookup:
         print(
             "SOFASCORE CACHE MISS:",
@@ -1321,7 +1347,7 @@ def update_votes(
 
     # A person may fill N while the Actor is running. Recheck both the stable
     # identity and blank-cell guard immediately before constructing writes.
-    write_rows = sheet.get_all_values()
+    write_rows = read_sofa_rows(sheet)
     updates = []
     final_completed = []
     newly_preserved = 0
@@ -1418,7 +1444,7 @@ def manual_full_sofa_run():
     gc = gspread.authorize(creds)
     book = gc.open_by_key(SHEET_KEY)
     sheet = book.worksheet(SHEET_NAME)
-    rows = sheet.get_all_values()
+    rows = read_sofa_rows(sheet)
 
     report = {}
     update_votes(
@@ -1561,7 +1587,7 @@ def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_
             time.sleep(delay)
 
         # Refresh after the delay; never replace already filled/manual N values.
-        fresh_rows = sheet.get_all_values()
+        fresh_rows = read_sofa_rows(sheet)
         before = {
             str(row[17]).strip(): str(row[13] if len(row) > 13 else "").strip()
             for row in fresh_rows[2:]
@@ -1577,7 +1603,7 @@ def run_daily_paid_sofa_snapshot(control, sheet, rows, book, apify_token, apinn_
             include_next_morning=True,
             report=report,
         )
-        after_rows = sheet.get_all_values()
+        after_rows = read_sofa_rows(sheet)
         new_count = sum(
             1 for row in after_rows[2:]
             if len(row) > 17
@@ -1630,7 +1656,7 @@ def main():
     gc = gspread.authorize(creds)
     book = gc.open_by_key(SHEET_KEY)
     sheet = book.worksheet(SHEET_NAME)
-    rows = sheet.get_all_values()
+    rows = read_sofa_rows(sheet)
     control = book.worksheet("ALERT STATS")
 
     apinn_key = os.environ.get("APINN_API_KEY", "").strip()
