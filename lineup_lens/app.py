@@ -245,7 +245,7 @@ def sheet(mid):
         mpart=m.get(side+"_team") or {}
         tid=part.get("id") or mpart.get("id")
         ts=cache_get("team-snapshot:"+mid+":"+str(tid))
-        verified=cache_get("verified-v2:"+mid+":"+str(tid))
+        verified=None  # Never mix old five-match cache into whole-season figures
         # Prefer persistent whole-season history over the temporary last-5 sample.
         if season_db.enabled() and tid:
             try:
