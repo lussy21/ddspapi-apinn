@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import requests
 from flask import Flask, jsonify, render_template, request, Response
 import season_db
+import archive_11footy
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -271,6 +272,41 @@ def health(): return jsonify(ok=True)
 @app.get("/api/status")
 def status(): return jsonify(configured=bool(KEY),usage=usage(),verification_window=VERIFY_WINDOW,verification_reserve=VERIFY_RESERVE,scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1",season_db_connected=season_db.enabled())
 
+@app.get("/api/archive-status")
+def archive_status():
+    """Read-only history import progress. Does not call Soccer Data."""
+    if not season_db.enabled():
+        raise Problem("Το Neon δεν είναι συνδεδεμένο.",503)
+    try: return jsonify(archive_11footy.archive_status())
+    except Exception:
+        app.logger.exception("Could not read historical archive status")
+        raise Problem("Το ιστορικό δεν είναι διαθέσιμο.",503)
+
+
+@app.get("/api/archive-teams")
+def archive_teams():
+    if not season_db.enabled(): raise Problem("Το Neon δεν είναι συνδεδεμένο.",503)
+    league=request.args.get("league","PL")
+    try: return jsonify(data=archive_11footy.archive_teams(league))
+    except archive_11footy.ArchiveProblem as e: raise Problem(str(e),400)
+    except Exception:
+        app.logger.exception("Archive team lookup failed")
+        raise Problem("Το ιστορικό δεν είναι διαθέσιμο.",503)
+
+
+@app.get("/api/archive-team")
+def archive_team():
+    if not season_db.enabled(): raise Problem("Το Neon δεν είναι συνδεδεμένο.",503)
+    league=request.args.get("league","PL")
+    try:
+        tid=int(request.args.get("team_id",""))
+        return jsonify(archive_11footy.team_history(league,tid))
+    except (ValueError, archive_11footy.ArchiveProblem) as e: raise Problem(str(e),400)
+    except Exception:
+        app.logger.exception("Archive player history failed")
+        raise Problem("Το ιστορικό δεν είναι διαθέσιμο.",503)
+
+
 @app.get("/api/open-fixtures")
 def open_fixtures():
     """Research-only fixture discovery, NO Soccer Data quota used.
@@ -459,6 +495,26 @@ def monitor():
 
 if os.getenv("ENABLE_SCHEDULER")=="1":
     threading.Thread(target=monitor,daemon=True,name="lineup-monitor").start()
+
+def _first_private_archive_import():
+    """One-time archive recovery after deploy; never blocks /health or requests."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439817) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Archive backfill is already running in another worker")
+                return
+            try:
+                archive_11footy.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439817)")
+    except Exception:
+        app.logger.exception("Private 11footy import failed — existing application unaffected")
+
+if os.getenv("LINEUP_ARCHIVE_BACKFILL")=="1" and season_db.enabled():
+    threading.Thread(target=_first_private_archive_import,
+                     name="private-lineup-history-import",daemon=True).start()
+
 
 if __name__=="__main__":
     from waitress import serve

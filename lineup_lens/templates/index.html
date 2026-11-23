@@ -9,6 +9,21 @@
 <body><main class="app">
 <header><div class="brand"><div class="logo">XI</div><div><b>Lineup Lens</b><small>SEASON STARTS ANALYZER</small></div></div><div class="tag" id="mode">DEMO</div></header>
 <section class="panel"><p class="eyebrow">ΕΠΙΛΟΓΗ ΑΓΩΝΑ</p><div class="chooser"><input id="day" type="date" aria-label="Ημερομηνία αγώνων"><button id="search">Αγώνες</button><select id="fixture" aria-label="Επιλογή αγώνα"><option value="">— Δοκιμαστικό παράδειγμα —</option></select></div><p class="subtle" id="fixtureHint">Σύνδεση με πραγματικούς αγώνες όταν προστεθεί κλειδί API στον server.</p></section>
+<section class="panel" id="archivePanel">
+<p class="eyebrow">ΠΡΑΓΜΑΤΙΚΟ ΙΣΤΟΡΙΚΟ ΒΑΣΙΚΩΝ • ΣΕΖΟΝ 2026–27</p>
+<p class="subtle" id="archiveNote">Η ιστορική βάση εμφανίζει μόνο επιβεβαιωμένους παλιούς αγώνες. Δεν είναι η σημερινή ενδεκάδα.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+<select id="archiveLeague" style="min-width:0;background:#102127;color:#e9f4ed;border:1px solid #395158;border-radius:9px;padding:10px">
+<option value="PL">Premier League</option><option value="SA">Serie A</option>
+</select>
+<select id="archiveTeam" aria-label="Ιστορικό ομάδας" style="min-width:0;background:#102127;color:#e9f4ed;border:1px solid #395158;border-radius:9px;padding:10px">
+<option>Φόρτωση ομάδων…</option>
+</select>
+<button class="primary" id="archiveShow" style="grid-column:1/3;border-radius:9px;padding:11px">Δες βασικούς όλης της διαθέσιμης σεζόν</button>
+</div>
+<div id="archiveResults" style="font-size:13px;margin-top:10px" aria-live="polite"></div>
+<p class="footnote" style="margin-bottom:0">Πηγή ιστορικού: <a href="https://github.com/fm-devlab/11footy-dataset" style="color:var(--lime)">11footy</a> (CC BY-NC 4.0). Αποθηκευμένες πραγματικές βασικές ενδεκάδες, χωρίς κλήσεις Soccer Data. Στοιχεία έως την τελευταία ημερομηνία του αρχείου — όχι σημερινές προβλέψεις.</p>
+</section>
 <section class="panel match-head"><div class="comp" id="competition">ΔΟΚΙΜΑΣΤΙΚΗ ΠΡΟΒΟΛΗ</div><div class="vs" id="matchTitle">Ομάδα Α – Ομάδα Β</div><div class="time" id="kickoff">Ενδεικτική σύνθεση • όχι πραγματικός αγώνας</div><div class="info"><span class="pill" id="lineupStatus">Επίδειξη ενδεκάδας</span><span class="pill grey" id="statsStatus">Δεδομένα παραδείγματος</span></div></section>
 <div class="topbar"><strong>Οι 11 βασικοί</strong><small>Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
 <div class="tabs"><button class="active" id="homeTab">Ομάδα Α<span>4-3-3</span></button><button id="awayTab">Ομάδα Β<span>4-2-3-1</span></button></div>
@@ -95,5 +110,60 @@ async function setWatch(){
 async function checkStatus(){try{let d=await api('/api/status');schedulerEnabled=d.scheduler_enabled; if(d.configured){let rem=d.usage.remote_remaining;let available=Math.max(0,Math.min(d.usage.local_limit-d.usage.calls,rem===null?Infinity:rem));$('fixtureHint').textContent=`API ενεργό • Κλήσεις σήμερα: ${d.usage.calls}/${d.usage.local_limit} • Διαθέσιμες: ${available} • Βάση σεζόν: ${d.season_db_connected?'Neon συνδεδεμένο':'όχι συνδεδεμένο'} • Απόθεμα API: ${d.verification_reserve||10}`;}}
  catch(e){} }
 $('search').onclick=listMatches;$('fixture').onchange=getLineup;$('homeTab').onclick=()=>{side=0;view()};$('awayTab').onclick=()=>{side=1;view()};$('refresh').onclick=()=>selected?getLineup():say('Επέλεξε αγώνα ή δες τη δοκιμαστική ενδεκάδα.');$('loadStats').onclick=loadStarts;$('watch').onclick=setWatch;
+async function loadArchiveTeams(){
+ const league=$('archiveLeague').value, sel=$('archiveTeam');
+ sel.replaceChildren(new Option('Φόρτωση…',''));
+ try{
+  const d=await api('/api/archive-teams?league='+encodeURIComponent(league));
+  sel.replaceChildren();
+  if(!d.data.length){sel.add(new Option('Δεν έχουν εισαχθεί ακόμη ομάδες',''));return}
+  for(const t of d.data)sel.add(new Option(t.team_name+' ('+t.played+' ματς)',String(t.team_id)));
+  $('archiveNote').textContent='Επιβεβαιωμένες ενδεκάδες από ιστορικό αρχείο. Πάτησε προβολή για πραγματικές ενάρξεις.';
+ }catch(e){
+  sel.replaceChildren(new Option('Δεν είναι ακόμη διαθέσιμο',''));
+  $('archiveNote').textContent='Ιστορικό: '+e.message;
+ }
+}
+async function showArchiveTeam(){
+ const tid=Number($('archiveTeam').value), league=$('archiveLeague').value;
+ if(!Number.isInteger(tid)||tid<=0)return;
+ const root=$('archiveResults');
+ root.textContent='Διαβάζω τις πραγματικές ενάρξεις από τη βάση Neon…';
+ try{
+  const d=await api('/api/archive-team?league='+encodeURIComponent(league)+'&team_id='+tid);
+  root.replaceChildren();
+  const summary=document.createElement('p');
+  summary.style.color='#b4f05b';
+  summary.textContent=d.team_name+' • '+d.verified_matches+' επίσημοι αγώνες • έως '+d.last_verified_date;
+  root.appendChild(summary);
+  const caution=document.createElement('p');
+  caution.style.color='#d6b67e';caution.style.fontSize='11px';
+  caution.textContent='ΜΕΡΙΚΟ ΙΣΤΟΡΙΚΟ: οι αριθμοί αφορούν μόνο τους αγώνες του αρχείου, όχι όσα παίχτηκαν μετά.';
+  root.appendChild(caution);
+  const table=document.createElement('table');
+  table.style.cssText='width:100%;border-collapse:collapse;font-size:12px';
+  const head=document.createElement('tr');
+  for(const title of ['Παίκτης','Βασικός στο αρχείο']){
+   const h=document.createElement('th');h.textContent=title;
+   h.style.cssText='text-align:left;padding:9px 6px;border-bottom:1px solid #395158';
+   head.appendChild(h)
+  }
+  table.appendChild(head);
+  for(const item of d.players){
+   const tr=document.createElement('tr');
+   for(const val of [item.player_name,item.starts+' / '+d.verified_matches]){
+    const td=document.createElement('td');td.textContent=String(val);
+    td.style.cssText='padding:7px 6px;border-bottom:1px solid #274047';
+    tr.appendChild(td);
+   }
+   table.appendChild(tr);
+  }
+  root.appendChild(table);
+ }catch(e){root.textContent='Δεν φορτώθηκε το ιστορικό: '+e.message;}
+}
+$('archiveLeague').onchange=()=>{ $('archiveResults').textContent='';loadArchiveTeams()};
+$('archiveShow').onclick=showArchiveTeam;
+loadArchiveTeams();
+
 view();checkStatus();
 </script></body></html>

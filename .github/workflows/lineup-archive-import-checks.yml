@@ -1,0 +1,57 @@
+name: Lineup Lens 11footy import validation
+on:
+  push:
+    branches:
+      - feature/lineup-11footy-neon-import-20261124
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-archive-import-checks.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-archive-import-checks.yml"
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r lineup_lens/requirements.txt
+      - run: python -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p "test_archive_11footy.py" -v
+      - name: Validate two real dated release archives and global player names (read-only)
+        env:
+          PYTHONPATH: lineup_lens
+        run: |
+          python - <<'PY'
+          from archive_11footy import SPLITS, BASE_URL, load_people, _download, MAX_ARCHIVE_BYTES, MAX_DB_BYTES, read_season_rows
+          import lzma, tempfile
+          from pathlib import Path
+          with tempfile.TemporaryDirectory() as d:
+              p=Path(d)
+              people=load_people(p)
+              print("Named player IDs:", len(people), flush=True)
+              for code,filename in SPLITS.items():
+                  archive=p/filename
+                  output=p/(code+'.db')
+                  _download(BASE_URL+filename,archive,MAX_ARCHIVE_BYTES)
+                  with lzma.open(archive) as z, output.open('wb') as o:
+                      count=0
+                      while True:
+                          data=z.read(1024*1024)
+                          if not data:break
+                          count+=len(data)
+                          if count>MAX_DB_BYTES: raise Exception('Too much data')
+                          o.write(data)
+                  matches=read_season_rows(output,code,people)
+                  dates=[m['local_date'] for m,_ in matches]
+                  print("Competition",code,"complete XIs",len(matches),"latest",max(dates),flush=True)
+                  assert len(matches)>50
+                  archive.unlink();output.unlink()
+          PY
