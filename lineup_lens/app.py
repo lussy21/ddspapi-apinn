@@ -271,6 +271,22 @@ def health(): return jsonify(ok=True)
 @app.get("/api/status")
 def status(): return jsonify(configured=bool(KEY),usage=usage(),verification_window=VERIFY_WINDOW,verification_reserve=VERIFY_RESERVE,scheduler_enabled=os.getenv("ENABLE_SCHEDULER")=="1",season_db_connected=season_db.enabled())
 
+@app.get("/api/open-fixtures")
+def open_fixtures():
+    """Research-only fixture discovery, NO Soccer Data quota used.
+
+    Schedules are not team sheets. Keep them out of the lineup selector until
+    a separately validated lineup source exists.
+    """
+    from open_matchday import fetch_day, FixtureSourceProblem
+    day=request.args.get("date","")
+    selected=tuple(s.strip() for s in request.args.get("leagues","england,italy").split(",") if s.strip())
+    try:
+        return jsonify(fetch_day(day,selected))
+    except FixtureSourceProblem as e:
+        raise Problem(str(e),400)
+
+
 @app.get("/api/matches")
 def matches():
     d=request.args.get("date","")
