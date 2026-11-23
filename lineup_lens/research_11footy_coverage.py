@@ -28,10 +28,13 @@ def check():
         con=sqlite3.connect(str(database_file))
         con.row_factory=sqlite3.Row
         # Inspect exact historical SQLite structure before writing a real importer.
-        for table in ("matches", "match_players", "teams", "players", "seasons"):
+        print("TABLES", [r["name"] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")], flush=True)
+        for table in ("matches", "match_players", "teams", "persons", "players", "seasons"):
             print("SCHEMA", table, [dict(r) for r in con.execute("PRAGMA table_info("+table+")")], flush=True)
-        for table in ("matches", "match_players", "teams", "players"):
-            print("SAMPLE", table, [dict(r) for r in con.execute("SELECT * FROM "+table+" LIMIT 2")], flush=True)
+        tables={r["name"] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in ("matches", "match_players", "teams", "persons", "players"):
+            if table in tables:
+                print("SAMPLE", table, [dict(r) for r in con.execute("SELECT * FROM "+table+" LIMIT 2")], flush=True)
         versions=con.execute("SELECT * FROM format_version").fetchall()
         print("Dataset version:",[dict(r) for r in versions],flush=True)
         print("Recent seasons:",[
