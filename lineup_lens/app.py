@@ -19,6 +19,7 @@ import archive_espn_scotland
 import archive_espn_sweden
 import archive_espn_ucl
 import archive_espn_uel
+import archive_espn_uecl
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -701,7 +702,7 @@ def _one_time_sweden_backfill():
     except Exception:
         app.logger.exception("Private Swedish Allsvenskan history import failed")
 
-if os.getenv("LINEUP_SWEDEN_BACKFILL","1")=="1" and season_db.enabled():
+if os.getenv("LINEUP_SWEDEN_BACKFILL","0")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_sweden_backfill,
                      name="private-swedish-allsvenskan-import",daemon=True).start()
 
@@ -744,6 +745,26 @@ def _one_time_uel_backfill():
 if os.getenv("LINEUP_UEL_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_uel_backfill,
                      name="private-uefa-europa-league-import",daemon=True).start()
+
+
+def _one_time_uecl_backfill():
+    """Confirmed Conference League starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439829) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Conference League league history import already running")
+                return
+            try:
+                archive_espn_uecl.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439829)")
+    except Exception:
+        app.logger.exception("Private UEFA Conference League history import failed")
+
+if os.getenv("LINEUP_UECL_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_uecl_backfill,
+                     name="private-uefa-conference-league-import",daemon=True).start()
 
 
 if __name__=="__main__":
