@@ -12,6 +12,7 @@ import archive_espn_greece
 import archive_espn_belgium
 import archive_espn_denmark
 import archive_espn_germany2
+import archive_espn_norway
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -597,6 +598,26 @@ def _one_time_germany2_backfill():
 if os.getenv("LINEUP_GERMANY2_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_germany2_backfill,
                      name="private-german-bundesliga2-import",daemon=True).start()
+
+
+def _one_time_norway_backfill():
+    """Confirmed Norwegian starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439822) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Norwegian league history import already running")
+                return
+            try:
+                archive_espn_norway.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439822)")
+    except Exception:
+        app.logger.exception("Private Norwegian Eliteserien history import failed")
+
+if os.getenv("LINEUP_NORWAY_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_norway_backfill,
+                     name="private-norwegian-eliteserien-import",daemon=True).start()
 
 
 if __name__=="__main__":

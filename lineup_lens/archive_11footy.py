@@ -29,7 +29,7 @@ BASE_URL = ("https://github.com/fm-devlab/11footy-dataset/"
 SPLITS = {"PL": "england.premier-league.db.xz", "SA": "italy.serie-a.db.xz",
           "BL": "germany.bundesliga.db.xz", "LL": "spain.la-liga.db.xz",
           "L1": "france.ligue-1.db.xz"}
-SUPPORTED_ARCHIVE_LEAGUES = frozenset(SPLITS) | {"GR1", "BE1", "DK1", "DE2"}
+SUPPORTED_ARCHIVE_LEAGUES = frozenset(SPLITS) | {"GR1", "BE1", "DK1", "DE2", "NO1"}
 ARCHIVE_SOURCE = "11footy"
 USER_AGENT = "LineupLens-Personal-Research/1.0"
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
@@ -293,13 +293,13 @@ def team_history(competition: str, team_id: int):
             "GROUP BY s.player_id,p.player_name ORDER BY starts DESC,p.player_name",
             (team_id,competition)).fetchall()
     return {"team_id":team_id,"team_name":team["team_name"],
-            "competition":competition,"season":"2026-27",
+            "competition":competition,"season":"2026" if competition=="NO1" else "2026-27",
             "verified_matches":played["n"],
             "last_verified_date":str(played["latest"]) if played["latest"] else None,
             "is_full_current_season":False,
             "players":list(rows),
-            "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2") else ARCHIVE_SOURCE,
-            "release":("espn-gre1-2026-11-24" if competition=="GR1" else "espn-bel1-2026-11-24" if competition=="BE1" else "espn-den1-2026-11-24" if competition=="DK1" else "espn-ger2-2026-11-24" if competition=="DE2" else RELEASE),
+            "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2", "NO1") else ARCHIVE_SOURCE,
+            "release":("espn-gre1-2026-11-24" if competition=="GR1" else "espn-bel1-2026-11-24" if competition=="BE1" else "espn-den1-2026-11-24" if competition=="DK1" else "espn-ger2-2026-11-24" if competition=="DE2" else "espn-nor1-2026-11-24" if competition=="NO1" else RELEASE),
             "latest_match":latest_archive_match(competition,team_id),
             "note":"Συμμετοχές ΒΑΣΙΚΩΝ έως την ημερομηνία αρχείου, όχι έως σήμερα."}
 
@@ -372,7 +372,7 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
         "competition":competition,
         "home":sides["home"],"away":sides["away"],
         "formation_is_derived":True,
-        "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2") else ARCHIVE_SOURCE,
+        "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2", "NO1") else ARCHIVE_SOURCE,
         "historical":True,
         "current_lineup":False,
         "note":"Τελευταία καταγεγραμμένη επίσημη 11άδα, με θέσεις και ενάρξεις "
