@@ -176,6 +176,7 @@ def gather_snapshot(get=fetch,pause=0.16,log=print):
 ALIASES={"deportivo alaves":"alaves","deportivo la coruna":"deportivo","athletic bilbao":"athletic club","athletic club bilbao":"athletic club","atletico de madrid":"atletico madrid","atletico madrid":"atletico madrid","fc barcelona":"barcelona","rc celta":"celta vigo","celta de vigo":"celta vigo","celta":"celta vigo","rcd espanyol":"espanyol","real club deportivo espanyol":"espanyol","real racing club":"racing santander","racing":"racing santander","racing de santander":"racing santander","real betis balompie":"real betis","ca osasuna":"osasuna","malaga cf":"malaga","levante ud":"levante","ud levante":"levante","elche cf":"elche","getafe cf":"getafe","sevilla fc":"sevilla","valencia cf":"valencia","villarreal cf":"villarreal"}
 
 def norm(value):
+    if str(value or "").casefold().strip()=="javier guerra":value="Javi Guerra"
     raw=unicodedata.normalize("NFKD",str(value or "").casefold())
     return " ".join(re.findall(r"[a-z0-9]+","".join(c for c in raw if not unicodedata.combining(c))))
 def team_key(value):

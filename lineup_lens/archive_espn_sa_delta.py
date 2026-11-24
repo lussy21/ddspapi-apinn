@@ -212,6 +212,18 @@ def import_all(log=print):
         old_starters=db.execute("SELECT s.match_id,s.team_id,s.player_id,s.jersey_number,p.player_name FROM archive_starters s JOIN archive_matches m ON m.match_id=s.match_id JOIN archive_players p ON p.player_id=s.player_id WHERE m.competition_code=%s AND m.season_year=2026",(LEAGUE,)).fetchall()
     if len(previous)!=110 or len(old_starters)!=2420:raise ItalianArchiveProblem("Unexpected baseline size; refusing to append")
     matches=gather_snapshot(log=log)
+    # The old provider merged Franco Carboni (Parma #29) into Andrea
+    # Carboni (Monza #44). Correct only the two verified Parma records.
+    # Independent corroboration: calcio.it/serie-a/squadre/parma/franco-carboni
+    # and direttagoal.it/partita/parma-calcio-1913-monza/2026-09-06/
+    carboni_mids={67493,73512}
+    carboni_rows=[p for p in old_starters if p["team_id"]==733 and p["player_id"]==8993]
+    if {p["match_id"] for p in carboni_rows}!=carboni_mids or len(carboni_rows)!=2 or any(p["jersey_number"]!=29 for p in carboni_rows):
+        raise ItalianArchiveProblem("Unexpected old Carboni records")
+    for p in carboni_rows:
+        p["player_id"]=1500308939
+        p["player_name"]="Franco Carboni"
+    carboni_verified=set()
     old_by_pair={}
     old_xi=defaultdict(list)
     old_people={}
@@ -245,6 +257,10 @@ def import_all(log=print):
             if team["id"] in teams and teams[team["id"]]!=tid:raise ItalianArchiveProblem("Team identity conflict")
             teams[team["id"]]=tid
             roster=old_xi[(old["match_id"],tid)]
+            if tid==733 and old["match_id"] in carboni_mids:
+                verified=[p for p in team["players"] if p["player_id"]==1500308939 and norm(p["player_name"])=="franco carboni" and p["shirt_number"]==29]
+                if len(verified)!=1:raise ItalianArchiveProblem("Parma Carboni correction not verified by exact historical ESPN XI")
+                carboni_verified.add(old["match_id"])
             for p in team["players"]:
                 pid=p["player_id"];historical_ids.add(pid)
                 same=[r for r in roster if norm(r["player_name"])==norm(p["player_name"])]
@@ -255,6 +271,7 @@ def import_all(log=print):
                 else:historical_unmatched.add(pid)
     if len(covered)!=110 or len(delta)!=10 or len(teams)!=20 or len(set(teams.values()))!=20:
         raise ItalianArchiveProblem(f"Coverage mismatch: overlap={len(covered)}, new={len(delta)}, teams={len(teams)}")
+    if carboni_verified!=carboni_mids:raise ItalianArchiveProblem("Carboni correction incomplete")
     print(f"SA identity audit: {len(covered)} archived fixtures, {len(cross)} matched players; {len(historical_unmatched-cross.keys())} unmatched historical source IDs",flush=True)
     game_rows=[];starter_rows=[];new_people={};new_names={}
     for m in delta:
@@ -289,6 +306,12 @@ def import_all(log=print):
             # Historical data must remain exactly as it was when we started.
             baseline=db.execute("SELECT count(*) n FROM archive_matches WHERE competition_code=%s AND season_year=2026",(LEAGUE,)).fetchone()
             if baseline["n"]!=110:raise ItalianArchiveProblem("Baseline changed")
+            old_carboni=db.execute("SELECT player_name FROM archive_players WHERE player_id=%s",(1500308939,)).fetchone()
+            if old_carboni and norm(old_carboni["player_name"])!="franco carboni":
+                raise ItalianArchiveProblem("Franco Carboni ID collision")
+            c.execute("INSERT INTO archive_players(player_id,player_name) VALUES(%s,%s) ON CONFLICT(player_id) DO NOTHING",(1500308939,"Franco Carboni"))
+            c.execute("UPDATE archive_starters SET player_id=%s WHERE match_id=ANY(%s) AND team_id=%s AND player_id=%s AND jersey_number=%s",(1500308939,sorted(carboni_mids),733,8993,29))
+            if c.rowcount!=2:raise ItalianArchiveProblem("Carboni correction affected unexpected row count")
             for pid,name in new_people.items():
                 row=db.execute("SELECT player_name FROM archive_players WHERE player_id=%s",(pid,)).fetchone()
                 if row and norm(row["player_name"])!=norm(name):raise ItalianArchiveProblem("New source player ID collision")
