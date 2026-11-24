@@ -1,0 +1,33 @@
+name: Lineup Lens Greek importer dry run
+on:
+  push:
+    branches:
+      - research/lineup-greek-superleague-20261124
+    paths:
+      - "lineup_lens/archive_espn_greece.py"
+      - ".github/workflows/lineup-greek-import-dry-run.yml"
+  workflow_dispatch:
+jobs:
+  dry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r lineup_lens/requirements.txt
+      - name: Verify entire actual ESPN Greek 2026/27 import before Neon writes
+        run: |
+          PYTHONPATH=lineup_lens python - <<'PY'
+          from archive_espn_greece import gather_snapshot
+          results=gather_snapshot()
+          clubs={x[y]['id'] for x in results for y in ('home','away')}
+          unknown=[x['match_id'] for x in results if x['position_unavailable']]
+          total=sum(len(x[y]['players']) for x in results for y in ('home','away'))
+          print('GREEK_REAL_DRY_RUN',len(results),'games',len(clubs),'clubs',total,'named starters',len(unknown),'unknown-position games',flush=True)
+          print('UNKNOWN_POSITION_MATCH_IDS',unknown,flush=True)
+          print('LATEST_GAME',max(x['kickoff_utc'] for x in results),flush=True)
+          assert len(results)==76 and len(clubs)==14 and total==1672
+          assert len(unknown)==4
+          PY
