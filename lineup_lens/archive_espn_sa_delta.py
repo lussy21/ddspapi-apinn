@@ -128,6 +128,17 @@ def parse_match(event, summary):
             code=(p.get("position") or {}).get("abbreviation")
             shirt=p.get("jersey")
             shirt=int(shirt) if str(shirt or "").isdigit() else None
+            # ESPN misidentifies Fiorentina's #17 as Joao Victor.
+            # Six specific official XIs confirm Joao Mario, including:
+            # https://www.torinofc.it/news/05/09/2026/fiorentina-torino-le-formazioni-ufficiali_44695
+            # https://www.juventus.com/it/news/articoli/serie-a-fiorentina-juventus-le-formazioni-ufficiali
+            # https://sport.sky.it/calcio/serie-a/partite/2026/giornata-12/monza-fiorentina
+            # Scope to the verified team, source ID, shirt, and date only.
+            if (name.casefold()=="fiorentina" and pid==1500139008 and
+                norm(pname)=="joao victor" and shirt==17):
+                if str(kickoff.astimezone(ITALIAN_TZ).date()) not in {"2026-08-24","2026-09-05","2026-10-29","2026-11-02","2026-11-08","2026-11-23"}:
+                    raise ItalianArchiveProblem("Unverified Fiorentina #17 identity conflict")
+                pname="João Mário"
             normalized.append({"player_id":pid,"player_name":pname,
                                "position_code":code,"shirt_number":shirt})
         if len({x["player_id"] for x in normalized})!=11:
