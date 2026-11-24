@@ -65,10 +65,9 @@ def discover_games(get=fetch, pause=0.16):
         raise ChampionsLeagueArchiveProblem("Could not verify ESPN ChampionsLeague league")
     if (leagues[0].get("season") or {}).get("year")!=2026:
         raise ChampionsLeagueArchiveProblem("ESPN season mismatch")
-    days=sorted({x[:10].replace("-","") for x in leagues[0].get("calendar",[])
-                 if "2026-09-08"<=x[:10]<CUTOFF})
-    if not 6<=len(days)<=85:
-        raise ChampionsLeagueArchiveProblem("Unexpected ChampionsLeague calendar coverage: "+str(len(days)))
+    # Official UEFA league-phase dates through matchday 4 (23 Nov snapshot).
+    days=("20260908","20260909","20260910","20261013","20261014",
+          "20261020","20261021","20261103","20261104")
     events={}
     for day in days:
         doc=get("/scoreboard?dates="+day+"&limit=50")

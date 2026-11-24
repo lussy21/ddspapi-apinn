@@ -18,6 +18,7 @@ import archive_espn_turkey
 import archive_espn_scotland
 import archive_espn_sweden
 import archive_espn_ucl
+import archive_espn_uel
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -723,6 +724,26 @@ def _one_time_ucl_backfill():
 if os.getenv("LINEUP_UCL_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_ucl_backfill,
                      name="private-uefa-champions-league-import",daemon=True).start()
+
+
+def _one_time_uel_backfill():
+    """Confirmed Europa League starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439828) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Europa League league history import already running")
+                return
+            try:
+                archive_espn_uel.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439828)")
+    except Exception:
+        app.logger.exception("Private UEFA Europa League history import failed")
+
+if os.getenv("LINEUP_UEL_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_uel_backfill,
+                     name="private-uefa-europa-league-import",daemon=True).start()
 
 
 if __name__=="__main__":
