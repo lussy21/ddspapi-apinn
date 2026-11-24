@@ -59,21 +59,25 @@ def _id(value,offset):
     return offset+val
 
 def discover_games(get=fetch, pause=0.16):
-    # Full season through 23 Nov; monthly windows avoid dependence on calendar hints.
-    windows=("20260701-20260731","20260801-20260831","20260901-20260930",
-             "20261001-20261031","20261101-20261123")
+    payload=get("/scoreboard?dates=20261120&limit=50")
+    leagues=payload.get("leagues") or []
+    if len(leagues)!=1 or leagues[0].get("slug")!="den.1":
+        raise DanishArchiveProblem("Could not verify ESPN Danish league")
+    if (leagues[0].get("season") or {}).get("year")!=2026:
+        raise DanishArchiveProblem("ESPN season mismatch")
+    days=sorted({x[:10].replace("-","") for x in leagues[0].get("calendar",[])
+                 if "2026-07-01"<=x[:10]<CUTOFF})
+    if not 15<=len(days)<=85:
+        raise DanishArchiveProblem("Unexpected Danish calendar coverage: "+str(len(days)))
     events={}
-    for window in windows:
-        doc=get("/scoreboard?dates="+window+"&limit=100")
-        leagues=doc.get("leagues") or []
-        if len(leagues)!=1 or leagues[0].get("slug")!="den.1":
-            raise DanishArchiveProblem("Could not verify ESPN Danish league")
+    for day in days:
+        doc=get("/scoreboard?dates="+day+"&limit=50")
         for e in doc.get("events") or []:
             if not e.get("status",{}).get("type",{}).get("completed"):
                 continue
-            if not "2026-07-01"<=e.get("date","")[:10]<CUTOFF:
-                continue
+            if not "2026-07-01"<=e.get("date","")[:10]<CUTOFF:continue
             events[_id(e.get("id"),MATCH_OFFSET)]=e
+        if len(events)>MAX_EVENTS:raise DanishArchiveProblem("Too many fixtures")
         if pause:time.sleep(pause)
     if len(events)!=90:
         raise DanishArchiveProblem("Expected 90 completed Danish games through Nov 23; got "+str(len(events)))
