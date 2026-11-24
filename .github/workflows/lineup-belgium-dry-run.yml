@@ -1,0 +1,36 @@
+name: Lineup Lens Belgium importer full-season dry run
+on:
+  push:
+    branches:
+      - research/lineup-belgian-pro-league-20261124
+    paths:
+      - "lineup_lens/archive_espn_belgium.py"
+      - ".github/workflows/lineup-belgium-dry-run.yml"
+  workflow_dispatch:
+jobs:
+  dry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r lineup_lens/requirements.txt
+      - name: Check all Belgian 2026/27 starters without a database write
+        run: |
+          PYTHONPATH=lineup_lens python - <<'PY'
+          from archive_espn_belgium import gather_snapshot, LEAGUE, RELEASE
+          games=gather_snapshot()
+          clubs={x[y]['id'] for x in games for y in ('home','away')}
+          unknown=[x['match_id'] for x in games if x['position_unavailable']]
+          names=sum(len(x[y]['players']) for x in games for y in ('home','away'))
+          event_ids=[x['match_id'] for x in games]
+          print('BELGIAN_REAL_DRY_RUN',len(games),'games',len(clubs),'clubs',names,'actual starting players',len(unknown),'unknown-position games',flush=True)
+          print('BELGIAN_LATEST',max(x['local_date'] for x in games),flush=True)
+          assert len(games)==108
+          assert len(clubs)==18 and names==2376
+          assert len(set(event_ids))==len(event_ids)
+          assert len(unknown)==0
+          assert LEAGUE=='BE1' and RELEASE=='espn-bel1-2026-11-24'
+          PY
