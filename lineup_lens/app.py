@@ -10,6 +10,7 @@ import season_db
 import archive_11footy
 import archive_espn_greece
 import archive_espn_belgium
+import archive_espn_denmark
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -555,6 +556,26 @@ def _one_time_belgium_backfill():
 if os.getenv("LINEUP_BELGIUM_BACKFILL")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_belgium_backfill,
                      name="private-belgian-proleague-import",daemon=True).start()
+
+
+def _one_time_denmark_backfill():
+    """Confirmed Danish starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439820) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Danish league history import already running")
+                return
+            try:
+                archive_espn_denmark.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439820)")
+    except Exception:
+        app.logger.exception("Private Danish Superliga history import failed")
+
+if os.getenv("LINEUP_DENMARK_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_denmark_backfill,
+                     name="private-danish-superliga-import",daemon=True).start()
 
 
 if __name__=="__main__":
