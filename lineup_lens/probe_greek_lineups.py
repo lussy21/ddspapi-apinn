@@ -25,6 +25,14 @@ def run():
             print("SCOREBOARD_ERROR",day,type(e).__name__,str(e)[:180],flush=True)
             continue
         arr=d.get("events",[])
+        if day=="20260830":
+            print("SEASON",[(x.get("season"),x.get("calendar") and len(x.get("calendar")),x.get("calendar",[])[:6],x.get("calendar",[])[-6:]) for x in d.get("leagues",[])],flush=True)
+            try:
+                ranged=fetch("/scoreboard?dates=20260801-20261124&limit=300")
+                print("RANGE_QUERY","events",len(ranged.get("events",[])),"dates",
+                    [e.get("date") for e in ranged.get("events",[])[:3]],flush=True)
+            except Exception as e:
+                print("RANGE_ERROR",type(e).__name__,str(e)[:200],flush=True)
         print("SCOREBOARD",day,"league",[(x.get("slug"),x.get("name")) for x in d.get("leagues",[])],
               "events",len(arr),flush=True)
         for evt in arr[:5]:
