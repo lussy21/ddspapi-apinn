@@ -248,14 +248,15 @@ def import_all(log=print) -> list[dict]:
 def archive_status():
     with season_db.db() as db:
         imports = db.execute(
-            "SELECT source,release_name,competition_code AS league,"
-            "imported_matches AS games,last_match_date AS latest,completed_at "
-            "FROM archive_import_state ORDER BY competition_code").fetchall()
+            "SELECT string_agg(DISTINCT source,\' + \' ORDER BY source) AS source,"
+            "string_agg(DISTINCT release_name,\', \' ORDER BY release_name) AS release_name,competition_code AS league,"
+            "SUM(imported_matches)::int AS games,MAX(last_match_date) AS latest,MAX(completed_at) AS completed_at "
+            "FROM archive_import_state WHERE state=\'complete\' GROUP BY competition_code ORDER BY competition_code").fetchall()
         count = db.execute("SELECT COUNT(*)::int AS n FROM archive_starters").fetchone()
         return {"source":"11footy + ESPN","release":RELEASE,"license":"11footy CC BY-NC 4.0; ESPN provider terms apply",
                 "source_url":"https://github.com/fm-devlab/11footy-dataset",
                 "status":list(imports),"starter_rows":count["n"],
-                "note":"11footy five leagues through 8 Nov; Greece ESPN through 23 Nov; Belgium ESPN through 22 Nov; Denmark and Germany 2 ESPN snapshots through 23 Nov 2026 when imported. Not current predictions."}
+                "note":"Per-league latest dates and match counts above reflect committed archive imports. Historical lineups, not current predictions."}
 
 
 def archive_teams(competition: str):
@@ -300,8 +301,17 @@ def team_history(competition: str, team_id: int):
             "players":list(rows),
             "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2", "NO1", "NL1", "TR1", "SC1", "SE1", "UCL", "UEL", "UECL") else ARCHIVE_SOURCE,
             "release":("espn-gre1-2026-11-24" if competition=="GR1" else "espn-bel1-2026-11-24" if competition=="BE1" else "espn-den1-2026-11-24" if competition=="DK1" else "espn-ger2-2026-11-24" if competition=="DE2" else "espn-nor1-2026-11-24" if competition=="NO1" else "espn-ned1-2026-11-24" if competition=="NL1" else "espn-tur1-2026-11-24" if competition=="TR1" else "espn-sco1-2026-11-24" if competition=="SC1" else "espn-swe1-2026-11-24" if competition=="SE1" else "espn-ucl-2026-11-24" if competition=="UCL" else "espn-uel-2026-11-24" if competition=="UEL" else "espn-uecl-2026-11-24" if competition=="UECL" else RELEASE),
-            "latest_match":latest_archive_match(competition,team_id),
+            "latest_match":_safe_latest_archive_match(competition,team_id),
             "note":"Συμμετοχές ΒΑΣΙΚΩΝ έως την ημερομηνία αρχείου, όχι έως σήμερα."}
+
+
+def _safe_latest_archive_match(competition, team_id):
+    try:
+        return latest_archive_match(competition,team_id)
+    except ArchiveProblem as exc:
+        if str(exc)=="Stored match has incomplete position data":
+            return None
+        raise
 
 
 def latest_archive_match(competition: str, team_id: int) -> dict | None:
@@ -372,7 +382,7 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
         "competition":competition,
         "home":sides["home"],"away":sides["away"],
         "formation_is_derived":True,
-        "source":"ESPN" if competition in ("GR1", "BE1", "DK1", "DE2", "NO1", "NL1", "TR1", "SC1", "SE1", "UCL", "UEL", "UECL") else ARCHIVE_SOURCE,
+        "source":"ESPN" if str(m["source_release"]).startswith("espn-") else ARCHIVE_SOURCE,
         "historical":True,
         "current_lineup":False,
         "note":"Τελευταία καταγεγραμμένη επίσημη 11άδα, με θέσεις και ενάρξεις "

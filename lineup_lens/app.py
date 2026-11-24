@@ -20,6 +20,7 @@ import archive_espn_sweden
 import archive_espn_ucl
 import archive_espn_uel
 import archive_espn_uecl
+import archive_espn_pl_delta
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -765,6 +766,26 @@ def _one_time_uecl_backfill():
 if os.getenv("LINEUP_UECL_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_uecl_backfill,
                      name="private-uefa-conference-league-import",daemon=True).start()
+
+
+def _one_time_pl_delta_backfill():
+    """Confirmed Premier League delta starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439830) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Premier League delta league history import already running")
+                return
+            try:
+                archive_espn_pl_delta.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439830)")
+    except Exception:
+        app.logger.exception("Private UEFA Premier League delta history import failed")
+
+if os.getenv("LINEUP_PL_DELTA_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_pl_delta_backfill,
+                     name="private-premier-league-delta-import",daemon=True).start()
 
 
 if __name__=="__main__":
