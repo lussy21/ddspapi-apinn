@@ -702,7 +702,7 @@ def _one_time_sweden_backfill():
     except Exception:
         app.logger.exception("Private Swedish Allsvenskan history import failed")
 
-if os.getenv("LINEUP_SWEDEN_BACKFILL","0")=="1" and season_db.enabled():
+if os.getenv("LINEUP_SWEDEN_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_sweden_backfill,
                      name="private-swedish-allsvenskan-import",daemon=True).start()
 

@@ -89,6 +89,50 @@ def discover_games(get=fetch, pause=0.16):
         raise SwedishArchiveProblem("Swedish team fixture coverage is not 29 matches each")
     return sorted(events.values(),key=lambda x:(x["date"],int(x["id"])))
 
+# Two distinct real players share the same name. Local archive IDs are
+# explicitly reserved outside the ESPN ID namespace; not fake ESPN IDs.
+# Club confirmation: https://degerforsif.se/nyheter/
+# Independently verified starting shirt numbers in the seven affected fixtures.
+VERIFIED_DEGERFORS_XI = {
+    # Eurosport: https://www.eurosport.fr/football/allsvenskan/2026/live-degerfors-if-malmoe-ff_mtc1657722/live-lineup.shtml
+    401842743: {4,6,7,8,14,16,17,18,20,22,38},
+    # https://www.csports.se/allsvenskan/matcher/vasteras-sk-fk-mot-degerfors-if-2026-07-12
+    401842746: {4,6,7,8,14,16,17,18,20,22,38},
+    # https://www.csports.se/allsvenskan/matcher/hammarby-ff-mot-degerfors-if-2026-07-19
+    401842760: {3,4,8,11,13,16,17,18,20,23,38},
+    # https://www.csports.se/allsvenskan/matcher/degerfors-if-mot-ifk-goteborg-2026-08-16
+    401842787: {2,3,4,8,11,16,17,18,20,23,38},
+    # https://www.ballwhizz.net/en/matches/8404
+    401842795: {2,3,8,11,16,17,18,20,22,23,38},
+    # https://betsgo-global.com/en/matches/degerfors-vs-hammarby-20260920-4meby5/
+    401842827: {2,3,6,8,9,10,11,13,16,22,38},
+    # https://www.fotboll-idag.com/matcher/17370-degerfors-vs-kalmar
+    401842846: {2,3,6,8,10,11,13,16,17,22,38},
+}
+OHLS_IDS={7:1800000007,16:1800000016}
+def _is_ohlsson(p):
+    name=((p.get("athlete") or {}).get("displayName") or "").lower()
+    return "sebastian" in name and ("ohlsson" in name or "olsson" in name)
+
+def _shirt(p):
+    s=p.get("jersey")
+    return int(s) if str(s or "").isdigit() else None
+
+def _ohlsson(number):
+    return {"player_id":OHLS_IDS[number],
+            "player_name":f"Sebastian Ohlsson (#{number})",
+            "position_code":None,"shirt_number":number}
+
+def _verified_degerfors_starters(event, roster):
+    expected=VERIFIED_DEGERFORS_XI.get(int(event["id"]))
+    if expected is None:return None
+    # Match the ten/nine other starters with independently checked shirt numbers.
+    others=[p for p in roster if p.get("starter") is True and not _is_ohlsson(p)]
+    shirts=[_shirt(p) for p in others]
+    if len(shirts)!=len(set(shirts)) or set(shirts)!=expected-{7,16}:
+        raise SwedishArchiveProblem("Independent XI disagrees with ESPN non-Ohlsson starters")
+    return others, sorted(expected & {7,16})
+
 def parse_match(event, summary):
     if not event.get("status",{}).get("type",{}).get("completed"):
         raise SwedishArchiveProblem("Not a completed official fixture")
@@ -115,9 +159,15 @@ def parse_match(event, summary):
         if not name:raise SwedishArchiveProblem("Team without name")
         roster=group.get("roster") or []
         starters=[p for p in roster if p.get("starter") is True]
-        if len(starters)!=11:
-            raise SwedishArchiveProblem(f"{name}: {len(starters)} explicit starters (roster {len(roster)})")
-        normalized=[]
+        is_degerfors="degerfors" in name.lower()
+        correction=_verified_degerfors_starters(event,roster) if is_degerfors else None
+        if correction is not None:
+            starters, known_ohlssons=correction
+        else:
+            known_ohlssons=[]
+            if len(starters)!=11:
+                raise SwedishArchiveProblem(f"{name}: {len(starters)} explicit starters (roster {len(roster)})")
+        normalized=[_ohlsson(n) for n in known_ohlssons]
         for p in starters:
             athlete=p.get("athlete") or {}
             pid=_id(athlete.get("id"),PLAYER_OFFSET)
@@ -126,9 +176,14 @@ def parse_match(event, summary):
             code=(p.get("position") or {}).get("abbreviation")
             shirt=p.get("jersey")
             shirt=int(shirt) if str(shirt or "").isdigit() else None
+            if is_degerfors and _is_ohlsson(p):
+                if shirt not in OHLS_IDS:
+                    raise SwedishArchiveProblem("Ambiguous Ohlsson shirt number")
+                pid=OHLS_IDS[shirt]
+                pname=f"Sebastian Ohlsson (#{shirt})"
             normalized.append({"player_id":pid,"player_name":pname,
                                "position_code":code,"shirt_number":shirt})
-        if len({x["player_id"] for x in normalized})!=11:
+        if len(normalized)!=11 or len({x["player_id"] for x in normalized})!=11:
             raise SwedishArchiveProblem("Duplicate athlete in starting XI")
         codes=[p["position_code"] for p in normalized]
         all_unknown=all(code=="SUB" for code in codes)
@@ -181,6 +236,10 @@ def import_all(log=print):
     """Whole season snapshot or no write, with transactional Neon commit."""
     if not season_db.enabled():raise SwedishArchiveProblem("Lineup Lens Neon not connected")
     with season_db.db() as db:
+        for number,pid in OHLS_IDS.items():
+            existing=db.execute("SELECT player_name FROM archive_players WHERE player_id=%s",(pid,)).fetchone()
+            if existing and existing["player_name"]!=_ohlsson(number)["player_name"]:
+                raise SwedishArchiveProblem("Reserved local player ID collision")
         row=db.execute(
             "SELECT imported_matches FROM archive_import_state "
             "WHERE source=%s AND release_name=%s AND competition_code=%s",
