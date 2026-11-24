@@ -249,6 +249,236 @@ const CLUB_KITS=[
       "Tottenham",
       "Spurs"
     ]
+  },
+  {
+    "id": 685,
+    "name": "Alavés",
+    "primary": "#0055a5",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#141b25",
+    "aliases": [
+      "Alaves",
+      "Deportivo Alavés"
+    ]
+  },
+  {
+    "id": 84,
+    "name": "Athletic Club",
+    "primary": "#d71930",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "Athletic Bilbao",
+      "Athletic Club Bilbao"
+    ]
+  },
+  {
+    "id": 89,
+    "name": "Atlético Madrid",
+    "primary": "#d71930",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "Atletico Madrid",
+      "Atlético de Madrid",
+      "Atletico de Madrid"
+    ]
+  },
+  {
+    "id": 96,
+    "name": "Barcelona",
+    "primary": "#154284",
+    "secondary": "#a50044",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "FC Barcelona"
+    ]
+  },
+  {
+    "id": 603,
+    "name": "Celta Vigo",
+    "primary": "#8ac3ee",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#14283c",
+    "aliases": [
+      "Celta",
+      "RC Celta",
+      "Celta de Vigo"
+    ]
+  },
+  {
+    "id": 686,
+    "name": "Deportivo",
+    "primary": "#1558a6",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "Deportivo La Coruña",
+      "Deportivo La Coruna",
+      "Deportivo de La Coruña",
+      "RC Deportivo"
+    ]
+  },
+  {
+    "id": 704,
+    "name": "Elche",
+    "primary": "#ffffff",
+    "secondary": "#00854b",
+    "pattern": "band",
+    "text": "#151515",
+    "aliases": [
+      "Elche CF"
+    ]
+  },
+  {
+    "id": 644,
+    "name": "Espanyol",
+    "primary": "#007fc8",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "RCD Espanyol"
+    ]
+  },
+  {
+    "id": 485,
+    "name": "Getafe",
+    "primary": "#1656ad",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Getafe CF"
+    ]
+  },
+  {
+    "id": 697,
+    "name": "Levante",
+    "primary": "#154284",
+    "secondary": "#a51c42",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Levante UD"
+    ]
+  },
+  {
+    "id": 691,
+    "name": "Málaga",
+    "primary": "#6ab5e8",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#152a3d",
+    "aliases": [
+      "Malaga",
+      "Málaga CF"
+    ]
+  },
+  {
+    "id": 429,
+    "name": "Osasuna",
+    "primary": "#cf1737",
+    "secondary": "#14294b",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "CA Osasuna"
+    ]
+  },
+  {
+    "id": 692,
+    "name": "Racing Santander",
+    "primary": "#ffffff",
+    "secondary": "#008b47",
+    "pattern": "solid",
+    "text": "#172a22",
+    "aliases": [
+      "Racing de Santander",
+      "Racing",
+      "Real Racing Club"
+    ]
+  },
+  {
+    "id": 321,
+    "name": "Rayo Vallecano",
+    "primary": "#ffffff",
+    "secondary": "#df2339",
+    "pattern": "sash",
+    "text": "#151515",
+    "aliases": [
+      "Rayo"
+    ]
+  },
+  {
+    "id": 221,
+    "name": "Real Betis",
+    "primary": "#008b50",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "Betis"
+    ]
+  },
+  {
+    "id": 90,
+    "name": "Real Madrid",
+    "primary": "#ffffff",
+    "secondary": "#132a56",
+    "pattern": "solid",
+    "text": "#172a40",
+    "aliases": []
+  },
+  {
+    "id": 212,
+    "name": "Real Sociedad",
+    "primary": "#1766b3",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "Real Sociedad de Fútbol"
+    ]
+  },
+  {
+    "id": 135,
+    "name": "Sevilla",
+    "primary": "#ffffff",
+    "secondary": "#d51f36",
+    "pattern": "solid",
+    "text": "#151515",
+    "aliases": [
+      "Sevilla FC"
+    ]
+  },
+  {
+    "id": 134,
+    "name": "Valencia",
+    "primary": "#ffffff",
+    "secondary": "#171717",
+    "pattern": "solid",
+    "text": "#151515",
+    "aliases": [
+      "Valencia CF"
+    ]
+  },
+  {
+    "id": 157,
+    "name": "Villarreal",
+    "primary": "#f5db1d",
+    "secondary": "#16468f",
+    "pattern": "solid",
+    "text": "#14243a",
+    "aliases": [
+      "Villarreal CF"
+    ]
   }
 ];
 const kitKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
@@ -258,7 +488,7 @@ function applyClubKit(shirt,t){
  const k=kitById.get(String(t.id))||kitByName.get(kitKey(t.name));
  if(!k)return;
  const a=k.primary,b=k.secondary;
- const patterns={solid:a,stripes:'repeating-linear-gradient(90deg,'+a+' 0 20%,'+b+' 20% 40%)',sleeves:'linear-gradient(90deg,'+b+' 0 19%,'+a+' 19% 81%,'+b+' 81% 100%)',half:'linear-gradient(90deg,'+a+' 0 50%,'+b+' 50% 100%)',hoops:'repeating-linear-gradient(0deg,'+a+' 0 20%,'+b+' 20% 40%)',sash:'linear-gradient(135deg,'+a+' 0 36%,'+b+' 36% 60%,'+a+' 60% 100%)'};
+ const patterns={solid:a,band:'linear-gradient(0deg,'+a+' 0 43%,'+b+' 43% 64%,'+a+' 64% 100%)',stripes:'repeating-linear-gradient(90deg,'+a+' 0 20%,'+b+' 20% 40%)',sleeves:'linear-gradient(90deg,'+b+' 0 19%,'+a+' 19% 81%,'+b+' 81% 100%)',half:'linear-gradient(90deg,'+a+' 0 50%,'+b+' 50% 100%)',hoops:'repeating-linear-gradient(0deg,'+a+' 0 20%,'+b+' 20% 40%)',sash:'linear-gradient(135deg,'+a+' 0 36%,'+b+' 36% 60%,'+a+' 60% 100%)'};
  shirt.style.background=patterns[k.pattern]||a;
  shirt.style.color=k.text;
  shirt.style.textShadow=k.text==='#ffffff'?'0 1px 2px #000,0 0 2px #000':'0 1px 2px #fff,0 0 2px #fff';
