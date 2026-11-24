@@ -8,6 +8,7 @@ import requests
 from flask import Flask, jsonify, render_template, request, Response
 import season_db
 import archive_11footy
+import archive_espn_greece
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -514,6 +515,25 @@ def _first_private_archive_import():
 if os.getenv("LINEUP_ARCHIVE_BACKFILL")=="1" and season_db.enabled():
     threading.Thread(target=_first_private_archive_import,
                      name="private-lineup-history-import",daemon=True).start()
+
+def _one_time_greek_backfill():
+    """Read-only ESPN fetch + isolated Neon transaction. Never affects paid provider."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439818) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Greek league history import already running")
+                return
+            try:
+                archive_espn_greece.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439818)")
+    except Exception:
+        app.logger.exception("Private Greek Super League history import failed")
+
+if os.getenv("LINEUP_GREEK_BACKFILL")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_greek_backfill,
+                     name="private-greek-superleague-import",daemon=True).start()
 
 
 if __name__=="__main__":

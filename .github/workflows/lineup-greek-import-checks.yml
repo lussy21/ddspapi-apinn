@@ -1,0 +1,48 @@
+name: Lineup Lens Greek Super League import checks
+on:
+  push:
+    branches:
+      - research/lineup-greek-superleague-20261124
+    paths:
+      - "lineup_lens/archive_espn_greece.py"
+      - "lineup_lens/archive_11footy.py"
+      - "lineup_lens/app.py"
+      - "lineup_lens/templates/index.html"
+      - "lineup_lens/test_archive_espn_greece.py"
+      - ".github/workflows/lineup-greek-import-checks.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/**"
+      - ".github/workflows/lineup-greek-import-checks.yml"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated Lineup Lens only
+        run: pip install -r lineup_lens/requirements.txt
+      - name: Compile isolated app and parsers
+        run: python -m compileall -q lineup_lens
+      - name: Test Greek real XIs including unknown position cases
+        run: |
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_espn_greece.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_pitch.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_11footy.py' -v
+      - name: Verify UI JavaScript
+        run: |
+          python - <<'PY'
+          import pathlib
+          page=pathlib.Path('lineup_lens/templates/index.html').read_text(encoding='utf8')
+          assert '<option value="GR1">Super League Ελλάδας</option>' in page
+          assert 'ESPN' in page
+          js=page.split('<script>')[1].split('</script>')[0]
+          pathlib.Path('/tmp/lens-greek-ui.js').write_text(js)
+          PY
+          node --check /tmp/lens-greek-ui.js

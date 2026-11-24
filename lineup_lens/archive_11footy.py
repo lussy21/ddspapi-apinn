@@ -29,6 +29,7 @@ BASE_URL = ("https://github.com/fm-devlab/11footy-dataset/"
 SPLITS = {"PL": "england.premier-league.db.xz", "SA": "italy.serie-a.db.xz",
           "BL": "germany.bundesliga.db.xz", "LL": "spain.la-liga.db.xz",
           "L1": "france.ligue-1.db.xz"}
+SUPPORTED_ARCHIVE_LEAGUES = frozenset(SPLITS) | {"GR1"}
 ARCHIVE_SOURCE = "11footy"
 USER_AGENT = "LineupLens-Personal-Research/1.0"
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
@@ -247,20 +248,18 @@ def import_all(log=print) -> list[dict]:
 def archive_status():
     with season_db.db() as db:
         imports = db.execute(
-            "SELECT competition_code AS league,imported_matches AS games,"
-            "last_match_date AS latest,completed_at "
-            "FROM archive_import_state WHERE source=%s AND release_name=%s "
-            "ORDER BY competition_code",
-            (ARCHIVE_SOURCE,RELEASE)).fetchall()
+            "SELECT source,release_name,competition_code AS league,"
+            "imported_matches AS games,last_match_date AS latest,completed_at "
+            "FROM archive_import_state ORDER BY competition_code").fetchall()
         count = db.execute("SELECT COUNT(*)::int AS n FROM archive_starters").fetchone()
-        return {"source":ARCHIVE_SOURCE,"release":RELEASE,"license":"CC BY-NC 4.0",
+        return {"source":"11footy + ESPN","release":RELEASE,"license":"11footy CC BY-NC 4.0; ESPN provider terms apply",
                 "source_url":"https://github.com/fm-devlab/11footy-dataset",
                 "status":list(imports),"starter_rows":count["n"],
-                "note":"Archived match-day starters only: snapshot through 8 Nov 2026. Not today's live lineups."}
+                "note":"11footy five leagues through 8 Nov; Greece ESPN through 23 Nov 2026. Not current predictions."}
 
 
 def archive_teams(competition: str):
-    if competition not in SPLITS: raise ArchiveProblem("Invalid league")
+    if competition not in SUPPORTED_ARCHIVE_LEAGUES: raise ArchiveProblem("Invalid league")
     with season_db.db() as db:
         rows=db.execute(
             "SELECT DISTINCT t.team_id,t.team_name,"
@@ -274,7 +273,7 @@ def archive_teams(competition: str):
 
 
 def team_history(competition: str, team_id: int):
-    if competition not in SPLITS or not isinstance(team_id,int) or team_id <= 0:
+    if competition not in SUPPORTED_ARCHIVE_LEAGUES or not isinstance(team_id,int) or team_id <= 0:
         raise ArchiveProblem("Invalid team request")
     with season_db.db() as db:
         team=db.execute(
@@ -298,7 +297,9 @@ def team_history(competition: str, team_id: int):
             "verified_matches":played["n"],
             "last_verified_date":str(played["latest"]) if played["latest"] else None,
             "is_full_current_season":False,
-            "players":list(rows),"source":ARCHIVE_SOURCE,"release":RELEASE,
+            "players":list(rows),
+            "source":"ESPN" if competition=="GR1" else ARCHIVE_SOURCE,
+            "release":"espn-gre1-2026-11-24" if competition=="GR1" else RELEASE,
             "latest_match":latest_archive_match(competition,team_id),
             "note":"Συμμετοχές ΒΑΣΙΚΩΝ έως την ημερομηνία αρχείου, όχι έως σήμερα."}
 
@@ -309,12 +310,12 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
     Never returns a predicted or today's lineup. The denominator is exactly
     the validated fixture count through this match in the stored archive.
     """
-    if competition not in SPLITS or not isinstance(team_id,int) or team_id<=0:
+    if competition not in SUPPORTED_ARCHIVE_LEAGUES or not isinstance(team_id,int) or team_id<=0:
         raise ArchiveProblem("Invalid team request")
     with season_db.db() as db:
         m=db.execute(
             "SELECT m.match_id,m.kickoff_utc,m.local_date,m.home_team_id,m.away_team_id,"
-            "ht.team_name AS home_name, at.team_name AS away_name "
+            "ht.team_name AS home_name, at.team_name AS away_name,m.source_release "
             "FROM archive_matches m "
             "JOIN archive_teams ht ON ht.team_id=m.home_team_id "
             "JOIN archive_teams at ON at.team_id=m.away_team_id "
@@ -371,7 +372,7 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
         "competition":competition,
         "home":sides["home"],"away":sides["away"],
         "formation_is_derived":True,
-        "source":ARCHIVE_SOURCE,
+        "source":"ESPN" if competition=="GR1" else ARCHIVE_SOURCE,
         "historical":True,
         "current_lineup":False,
         "note":"Τελευταία καταγεγραμμένη επίσημη 11άδα, με θέσεις και ενάρξεις "
