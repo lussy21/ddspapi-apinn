@@ -26,7 +26,8 @@ from archive_pitch import pitch_from_codes, ROLE
 RELEASE = "11footy-2026-11-10"
 BASE_URL = ("https://github.com/fm-devlab/11footy-dataset/"
             "releases/download/" + RELEASE + "/")
-SPLITS = {"PL": "england.premier-league.db.xz", "SA": "italy.serie-a.db.xz"}
+SPLITS = {"PL": "england.premier-league.db.xz", "SA": "italy.serie-a.db.xz",
+          "BL": "germany.bundesliga.db.xz"}
 ARCHIVE_SOURCE = "11footy"
 USER_AGENT = "LineupLens-Personal-Research/1.0"
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
