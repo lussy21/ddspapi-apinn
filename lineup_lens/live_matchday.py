@@ -253,8 +253,18 @@ def lineup(mid):
             played=db.execute("""SELECT count(*)::int n FROM archive_matches WHERE competition_code=%s AND season_year=2026 AND (home_team_id=%s OR away_team_id=%s) AND kickoff_utc<%s""",(league,tid,tid,row["kickoff_utc"])).fetchone()["n"]
             hist={x["player_id"]:x for x in counts}
             verified=bool(tid and played)
-            try:formation,ordered=pitch_from_codes(t["players"])
-            except ValueError:formation,ordered="",t["players"]
+            try:
+                formation,ordered=pitch_from_codes(t["players"])
+                # A source-backed explicit formation and order may override the
+                # derived order only after the full XI and role rows agree.
+                explicit=t.get("formation")
+                order=t.get("position_order")
+                by_id={p["player_id"]:p for p in ordered}
+                if t.get("position_source") and explicit==formation and isinstance(order,list) and len(order)==11 and set(order)==set(by_id):
+                    candidate=[by_id[pid] for pid in order]
+                    if [ROLE[p["position_code"]] for p in candidate]==[ROLE[p["position_code"]] for p in ordered]:
+                        ordered=candidate
+            except (ValueError,KeyError,TypeError):formation,ordered="",t["players"]
             players=[]
             for p in ordered:
                 pid=p["player_id"];name=p["player_name"]
@@ -269,5 +279,5 @@ def lineup(mid):
                     elif cid not in hist and not any(archive.compatible(x["player_name"],name) for x in counts):
                         starts=0
                 players.append({"id":pid,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"starts":starts})
-            out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation)}
+            out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation),"position_source":t.get("position_source") if formation else None}
         return out

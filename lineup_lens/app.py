@@ -896,7 +896,9 @@ def live_lineup():
     try:
         mid=int(request.args.get("match_id",""))
         if not 500000000<mid<1000000000:raise ValueError("Μη έγκυρος αγώνας")
-        return jsonify(live_matchday.lineup(mid))
+        response=jsonify(live_matchday.lineup(mid))
+        response.headers['Cache-Control']='no-store, max-age=0'
+        return response
     except ValueError as exc:raise Problem(str(exc))
 
 if season_db.enabled() and os.getenv("LINEUP_LIVE_ESPN","1")=="1":
