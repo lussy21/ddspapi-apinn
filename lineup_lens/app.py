@@ -22,6 +22,9 @@ import archive_espn_uel
 import archive_espn_uecl
 import archive_espn_pl_delta
 import archive_espn_sa_delta
+import archive_espn_l1_delta
+import archive_espn_bl_delta
+import archive_espn_ll_delta
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -807,6 +810,66 @@ def _one_time_sa_delta_backfill():
 if os.getenv("LINEUP_SA_DELTA_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_sa_delta_backfill,
                      name="private-serie-a-delta-import",daemon=True).start()
+
+
+def _one_time_ll_delta_backfill():
+    """Confirmed Spanish La Liga delta starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439832) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Spanish La Liga delta league history import already running")
+                return
+            try:
+                archive_espn_ll_delta.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439832)")
+    except Exception:
+        app.logger.exception("Private UEFA Spanish La Liga delta history import failed")
+
+if os.getenv("LINEUP_LL_DELTA_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_ll_delta_backfill,
+                     name="private-ll-delta-import",daemon=True).start()
+
+
+def _one_time_bl_delta_backfill():
+    """Confirmed German Bundesliga delta starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439833) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("German Bundesliga delta league history import already running")
+                return
+            try:
+                archive_espn_bl_delta.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439833)")
+    except Exception:
+        app.logger.exception("Private UEFA German Bundesliga delta history import failed")
+
+if os.getenv("LINEUP_BL_DELTA_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_bl_delta_backfill,
+                     name="private-bl-delta-import",daemon=True).start()
+
+
+def _one_time_l1_delta_backfill():
+    """Confirmed French Ligue 1 delta starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439834) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("French Ligue 1 delta league history import already running")
+                return
+            try:
+                archive_espn_l1_delta.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439834)")
+    except Exception:
+        app.logger.exception("Private UEFA French Ligue 1 delta history import failed")
+
+if os.getenv("LINEUP_L1_DELTA_BACKFILL","1")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_l1_delta_backfill,
+                     name="private-l1-delta-import",daemon=True).start()
 
 
 if __name__=="__main__":

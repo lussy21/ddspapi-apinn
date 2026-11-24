@@ -182,6 +182,7 @@ ALIASES={"inter":"internazionale","inter milan":"internazionale","fc internazion
          "torino fc":"torino","us sassuolo":"sassuolo","cagliari calcio":"cagliari"}
 
 def norm(value):
+    if str(value or "").casefold().strip()=="tasos douvikas":value="Anastasios Douvikas"
     raw=unicodedata.normalize("NFKD",str(value or "").casefold())
     return " ".join(re.findall(r"[a-z0-9]+","".join(c for c in raw if not unicodedata.combining(c))))
 def team_key(value):
