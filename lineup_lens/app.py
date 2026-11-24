@@ -8,6 +8,7 @@ import requests
 from flask import Flask, jsonify, render_template, request, Response
 import season_db
 import archive_11footy
+import archive_daily
 import archive_espn_greece
 import archive_espn_belgium
 import archive_espn_denmark
@@ -870,6 +871,16 @@ def _one_time_l1_delta_backfill():
 if os.getenv("LINEUP_L1_DELTA_BACKFILL","1")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_l1_delta_backfill,
                      name="private-l1-delta-import",daemon=True).start()
+
+
+@app.get("/api/archive-daily-status")
+def archive_daily_status():
+    if not season_db.enabled():raise Problem("Το Neon δεν είναι συνδεδεμένο.",503)
+    return jsonify(enabled=os.getenv("LINEUP_DAILY_ARCHIVE","1")=="1",data=archive_daily.status(),
+                   note="11:00 Europe/Athens, catch-up on wake; historical completed matches only.")
+
+if os.getenv("LINEUP_DAILY_ARCHIVE","1")=="1" and season_db.enabled():
+    threading.Thread(target=archive_daily.loop,daemon=True,name="private-daily-archive").start()
 
 
 if __name__=="__main__":

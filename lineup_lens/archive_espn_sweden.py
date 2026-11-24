@@ -133,11 +133,11 @@ def _verified_degerfors_starters(event, roster):
         raise SwedishArchiveProblem("Independent XI disagrees with ESPN non-Ohlsson starters")
     return others, sorted(expected & {7,16})
 
-def parse_match(event, summary):
+def parse_match(event, summary, cutoff=None):
     if not event.get("status",{}).get("type",{}).get("completed"):
         raise SwedishArchiveProblem("Not a completed official fixture")
     kickoff=datetime.fromisoformat(event["date"].replace("Z","+00:00"))
-    if kickoff.tzinfo is None or kickoff>=datetime(2026,11,24,tzinfo=timezone.utc):
+    if kickoff.tzinfo is None or kickoff>=(cutoff or datetime(2026,11,24,tzinfo=timezone.utc)):
         raise SwedishArchiveProblem("Date outside audited season snapshot")
     competitors=(event.get("competitions") or [{}])[0].get("competitors") or []
     if len(competitors)!=2:
