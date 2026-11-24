@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 import season_db
 import archive_daily as archive
 from archive_pitch import ROLE,pitch_from_codes
+from espn_formation import decode,explicit_pitch
 
 ATHENS=ZoneInfo("Europe/Athens")
 LOCK=614439841
@@ -27,6 +28,7 @@ def setup(db):
        status text NOT NULL DEFAULT 'waiting', checks integer[] NOT NULL DEFAULT '{}',
        announced jsonb, announced_at timestamptz, last_final_check timestamptz,
        archived boolean NOT NULL DEFAULT false, error text, updated_at timestamptz NOT NULL DEFAULT now())""")
+    db.execute("ALTER TABLE lineup_live_fixtures ADD COLUMN IF NOT EXISTS pitch_checks integer[] NOT NULL DEFAULT '{}' ")
     db.execute("""CREATE TABLE IF NOT EXISTS lineup_live_discovery (
        competition_code text NOT NULL, local_date date NOT NULL,
        checked_at timestamptz NOT NULL DEFAULT now(), error text,
@@ -105,6 +107,13 @@ def parse_announced(league,e,doc):
     m=archive.parse_new(e,doc,league,tz,prematch=True)
     all_ids=[p["player_id"] for side in ("home","away") for p in m[side]["players"]]
     if len(set(all_ids))!=22:raise ValueError("Duplicate source players across lineups")
+    for side in ("home","away"):
+        group=next(g for g in doc["rosters"] if g.get("homeAway")==side)
+        layout=decode(group,m[side]["players"])
+        if layout:
+            m[side].update(layout)
+        elif m[side].get("position_unavailable"):
+            print(f"Live pitch unavailable {league} {e['id']} {side}: formation={str(group.get('formation'))[:30]} places={[p.get('formationPlace') for p in group.get('roster',[]) if p.get('starter') is True]}",flush=True)
     return {k:m[k] for k in ("home","away")}
 
 def precheck(row,stage):
@@ -127,6 +136,40 @@ def precheck(row,stage):
         with season_db.db() as db:
             db.execute("UPDATE lineup_live_fixtures SET error=%s,updated_at=now() WHERE match_id=%s",(str(exc)[:300],mid))
         print(f"Live XI waiting {league} {mid}: {str(exc)[:200]}",flush=True)
+
+def pitch_ready(team):
+    if explicit_pitch(team):
+        return True
+    try:
+        pitch_from_codes(team["players"])
+        return True
+    except (ValueError,KeyError,TypeError):
+        return False
+
+def pitch_recheck(row,stage):
+    mid,league,e=row["match_id"],row["competition_code"],row["event"]
+    mod,tz=mod_for(league)
+    with season_db.db() as db:
+        db.execute("UPDATE lineup_live_fixtures SET pitch_checks=array_append(pitch_checks,%s) WHERE match_id=%s AND NOT (%s=ANY(pitch_checks))",(stage,mid,stage))
+    try:
+        doc,status=get_summary(mod,e)
+        if now()>=row["kickoff_utc"] or status.get("completed") or status.get("state")!="pre":
+            return
+        xi=parse_announced(league,e,doc)
+        old=row["announced"]
+        updated=dict(old)
+        for side in ("home","away"):
+            if pitch_ready(old[side]) or not pitch_ready(xi[side]):
+                continue
+            if old[side]["id"]!=xi[side]["id"] or {p["player_id"] for p in old[side]["players"]}!={p["player_id"] for p in xi[side]["players"]}:
+                continue
+            updated[side]=xi[side]
+        if updated!=old:
+            with season_db.db() as db:
+                db.execute("UPDATE lineup_live_fixtures SET announced=%s,updated_at=now() WHERE match_id=%s AND announced=%s AND NOT archived AND kickoff_utc>now()",(Jsonb(updated),mid,Jsonb(old)))
+            print(f"Live pitch enriched {league} {mid} checkpoint {stage}",flush=True)
+    except Exception as exc:
+        print(f"Live pitch retry {league} {mid}: {str(exc)[:180]}",flush=True)
 
 def finalcheck(row):
     mid,league,e=row["match_id"],row["competition_code"],row["event"]
@@ -194,6 +237,13 @@ def tick():
                             with season_db.db() as db:
                                 db.execute("UPDATE lineup_live_fixtures SET checks=ARRAY(SELECT DISTINCT unnest(checks || %s::integer[])) WHERE match_id=%s",([x for x in CHECKPOINTS if x>stage],row["match_id"]))
                             precheck(row,stage)
+                    elif mins>0 and row["announced"] and not all(pitch_ready(row["announced"][s]) for s in ("home","away")):
+                        due=[x for x in CHECKPOINTS if mins<=x and x not in row["checks"] and x not in row["pitch_checks"]]
+                        if due:
+                            stage=min(due)
+                            with season_db.db() as db:
+                                db.execute("UPDATE lineup_live_fixtures SET pitch_checks=ARRAY(SELECT DISTINCT unnest(pitch_checks || %s::integer[])) WHERE match_id=%s",([x for x in CHECKPOINTS if x>stage],row["match_id"]))
+                            pitch_recheck(row,stage)
                     elif mins<=-105 and (not row["last_final_check"] or (now()-row["last_final_check"]).total_seconds()>=900):
                         finalcheck(row)
                 except Exception as exc:
@@ -254,16 +304,8 @@ def lineup(mid):
             hist={x["player_id"]:x for x in counts}
             verified=bool(tid and played)
             try:
-                formation,ordered=pitch_from_codes(t["players"])
-                # A source-backed explicit formation and order may override the
-                # derived order only after the full XI and role rows agree.
-                explicit=t.get("formation")
-                order=t.get("position_order")
-                by_id={p["player_id"]:p for p in ordered}
-                if t.get("position_source") and explicit==formation and isinstance(order,list) and len(order)==11 and set(order)==set(by_id):
-                    candidate=[by_id[pid] for pid in order]
-                    if [ROLE[p["position_code"]] for p in candidate]==[ROLE[p["position_code"]] for p in ordered]:
-                        ordered=candidate
+                explicit=explicit_pitch(t)
+                formation,ordered=explicit if explicit else pitch_from_codes(t["players"])
             except (ValueError,KeyError,TypeError):formation,ordered="",t["players"]
             players=[]
             for p in ordered:

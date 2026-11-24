@@ -3105,7 +3105,7 @@ async function getLineup(quiet=false){
   $('lineupStatus').dataset.confirmed=d.ready?'yes':'';
   $('statsStatus').textContent=d.ready?'Ιστορικό πριν από τη σέντρα':'Αυτόματος έλεγχος 70′ / 58′ / 50′ / 30′';
   view();
-  say(d.ready?(teams[side].positions_known?(teams[side].position_source?'Αποθηκευμένοι 11 βασικοί • διάταξη από διασταύρωση Flashscore.':'Αποθηκευμένοι 11 βασικοί.'):'Οι ακριβείς θέσεις λείπουν — εμφανίζεται λίστα χωρίς υποθετική διάταξη.'):'Αναμονή επίσημης ενδεκάδας.');
+  say(d.ready?(teams[side].positions_known?(teams[side].position_source?(teams[side].position_source.startsWith('ESPN')?'Αποθηκευμένοι 11 βασικοί • διάταξη ESPN.':'Αποθηκευμένοι 11 βασικοί • διάταξη από διασταύρωση Flashscore.'):'Αποθηκευμένοι 11 βασικοί.'):'Οι ακριβείς θέσεις λείπουν — εμφανίζεται λίστα χωρίς υποθετική διάταξη.'):'Αναμονή επίσημης ενδεκάδας.');
  }catch(e){if(!quiet)say(e.message)}
 }
 async function loadStarts(){
