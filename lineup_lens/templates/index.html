@@ -14,7 +14,7 @@
 <p class="subtle" id="archiveNote">Η ιστορική βάση εμφανίζει μόνο επιβεβαιωμένους παλιούς αγώνες. Δεν είναι η σημερινή ενδεκάδα.</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
 <select id="archiveLeague" style="min-width:0;background:#102127;color:#e9f4ed;border:1px solid #395158;border-radius:9px;padding:10px">
-<option value="BL">Bundesliga Γερμανίας</option><option value="LL">La Liga Ισπανίας</option><option value="L1">Ligue 1 Γαλλίας</option><option value="GR1">Super League Ελλάδας</option><option value="PL">Premier League</option><option value="SA">Serie A</option>
+<option value="BL">Bundesliga Γερμανίας</option><option value="LL">La Liga Ισπανίας</option><option value="L1">Ligue 1 Γαλλίας</option><option value="GR1">Super League Ελλάδας</option><option value="BE1">Βέλγιο — Pro League</option><option value="PL">Premier League</option><option value="SA">Serie A</option>
 </select>
 <select id="archiveTeam" aria-label="Ιστορικό ομάδας" style="min-width:0;background:#102127;color:#e9f4ed;border:1px solid #395158;border-radius:9px;padding:10px">
 <option>Φόρτωση ομάδων…</option>
@@ -22,7 +22,7 @@
 <button class="primary" id="archiveShow" style="grid-column:1/3;border-radius:9px;padding:11px">Δες βασικούς όλης της διαθέσιμης σεζόν</button>
 </div>
 <div id="archiveResults" style="font-size:13px;margin-top:10px" aria-live="polite"></div>
-<p class="footnote" style="margin-bottom:0">Πηγές ιστορικού: <a href="https://github.com/fm-devlab/11footy-dataset" style="color:var(--lime)">11footy</a> (CC BY-NC 4.0) για τα πέντε πρωταθλήματα και ESPN για την Ελλάδα. Μόνο καταγεγραμμένοι βασικοί, χωρίς πληρωμένες κλήσεις Soccer Data. Στην Ελλάδα τέσσερις αγώνες έχουν άγνωστες ακριβείς θέσεις, αλλά επαληθευμένους 11 βασικούς.</p>
+<p class="footnote" style="margin-bottom:0">Πηγές ιστορικού: <a href="https://github.com/fm-devlab/11footy-dataset" style="color:var(--lime)">11footy</a> (CC BY-NC 4.0) για τα πέντε πρωταθλήματα και ESPN για την Ελλάδα και το Βέλγιο. Μόνο καταγεγραμμένοι βασικοί, χωρίς πληρωμένες κλήσεις Soccer Data. Στην Ελλάδα τέσσερις αγώνες έχουν άγνωστες ακριβείς θέσεις, αλλά επαληθευμένους 11 βασικούς.</p>
 </section>
 <section class="panel match-head"><div class="comp" id="competition">ΔΟΚΙΜΑΣΤΙΚΗ ΠΡΟΒΟΛΗ</div><div class="vs" id="matchTitle">Ομάδα Α – Ομάδα Β</div><div class="time" id="kickoff">Ενδεικτική σύνθεση • όχι πραγματικός αγώνας</div><div class="info"><span class="pill" id="lineupStatus">Επίδειξη ενδεκάδας</span><span class="pill grey" id="statsStatus">Δεδομένα παραδείγματος</span></div></section>
 <div class="topbar"><strong id="pitchHeading">Οι 11 βασικοί</strong><small id="pitchSubheading">Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
@@ -139,7 +139,7 @@ async function showArchiveTeam(){
   root.appendChild(summary);
   const caution=document.createElement('p');
   caution.style.color='#d6b67e';caution.style.fontSize='11px';
-  caution.textContent=league==='GR1'?'ΕΛΛΑΔΑ: Οι εκκινήσεις αφορούν τους πραγματικούς αγώνες έως 23/11/2026. Σε 4 παιχνίδια η ESPN δεν έχει αξιόπιστες θέσεις, αλλά έχει καταγράψει τους 11 βασικούς.':'ΜΕΡΙΚΟ ΙΣΤΟΡΙΚΟ: οι αριθμοί αφορούν μόνο τους αγώνες του αρχείου, όχι όσα παίχτηκαν μετά.';
+  caution.textContent=league==='BE1'?'ΒΕΛΓΙΟ: Βασικές συμμετοχές από πραγματικούς αγώνες από 07/08 έως 22/11/2026, όχι σημερινές προβλέψεις.':league==='GR1'?'ΕΛΛΑΔΑ: Οι εκκινήσεις αφορούν τους πραγματικούς αγώνες έως 23/11/2026. Σε 4 παιχνίδια η ESPN δεν έχει αξιόπιστες θέσεις, αλλά έχει καταγράψει τους 11 βασικούς.':'ΜΕΡΙΚΟ ΙΣΤΟΡΙΚΟ: οι αριθμοί αφορούν μόνο τους αγώνες του αρχείου, όχι όσα παίχτηκαν μετά.';
   root.appendChild(caution);
   const table=document.createElement('table');
   table.style.cssText='width:100%;border-collapse:collapse;font-size:12px';

@@ -1,0 +1,44 @@
+name: Lineup Lens Belgium import and pitch validation
+on:
+  push:
+    branches:
+      - research/lineup-belgian-pro-league-20261124
+    paths:
+      - 'lineup_lens/**'
+      - '.github/workflows/lineup-belgium-import-checks.yml'
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - 'lineup_lens/**'
+      - '.github/workflows/lineup-belgium-import-checks.yml'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Lineup Lens dependencies
+        run: pip install -r lineup_lens/requirements.txt
+      - run: python -m compileall -q lineup_lens
+      - name: Test Belgium and existing Greek historical XIs
+        run: |
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_espn_belgium.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_espn_greece.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_pitch.py' -v
+          PYTHONPATH=lineup_lens python -m unittest discover -s lineup_lens -p 'test_archive_11footy.py' -v
+      - name: Check UI JavaScript for Belgium team selector and honest source label
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          page=Path('lineup_lens/templates/index.html').read_text(encoding='utf8')
+          assert '<option value="BE1">Βέλγιο — Pro League</option>' in page
+          assert "archiveSource==='ESPN'" in page
+          js=page.split('<script>')[1].split('</script>')[0]
+          Path('/tmp/lineup-belgium-ui.js').write_text(js)
+          PY
+          node --check /tmp/lineup-belgium-ui.js

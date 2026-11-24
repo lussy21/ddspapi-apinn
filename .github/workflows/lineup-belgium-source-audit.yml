@@ -1,0 +1,20 @@
+name: Lineup Lens Belgium complete season audit
+on:
+  push:
+    branches:
+      - research/lineup-belgian-pro-league-20261124
+    paths:
+      - "lineup_lens/research_belgium_espn_coverage.py"
+      - ".github/workflows/lineup-belgium-source-audit.yml"
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit Belgian Pro League official season starting sheets (no database)
+        run: python lineup_lens/research_belgium_espn_coverage.py
