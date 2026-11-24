@@ -479,6 +479,231 @@ const CLUB_KITS=[
     "aliases": [
       "Villarreal CF"
     ]
+  },
+  {
+    "id": 204,
+    "name": "AC Milan",
+    "primary": "#d71920",
+    "secondary": "#171717",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Milan",
+      "AC Milan"
+    ]
+  },
+  {
+    "id": 97,
+    "name": "AS Roma",
+    "primary": "#8e1f2f",
+    "secondary": "#f4a900",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Roma",
+      "AS Roma"
+    ]
+  },
+  {
+    "id": 201,
+    "name": "Atalanta",
+    "primary": "#1260a5",
+    "secondary": "#151515",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Atalanta BC"
+    ]
+  },
+  {
+    "id": 214,
+    "name": "Bologna",
+    "primary": "#a71930",
+    "secondary": "#172b49",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Bologna FC"
+    ]
+  },
+  {
+    "id": 741,
+    "name": "Cagliari",
+    "primary": "#a71930",
+    "secondary": "#152847",
+    "pattern": "half",
+    "text": "#ffffff",
+    "aliases": [
+      "Cagliari Calcio"
+    ]
+  },
+  {
+    "id": 223,
+    "name": "Como",
+    "primary": "#1455a0",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Como 1907"
+    ]
+  },
+  {
+    "id": 307,
+    "name": "Fiorentina",
+    "primary": "#58358d",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "ACF Fiorentina"
+    ]
+  },
+  {
+    "id": 777,
+    "name": "Frosinone",
+    "primary": "#f5d520",
+    "secondary": "#1955a0",
+    "pattern": "solid",
+    "text": "#183858",
+    "aliases": [
+      "Frosinone Calcio"
+    ]
+  },
+  {
+    "id": 747,
+    "name": "Genoa",
+    "primary": "#b71b32",
+    "secondary": "#162e50",
+    "pattern": "half",
+    "text": "#ffffff",
+    "aliases": [
+      "Genoa CFC"
+    ]
+  },
+  {
+    "id": 189,
+    "name": "Internazionale",
+    "primary": "#1255a1",
+    "secondary": "#151515",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Inter Milan",
+      "Inter",
+      "FC Internazionale Milano"
+    ]
+  },
+  {
+    "id": 94,
+    "name": "Juventus",
+    "primary": "#ffffff",
+    "secondary": "#191919",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Juventus FC"
+    ]
+  },
+  {
+    "id": 132,
+    "name": "Lazio",
+    "primary": "#82c9ed",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#162c45",
+    "aliases": [
+      "SS Lazio"
+    ]
+  },
+  {
+    "id": 732,
+    "name": "Lecce",
+    "primary": "#f5cc23",
+    "secondary": "#cd2638",
+    "pattern": "stripes",
+    "text": "#151515",
+    "aliases": [
+      "US Lecce"
+    ]
+  },
+  {
+    "id": 783,
+    "name": "Monza",
+    "primary": "#d71935",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "AC Monza"
+    ]
+  },
+  {
+    "id": 83,
+    "name": "Napoli",
+    "primary": "#159bd7",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "SSC Napoli"
+    ]
+  },
+  {
+    "id": 733,
+    "name": "Parma",
+    "primary": "#ffffff",
+    "secondary": "#171717",
+    "pattern": "cross",
+    "text": "#171717",
+    "aliases": [
+      "Parma Calcio",
+      "Parma Calcio 1913"
+    ]
+  },
+  {
+    "id": 601,
+    "name": "Sassuolo",
+    "primary": "#16864e",
+    "secondary": "#161616",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "US Sassuolo"
+    ]
+  },
+  {
+    "id": 544,
+    "name": "Torino",
+    "primary": "#7d1935",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Torino FC"
+    ]
+  },
+  {
+    "id": 727,
+    "name": "Udinese",
+    "primary": "#ffffff",
+    "secondary": "#171717",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Udinese Calcio"
+    ]
+  },
+  {
+    "id": 728,
+    "name": "Venezia",
+    "primary": "#171717",
+    "secondary": "#e6802b",
+    "pattern": "trim",
+    "text": "#ffffff",
+    "aliases": [
+      "Venezia FC"
+    ]
   }
 ];
 const kitKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
@@ -488,7 +713,7 @@ function applyClubKit(shirt,t){
  const k=kitById.get(String(t.id))||kitByName.get(kitKey(t.name));
  if(!k)return;
  const a=k.primary,b=k.secondary;
- const patterns={solid:a,band:'linear-gradient(0deg,'+a+' 0 43%,'+b+' 43% 64%,'+a+' 64% 100%)',stripes:'repeating-linear-gradient(90deg,'+a+' 0 20%,'+b+' 20% 40%)',sleeves:'linear-gradient(90deg,'+b+' 0 19%,'+a+' 19% 81%,'+b+' 81% 100%)',half:'linear-gradient(90deg,'+a+' 0 50%,'+b+' 50% 100%)',hoops:'repeating-linear-gradient(0deg,'+a+' 0 20%,'+b+' 20% 40%)',sash:'linear-gradient(135deg,'+a+' 0 36%,'+b+' 36% 60%,'+a+' 60% 100%)'};
+ const patterns={solid:a,cross:'linear-gradient(0deg,transparent 0 43%,'+b+' 43% 60%,transparent 60% 100%),linear-gradient(90deg,'+a+' 0 43%,'+b+' 43% 57%,'+a+' 57% 100%)',trim:'linear-gradient(90deg,#16864e 0 9%,'+a+' 9% 91%,'+b+' 91% 100%)',band:'linear-gradient(0deg,'+a+' 0 43%,'+b+' 43% 64%,'+a+' 64% 100%)',stripes:'repeating-linear-gradient(90deg,'+a+' 0 20%,'+b+' 20% 40%)',sleeves:'linear-gradient(90deg,'+b+' 0 19%,'+a+' 19% 81%,'+b+' 81% 100%)',half:'linear-gradient(90deg,'+a+' 0 50%,'+b+' 50% 100%)',hoops:'repeating-linear-gradient(0deg,'+a+' 0 20%,'+b+' 20% 40%)',sash:'linear-gradient(135deg,'+a+' 0 36%,'+b+' 36% 60%,'+a+' 60% 100%)'};
  shirt.style.background=patterns[k.pattern]||a;
  shirt.style.color=k.text;
  shirt.style.textShadow=k.text==='#ffffff'?'0 1px 2px #000,0 0 2px #000':'0 1px 2px #fff,0 0 2px #fff';
