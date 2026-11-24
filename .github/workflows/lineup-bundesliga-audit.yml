@@ -1,0 +1,21 @@
+name: Lineup Lens Bundesliga archive audit
+on:
+  push:
+    branches:
+      - feature/lineup-bundesliga-20261124
+    paths:
+      - 'lineup_lens/**'
+      - '.github/workflows/lineup-bundesliga-audit.yml'
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r lineup_lens/requirements.txt
+      - name: Verify 2026 Bundesliga data and both starting XIs, read only
+        run: PYTHONPATH=lineup_lens python lineup_lens/research_bundesliga_coverage.py
