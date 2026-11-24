@@ -9,6 +9,7 @@ from flask import Flask, jsonify, render_template, request, Response
 import season_db
 import archive_11footy
 import archive_espn_greece
+import archive_espn_belgium
 
 app=Flask(__name__)
 BASE="https://api.soccer-data.co/v1"
@@ -534,6 +535,26 @@ def _one_time_greek_backfill():
 if os.getenv("LINEUP_GREEK_BACKFILL")=="1" and season_db.enabled():
     threading.Thread(target=_one_time_greek_backfill,
                      name="private-greek-superleague-import",daemon=True).start()
+
+
+def _one_time_belgium_backfill():
+    """Confirmed Belgian starters, ESPN read-only fetch, isolated Neon write."""
+    try:
+        with season_db.db() as conn:
+            granted=conn.execute("SELECT pg_try_advisory_lock(614439819) AS acquired").fetchone()
+            if not granted or not granted["acquired"]:
+                app.logger.info("Belgian league history import already running")
+                return
+            try:
+                archive_espn_belgium.import_all(log=app.logger.info)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(614439819)")
+    except Exception:
+        app.logger.exception("Private Belgian Pro League history import failed")
+
+if os.getenv("LINEUP_BELGIUM_BACKFILL")=="1" and season_db.enabled():
+    threading.Thread(target=_one_time_belgium_backfill,
+                     name="private-belgian-proleague-import",daemon=True).start()
 
 
 if __name__=="__main__":
