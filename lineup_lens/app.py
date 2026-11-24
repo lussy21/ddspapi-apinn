@@ -9,6 +9,7 @@ from flask import Flask, jsonify, render_template, request, Response
 import season_db
 import archive_11footy
 import archive_daily
+import live_matchday
 import archive_espn_greece
 import archive_espn_belgium
 import archive_espn_denmark
@@ -882,6 +883,24 @@ def archive_daily_status():
 if os.getenv("LINEUP_DAILY_ARCHIVE","1")=="1" and season_db.enabled():
     threading.Thread(target=archive_daily.loop,daemon=True,name="private-daily-archive").start()
 
+
+@app.get("/api/live-fixtures")
+def live_fixtures():
+    if not season_db.enabled():raise Problem("Neon μη διαθέσιμη",503)
+    try:day=datetime.strptime(request.args.get("date",""),"%Y-%m-%d").date()
+    except ValueError:raise Problem("Μη έγκυρη ημερομηνία")
+    return jsonify(live_matchday.fixtures(day))
+
+@app.get("/api/live-lineup")
+def live_lineup():
+    try:
+        mid=int(request.args.get("match_id",""))
+        if not 500000000<mid<1000000000:raise ValueError("Μη έγκυρος αγώνας")
+        return jsonify(live_matchday.lineup(mid))
+    except ValueError as exc:raise Problem(str(exc))
+
+if season_db.enabled() and os.getenv("LINEUP_LIVE_ESPN","1")=="1":
+    threading.Thread(target=live_matchday.loop,daemon=True,name="espn-live-matchday").start()
 
 if __name__=="__main__":
     from waitress import serve

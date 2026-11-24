@@ -43,11 +43,11 @@ def source_id(value,offset):
     if not 0<n<(500_000_000 if offset==MATCH_OFFSET else 100_000_000):raise DailyProblem("ESPN ID outside namespace")
     return offset+n
 
-def parse_new(event, summary, league, tz):
-    if not event.get("status",{}).get("type",{}).get("completed"):
+def parse_new(event, summary, league, tz, prematch=False):
+    if not prematch and not event.get("status",{}).get("type",{}).get("completed"):
         raise DailyProblem("Not a completed official fixture")
     kickoff=datetime.fromisoformat(event["date"].replace("Z","+00:00"))
-    if kickoff.tzinfo is None or kickoff>datetime.now(timezone.utc):
+    if kickoff.tzinfo is None or (not prematch and kickoff>datetime.now(timezone.utc)):
         raise DailyProblem("Date outside audited season snapshot")
     competitors=(event.get("competitions") or [{}])[0].get("competitors") or []
     if len(competitors)!=2:
@@ -186,8 +186,8 @@ def get_links(db,league):
         out[r["kind"]][r["source_id"]]=r["canonical_id"]
     return out
 
-def scan_day(league,mod,tz,day):
-    doc=mod.fetch("/scoreboard?dates="+day.strftime("%Y%m%d")+"&limit=50")
+def scan_day(league,mod,tz,day,only_event=None,scoreboard=None,summary=None):
+    doc=scoreboard if scoreboard is not None else mod.fetch("/scoreboard?dates="+day.strftime("%Y%m%d")+"&limit=50")
     leagues=doc.get("leagues") or []
     if len(leagues)!=1 or leagues[0].get("slug")!=mod.BASE.rsplit("/",1)[-1]:
         raise DailyProblem("Scoreboard competition mismatch")
@@ -207,6 +207,7 @@ def scan_day(league,mod,tz,day):
     prepared=[];new_ids={};seen_events=set();seen_pairs=set()
     for e in events:
         eid=source_id(e.get("id"),MATCH_OFFSET)
+        if only_event is not None and eid!=only_event:continue
         if eid in seen_events:raise DailyProblem("Duplicate scoreboard fixture")
         seen_events.add(eid)
         status=e.get("status",{}).get("type",{})
@@ -221,7 +222,7 @@ def scan_day(league,mod,tz,day):
             if links["match"][eid] not in known_games:raise DailyProblem("Broken fixture link")
             continue
         if eid in known_games:continue
-        doc=mod.fetch("/summary?event="+str(e["id"]))
+        doc=summary if summary is not None else mod.fetch("/summary?event="+str(e["id"]))
         if league=="SE1":
             m=parse_sweden(e,doc,cutoff=datetime.now(timezone.utc))
         else:m=parse_new(e,doc,league,tz)
@@ -259,6 +260,7 @@ def scan_day(league,mod,tz,day):
         prepared.append(m)
         time.sleep(.16)
     release="espn-daily-"+day.isoformat()
+    if only_event is not None:release+="-"+str(only_event)
     with season_db.db() as db:
         for pid,name in new_ids.items():
             row=db.execute("SELECT player_name FROM archive_players WHERE player_id=%s",(pid,)).fetchone()
@@ -275,7 +277,8 @@ def scan_day(league,mod,tz,day):
                 raise DailyProblem("Transactional XI validation failed")
         if prepared:
             db.execute("INSERT INTO archive_import_state(source,release_name,competition_code,state,imported_matches,last_match_date) VALUES('espn',%s,%s,'complete',%s,%s)",(release,league,len(prepared),day))
-        db.execute("UPDATE archive_daily_state SET checked_through=%s,last_success_at=now(),last_error=NULL WHERE competition_code=%s",(day,league))
+        if only_event is None:
+            db.execute("UPDATE archive_daily_state SET checked_through=%s,last_success_at=now(),last_error=NULL WHERE competition_code=%s",(day,league))
     print(f"Daily archive {league} {day}: {len(prepared)} added, {len(events)} scoreboard fixtures",flush=True)
     return len(prepared)
 
