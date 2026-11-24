@@ -42,7 +42,229 @@ const livePitchFootnote='Μόνο καταγεγραμμένοι βασικοί 
 $('day').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function say(t){$('message').textContent=t||''}
 function arrange(list,formation){let parts=(formation||'').split('-').map(Number).filter(x=>Number.isFinite(x)&&x>0);let rows=[]; if(parts.reduce((a,b)=>a+b,0)===10){let at=0;rows.push(list.slice(0,1));at=1;for(let n of parts){rows.push(list.slice(at,at+n));at+=n}return rows}const groups=['G','D','M','F'];let known=groups.map(p=>list.filter(x=>x.position===p)).filter(x=>x.length);return known.flat().length===list.length?known:[list.slice(0,4),list.slice(4,8),list.slice(8)].filter(x=>x.length)}
-function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();$('pitchLines').parentElement.classList.toggle('unknown-layout',!t.formation&&!!t.starting_xi.length);rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0&&t.verified===true?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.5?'low':ratio<.8?'mid':'');st.textContent=val===null?'—':(Number.isInteger(t.played)&&t.played>0?`${t.verified===true?'':'≥'}${val}/${t.played}`:`${t.verified===true?'':'≥'}${val}/—`);d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.8).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.5).length:'—';$('loadStats').disabled=true;$('refresh').disabled=dataMode==='archive';$('watch').disabled=true;$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',dataMode==='archive'||!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('archiveWarning').classList.toggle('hidden',dataMode!=='archive');$('mode').textContent=dataMode==='archive'?'ΙΣΤΟΡΙΚΟ':real?'ESPN':'—';$('pitchHeading').textContent=dataMode==='archive'?'Πραγματική 11άδα παλιού αγώνα':'Οι 11 βασικοί';$('pitchSubheading').textContent=dataMode==='archive'?'Θέσεις παικτών • 11footy ιστορικό':'Επίσημες ενάρξεις σε ολόκληρη τη σεζόν';$('coreLabel').textContent=dataMode==='archive'?'Σταθεροί βασικοί (≥80% ιστορικού)':'Σταθεροί βασικοί (≥80% όλης της σεζόν)';$('rareLabel').textContent=dataMode==='archive'?'Λίγες εκκινήσεις (<50% ιστορικού)':'Λίγες ενάρξεις φέτος (<50%)';$('pitchFootnote').textContent=dataMode==='archive'?'Οι παίκτες και οι θέσεις είναι από την τελευταία αποθηκευμένη πραγματική ενδεκάδα. Οι αριθμοί αναφέρονται στους προηγούμενους αγώνες μαζί με αυτόν, έως την ημερομηνία που φαίνεται επάνω. Το σχήμα προκύπτει από τις καταγεγραμμένες θέσεις. Δεν είναι πρόβλεψη ή σημερινή 11άδα. Πηγή '+archiveSource+(archiveSource==='11footy'?' (CC BY-NC 4.0).':' (ESPN, ιδιωτική έρευνα).'):livePitchFootnote}
+// Traditional club home colours, not a claim about match-day kit.
+const CLUB_KITS=[
+  {
+    "id": 652,
+    "name": "AFC Bournemouth",
+    "primary": "#c8102e",
+    "secondary": "#171717",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Bournemouth"
+    ]
+  },
+  {
+    "id": 82,
+    "name": "Arsenal",
+    "primary": "#df142f",
+    "secondary": "#ffffff",
+    "pattern": "sleeves",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 213,
+    "name": "Aston Villa",
+    "primary": "#950e3a",
+    "secondary": "#96c5e7",
+    "pattern": "sleeves",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 773,
+    "name": "Brentford",
+    "primary": "#dc202f",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#161616",
+    "aliases": []
+  },
+  {
+    "id": 483,
+    "name": "Brighton & Hove Albion",
+    "primary": "#0057b8",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#10243a",
+    "aliases": [
+      "Brighton",
+      "Brighton and Hove Albion"
+    ]
+  },
+  {
+    "id": 99,
+    "name": "Chelsea",
+    "primary": "#0346aa",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 775,
+    "name": "Coventry City",
+    "primary": "#82c6e8",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#172a40",
+    "aliases": [
+      "Coventry"
+    ]
+  },
+  {
+    "id": 320,
+    "name": "Crystal Palace",
+    "primary": "#17479e",
+    "secondary": "#d71935",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 559,
+    "name": "Everton",
+    "primary": "#003399",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 712,
+    "name": "Fulham",
+    "primary": "#ffffff",
+    "secondary": "#161616",
+    "pattern": "solid",
+    "text": "#181818",
+    "aliases": []
+  },
+  {
+    "id": 545,
+    "name": "Hull City",
+    "primary": "#f5a900",
+    "secondary": "#191919",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Hull"
+    ]
+  },
+  {
+    "id": 711,
+    "name": "Ipswich Town",
+    "primary": "#15499d",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Ipswich"
+    ]
+  },
+  {
+    "id": 708,
+    "name": "Leeds United",
+    "primary": "#ffffff",
+    "secondary": "#1d458b",
+    "pattern": "solid",
+    "text": "#172a40",
+    "aliases": [
+      "Leeds"
+    ]
+  },
+  {
+    "id": 93,
+    "name": "Liverpool",
+    "primary": "#c8102e",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": []
+  },
+  {
+    "id": 100,
+    "name": "Manchester City",
+    "primary": "#6cabdd",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#152c49",
+    "aliases": [
+      "Man City"
+    ]
+  },
+  {
+    "id": 133,
+    "name": "Manchester United",
+    "primary": "#da291c",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Man United",
+      "Man Utd"
+    ]
+  },
+  {
+    "id": 207,
+    "name": "Newcastle United",
+    "primary": "#171717",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#ffffff",
+    "aliases": [
+      "Newcastle"
+    ]
+  },
+  {
+    "id": 648,
+    "name": "Nottingham Forest",
+    "primary": "#dd1932",
+    "secondary": "#ffffff",
+    "pattern": "solid",
+    "text": "#ffffff",
+    "aliases": [
+      "Nottm Forest",
+      "Nottingham"
+    ]
+  },
+  {
+    "id": 649,
+    "name": "Sunderland",
+    "primary": "#e22335",
+    "secondary": "#ffffff",
+    "pattern": "stripes",
+    "text": "#171717",
+    "aliases": []
+  },
+  {
+    "id": 159,
+    "name": "Tottenham Hotspur",
+    "primary": "#ffffff",
+    "secondary": "#14284b",
+    "pattern": "solid",
+    "text": "#14284b",
+    "aliases": [
+      "Tottenham",
+      "Spurs"
+    ]
+  }
+];
+const kitKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
+const kitById=new Map(CLUB_KITS.map(k=>[String(k.id),k]));
+const kitByName=new Map(CLUB_KITS.flatMap(k=>[k.name,...k.aliases].map(n=>[kitKey(n),k])));
+function applyClubKit(shirt,t){
+ const k=kitById.get(String(t.id))||kitByName.get(kitKey(t.name));
+ if(!k)return;
+ const a=k.primary,b=k.secondary;
+ const patterns={solid:a,stripes:'repeating-linear-gradient(90deg,'+a+' 0 20%,'+b+' 20% 40%)',sleeves:'linear-gradient(90deg,'+b+' 0 19%,'+a+' 19% 81%,'+b+' 81% 100%)',half:'linear-gradient(90deg,'+a+' 0 50%,'+b+' 50% 100%)',hoops:'repeating-linear-gradient(0deg,'+a+' 0 20%,'+b+' 20% 40%)',sash:'linear-gradient(135deg,'+a+' 0 36%,'+b+' 36% 60%,'+a+' 60% 100%)'};
+ shirt.style.background=patterns[k.pattern]||a;
+ shirt.style.color=k.text;
+ shirt.style.textShadow=k.text==='#ffffff'?'0 1px 2px #000,0 0 2px #000':'0 1px 2px #fff,0 0 2px #fff';
+ shirt.title=k.name+' • χαρακτηριστικά χρώματα ομάδας, όχι επιβεβαιωμένη εμφάνιση αγώνα';
+}
+function view(){let t=teams[side];$('homeTab').classList.toggle('active',side===0);$('awayTab').classList.toggle('active',side===1);['homeTab','awayTab'].forEach((id,i)=>{$(id).childNodes[0].textContent=teams[i].name+' ';$(id).querySelector('span').textContent=teams[i].formation||'Σύστημα άγνωστο'});let rows=arrange(t.starting_xi||[],t.formation);const root=$('pitchLines');root.replaceChildren();$('pitchLines').parentElement.classList.toggle('unknown-layout',!t.formation&&!!t.starting_xi.length);rows.forEach(line=>{let r=document.createElement('div');r.className='players';line.forEach(p=>{let d=document.createElement('div');d.className='player'+(side===1?' away':'');let shirt=document.createElement('div');shirt.className='shirt';shirt.textContent=p.number??'•';applyClubKit(shirt,t);let name=document.createElement('div');name.className='name';name.textContent=p.name||'Άγνωστος';let st=document.createElement('div');let val=Number.isFinite(p.starts)?p.starts:null;let ratio=val!==null&&t.played>0&&t.verified===true?val/t.played:null;st.className='starts '+(ratio===null?'empty':ratio<.5?'low':ratio<.8?'mid':'');st.textContent=val===null?'—':(Number.isInteger(t.played)&&t.played>0?`${t.verified===true?'':'≥'}${val}/${t.played}`:`${t.verified===true?'':'≥'}${val}/—`);d.append(shirt,name,st);r.append(d)});root.append(r)});let counted=t.starting_xi.filter(p=>Number.isFinite(p.starts));$('coreCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played>=.8).length:'—';$('rareCount').textContent=t.verified===true&&counted.length&&t.played?counted.filter(p=>p.starts/t.played<.5).length:'—';$('loadStats').disabled=true;$('refresh').disabled=dataMode==='archive';$('watch').disabled=true;$('demoWarning').classList.toggle('hidden',real);$('predictionWarning').classList.toggle('hidden',dataMode==='archive'||!real||$('lineupStatus').dataset.confirmed==='yes'||!teams.some(team=>(team.starting_xi||[]).length));$('archiveWarning').classList.toggle('hidden',dataMode!=='archive');$('mode').textContent=dataMode==='archive'?'ΙΣΤΟΡΙΚΟ':real?'ESPN':'—';$('pitchHeading').textContent=dataMode==='archive'?'Πραγματική 11άδα παλιού αγώνα':'Οι 11 βασικοί';$('pitchSubheading').textContent=dataMode==='archive'?'Θέσεις παικτών • 11footy ιστορικό':'Επίσημες ενάρξεις σε ολόκληρη τη σεζόν';$('coreLabel').textContent=dataMode==='archive'?'Σταθεροί βασικοί (≥80% ιστορικού)':'Σταθεροί βασικοί (≥80% όλης της σεζόν)';$('rareLabel').textContent=dataMode==='archive'?'Λίγες εκκινήσεις (<50% ιστορικού)':'Λίγες ενάρξεις φέτος (<50%)';$('pitchFootnote').textContent=dataMode==='archive'?'Οι παίκτες και οι θέσεις είναι από την τελευταία αποθηκευμένη πραγματική ενδεκάδα. Οι αριθμοί αναφέρονται στους προηγούμενους αγώνες μαζί με αυτόν, έως την ημερομηνία που φαίνεται επάνω. Το σχήμα προκύπτει από τις καταγεγραμμένες θέσεις. Δεν είναι πρόβλεψη ή σημερινή 11άδα. Πηγή '+archiveSource+(archiveSource==='11footy'?' (CC BY-NC 4.0).':' (ESPN, ιδιωτική έρευνα).'):livePitchFootnote}
 async function api(path){let r=await fetch(path);let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Σφάλμα σύνδεσης '+r.status);return d}
 async function listMatches(quiet=false){
  try{
