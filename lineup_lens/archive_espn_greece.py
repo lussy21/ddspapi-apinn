@@ -50,7 +50,9 @@ def _id(value,offset):
     if isinstance(value,bool) or not str(value or "").isdigit():
         raise GreekArchiveProblem("Missing ESPN numeric ID")
     val=int(value)
-    if val<=0 or val>=100_000_000:
+    # ESPN event IDs are ~400 million; team/player IDs use smaller ranges.
+    upper=500_000_000 if offset==MATCH_OFFSET else 100_000_000
+    if val<=0 or val>=upper:
         raise GreekArchiveProblem("ESPN ID exceeds reserved namespace")
     if offset+val>2_147_483_647:
         raise GreekArchiveProblem("ESPN ID cannot fit PostgreSQL INT")
