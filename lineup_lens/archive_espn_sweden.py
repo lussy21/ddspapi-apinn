@@ -116,7 +116,7 @@ def parse_match(event, summary):
         roster=group.get("roster") or []
         starters=[p for p in roster if p.get("starter") is True]
         if len(starters)!=11:
-            raise SwedishArchiveProblem("Team has not exactly 11 explicit starters")
+            raise SwedishArchiveProblem(f"{name}: {len(starters)} explicit starters (roster {len(roster)})")
         normalized=[]
         for p in starters:
             athlete=p.get("athlete") or {}
@@ -162,11 +162,19 @@ def parse_match(event, summary):
 def gather_snapshot(get=fetch,pause=0.16,log=print):
     events=discover_games(get=get,pause=pause)
     matches=[]
+    failures=[]
     for i,e in enumerate(events):
-        doc=get("/summary?event="+str(e["id"]))
-        matches.append(parse_match(e,doc))
-        if (i+1)%15==0:log("Swedish confirmed lineups: %d / %d audited" %(i+1,len(events)))
+        try:
+            doc=get("/summary?event="+str(e["id"]))
+            matches.append(parse_match(e,doc))
+        except (SwedishArchiveProblem, ValueError, KeyError) as err:
+            detail=f"Swedish XI audit failed: ESPN event {e.get('id')} | {e.get('date')} | {e.get('name')} | {err}"
+            failures.append(detail)
+            print(detail,flush=True)
+        if (i+1)%30==0:print(f"Swedish XI audit: {i+1}/{len(events)}, valid={len(matches)}, failures={len(failures)}",flush=True)
         if pause:time.sleep(pause)
+    if failures:
+        raise SwedishArchiveProblem(f"Swedish audit incomplete: {len(matches)}/{len(events)} verified; {len(failures)} failed. No archive writes.")
     return matches
 
 def import_all(log=print):
