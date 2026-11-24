@@ -19,6 +19,12 @@ class PitchLayoutTests(unittest.TestCase):
         self.assertEqual(ordered[0]["position_code"],"G")
         self.assertEqual(ordered[-2]["position_code"],"CF-L")
 
+    def test_french_left_defender_dl(self):
+        inp=self.records(["G","DL","CD-L","CD-R","RB","LM","RM","AM-L","AM","AM-R","F"])
+        formation,ordered=pitch_from_codes(inp)
+        self.assertEqual(formation,"4-2-3-1")
+        self.assertEqual(ordered[1]["position_code"],"DL")
+
     def test_invalid_lineup(self):
         with self.assertRaises(ValueError):
             pitch_from_codes(self.records(["G","CD-L"]))

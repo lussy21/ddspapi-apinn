@@ -9,13 +9,13 @@ from collections import Counter
 
 ROLE = {
     "G":"G",
-    "LB":"D","CD-L":"D","CD":"D","CD-R":"D","RB":"D","SW":"D",
+    "DL":"D","LB":"D","CD-L":"D","CD":"D","CD-R":"D","RB":"D","SW":"D",
     "LM":"M","CM-L":"M","CM":"M","DM":"M","CM-R":"M","RM":"M",
     "AM-L":"A","AM":"A","AM-R":"A",
     "LF":"F","CF-L":"F","F":"F","CF-R":"F","RF":"F","RCF":"F",
 }
 X = {
-    "LB":0, "CD-L":1, "CD":2, "SW":2, "CD-R":3,"RB":4,
+    "DL":0,"LB":0, "CD-L":1, "CD":2, "SW":2, "CD-R":3,"RB":4,
     "LM":0,"CM-L":1,"CM":2,"DM":2,"CM-R":3,"RM":4,
     "AM-L":0,"AM":2,"AM-R":4,
     "LF":0,"CF-L":1,"F":2,"CF-R":3,"RCF":3,"RF":4,
