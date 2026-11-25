@@ -11,6 +11,7 @@ import season_db
 import archive_daily as archive
 from archive_pitch import ROLE,pitch_from_codes
 from espn_formation import decode,explicit_pitch
+from domestic_starts import domestic_stats,EUROPE
 
 ATHENS=ZoneInfo("Europe/Athens")
 LOCK=614439841
@@ -307,6 +308,13 @@ def lineup(mid):
                 explicit=explicit_pitch(t)
                 formation,ordered=explicit if explicit else pitch_from_codes(t["players"])
             except (ValueError,KeyError,TypeError):formation,ordered="",t["players"]
+            domestic=None
+            if league in EUROPE:
+                try:
+                    domestic=domestic_stats(db,t,row["kickoff_utc"])
+                except Exception as exc:
+                    print(f"Domestic stats held {league} {mid} {side}: {str(exc)[:180]}",flush=True)
+                    domestic={"league":None,"played":None,"complete":False,"starts":{}}
             players=[]
             for p in ordered:
                 pid=p["player_id"];name=p["player_name"]
@@ -320,6 +328,6 @@ def lineup(mid):
                         starts=hist[cid]["starts"]
                     elif cid not in hist and not any(archive.compatible(x["player_name"],name) for x in counts):
                         starts=0
-                players.append({"id":pid,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"starts":starts})
-            out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation),"position_source":t.get("position_source") if formation else None}
+                players.append({"id":pid,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"starts":starts,"domestic_starts":domestic["starts"].get(p["player_id"]) if domestic else None})
+            out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation),"position_source":t.get("position_source") if formation else None,"domestic":{k:domestic[k] for k in ("league","played","complete")} if domestic else None,"competition":league}
         return out
