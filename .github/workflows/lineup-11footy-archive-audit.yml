@@ -1,0 +1,26 @@
+name: Research 11footy 2026/27 lineup archive
+on:
+  push:
+    branches:
+      - research/lineup-11footy-audit-20261123
+    paths:
+      - "lineup_lens/research_11footy_coverage.py"
+      - ".github/workflows/lineup-11footy-archive-audit.yml"
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - "lineup_lens/research_11footy_coverage.py"
+      - ".github/workflows/lineup-11footy-archive-audit.yml"
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check 11footy source coverage (read-only)
+        run: python lineup_lens/research_11footy_coverage.py
