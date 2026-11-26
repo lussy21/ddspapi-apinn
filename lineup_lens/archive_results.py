@@ -102,16 +102,17 @@ def loop():
         except Exception as exc:print("Results loop held: "+str(exc)[:200],flush=True)
         time.sleep(20)
 
-def history(db,league,tid,kickoff):
+def history(db,league,tid,kickoff,include_match=False):
     if tid is None:return {}
     if not db.execute("SELECT to_regclass('archive_match_results') present").fetchone()["present"]:return {}
-    return {r["player_id"]:r for r in db.execute("""SELECT s.player_id,
+    operator='<=' if include_match else '<'
+    return {r["player_id"]:r for r in db.execute(f"""SELECT s.player_id,
         count(r.match_id)::int scored,
         count(*) FILTER(WHERE (m.home_team_id=s.team_id AND r.home_goals>r.away_goals)
                            OR (m.away_team_id=s.team_id AND r.away_goals>r.home_goals))::int wins
         FROM archive_starters s JOIN archive_matches m USING(match_id)
         LEFT JOIN archive_match_results r USING(match_id)
-        WHERE m.competition_code=%s AND m.season_year=2026 AND s.team_id=%s AND m.kickoff_utc<%s
+        WHERE m.competition_code=%s AND m.season_year=2026 AND s.team_id=%s AND m.kickoff_utc{operator}%s
         GROUP BY s.player_id""",(league,tid,kickoff)).fetchall()}
 
 def player_stat(hist,cid,starts):

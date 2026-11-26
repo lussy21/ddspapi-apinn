@@ -322,6 +322,8 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
     """
     if competition not in SUPPORTED_ARCHIVE_LEAGUES or not isinstance(team_id,int) or team_id<=0:
         raise ArchiveProblem("Invalid team request")
+    import archive_results
+    from domestic_starts import domestic_stats, EUROPE
     with season_db.db() as db:
         m=db.execute(
             "SELECT m.match_id,m.kickoff_utc,m.local_date,m.home_team_id,m.away_team_id,"
@@ -351,6 +353,8 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
             (competition,m["kickoff_utc"],m["home_team_id"],m["away_team_id"])
         ).fetchall()
         played={}
+        wins={}
+        domestic={}
         for tid in (m["home_team_id"],m["away_team_id"]):
             played[tid]=db.execute(
                 "SELECT COUNT(*)::int AS n FROM archive_matches "
@@ -358,6 +362,9 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
                 "AND (home_team_id=%s OR away_team_id=%s)",
                 (competition,m["kickoff_utc"],tid,tid)
             ).fetchone()["n"]
+            wins[tid]=archive_results.history(db,competition,tid,m["kickoff_utc"],include_match=True)
+            if competition in EUROPE:
+                domestic[tid]=domestic_stats(db,{"id":tid,"players":[p for p in xi if p["team_id"]==tid]},m["kickoff_utc"])
     starts={(r["team_id"],r["player_id"]):r["starts"] for r in counts}
     sides={}
     for side,tid,name in (("home",m["home_team_id"],m["home_name"]),
@@ -369,12 +376,16 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
             raise ArchiveProblem("Stored match has incomplete position data") from exc
         sides[side]={
             "id":tid,"name":name,"formation":formation,
-            "played":played[tid],"verified":True, "archive":True,
+            "played":played[tid],"verified":True, "archive":True,"competition":competition,
+            "domestic":{k:domestic[tid][k] for k in ("league","played","complete")} if tid in domestic else None,
             "starting_xi":[{
                 "id":p["player_id"],"name":p["player_name"],
                 "number":p["jersey_number"],"position":ROLE[p["position_code"]],
                 "position_code":p["position_code"],
-                "starts":starts.get((tid,p["player_id"]),0)
+                "starts":starts.get((tid,p["player_id"]),0),
+                "wins":archive_results.player_stat(wins[tid],p["player_id"],starts.get((tid,p["player_id"]),0)),
+                "domestic_starts":domestic.get(tid,{}).get("starts",{}).get(p["player_id"]),
+                "domestic_wins":domestic.get(tid,{}).get("wins",{}).get(p["player_id"])
             } for p in ordered]
         }
     return {
