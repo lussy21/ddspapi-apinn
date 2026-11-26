@@ -14,7 +14,7 @@ def domestic_stats(db, team, kickoff):
             WHERE l.competition_code=m.competition_code AND l.kind='team'
             AND l.source_id=%s AND l.canonical_id=t.team_id))""",(team["id"],team["id"])).fetchall()
     if len(rows)!=1:
-        return {"league":None,"played":None,"complete":False,"starts":{},"wins":{}}
+        return {"league":None,"played":None,"complete":False,"starts":{},"wins":{},"baseline":None}
     league,tid=rows[0]["competition_code"],rows[0]["team_id"]
     links=archive.get_links(db,league)
     cutoff=kickoff.astimezone(ZoneInfo(archive.MODULES[league][1])).date()-timedelta(days=1)
@@ -43,4 +43,4 @@ def domestic_stats(db, team, kickoff):
             # An absent, positively identified player has zero archived starts.
             # Unlinked mixed-source players remain unknown, never guessed by name.
             starts[pid]=0
-    return {"league":league,"played":played if played else None,"complete":complete and bool(played),"starts":starts,"wins":wins}
+    return {"league":league,"played":played if played else None,"complete":complete and bool(played),"starts":starts,"wins":wins,"baseline":archive_results.team_totals(db,league,tid,kickoff)}

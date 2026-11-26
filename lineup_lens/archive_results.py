@@ -78,7 +78,7 @@ def tick():
                     FROM archive_matches m LEFT JOIN archive_match_results r USING(match_id)
                     LEFT JOIN archive_result_attempts a ON a.competition_code=m.competition_code AND a.local_date=m.local_date
                     WHERE m.season_year=2026 AND r.match_id IS NULL
-                    AND (a.attempted_at IS NULL OR a.attempted_at<now()-interval '6 hours')
+                    AND (a.attempted_at IS NULL OR a.error IS NULL OR a.attempted_at<now()-interval '15 minutes')
                     ORDER BY priority,local_date DESC,competition_code LIMIT 35""").fetchall()
             for item in days:
                 league,day=item["competition_code"],item["local_date"]
@@ -108,6 +108,8 @@ def history(db,league,tid,kickoff,include_match=False):
     operator='<=' if include_match else '<'
     return {r["player_id"]:r for r in db.execute(f"""SELECT s.player_id,
         count(r.match_id)::int scored,
+        coalesce(sum(CASE WHEN m.home_team_id=s.team_id THEN r.home_goals ELSE r.away_goals END),0)::int gf,
+        coalesce(sum(CASE WHEN m.home_team_id=s.team_id THEN r.away_goals ELSE r.home_goals END),0)::int ga,
         count(*) FILTER(WHERE (m.home_team_id=s.team_id AND r.home_goals>r.away_goals)
                            OR (m.away_team_id=s.team_id AND r.away_goals>r.home_goals))::int wins
         FROM archive_starters s JOIN archive_matches m USING(match_id)
@@ -119,4 +121,19 @@ def player_stat(hist,cid,starts):
     if not isinstance(starts,int) or starts<=0:return None
     row=hist.get(cid)
     if not row or not row["scored"] or not 0<=row["wins"]<=row["scored"]<=starts:return None
-    return {"wins":row["wins"],"scored":row["scored"],"starts":starts}
+    return {"wins":row["wins"],"scored":row["scored"],"starts":starts,"gf":row["gf"],"ga":row["ga"]}
+
+def team_totals(db,league,tid,kickoff,include_match=False):
+    """One result per team fixture, independent of lineup; same time cutoff."""
+    if tid is None:return None
+    if not db.execute("SELECT to_regclass('archive_match_results') present").fetchone()["present"]:return None
+    op='<=' if include_match else '<'
+    row=db.execute(f"""SELECT count(*)::int played,count(r.match_id)::int scored,
+        coalesce(sum(CASE WHEN m.home_team_id=%s THEN r.home_goals ELSE r.away_goals END),0)::int gf,
+        coalesce(sum(CASE WHEN m.home_team_id=%s THEN r.away_goals ELSE r.home_goals END),0)::int ga,
+        count(*) FILTER(WHERE (m.home_team_id=%s AND r.home_goals>r.away_goals)
+                         OR (m.away_team_id=%s AND r.away_goals>r.home_goals))::int wins
+        FROM archive_matches m LEFT JOIN archive_match_results r USING(match_id)
+        WHERE m.competition_code=%s AND m.season_year=2026 AND %s IN (m.home_team_id,m.away_team_id)
+        AND m.kickoff_utc{op}%s""",(tid,tid,tid,tid,league,tid,kickoff)).fetchone()
+    return dict(row) if row and row["played"] else None

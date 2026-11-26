@@ -354,6 +354,7 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
         ).fetchall()
         played={}
         wins={}
+        baselines={}
         domestic={}
         for tid in (m["home_team_id"],m["away_team_id"]):
             played[tid]=db.execute(
@@ -363,6 +364,7 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
                 (competition,m["kickoff_utc"],tid,tid)
             ).fetchone()["n"]
             wins[tid]=archive_results.history(db,competition,tid,m["kickoff_utc"],include_match=True)
+            baselines[tid]=archive_results.team_totals(db,competition,tid,m["kickoff_utc"],include_match=True)
             if competition in EUROPE:
                 domestic[tid]=domestic_stats(db,{"id":tid,"players":[p for p in xi if p["team_id"]==tid]},m["kickoff_utc"])
     starts={(r["team_id"],r["player_id"]):r["starts"] for r in counts}
@@ -377,7 +379,8 @@ def latest_archive_match(competition: str, team_id: int) -> dict | None:
         sides[side]={
             "id":tid,"name":name,"formation":formation,
             "played":played[tid],"verified":True, "archive":True,"competition":competition,
-            "domestic":{k:domestic[tid][k] for k in ("league","played","complete")} if tid in domestic else None,
+            "domestic":{k:domestic[tid].get(k) for k in ("league","played","complete","baseline")} if tid in domestic else None,
+            "baseline":baselines[tid],
             "starting_xi":[{
                 "id":p["player_id"],"name":p["player_name"],
                 "number":p["jersey_number"],"position":ROLE[p["position_code"]],
