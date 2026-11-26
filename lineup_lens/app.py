@@ -10,6 +10,7 @@ import season_db
 import archive_11footy
 import archive_daily
 import live_matchday
+import archive_results
 import archive_espn_greece
 import archive_espn_belgium
 import archive_espn_denmark
@@ -903,6 +904,9 @@ def live_lineup():
 
 if season_db.enabled() and os.getenv("LINEUP_LIVE_ESPN","1")=="1":
     threading.Thread(target=live_matchday.loop,daemon=True,name="espn-live-matchday").start()
+
+if season_db.enabled() and os.getenv("LINEUP_RESULTS","1")=="1":
+    threading.Thread(target=archive_results.loop,daemon=True,name="espn-archive-results").start()
 
 if __name__=="__main__":
     from waitress import serve
