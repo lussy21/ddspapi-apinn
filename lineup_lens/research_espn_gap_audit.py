@@ -3,8 +3,8 @@ import json,concurrent.futures
 from pathlib import Path
 from collections import Counter
 from urllib.request import Request,urlopen
-from research_reconcile_opta import fingerprint,profile,int_or_none
-SLUGS={"BE1":"bel.1","DE2":"ger.2","DK1":"den.1","GR1":"gre.1","NO1":"nor.1","SC1":"sco.1","SE1":"swe.1","TR1":"tur.1","UECL":"uefa.europa.conf"}
+from research_reconcile_opta import fingerprint,profile,int_or_none,tokens
+SLUGS={"L1":"fra.1","BE1":"bel.1","DE2":"ger.2","DK1":"den.1","GR1":"gre.1","NO1":"nor.1","SC1":"sco.1","SE1":"swe.1","TR1":"tur.1","UECL":"uefa.europa.conf"}
 def audit(item):
     ref,code,event,date,xi=item
     try:
@@ -18,26 +18,36 @@ def audit(item):
         teams=data.get("rosters") or []
         if len(teams)!=2:raise ValueError("missing teams")
         competitors={str(c["team"]["id"]):c.get("homeAway") for c in comp.get("competitors",[])}
-        metrics=Counter();resolved=0
+        metrics=Counter();resolved=0;unmatched=[]
         for t in teams:
             side=t.get("homeAway") or competitors.get(str(t.get("team",{}).get("id")))
             if side not in ("home","away"):raise ValueError("unknown side")
-            canon=[(j,p) for h,j,p in xi if h==(side=="home")]
+            canon=[r[1:] for r in xi if r[0]==(side=="home")]
             source=[p for p in t.get("roster",[]) if p.get("starter") is True]
             if len(canon)!=11 or len(source)!=11:raise ValueError("incomplete XI")
             seen=set()
-            for j,p in canon:
-                if p is None:continue
-                matched=[x for x in source if str(x.get("athlete",{}).get("id"))==str(p) and (j is None or int_or_none(x.get("jersey"))==int_or_none(j))]
-                if len(matched)!=1 or p in seen:continue
-                seen.add(p);resolved+=1
+            for item in canon:
+                j,p=item[:2]
+                expected=item[2] if len(item)>2 else None
+                def agree(x):
+                    a=x.get("athlete",{})
+                    same_id=p is not None and str(a.get("id"))==str(p)
+                    same_name=p is None and expected is not None and any(fingerprint("".join(tokens(a.get(k))))==expected for k in ("displayName","fullName","shortName"))
+                    return (same_id or same_name) and (j is None or int_or_none(x.get("jersey"))==int_or_none(j))
+                matched=[x for x in source if agree(x)]
+                if len(matched)!=1:continue
+                sid=str(matched[0].get("athlete",{}).get("id"))
+                if not sid or sid in seen:continue
+                seen.add(sid);resolved+=1
                 for s in matched[0].get("stats") or []:
                     if isinstance(s,dict) and any(s.get(k) is not None for k in ("value","displayValue")):
                         name=s.get("name") or s.get("abbreviation") or s.get("label")
                         if name:metrics[str(name)]+=1
-        return {"ref":ref,"code":code,"verified":resolved==22,"matched":resolved,"metric_counts":dict(metrics)}
+            if len(seen)!=11:
+                unmatched.extend({"side":side,"name":x.get("athlete",{}).get("displayName"),"id":x.get("athlete",{}).get("id"),"jersey":x.get("jersey")} for x in source if str(x.get("athlete",{}).get("id")) not in seen)
+        return {"ref":ref,"code":code,"verified":resolved==22,"matched":resolved,"metric_counts":dict(metrics),"unmatched_public_players":unmatched}
     except Exception as exc:return {"ref":ref,"code":code,"error":str(exc)}
 if __name__=="__main__":
-    manifest=json.loads((Path(__file__).parent/"research_fingerprints/espn_missing_v4.json").read_text())
+    manifest=json.loads((Path(__file__).parent/"research_fingerprints/espn_ligue1_final.json").read_text())
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         for report in pool.map(audit,manifest):print("AUDIT "+json.dumps(report),flush=True)
