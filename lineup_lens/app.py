@@ -930,6 +930,17 @@ def _private_11footy_stats_backfill():
 if season_db.enabled() and PASS and os.getenv("LINEUP_PRIVATE_STATS_IMPORT","1")=="1":
     threading.Thread(target=_private_11footy_stats_backfill,daemon=True,name="private-11footy-stats").start()
 
+@app.get("/api/private-player-totals")
+def private_player_totals():
+    if not PASS or not season_db.enabled():raise Problem("Μη διαθέσιμα ιδιωτικά στατιστικά.",503)
+    import private_player_totals as player_totals
+    try:
+        data=player_totals.get_stats(request.args.get("mode",""),int(request.args.get("match_id","")),int(request.args.get("team_id","")),int(request.args.get("player_id","")))
+    except ValueError as exc:raise Problem(str(exc),400)
+    response=jsonify(data)
+    response.headers["Cache-Control"]="no-store, private"
+    return response
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
