@@ -134,19 +134,32 @@ def store(db,f,rows):
         seen.add(pid)
         if started:counts[tid]+=1
         matches=[q["player_id"] for q in old if started and q["team_id"]==tid and norm(q["player_name"])==norm(name)]
+        # Reuse only an already verified provider identity, within the same team.
+        known=db.execute("""SELECT DISTINCT canonical_player_id FROM soccer_stats_player
+            WHERE provider_player_id=%s AND team_id=%s AND started
+            AND canonical_player_id IS NOT NULL""",(pid,tid)).fetchall()
+        ids={r["canonical_player_id"] for r in known}
+        if len(ids)==1:
+            previous=next(iter(ids))
+            if started and previous in {q["player_id"] for q in old if q["team_id"]==tid}:
+                if not matches or matches==[previous]:matches=[previous]
+                else:matches=[]
+            elif not started and played and previous not in {q["player_id"] for q in old}:
+                matches=[previous]
         canonical=matches[0] if len(matches)==1 and matches[0] not in linked else None
         if canonical is not None:linked.add(canonical)
         clean={k:p[k] for k in ("position","rating","passing","shooting","duels","defending","goalkeeping","general") if k in p}
         out.append((f["match_id"],pid,tid,canonical,name,started,played,mins,json.dumps(clean,ensure_ascii=False,allow_nan=False)))
     if any(v!=11 for v in counts.values()):raise ValueError("provider XI not complete")
-    if len(linked)<16:raise ValueError("too few verified starter identities")
+    verified_starters=sum(1 for r in out if r[5] and r[3] is not None)
+    if verified_starters<16:raise ValueError("too few verified starter identities")
     for row in out:
         db.execute("""INSERT INTO soccer_stats_player(match_id,provider_player_id,team_id,canonical_player_id,
             player_name,started,played,minutes,stats) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
             ON CONFLICT(match_id,provider_player_id) DO NOTHING""",row)
     db.execute("""UPDATE soccer_stats_fixture SET fetched_at=now(),matched_starters=%s,player_rows=%s,last_error=NULL
-        WHERE match_id=%s""",(len(linked),len(out),f["match_id"]))
-    status(db,f"PL match {f['match_id']}: {len(linked)}/22 verified starters, {len(out)} player rows")
+        WHERE match_id=%s""",(verified_starters,len(out),f["match_id"]))
+    status(db,f"PL match {f['match_id']}: {verified_starters}/22 verified starters, {len(out)} player rows")
 
 def tick(api,usage):
     with season_db.db() as db:
