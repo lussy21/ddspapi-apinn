@@ -1,0 +1,50 @@
+name: Lineup Lens footprint pilot checks
+on:
+  push:
+    branches:
+      - feature/lineup-footprint-pilot-20261127
+    paths:
+      - 'lineup_lens/**'
+      - '.github/workflows/lineup-footprint-checks.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("lineup_lens/templates/index.html").read_text()
+          js=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert len(js)==1
+          assert "queueFootprint()" in js[0]
+          assert "id=\"footprintPanel\"" in s
+          Path('/tmp/lineup-ui.js').write_text(js[0])
+          PY
+          node --check /tmp/lineup-ui.js
+      - name: Confirm real source includes played substitutes
+        run: |
+          PYTHONPATH=lineup_lens python3 - <<'PY'
+          from pathlib import Path
+          import sqlite3,tempfile,lzma
+          import private_11footy_stats as m
+          with tempfile.TemporaryDirectory() as td:
+              f=Path(td)/'a.xz';p=Path(td)/'a.db'
+              m.source._download(m.source.BASE_URL+m.SPLITS['PL'],f,60000000)
+              with lzma.open(f,'rb') as r,p.open('wb') as w:
+                  n=0
+                  while (c:=r.read(1048576)):
+                      n+=len(c)
+                      if n>400000000:raise ValueError('size limit')
+                      w.write(c)
+              con=sqlite3.connect(p)
+              n=con.execute("""SELECT count(*) FROM match_players p JOIN matches m USING(match_id) JOIN seasons sn USING(season_id) JOIN player_match_statistics s ON s.match_id=p.match_id AND s.team_id=p.team_id AND s.player_id=p.player_id WHERE sn.season=2026 AND m.status='played' AND p.started=0 AND s.minutes_played>0""").fetchone()[0]
+              print("PLAYED_SUBSTITUTE_ROWS",n)
+              assert n>100
+          PY
