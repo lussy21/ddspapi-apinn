@@ -21,8 +21,9 @@ ALIASES={"mancity":"manchestercity","manutd":"manchesterunited","spurs":"tottenh
          "leeds":"leedsunited","ipswich":"ipswichtown","coventry":"coventrycity",
          "hull":"hullcity","westham":"westhamunited"}
 
+TRANS=str.maketrans({"ß":"ss","ð":"d","đ":"d","ı":"i","ł":"l","ø":"o"})
 def norm(v):
-    return "".join(c for c in unicodedata.normalize("NFKD",str(v or "")).casefold() if c.isascii() and c.isalnum())
+    return "".join(c for c in unicodedata.normalize("NFKD",str(v or "")).casefold().translate(TRANS) if c.isascii() and c.isalnum())
 
 def team(v):
     n=norm(v)
