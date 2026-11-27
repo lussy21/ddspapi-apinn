@@ -13,11 +13,11 @@ def value(v):
 
 def summarize(current,prior,production,lines,role_to_line):
     if len(current)!=11 or len({p["id"] for p in current})!=11:
-        return ["Δεν έχει επιβεβαιωθεί πλήρης ενδεκάδα."]
+        return [{"kind":"neutral","text":"Δεν έχει επιβεβαιωθεί πλήρης ενδεκάδα.","detail":""}]
     if any(p.get("unresolved") for p in current):
-        return ["Δεν έχουν αντιστοιχιστεί με ασφάλεια όλοι οι παίκτες."]
+        return [{"kind":"neutral","text":"Δεν έχουν αντιστοιχιστεί με ασφάλεια όλοι οι παίκτες.","detail":""}]
     games={r["match_id"] for r in prior}
-    if len(games)<5:return ["Δεν υπάρχει αρκετό ιστορικό για ασφαλές συμπέρασμα."]
+    if len(games)<5:return [{"kind":"neutral","text":"Δεν υπάρχει αρκετό ιστορικό για ασφαλές συμπέρασμα.","detail":""}]
     players={};starts=defaultdict(set);roles=defaultdict(Counter)
     for r in prior:
         pid=r["player_id"];players[pid]=r["player_name"];starts[pid].add(r["match_id"])
