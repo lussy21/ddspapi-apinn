@@ -8,6 +8,7 @@ from math import isfinite
 import season_db
 from archive_pitch import ROLE
 import archive_daily as archive
+import player_rating_evidence
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -60,7 +61,9 @@ def compare(a,b,code):
     if all(abs(d)<max(.15,.25*u) for d,u in zip(deltas,x)):
         return "similar","Παρόμοιες καταγεγραμμένες ενδείξεις."
     return "unknown","Μικτές ενδείξεις· δεν προκύπτει σαφής διαφορά."
-def assess(current,history,stats):
+def assess(current,history,stats,ratings=None,team_starts=None):
+    ratings=ratings or {}
+    team_starts=team_starts or {}
     unknown=lambda k:{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκές ιστορικό ή άγνωστες θέσεις."}
     if len(current)!=11 or len({p["id"] for p in current})!=11 or any(line(p.get("code")) not in LINES for p in current):
         return [unknown(k) for k in LINES]
@@ -98,7 +101,14 @@ def assess(current,history,stats):
         old=next(iter(absent));new=newcomers[0]
         if old in current_ids or old not in exact or role(exact[old])!=role(new["code"]):
             out.append({"line":LABELS[k],"status":"changes","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."+details});continue
-        status,msg=compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
+        rating=player_rating_evidence.compare(ratings.get(old,[]),ratings.get(new["id"],[]),ROLE.get(new["code"],new["code"]))
+        status,msg=rating if rating is not None else compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
+        if status=="unknown":
+            # Presence is an independent continuity signal, NEVER a quality label.
+            old_starts=team_starts.get(old,0);new_starts=team_starts.get(new["id"],0)
+            if old_starts>=5 and new_starts>=5 and new_starts>=.75*old_starts:
+                msg="Γνώριμη εναλλακτική της ομάδας. Η ποιοτική διαφορά δεν έχει τεκμηριωθεί."
+                status="familiar"
         out.append({"line":LABELS[k],"status":status,"text":names[old]+" → "+new["name"]+". "+msg})
     return out
 def load_history(db,league,tid,cutoff):
@@ -127,6 +137,28 @@ def load_stats(db,league,tid,cutoff):
           AND a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",(league,tid,cutoff)).fetchall()
         for r in rows:out[r["player_id"]].append(r)
     return out
+def load_ratings(db,league,tid,cutoff):
+    out=defaultdict(list)
+    if not db.execute("SELECT to_regclass('soccer_stats_player') AS t").fetchone()["t"]:return out
+    # Stable provider ID plus complete verified match XI. Unlinked players,
+    # missing ratings, unused substitutes and future matches never qualify.
+    rows=db.execute("""SELECT p.match_id,p.canonical_player_id AS player_id,p.minutes,
+        p.stats->>'position' AS position,(p.stats->>'rating')::numeric AS rating
+        FROM soccer_stats_player p JOIN soccer_stats_fixture f USING(match_id)
+        JOIN archive_matches a USING(match_id)
+        WHERE a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s
+        AND f.fetched_at IS NOT NULL AND f.matched_starters=22
+        AND p.played AND p.canonical_player_id IS NOT NULL
+        AND jsonb_typeof(p.stats->'rating')='number'""",(league,tid,cutoff)).fetchall()
+    for r in rows:out[r["player_id"]].append(r)
+    return out
+
+def load_team_starts(db,league,tid,cutoff):
+    return {r["player_id"]:r["n"] for r in db.execute("""SELECT s.player_id,count(*)::int n
+        FROM archive_starters s JOIN archive_matches a USING(match_id)
+        WHERE a.season_year=2026 AND a.competition_code=%s AND s.team_id=%s AND a.kickoff_utc<%s
+        GROUP BY s.player_id""",(league,tid,cutoff)).fetchall()}
+
 def domestic_context(db,team,cutoff):
     """Use only the existing verified cross-competition team/player ID links."""
     rows=db.execute("""SELECT DISTINCT a.competition_code,t.team_id
@@ -170,6 +202,6 @@ def for_match(mid):
                 if context:code,tid,xi=context
             if not tid:
                 lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
-            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff))
+            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff))
             results.append({"name":t["name"],"lines":lines,"basis":code})
-    return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Αλλαγή σύνθεσης δεν σημαίνει αποδυνάμωση. Τα όρια ατομικής αξιολόγησης δεν έχουν βαθμονομηθεί."}
+    return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
