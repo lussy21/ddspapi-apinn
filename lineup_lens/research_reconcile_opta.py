@@ -152,7 +152,7 @@ def main():
                                 same=[p for p in side if int_or_none(p.get("shirt_number"))==j]
                                 if len(same)!=1:continue
                                 p=same[0];_,ex,ini,_,_,_=profile(p)
-                                if exact in ex or (initial is not None and initial in ini):continue
+                                if exact in ex or (initial is not None and initial in ini) or (exact,str(p["player_id"])) in REVIEWED_ALIASES:continue
                                 key=(exact,str(p["player_id"]),str(p.get("player_name") or ""),str(p.get("known_name") or ""),str(p.get("first_name") or ""),str(p.get("last_name") or ""))
                                 diagnostics[key].add(reference)
                     continue
