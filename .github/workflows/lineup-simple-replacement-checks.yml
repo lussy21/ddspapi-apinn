@@ -1,0 +1,28 @@
+name: Lineup simple replacement checks
+on:
+  push:
+    branches:
+      - feature/lineup-simple-replacements-20261127
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_simple_replacements.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("lineup_lens/templates/index.html").read_text()
+          js=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert len(js)==1
+          assert s.index('id="pitchLines"')<s.index('id="footprintPanel"')
+          assert "team.replacements" in js[0]
+          Path('/tmp/lineup.js').write_text(js[0])
+          PY
+          node --check /tmp/lineup.js
