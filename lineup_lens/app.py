@@ -1029,7 +1029,7 @@ def _private_fpl_played_backfill():
         import private_fpl_played
         private_fpl_played.run()
         import lineup_footprint
-        for mid in (901879225,901888240,901915521):
+        for mid in (901879225,901888240,901915521,901882791):
             try:
                 result=lineup_footprint.for_match(mid)
                 with season_db.db() as db:
@@ -1040,7 +1040,7 @@ def _private_fpl_played_backfill():
                     db.execute("""INSERT INTO lineup_footprint_smoke(version,match_id,result)
                         VALUES(%s,%s,%s::jsonb) ON CONFLICT(version,match_id)
                         DO UPDATE SET result=excluded.result,checked_at=now()""",
-                        ("played-metrics-v1",mid,json.dumps(result,ensure_ascii=False,allow_nan=False)))
+                        ("simple-replacements-v1",mid,json.dumps(result,ensure_ascii=False,allow_nan=False)))
             except Exception as exc:
                 app.logger.warning("Footprint smoke held %s: %s",mid,type(exc).__name__)
     except Exception as exc:
