@@ -3093,8 +3093,8 @@ async function refreshFootprint(){
   if(req!==footprintRequest||dataMode!=='live'||selected!==mid)return;
   const root=$('footprintContent');root.replaceChildren();
   if(!d.ready){root.textContent='Αναμονή επίσημων ενδεκάδων.';return}
-  const colors={usual:'#91a3a6',positive:'#b4f05b',negative:'#ff9c8b',similar:'#91a3a6',changes:'#f0c46c',unknown:'#92a0a5'};
-  const titles={usual:'Συνήθης',positive:'Θετική ένδειξη',negative:'Αρνητική ένδειξη',similar:'Παρόμοια',changes:'Αλλαγές',unknown:'Άγνωστη'};
+  const colors={usual:'#91a3a6',positive:'#b4f05b',negative:'#ff9c8b',similar:'#91a3a6',changes:'#f0c46c',familiar:'#a8d7e7',unknown:'#92a0a5'};
+  const titles={usual:'Συνήθης',positive:'Θετική ένδειξη',negative:'Αρνητική ένδειξη',similar:'Παρόμοια',changes:'Αλλαγές',familiar:'Γνώριμη επιλογή',unknown:'Άγνωστη'};
   const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px';
   const head=document.createElement('tr');
   for(const name of [d.teams[0].name,'Γραμμή',d.teams[1].name]){
@@ -3115,7 +3115,7 @@ async function refreshFootprint(){
   const title=document.createElement('p');title.style.cssText='font-size:13px;font-weight:700;margin:12px 0 6px;color:#dce5e7';title.textContent='Συμπέρασμα';root.append(title);
   for(const team of d.teams){
     const changes=team.lines.filter(x=>x.status!=='usual');
-    const strong=changes.filter(x=>x.status==='positive'||x.status==='negative'||x.status==='similar'||x.status==='changes');
+    const strong=changes.filter(x=>x.status==='positive'||x.status==='negative'||x.status==='similar'||x.status==='changes'||x.status==='familiar');
     const unknown=changes.filter(x=>x.status==='unknown');
     const p=document.createElement('p');p.style.cssText='font-size:12px;line-height:1.55;margin:5px 0;color:#dce5e7';
     const detail=strong.map(x=>x.line+': '+x.text);
