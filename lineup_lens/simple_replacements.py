@@ -157,13 +157,16 @@ def decorate(pair,sources):
     pair.update({"summary":msg,"kind":kind})
     return pair
 
-def load(db,league,tid,cutoff,xi,formation):
+def load_history(db,league,tid,cutoff):
     args=(league,tid,cutoff)
-    history=db.execute("""SELECT s.match_id,s.player_id,s.position_code,p.player_name FROM archive_starters s
+    history=db.execute("""SELECT s.match_id,s.player_id,s.position_code,p.player_name,a.kickoff_utc FROM archive_starters s
         JOIN archive_matches a USING(match_id) JOIN archive_players p USING(player_id)
         WHERE a.season_year=2026 AND a.competition_code=%s AND s.team_id=%s AND a.kickoff_utc<%s""",args).fetchall()
-    result=pairs(current_codes(xi,formation),history)
-    if not result:return []
+    return history
+
+
+def load_sources(db,league,tid,cutoff):
+    args=(league,tid,cutoff)
     sources={}
     def add(name,rows):
         pool=defaultdict(list)
@@ -181,6 +184,13 @@ def load(db,league,tid,cutoff,xi,formation):
             WHERE p.release_name='11footy-2026-11-10' AND a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",args).fetchall()
         add("11footy",rows)
     if db.execute("SELECT to_regclass('soccer_stats_verified_match_players') t").fetchone()["t"]:
-        add("Soccer Data",db.execute("""SELECT match_id,canonical_player_id player_id,minutes,jsonb_build_object('goals',goals,'assists',assists,'duels_won',duels_won,'duels_lost',duels_lost,'recoveries',recoveries,'chances_created',key_passes,'saves',saves) metrics
+        add("Soccer Data",db.execute("""SELECT match_id,canonical_player_id player_id,minutes,jsonb_build_object('goals',goals,'assists',assists,'duels_won',duels_won,'duels_lost',duels_lost,'recoveries',recoveries,'chances_created',key_passes,'saves',saves,'xg',xg,'xa',xa) metrics
         FROM soccer_stats_verified_match_players WHERE season_year=2026 AND competition_code=%s AND team_id=%s AND kickoff_utc<%s AND canonical_player_id IS NOT NULL""",args).fetchall())
+    return sources
+
+
+def load(db,league,tid,cutoff,xi,formation):
+    result=pairs(current_codes(xi,formation),load_history(db,league,tid,cutoff))
+    if not result:return []
+    sources=load_sources(db,league,tid,cutoff)
     return [decorate(p,sources) for p in result]
