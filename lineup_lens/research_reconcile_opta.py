@@ -11,6 +11,7 @@ BASE="https://github.com/peteowen1/pannadata/releases/download/opta-latest/"
 LEAGUES=dict(PL="EPL",SA="Serie_A",LL="La_Liga",BL="Bundesliga",L1="Ligue_1",GR1="Greek_Super_League",BE1="Belgian_First_Division",DK1="Danish_Superliga",NO1="Eliteserien",NL1="Eredivisie",TR1="Super_Lig",SC1="Scottish_Premiership",SE1="Allsvenskan",UCL="UCL",UEL="UEL",UECL="Conference_League")
 FIELDS=["minsPlayed","goals","goalAssist","totalScoringAtt","ontargetScoringAtt","totalAttAssist","totalPass","accuratePass","totalTackle","interception","totalClearance","ballRecovery","duelWon","aerialWon","saves","bigChanceCreated"]
 NAME_EVIDENCE={}
+REVIEWED_ALIASES={}
 TRANSLATE=str.maketrans({"ß":"ss","ð":"d","đ":"d","ı":"i","ł":"l","ø":"o"})
 def tokens(s):
     t="".join(c for c in unicodedata.normalize("NFKD",str(s or "")) if not unicodedata.combining(c)).lower().translate(TRANSLATE)
@@ -71,7 +72,7 @@ def reconcile_side(xi,source):
         matches=[]
         for i,(src_j,src_exact,src_initial,src_surnames,src_first,src_first_initials) in enumerate(profiles):
             if j is not None and src_j!=j:continue
-            strong=exact in src_exact or (j is not None and initial is not None and initial in src_initial)
+            strong=exact in src_exact or (j is not None and initial is not None and initial in src_initial) or (j is not None and (exact,str(source[i]['player_id'])) in REVIEWED_ALIASES)
             # A fallback needs an actual shared surname, matching first-name initial
             # and the same match/team/jersey, never jersey alone.
             weak=False
@@ -123,9 +124,9 @@ def main():
             for f in source:by_date[str(f["match_date"])[:10]].append(f)
             for p in stats:by_side[(str(p["match_id"]),str(p["team_id"]))].append(p)
             for p in xs:xlookup[(str(p["match_id"]),str(p["team_id"]),str(p["player_id"]))].append(p)
-            counts=Counter();metrics=Counter();verified=[];fail=[];used=set()
+            counts=Counter();metrics=Counter();verified=[];fail=[];used=set();diagnostics=defaultdict(set)
             for reference,_,date,homehash,awayhash,hg,ag,hxi,axi in archive:
-                candidates=[];best=0
+                candidates=[];best=0;review=[]
                 for f in by_date.get(date,[]):
                     if hg is not None and ag is not None and (int_or_none(f["home_score"])!=int_or_none(hg) or int_or_none(f["away_score"])!=int_or_none(ag)):continue
                     mid=str(f["match_id"])
@@ -133,11 +134,27 @@ def main():
                     away,an=reconcile_side(axi,by_side[(mid,str(f["away_team_id"]))])
                     names_agree=teamfp(f["home_team"])==homehash and teamfp(f["away_team"])==awayhash
                     if names_agree or hn+an>=15:best=max(best,hn+an)
+                    if hn+an>=19 and len(by_side[(mid,str(f["home_team_id"]))])==11 and len(by_side[(mid,str(f["away_team_id"]))])==11:
+                        review.append((hn+an,mid,f))
                     if home is not None and away is not None:
                         if not names_agree:counts["team_alias_by_complete_xi"]+=1
                         candidates.append((mid,home+away))
                 if len(candidates)!=1 or candidates[0][0] in used:
-                    counts["unmatched_or_ambiguous"]+=1;fail.append([reference,best,len(candidates)]);continue
+                    counts["unmatched_or_ambiguous"]+=1;fail.append([reference,best,len(candidates)])
+                    if len(review)==1:
+                        _,mid,f=review[0]
+                        for xi,tid in ((hxi,f["home_team_id"]),(axi,f["away_team_id"])):
+                            side=by_side[(mid,str(tid))]
+                            for jersey,exact,initial in xi:
+                                j=int_or_none(jersey)
+                                if j is None:continue
+                                same=[p for p in side if int_or_none(p.get("shirt_number"))==j]
+                                if len(same)!=1:continue
+                                p=same[0];_,ex,ini,_,_,_=profile(p)
+                                if exact in ex or (initial is not None and initial in ini):continue
+                                key=(exact,str(p["player_id"]),str(p.get("player_name") or ""),str(p.get("known_name") or ""),str(p.get("first_name") or ""),str(p.get("last_name") or ""))
+                                diagnostics[key].add(reference)
+                    continue
                 mid,players=candidates[0];used.add(mid)
                 if len({str(p["player_id"]) for p in players})!=22:
                     fail.append([reference,22,-1]);continue
@@ -150,5 +167,6 @@ def main():
                     if len(vals)==1:
                         for m in ("xg","xa"):metrics[m]+=int(vals[0].get(m) is not None)
                 if all(len(xlookup.get((mid,str(p["team_id"]),str(p["player_id"])),[]))==1 and all(xlookup[(mid,str(p["team_id"]),str(p["player_id"]))][0].get(m) is not None for m in ("xg","xa")) for p in players):counts["complete_xg_xa_matches"]+=1
+            print("REVIEW "+json.dumps({"code":code,"pairs":[list(k)+[len(v)] for k,v in sorted(diagnostics.items())]}),flush=True)
             print("AUDIT "+json.dumps({"code":code,"archive_matches":len(archive),"verified_matches":counts["verified_matches"],"starter_rows":22*counts["verified_matches"],"complete_xg_xa_matches":counts["complete_xg_xa_matches"],"metric_nonnull":dict(metrics),"verified_refs":verified,"failures":fail,"team_alias_matches":counts["team_alias_by_complete_xi"]}),flush=True)
 if __name__=="__main__":main()
