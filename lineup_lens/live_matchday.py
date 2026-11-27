@@ -330,6 +330,6 @@ def lineup(mid):
                         starts=hist[cid]["starts"]
                     elif cid not in hist and not any(archive.compatible(x["player_name"],name) for x in counts):
                         starts=0
-                players.append({"id":pid,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"starts":starts,"domestic_starts":domestic["starts"].get(p["player_id"]) if domestic else None,"wins":archive_results.player_stat(results,cid,starts),"domestic_wins":domestic.get("wins",{}).get(p["player_id"]) if domestic else None})
+                players.append({"id":pid,"stats_player_id":cid if starts is not None and tid else None,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"starts":starts,"domestic_starts":domestic["starts"].get(p["player_id"]) if domestic else None,"wins":archive_results.player_stat(results,cid,starts),"domestic_wins":domestic.get("wins",{}).get(p["player_id"]) if domestic else None})
             out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation),"position_source":t.get("position_source") if formation else None,"domestic":{k:domestic.get(k) for k in ("league","played","complete","baseline")} if domestic else None,"competition":league,"baseline":archive_results.team_totals(db,league,tid,row["kickoff_utc"])}
         return out
