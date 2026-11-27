@@ -159,7 +159,7 @@ def decorate(pair,sources):
 
 def load_history(db,league,tid,cutoff):
     args=(league,tid,cutoff)
-    history=db.execute("""SELECT s.match_id,s.player_id,s.position_code,p.player_name FROM archive_starters s
+    history=db.execute("""SELECT s.match_id,s.player_id,s.position_code,p.player_name,a.kickoff_utc FROM archive_starters s
         JOIN archive_matches a USING(match_id) JOIN archive_players p USING(player_id)
         WHERE a.season_year=2026 AND a.competition_code=%s AND s.team_id=%s AND a.kickoff_utc<%s""",args).fetchall()
     return history
