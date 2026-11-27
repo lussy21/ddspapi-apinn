@@ -1,0 +1,49 @@
+name: Lineup Lens private stats importer validation
+on:
+  push:
+    branches:
+      - feature/lineup-private-stats-import-20261127
+    paths:
+      - 'lineup_lens/private_11footy_stats.py'
+      - 'lineup_lens/test_private_11footy_stats.py'
+      - '.github/workflows/lineup-private-stats-checks.yml'
+  pull_request:
+    branches:
+      - lineup-lens-personal
+    paths:
+      - 'lineup_lens/private_11footy_stats.py'
+      - 'lineup_lens/test_private_11footy_stats.py'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_private_11footy_stats.py' -v
+      - name: Validate real source parser without DB connection
+        run: |
+          PYTHONPATH=lineup_lens python3 - <<'PY'
+          import private_11footy_stats as m
+          from pathlib import Path
+          import tempfile,lzma
+          with tempfile.TemporaryDirectory() as td:
+              folder=Path(td)
+              people=m.source.load_people(folder)
+              for code in ('PL','DE2'):
+                  compressed=folder/'a.xz';path=folder/'a.db'
+                  m.source._download(m.source.BASE_URL+m.SPLITS[code],compressed,60000000)
+                  with lzma.open(compressed,'rb') as r,path.open('wb') as w:
+                      n=0
+                      while (chunk:=r.read(1048576)):
+                          n+=len(chunk)
+                          if n>400000000:raise ValueError('size limit')
+                          w.write(chunk)
+                  games,sides=m.read_source(path,people)
+                  valid=sum(1 for g in games if all(len(sides[(g['match_id'],g[t])])==11 and all(m.valid_metrics(p) for p in sides[(g['match_id'],g[t])]) for t in ('home_team_id','away_team_id')))
+                  print('SOURCE_VALID',code,len(games),valid,flush=True)
+                  assert valid>80
+                  compressed.unlink();path.unlink()
+          PY
