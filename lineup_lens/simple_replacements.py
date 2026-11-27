@@ -34,7 +34,7 @@ def current_codes(xi,formation):
 
 def pairs(current,history):
     if len(current)!=11 or len({p["id"] for p in current})!=11:return []
-    if any(p.get("unresolved") or p.get("code") not in MAP for p in current):return []
+    if any(p.get("code") not in MAP for p in current):return []
     names={};positions=defaultdict(Counter);freq=defaultdict(Counter);starts=Counter()
     games={r["match_id"] for r in history}
     if len(games)<5:return []
@@ -52,6 +52,10 @@ def pairs(current,history):
         old,n=ranking[0]
         if n<max(3,ceil(len(games)*.45)) or (len(ranking)>1 and ranking[1][1]==n):continue
         if old in now or old in used:continue
+        if p.get("unresolved"):continue
+        # An unresolved player elsewhere could be the historical reference.
+        from archive_daily import compatible
+        if any(q.get("unresolved") and compatible(names[old],q["name"]) for q in current):continue
         used.add(old)
         old_role=positions[old].most_common(1)[0][0]
         new_role=positions[p["id"]].most_common(1)[0][0] if positions[p["id"]] else None
