@@ -32,20 +32,31 @@ def current_codes(xi,formation):
         out.append(dict(p,code=code))
     return out
 
+def slot_for(code,formation_counts):
+    # LM/RM in the three-man central midfield of 4-3-3, or double
+    # pivot of 4-2-3-1, are not the attacking wide slots.
+    if code in ("LM","RM") and ((formation_counts.get("D")==4 and formation_counts.get("M")==3 and formation_counts.get("F")==3)
+         or (formation_counts.get("D")==4 and formation_counts.get("M")==2 and formation_counts.get("A")==3 and formation_counts.get("F")==1)):
+        return "CML" if code=="LM" else "CMR"
+    return MAP.get(code)
+
 def pairs(current,history):
     if len(current)!=11 or len({p["id"] for p in current})!=11:return []
     if any(p.get("code") not in MAP for p in current):return []
     names={};positions=defaultdict(Counter);freq=defaultdict(Counter);starts=Counter()
     games={r["match_id"] for r in history}
     if len(games)<5:return []
+    shapes=defaultdict(Counter)
+    for r in history:shapes[r["match_id"]][ROLE.get(r["position_code"])]+=1
     for r in history:
         pid=r["player_id"];names[pid]=r["player_name"];starts[pid]+=1
-        slot=MAP.get(r["position_code"])
+        slot=slot_for(r["position_code"],shapes[r["match_id"]])
         if slot:freq[slot][pid]+=1;positions[pid][slot]+=1
-    now={p["id"] for p in current};present=Counter(MAP[p["code"]] for p in current)
+    shape=Counter(ROLE.get(p["code"]) for p in current)
+    now={p["id"] for p in current};present=Counter(slot_for(p["code"],shape) for p in current)
     out=[];used=set()
     for p in current:
-        slot=MAP[p["code"]]
+        slot=slot_for(p["code"],shape)
         if present[slot]!=1:continue
         ranking=freq[slot].most_common()
         if not ranking:continue
@@ -92,7 +103,7 @@ def profile(rows,slot):
         v=metric(rows,key)
         if key=="duels_won" and v is not None:
             lost=metric(rows,"duels_lost")
-            v=f"{int(v)}/{int(v+lost)}" if lost is not None and v+lost>0 else str(int(v))
+            v=f"{int(v)}/{int(v+lost)} ({round(100*v/(v+lost))}%)" if lost is not None and v+lost>0 else str(int(v))
         elif v is not None:
             v=round(v*90/total,1) if "/ 90" in label else round(v,2)
         values.append({"label":label,"value":v})
@@ -125,6 +136,24 @@ def decorate(pair,sources):
                 msg="Η σημερινή επιλογή έχει καταγεγραμμένη επιθετική παραγωγή.";kind="neutral"
             else:
                 msg="Σύγκριση καταγεγραμμένων γκολ και ασίστ· όχι βαθμός ποιότητας."
+    if slot in ("LB","RB","CB","CBL","CBR") and a.get("metrics") and b.get("metrics"):
+        # Report observed strengths, without treating more defensive actions
+        # as proof of overall quality. Compare rate and success separately.
+        def pct(p):
+            x=p["metrics"][0]["value"]
+            if not isinstance(x,str) or "/" not in x:return None
+            try:
+                w,t=x.split(" ")[0].split("/");return int(w)/int(t)
+            except (ValueError,ZeroDivisionError):return None
+        x,y=pct(a),pct(b)
+        ar,br=a["metrics"][1]["value"],b["metrics"][1]["value"]
+        bits=[]
+        if x is not None and y is not None:
+            if abs(y-x)>=.08:bits.append("Μεγαλύτερη επιτυχία στις μονομαχίες." if y>x else "Μικρότερη επιτυχία στις μονομαχίες.")
+            else:bits.append("Παρόμοια καταγεγραμμένη επιτυχία στις μονομαχίες.")
+        if isinstance(ar,(int,float)) and isinstance(br,(int,float)) and abs(ar-br)>=.5:
+            bits.append("Περισσότερες ανακτήσεις ανά 90′." if br>ar else "Λιγότερες ανακτήσεις ανά 90′.")
+        if bits:msg=("Αλλαγή ρόλου. " if kind=="attention" else "")+" ".join(bits)
     pair.update({"summary":msg,"kind":kind})
     return pair
 
