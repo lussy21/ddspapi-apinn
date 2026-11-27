@@ -27,10 +27,13 @@ def main():
         core=["match_id","player_id","team_id","position","minsPlayed","gameStarted"]
         if not set(core)<=cols:raise RuntimeError("missing core fields")
         measures=[k for k in ("goals","goalAssist","totalScoringAtt","ontargetScoringAtt","totalAttAssist","totalPass","accuratePass","totalTackle","interception","totalClearance","ballRecovery","duelWon","aerialWon","saves","bigChanceCreated","minsPlayed") if k in cols]
-        filters=f"try_cast({date} as date) between DATE '2026-01-01' and DATE '2026-11-27'"
+        print("RAW_DATES "+json.dumps(db.execute(f"SELECT cast({date} as varchar), season, {league} FROM stats WHERE {date} IS NOT NULL ORDER BY cast({date} as varchar) DESC LIMIT 10").fetchall(),default=str),flush=True)
+        print("SEASONS "+json.dumps(db.execute("SELECT season,count(*) FROM stats GROUP BY 1 ORDER BY 1 DESC LIMIT 12").fetchall(),default=str),flush=True)
+        date_expr=f"coalesce(try_cast({date} as date),cast(try_strptime(cast({date} as varchar),['%d/%m/%Y','%d-%m-%Y','%Y%m%d','%d/%m/%y','%d %b %Y','%Y-%m-%d %H:%M:%S']) as date))"
+        filters=f"{date_expr} between DATE '2026-01-01' and DATE '2026-11-27'"
         # Count by actual source league and period. No assertion from release update alone.
         db.execute(f"""CREATE TEMP VIEW this_year AS SELECT * FROM stats WHERE {filters}""")
-        present=db.execute(f"SELECT {league}, min(try_cast({date} as date)),max(try_cast({date} as date)),count(distinct match_id) FROM this_year GROUP BY 1 ORDER BY 1").fetchall()
+        present=db.execute(f"SELECT {league}, min({date_expr}),max({date_expr}),count(distinct match_id) FROM this_year GROUP BY 1 ORDER BY 1").fetchall()
         print("LEAGUE_LIST "+json.dumps(present,default=str),flush=True)
         for code,aliases in LEAGUES.items():
             def key(x):return ''.join(c for c in str(x).lower() if c.isalnum())
@@ -40,12 +43,12 @@ def main():
                 continue
             start="2026-01-01" if code in ("NO1","SE1") else "2026-07-01"
             # Exclude unplayed and substitute rows; require 11 identified starters on each of 2 teams.
-            where=f"{league}=? AND try_cast({date} as date)>=? AND try_cast(gameStarted as integer)=1 AND lower(coalesce(cast(position as varchar),''))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
+            where=f"{league}=? AND {date_expr}>=? AND try_cast(gameStarted as integer)=1 AND lower(coalesce(cast(position as varchar),''))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
             rows=db.execute(f"""WITH base AS (SELECT * FROM this_year WHERE {where}),
             teams AS (SELECT match_id,team_id,count(*) n,count(distinct player_id) players FROM base GROUP BY 1,2),
             valid AS (SELECT match_id FROM teams GROUP BY 1 HAVING count(*)=2 AND min(n)=11 AND max(n)=11 AND min(players)=11),
             verified AS (SELECT b.* FROM base b JOIN valid USING(match_id))
-            SELECT count(distinct match_id),count(*),min(try_cast({date} as date)),max(try_cast({date} as date))
+            SELECT count(distinct match_id),count(*),min({date_expr}),max({date_expr})
             {''.join(',count('+k+')' for k in measures)} FROM verified""",[hit[0],start]).fetchone()
             print("AUDIT "+json.dumps({"code":code,"source_league":hit[0],"verified_source_matches":rows[0],"starter_rows":rows[1],"first":rows[2],"last":rows[3],"metric_counts":dict(zip(measures,rows[4:]))},default=str),flush=True)
 if __name__=="__main__":main()
