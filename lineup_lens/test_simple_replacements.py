@@ -10,6 +10,12 @@ class SimpleTest(unittest.TestCase):
     def test_side_pair(self):
         c,h=setup();a=pairs(c,h)
         self.assertEqual(len(a),1);self.assertEqual(a[0]["old"]["id"],10);self.assertEqual(a[0]["new"]["id"],99)
+    def test_433_right_wing_not_right_midfield(self):
+        c,h=setup()
+        c[5]["code"]="LM";c[6]["code"]="CM";c[7]["code"]="LF";c[8]["code"]="RM"
+        a=pairs(c,h)
+        self.assertTrue(any(x["old"]["id"]==10 and x["new"]["id"]==99 for x in a))
+        self.assertFalse(any(x["old"]["id"]==10 and x["new"]["id"]==9 for x in a))
     def test_not_absent(self):
         c,h=setup();c[8]=dict(id=10,name="P10",code="AM")
         self.assertFalse(any(x["old"]["id"]==10 for x in pairs(c,h)))
