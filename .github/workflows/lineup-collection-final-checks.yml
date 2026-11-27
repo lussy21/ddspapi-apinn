@@ -1,0 +1,28 @@
+name: Lineup Lens collection and summary regression checks
+on:
+  push:
+    branches:
+      - feature/lineup-collection-final-20261127
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_collection_final.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_summary.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_footprint_quality_audit.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("lineup_lens/templates/index.html").read_text()
+          js=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert len(js)==1
+          Path('/tmp/lineup.js').write_text(js[0])
+          PY
+          node --check /tmp/lineup.js
