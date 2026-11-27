@@ -1,0 +1,17 @@
+name: Lineup Lens 11footy nine-league player-stat coverage audit
+on:
+  push:
+    branches:
+      - research/lineup-bulk-player-stats-20261127
+    paths:
+      - 'lineup_lens/research_11footy_all_leagues_stats.py'
+      - '.github/workflows/lineup-11footy-stats-coverage.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 lineup_lens/research_11footy_all_leagues_stats.py
