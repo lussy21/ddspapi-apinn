@@ -1,0 +1,18 @@
+name: Lineup Lens Opta fixture and xmetrics audit
+on:
+  push:
+    branches:
+      - research/lineup-bulk-player-stats-20261127
+    paths:
+      - 'lineup_lens/research_opta_fixture_xmetrics.py'
+      - '.github/workflows/lineup-opta-xmetrics.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install duckdb
+      - run: python3 lineup_lens/research_opta_fixture_xmetrics.py
