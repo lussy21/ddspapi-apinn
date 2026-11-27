@@ -908,6 +908,11 @@ if season_db.enabled() and os.getenv("LINEUP_LIVE_ESPN","1")=="1":
 if season_db.enabled() and os.getenv("LINEUP_RESULTS","1")=="1":
     threading.Thread(target=archive_results.loop,daemon=True,name="espn-archive-results").start()
 
+# One-off research check; no recurring API polling or change to the live lineup source.
+if season_db.enabled():
+    import soccer_data_probe
+    threading.Thread(target=soccer_data_probe.run,args=(api,bool(KEY),usage),daemon=True,name="soccer-data-oneoff-probe").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
