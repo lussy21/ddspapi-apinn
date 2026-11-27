@@ -12,6 +12,11 @@ class TestOpenFixtures(unittest.TestCase):
         self.assertIs(rows[0]["confirmed_lineup"],False)
         self.assertIsNone(rows[0].get("match_id"))
 
+    def test_fixed_italian_fixture_snapshot(self):
+        raw="gw,date,time,home,away\n11,2026-11-23,20:45,Monza,Fiorentina\n"
+        rows=parse_fixture_csv(raw,"2026-11-23","italy")
+        self.assertEqual([(r["home"],r["away"]) for r in rows],[("Monza","Fiorentina")])
+
     def test_no_fake_time(self):
         rows=parse_fixture_csv("date,time,home,away\n2026-11-23,,A,B\n","2026-11-23","italy")
         self.assertIsNone(rows[0]["kickoff_source_time"])

@@ -137,13 +137,14 @@ def collection_key(m,ratios,upcoming,now):
     order=PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)
     return (tier,ratios.get(code,0.0),-m["kickoff_utc"].timestamp(),order.index(code),m["match_id"])
 
-def discover(api,usage,db,missing,context=None):
+def discover(api,usage,db,missing,context=None,preferred=None):
     eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
         WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
     ratios,upcoming=context if context is not None else collection_context(db)
     now=datetime.now(timezone.utc)
     missing.sort(key=lambda m:collection_key(m,ratios,upcoming,now))
-    m0=next((m for m in missing if (m["competition_code"],week(m["local_date"])) not in eligible),None)
+    choices=missing if preferred is None else [m for m in missing if m["match_id"] in preferred]
+    m0=next((m for m in choices if (m["competition_code"],week(m["local_date"])) not in eligible),None)
     if m0 is None:return False
     code=m0["competition_code"]; anchor=week(m0["local_date"])
     try:
@@ -233,7 +234,7 @@ def tick(api,usage):
         better=[m for m in missing if f is None or collection_key(m,ratios,upcoming,now)<collection_key(f,ratios,upcoming,now)]
         if better and attempts<10:
             try:
-                if discover(api,usage,db,better,context):return True
+                if discover(api,usage,db,missing,context,preferred={m["match_id"] for m in better}):return True
             except RuntimeError as e:
                 if str(e)=="daily quota reserve reached":return False
                 raise

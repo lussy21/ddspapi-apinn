@@ -32,12 +32,17 @@ jobs:
           PYTHONPATH: lineup_lens
         run: |
           python - <<'PY'
+          from datetime import date
           from open_matchday import fetch_day
-          d = fetch_day('2026-11-23', ('england', 'italy'))
+          # This mutable public CSV is not a historical snapshot. Fixed-date
+          # exact fixtures are checked offline by parser unit tests instead.
+          day=date.today().isoformat()
+          d=fetch_day(day, ('england', 'italy'))
           print('Attempted leagues:',d['attempted_leagues'])
           print('Fixtures:',[(x['home'],x['away']) for x in d['fixtures']])
           print('Unavailable:',d['unavailable_leagues'])
           assert not d['unavailable_leagues'], 'One or more public fixture CSVs unavailable'
-          assert any(x['home']=='Brentford' and x['away']=='Everton' for x in d['fixtures'])
-          assert any(x['home']=='Monza' and x['away']=='Fiorentina' for x in d['fixtures'])
+          assert d['attempted_leagues']==['england','italy']
+          assert d['count']==len(d['fixtures'])
+          assert all(x['day']==day and x['home']!=x['away'] and not x['confirmed_lineup'] for x in d['fixtures'])
           PY

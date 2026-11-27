@@ -977,6 +977,50 @@ def _footprint_historical_audit():
 if season_db.enabled() and PASS and os.getenv("LINEUP_FOOTPRINT_AUDIT","1")=="1":
     threading.Thread(target=_footprint_historical_audit,daemon=True,name="private-footprint-audit").start()
 
+# Private end-to-end startup smoke check. No external API requests.
+# Exercise the real authenticated JSON route using recent confirmed fixtures.
+def _summary_smoke_check():
+    time.sleep(8)
+    version="2026-11-27-summary-v1"
+    try:
+        from psycopg.types.json import Jsonb
+        with season_db.db() as db:
+            db.execute("""CREATE TABLE IF NOT EXISTS lineup_summary_smoke(
+                version text NOT NULL, match_id integer NOT NULL,
+                http_status integer NOT NULL, result jsonb NOT NULL,
+                checked_at timestamptz NOT NULL DEFAULT now(),
+                PRIMARY KEY(version,match_id))""")
+            rows=db.execute("""SELECT f.match_id FROM lineup_live_fixtures f
+                WHERE f.announced IS NOT NULL AND f.kickoff_utc>=now()-interval '30 hours'
+                AND f.kickoff_utc<=now()+interval '3 hours'
+                AND NOT EXISTS(SELECT 1 FROM lineup_summary_smoke s
+                    WHERE s.version=%s AND s.match_id=f.match_id AND s.http_status=200)
+                ORDER BY f.kickoff_utc DESC LIMIT 16""",(version,)).fetchall()
+        for row in rows:
+            mid=row["match_id"]
+            try:
+                with app.test_client() as client:
+                    response=client.get("/api/lineup-footprint",query_string={"match_id":str(mid)},auth=("smoke",PASS))
+                    data=response.get_json(silent=True) or {}
+                    status=response.status_code
+                    if status==200 and (not data.get("ready") or len(data.get("teams",[]))!=2 or
+                        not all(t.get("findings") and len(t.get("lines",[]))==4 for t in data["teams"])):
+                        status=422
+                    result={"ready":bool(data.get("ready")),"teams":[{"name":t.get("name"),"findings":t.get("findings",[])}
+                        for t in data.get("teams",[])]} if status==200 else {"error":"summary validation failed"}
+                with season_db.db() as db:
+                    db.execute("""INSERT INTO lineup_summary_smoke(version,match_id,http_status,result)
+                        VALUES(%s,%s,%s,%s) ON CONFLICT(version,match_id) DO UPDATE SET
+                        http_status=excluded.http_status,result=excluded.result,checked_at=now()""",(version,mid,status,Jsonb(result)))
+            except Exception as exc:
+                app.logger.warning("Summary smoke held %s: %s",mid,type(exc).__name__)
+        app.logger.info("Private summary smoke checked %s fixtures",len(rows))
+    except Exception as exc:
+        app.logger.warning("Summary smoke held: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_SUMMARY_SMOKE","1")=="1":
+    threading.Thread(target=_summary_smoke_check,daemon=True,name="private-summary-smoke").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
