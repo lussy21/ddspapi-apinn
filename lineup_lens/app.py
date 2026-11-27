@@ -913,6 +913,11 @@ if season_db.enabled():
     import soccer_data_probe
     threading.Thread(target=soccer_data_probe.run,args=(api,bool(KEY),usage),daemon=True,name="soccer-data-oneoff-probe").start()
 
+# Independent player statistics archive. No change to SharpVision or ESPN lineups.
+if KEY and season_db.enabled() and os.getenv("LINEUP_SOCCER_STATS","1")=="1":
+    import soccer_stats_archive
+    threading.Thread(target=soccer_stats_archive.loop,args=(api,usage),daemon=True,name="soccer-stats-pl-pilot").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
