@@ -24,9 +24,9 @@ def main():
         league=next((x for x in ("league","competition","competition_code","league_code") if x in cols),None)
         date=next((x for x in ("match_date","date") if x in cols),None)
         if not league or not date:raise RuntimeError("unknown source date/league column")
-        core=["match_id","player_id","team_id","position","mins_played"]
+        core=["match_id","player_id","team_id","position","minsPlayed","gameStarted"]
         if not set(core)<=cols:raise RuntimeError("missing core fields")
-        measures=[k for k in ("goals","goal_assist","total_scoring_att","ontarget_scoring_att","total_att_assist","total_pass","accurate_pass","total_tackle","interception","total_clearance","ball_recovery","duel_won","aerial_won","saves","expected_goals","xg","xa") if k in cols]
+        measures=[k for k in ("goals","goalAssist","totalScoringAtt","ontargetScoringAtt","totalAttAssist","totalPass","accuratePass","totalTackle","interception","totalClearance","ballRecovery","duelWon","aerialWon","saves","bigChanceCreated","minsPlayed") if k in cols]
         filters=f"try_cast({date} as date) between DATE '2026-01-01' and DATE '2026-11-27'"
         # Count by actual source league and period. No assertion from release update alone.
         db.execute(f"""CREATE TEMP VIEW this_year AS SELECT * FROM stats WHERE {filters}""")
@@ -40,7 +40,7 @@ def main():
                 continue
             start="2026-01-01" if code in ("NO1","SE1") else "2026-07-01"
             # Exclude unplayed and substitute rows; require 11 identified starters on each of 2 teams.
-            where=f"{league}=? AND try_cast({date} as date)>=? AND position IS NOT NULL AND trim(cast(position as varchar))<>'' AND lower(cast(position as varchar))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
+            where=f"{league}=? AND try_cast({date} as date)>=? AND try_cast(gameStarted as integer)=1 AND lower(coalesce(cast(position as varchar),''))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
             rows=db.execute(f"""WITH base AS (SELECT * FROM this_year WHERE {where}),
             teams AS (SELECT match_id,team_id,count(*) n,count(distinct player_id) players FROM base GROUP BY 1,2),
             valid AS (SELECT match_id FROM teams GROUP BY 1 HAVING count(*)=2 AND min(n)=11 AND max(n)=11 AND min(players)=11),
