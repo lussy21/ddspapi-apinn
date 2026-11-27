@@ -12,6 +12,7 @@ import player_rating_evidence
 import role_metric_evidence
 import lineup_summary
 import played_metric_evidence
+import season_role_comparison
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -256,5 +257,10 @@ def for_match(mid):
                 lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
             else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff),load_role_metrics(db,code,tid,cutoff),played_metric_evidence.load(db,code,tid,cutoff))
             findings=lineup_summary.load(db,code,tid,cutoff,xi,lines,line) if tid else [{"kind":"neutral","text":"Δεν υπάρχει επαρκές ιστορικό ομάδας.","detail":""}]
+            reference=season_role_comparison.load(db,code,tid,cutoff,xi) if tid else []
+            # Season-reference findings describe a different baseline from
+            # recent tactical lines. Keep their basis explicit and do not
+            # overwrite the original tactical assessment.
+            if reference:findings=reference+findings
             results.append({"name":t["name"],"lines":lines,"basis":code,"findings":findings})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
