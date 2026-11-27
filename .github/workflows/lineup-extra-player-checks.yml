@@ -1,0 +1,31 @@
+name: Lineup Lens additional source and live identity checks
+on:
+  push:
+    branches:
+      - feature/lineup-daily-basic-stats-20261127
+    paths:
+      - 'lineup_lens/**'
+      - '.github/workflows/lineup-extra-player-checks.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_*player*.py' -v
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("lineup_lens/templates/index.html").read_text()
+          js=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert len(js)==1
+          assert "dataMode==='live'?p.stats_player_id:p.id" in js[0]
+          assert "player_id:String(pid)" in js[0]
+          assert '"stats_player_id":cid if starts is not None and tid else None' in Path('lineup_lens/live_matchday.py').read_text()
+          Path('/tmp/lineup-ui.js').write_text(js[0])
+          PY
+          node --check /tmp/lineup-ui.js
