@@ -11,6 +11,7 @@ COMP="competition_705uv6jm8myn"
 SEASON="season_hr1ie7yrsdmt"
 LOCK=614439855
 CAP=40
+COVERAGE_CAP=44  # Up to four additional coverage-only calls; still below free 50 and app limit 46.
 # Allocate uncovered leagues first (the current PL pilot already has match ratings).
 PRIORITY=('TR1','GR1','BE1','DK1','NL1','NO1','SC1','SE1')
 
@@ -58,18 +59,18 @@ def status(db,message):
     db.execute("""INSERT INTO soccer_stats_status(id,message) VALUES(1,%s)
         ON CONFLICT(id) DO UPDATE SET updated_at=now(),message=excluded.message""",(message,))
 
-def reserve(usage):
+def reserve(usage,cap=CAP):
     u=usage()
     if u.get("remote_remaining") is not None and u["remote_remaining"]<=5:return False
-    if u.get("calls",0)>=min(CAP,u.get("local_limit",46)):return False
+    if u.get("calls",0)>=min(cap,u.get("local_limit",46)):return False
     with season_db.db() as db:
         return bool(db.execute("""INSERT INTO soccer_stats_day(day,calls)
             VALUES((now() at time zone 'UTC')::date,1)
             ON CONFLICT(day) DO UPDATE SET calls=soccer_stats_day.calls+1
-            WHERE soccer_stats_day.calls<%s RETURNING calls""",(CAP,)).fetchone())
+            WHERE soccer_stats_day.calls<%s RETURNING calls""",(cap,)).fetchone())
 
-def request(api,usage,path,params=None):
-    if not reserve(usage):raise RuntimeError("daily quota reserve reached")
+def request(api,usage,path,params=None,cap=CAP):
+    if not reserve(usage,cap):raise RuntimeError("daily quota reserve reached")
     return api(path,params=params,ttl=86400)
 
 def candidates(db):
@@ -194,7 +195,7 @@ def tick(api,usage):
     with season_db.db() as db:
         if not db.execute("SELECT pg_try_advisory_xact_lock(%s) AS ok",(LOCK,)).fetchone()["ok"]:return False
         try:
-            if coverage.step(db,lambda path,params:request(api,usage,path,params)):return True
+            if coverage.step(db,lambda path,params:request(api,usage,path,params,cap=COVERAGE_CAP)):return True
         except RuntimeError as e:
             if str(e)=="daily quota reserve reached":return False
             raise
