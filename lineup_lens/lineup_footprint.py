@@ -7,6 +7,8 @@ from collections import Counter,defaultdict
 from math import isfinite
 import season_db
 from archive_pitch import ROLE
+import archive_daily as archive
+EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
 LABELS={"G":"Τερματοφύλακας","D":"Άμυνα","M":"Κέντρο","F":"Επίθεση"}
@@ -62,16 +64,20 @@ def assess(current,history,stats):
     unknown=lambda k:{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκές ιστορικό ή άγνωστες θέσεις."}
     if len(current)!=11 or len({p["id"] for p in current})!=11 or any(line(p.get("code")) not in LINES for p in current):
         return [unknown(k) for k in LINES]
-    recent=sorted(history,key=lambda m:m["kickoff_utc"],reverse=True)[:5]
-    if len(recent)<5 or any(len(m["players"])!=11 or len({p["id"] for p in m["players"]})!=11 or any(line(p.get("code")) not in LINES for p in m["players"]) for m in recent):
+    # At most two incomplete-position fixtures may be skipped, never older than
+    # the latest seven. Five complete earlier XIs remain mandatory.
+    recent=[m for m in sorted(history,key=lambda m:m["kickoff_utc"],reverse=True)[:7]
+            if len(m["players"])==11 and len({p["id"] for p in m["players"]})==11 and all(line(p.get("code")) in LINES for p in m["players"])][:5]
+    if len(recent)<5:
         return [unknown(k) for k in LINES]
     current_ids={p["id"] for p in current}
-    freq=Counter();roles=defaultdict(Counter);names={}
+    freq=Counter();roles=defaultdict(Counter);line_counts=defaultdict(Counter);names={}
     for m in recent:
         for p in m["players"]:
-            freq[p["id"]]+=1;roles[p["id"]][p["code"]]+=1;names[p["id"]]=p["name"]
+            freq[p["id"]]+=1;roles[p["id"]][p["code"]]+=1;line_counts[p["id"]][line(p["code"])]+=1;names[p["id"]]=p["name"]
     # Majority of last five starts; exact recent role must also have majority.
-    regular={pid:c.most_common(1)[0][0] for pid,c in roles.items() if freq[pid]>=3 and c.most_common(1)[0][1]>=3}
+    regular={pid:c.most_common(1)[0][0] for pid,c in line_counts.items() if c.most_common(1)[0][1]>=3}
+    exact={pid:c.most_common(1)[0][0] for pid,c in roles.items() if c.most_common(1)[0][1]>=3}
     out=[]
     for k in LINES:
         usual={pid for pid,c in regular.items() if line(c)==k}
@@ -79,15 +85,19 @@ def assess(current,history,stats):
         current_line={p["id"] for p in now}
         absent=usual-current_line
         newcomers=[p for p in now if p["id"] not in usual]
+        missing=[names[pid] for pid in sorted(usual-current_ids)]
+        details=(" Εκτός συνήθους 11άδας: "+", ".join(missing)+".") if missing else ""
+        if any(p.get("unresolved") for p in now):
+            out.append({"line":LABELS[k],"status":"unknown","text":"Μη επιβεβαιωμένη ταυτότητα παίκτη."+details});continue
         if not usual or len(usual)!=len(now):
-            out.append({"line":LABELS[k],"status":"unknown","text":"Αλλαγές ρόλων ή μη σταθερή συνήθης σύνθεση."});continue
+            out.append({"line":LABELS[k],"status":"changes" if missing else "unknown","text":"Διαφορετική ή μη σταθερή διάταξη."+details});continue
         if not absent and not newcomers:
             out.append({"line":LABELS[k],"status":"usual","text":"Συνήθης σύνθεση."});continue
         if len(absent)!=1 or len(newcomers)!=1:
-            out.append({"line":LABELS[k],"status":"unknown","text":"Πολλαπλές αλλαγές· η ποιότητά τους δεν έχει ακόμη αξιολογηθεί."});continue
+            out.append({"line":LABELS[k],"status":"changes","text":"Πολλαπλές αλλαγές· η ποιότητά τους δεν έχει ακόμη αξιολογηθεί."+details});continue
         old=next(iter(absent));new=newcomers[0]
-        if old in current_ids or role(regular[old])!=role(new["code"]):
-            out.append({"line":LABELS[k],"status":"unknown","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."});continue
+        if old in current_ids or old not in exact or role(exact[old])!=role(new["code"]):
+            out.append({"line":LABELS[k],"status":"changes","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."+details});continue
         status,msg=compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
         out.append({"line":LABELS[k],"status":status,"text":names[old]+" → "+new["name"]+". "+msg})
     return out
@@ -96,7 +106,7 @@ def load_history(db,league,tid,cutoff):
       FROM archive_matches a JOIN archive_starters s USING(match_id) JOIN archive_players p USING(player_id)
       WHERE a.season_year=2026 AND a.competition_code=%s AND s.team_id=%s AND a.kickoff_utc<%s
       AND a.match_id IN (SELECT match_id FROM archive_matches WHERE season_year=2026 AND competition_code=%s
-      AND kickoff_utc<%s AND %s IN(home_team_id,away_team_id) ORDER BY kickoff_utc DESC LIMIT 5)
+      AND kickoff_utc<%s AND %s IN(home_team_id,away_team_id) ORDER BY kickoff_utc DESC LIMIT 7)
       ORDER BY a.kickoff_utc DESC,s.player_id""",(league,tid,cutoff,league,cutoff,tid)).fetchall()
     games={}
     for r in rows:
@@ -117,6 +127,33 @@ def load_stats(db,league,tid,cutoff):
           AND a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",(league,tid,cutoff)).fetchall()
         for r in rows:out[r["player_id"]].append(r)
     return out
+def domestic_context(db,team,cutoff):
+    """Use only the existing verified cross-competition team/player ID links."""
+    rows=db.execute("""SELECT DISTINCT a.competition_code,t.team_id
+        FROM archive_matches a JOIN archive_teams t ON t.team_id IN (a.home_team_id,a.away_team_id)
+        WHERE a.season_year=2026 AND a.kickoff_utc<%s AND a.competition_code NOT IN ('UCL','UEL','UECL')
+        AND (t.team_id=%s OR EXISTS(SELECT 1 FROM archive_source_links l
+            WHERE l.competition_code=a.competition_code AND l.kind='team'
+            AND l.source_id=%s AND l.canonical_id=t.team_id))""",(cutoff,team["id"],team["id"])).fetchall()
+    if len(rows)!=1:return None
+    code,tid=rows[0]["competition_code"],rows[0]["team_id"]
+    links=archive.get_links(db,code)
+    names={r["player_id"]:r["player_name"] for r in db.execute("""SELECT DISTINCT p.player_id,p.player_name
+      FROM archive_players p JOIN archive_starters s USING(player_id) JOIN archive_matches a USING(match_id)
+      WHERE a.season_year=2026 AND a.competition_code=%s AND s.team_id=%s AND a.kickoff_utc<%s""",(code,tid,cutoff)).fetchall()}
+    xi=[]
+    for p in team["starting_xi"]:
+        source=p["id"]
+        cid=links["player"].get(source,source)
+        known=source not in links["blocked_player"] and cid in names and archive.compatible(names[cid],p["name"])
+        # A player with no recorded starts is allowed only with a positively
+        # linked source ID; no guessing a name match or counting it as weakness.
+        if not known and source not in links["blocked_player"] and source in links["player"] and cid not in names:
+            record=db.execute("SELECT player_name FROM archive_players WHERE player_id=%s",(cid,)).fetchone()
+            known=bool(record and archive.compatible(record["player_name"],p["name"]))
+        xi.append({"id":cid if known else -source,"name":p["name"],"code":p.get("position_code"),"unresolved":not known})
+    return code,tid,xi
+
 def for_match(mid):
     import live_matchday
     d=live_matchday.lineup(mid)
@@ -126,10 +163,13 @@ def for_match(mid):
     results=[]
     with season_db.db() as db:
         for side in ("home","away"):
-            t=d[side];tid=t["id"]
-            xi=[{"id":p.get("stats_player_id"),"name":p["name"],"code":p.get("position_code")} for p in t["starting_xi"]]
-            if not tid or any(p["id"] is None for p in xi):
-                lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση παικτών."} for k in LINES]
-            else:lines=assess(xi,load_history(db,d["competition"],tid,cutoff),load_stats(db,d["competition"],tid,cutoff))
-            results.append({"name":t["name"],"lines":lines})
-    return {"ready":True,"teams":results,"note":"Πιλοτική αξιολόγηση της συνήθους σύνθεσης και διαθέσιμων ατομικών δεικτών. Όχι βαθμολογία ποιότητας ή πρόβλεψη. Τα όρια δεν έχουν βαθμονομηθεί."}
+            t=d[side];tid=t["id"];code=d["competition"]
+            xi=[{"id":p.get("stats_player_id") or -p["id"],"name":p["name"],"code":p.get("position_code"),"unresolved":p.get("stats_player_id") is None} for p in t["starting_xi"]]
+            if code in EUROPE:
+                context=domestic_context(db,t,cutoff)
+                if context:code,tid,xi=context
+            if not tid:
+                lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
+            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff))
+            results.append({"name":t["name"],"lines":lines,"basis":code})
+    return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Αλλαγή σύνθεσης δεν σημαίνει αποδυνάμωση. Τα όρια ατομικής αξιολόγησης δεν έχουν βαθμονομηθεί."}
