@@ -1,0 +1,17 @@
+name: Lineup Lens all-league player-stat coverage audit
+on:
+  push:
+    branches:
+      - research/lineup-bulk-player-stats-20261127
+    paths:
+      - 'lineup_lens/research_all_league_espn_stats.py'
+      - '.github/workflows/lineup-player-stat-coverage.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 lineup_lens/research_all_league_espn_stats.py
