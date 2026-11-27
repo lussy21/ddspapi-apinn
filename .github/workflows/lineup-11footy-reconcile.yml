@@ -1,0 +1,18 @@
+name: Lineup Lens canonical 11footy reconciliation
+on:
+  push:
+    branches:
+      - research/lineup-bulk-player-stats-20261127
+    paths:
+      - 'lineup_lens/research_reconcile_11footy.py'
+      - '.github/workflows/lineup-11footy-reconcile.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install duckdb
+      - run: python3 lineup_lens/research_reconcile_11footy.py
