@@ -918,6 +918,18 @@ if KEY and season_db.enabled() and os.getenv("LINEUP_SOCCER_STATS","1")=="1":
     import soccer_stats_archive
     threading.Thread(target=soccer_stats_archive.loop,args=(api,usage),daemon=True,name="soccer-stats-pl-pilot").start()
 
+# Private, non-commercial 11footy stats backfill. Separate storage; no API calls.
+def _private_11footy_stats_backfill():
+    time.sleep(20)
+    try:
+        import private_11footy_stats
+        private_11footy_stats.run(log=app.logger.info)
+    except Exception as exc:
+        app.logger.warning("Private stats backfill paused: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_PRIVATE_STATS_IMPORT","1")=="1":
+    threading.Thread(target=_private_11footy_stats_backfill,daemon=True,name="private-11footy-stats").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
