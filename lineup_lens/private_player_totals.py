@@ -5,7 +5,8 @@ Never uses later matches or counts missing metrics as zero.
 import season_db
 METRICS={
     "11footy":{"minutes":"minutes_played","goals":"goals","assists":"assists","shots":"shots","shots_on_target":"shots_on_target","key_passes":"key_passes","saves":"saves"},
-    "soccer_data":{k:k for k in ("minutes","goals","assists","shots","xg","xa","key_passes","tackles","interceptions","clearances","recoveries","duels_won","saves","passes","accurate_passes")}
+    "soccer_data":{k:k for k in ("minutes","goals","assists","shots","xg","xa","key_passes","tackles","interceptions","clearances","recoveries","duels_won","saves","passes","accurate_passes")},
+    "fpl_elo":{k:k for k in ("minutes","goals","assists","shots","shots_on_target","xg","xa","chances_created","interceptions","clearances","recoveries","duels_won","saves","accurate_passes")}
 }
 def totals(rows,source):
     out={}
@@ -39,5 +40,13 @@ def get_stats(mode,mid,tid,pid):
               AND team_id=%s AND canonical_player_id=%s AND kickoff_utc{op}%s AND started
               ORDER BY match_id,provider_player_id""",args).fetchall()
             if rows:sources.append(totals(rows,"soccer_data"))
+        # This repository explicitly permits use of its dataset with attribution.
+        # Only the existing validated FPL research rows, not the Serie A report data.
+        if code=="PL" and db.execute("SELECT to_regclass('public.lineup_research_verified_player_stats') AS t").fetchone()["t"]:
+            rows=db.execute(f"""SELECT minutes,goals,assists,shots,shots_on_target,xg,xa,chances_created,interceptions,clearances,recoveries,duels_won,saves,accurate_passes
+              FROM lineup_research_verified_player_stats
+              WHERE source='fpl_elo' AND season_year=2026 AND competition_code=%s
+              AND team_id=%s AND canonical_player_id=%s AND kickoff_utc{op}%s""",args).fetchall()
+            if rows:sources.append(totals(rows,"fpl_elo"))
         return {"competition":code,"starts":n,"cutoff":cutoff.isoformat(),"inclusive":mode=="archive","sources":sources,
                 "note":"Μόνο αγώνες ως βασικός στην ίδια ομάδα/διοργάνωση. Οι πηγές δεν αθροίζονται."}
