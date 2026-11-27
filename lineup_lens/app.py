@@ -965,6 +965,18 @@ def _private_sub_stats_backfill():
 if season_db.enabled() and PASS and os.getenv("LINEUP_PRIVATE_SUB_STATS","1")=="1":
     threading.Thread(target=_private_sub_stats_backfill,daemon=True,name="private-11footy-subs").start()
 
+# One-time per-version private coverage audit. No external API requests.
+def _footprint_historical_audit():
+    time.sleep(8)
+    try:
+        import footprint_audit
+        footprint_audit.run()
+    except Exception as exc:
+        app.logger.warning("Footprint audit held: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_FOOTPRINT_AUDIT","1")=="1":
+    threading.Thread(target=_footprint_historical_audit,daemon=True,name="private-footprint-audit").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
