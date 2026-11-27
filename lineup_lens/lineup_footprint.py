@@ -9,6 +9,7 @@ import season_db
 from archive_pitch import ROLE
 import archive_daily as archive
 import player_rating_evidence
+import role_metric_evidence
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -61,7 +62,8 @@ def compare(a,b,code):
     if all(abs(d)<max(.15,.25*u) for d,u in zip(deltas,x)):
         return "similar","Παρόμοιες καταγεγραμμένες ενδείξεις."
     return "unknown","Μικτές ενδείξεις· δεν προκύπτει σαφής διαφορά."
-def assess(current,history,stats,ratings=None,team_starts=None):
+def assess(current,history,stats,ratings=None,team_starts=None,role_metrics=None):
+    role_metrics=role_metrics or {}
     ratings=ratings or {}
     team_starts=team_starts or {}
     unknown=lambda k:{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκές ιστορικό ή άγνωστες θέσεις."}
@@ -119,7 +121,20 @@ def assess(current,history,stats,ratings=None,team_starts=None):
         if old in current_ids or old not in exact or role(exact[old])!=role(new["code"]):
             out.append({"line":LABELS[k],"status":"changes","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."+details});continue
         rating=player_rating_evidence.compare(ratings.get(old,[]),ratings.get(new["id"],[]),ROLE.get(new["code"],new["code"]))
-        status,msg=rating if rating is not None else compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
+        metric=role_metric_evidence.evidence(role_metrics.get(old,[]),role_metrics.get(new["id"],[]),role(new["code"]))
+        basic=compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
+        # Conflicting directional signals from separate sources cannot become
+        # a confident quality label. No sums across providers.
+        evidence=[e for e in (rating,metric,basic) if e is not None and e[0] in ("positive","negative")]
+        if len({e[0] for e in evidence})>1:
+            status,msg="unknown","Οι διαθέσιμες πηγές δίνουν αντίθετες ενδείξεις."
+        elif rating is not None and rating[0] in ("positive","negative","similar"):
+            status,msg=rating
+        elif metric is not None:
+            status,msg=metric
+        elif rating is not None:
+            status,msg=rating
+        else:status,msg=basic
         if status=="unknown":
             # Presence is an independent continuity signal, NEVER a quality label.
             old_starts=team_starts.get(old,0);new_starts=team_starts.get(new["id"],0)
@@ -168,6 +183,20 @@ def load_ratings(db,league,tid,cutoff):
         AND p.played AND p.canonical_player_id IS NOT NULL
         AND jsonb_typeof(p.stats->'rating')='number'""",(league,tid,cutoff)).fetchall()
     for r in rows:out[r["player_id"]].append(r)
+    return out
+
+def load_role_metrics(db,league,tid,cutoff):
+    out=defaultdict(list)
+    if league!="PL" or not db.execute("SELECT to_regclass('lineup_research_verified_player_stats') AS t").fetchone()["t"]:return out
+    rows=db.execute("""SELECT v.match_id,v.canonical_player_id player_id,v.minutes,v.xg,v.xa,
+        v.shots_on_target,v.chances_created,v.duels_won,v.raw_metrics->>'duels_lost' duels_lost,
+        v.interceptions,v.recoveries,s.position_code
+        FROM lineup_research_verified_player_stats v JOIN archive_starters s
+        ON s.match_id=v.match_id AND s.team_id=v.team_id AND s.player_id=v.canonical_player_id
+        WHERE v.source='fpl_elo' AND v.season_year=2026 AND v.competition_code=%s
+        AND v.team_id=%s AND v.kickoff_utc<%s""",(league,tid,cutoff)).fetchall()
+    for r in rows:
+        r=dict(r);r["role"]=role(r["position_code"]);out[r["player_id"]].append(r)
     return out
 
 def load_team_starts(db,league,tid,cutoff):
@@ -219,6 +248,6 @@ def for_match(mid):
                 if context:code,tid,xi=context
             if not tid:
                 lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
-            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff))
+            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff),load_role_metrics(db,code,tid,cutoff))
             results.append({"name":t["name"],"lines":lines,"basis":code})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
