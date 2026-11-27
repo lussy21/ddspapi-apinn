@@ -1,0 +1,17 @@
+name: Lineup Lens historical quality audit checks
+on:
+  push:
+    branches:
+      - feature/lineup-quality-audit-20261127
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_footprint_quality_audit.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_player_rating_evidence.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v

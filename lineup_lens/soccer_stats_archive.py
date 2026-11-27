@@ -11,6 +11,7 @@ COMP="competition_705uv6jm8myn"
 SEASON="season_hr1ie7yrsdmt"
 LOCK=614439855
 CAP=40
+COVERAGE_CAP=44  # Up to four additional coverage-only calls; still below free 50 and app limit 46.
 # Allocate uncovered leagues first (the current PL pilot already has match ratings).
 PRIORITY=('TR1','GR1','BE1','DK1','NL1','NO1','SC1','SE1')
 
@@ -21,8 +22,9 @@ ALIASES={"mancity":"manchestercity","manutd":"manchesterunited","spurs":"tottenh
          "leeds":"leedsunited","ipswich":"ipswichtown","coventry":"coventrycity",
          "hull":"hullcity","westham":"westhamunited"}
 
+TRANS=str.maketrans({"ß":"ss","ð":"d","đ":"d","ı":"i","ł":"l","ø":"o"})
 def norm(v):
-    return "".join(c for c in unicodedata.normalize("NFKD",str(v or "")).casefold() if c.isascii() and c.isalnum())
+    return "".join(c for c in unicodedata.normalize("NFKD",str(v or "")).casefold().translate(TRANS) if c.isascii() and c.isalnum())
 
 def team(v):
     n=norm(v)
@@ -57,18 +59,18 @@ def status(db,message):
     db.execute("""INSERT INTO soccer_stats_status(id,message) VALUES(1,%s)
         ON CONFLICT(id) DO UPDATE SET updated_at=now(),message=excluded.message""",(message,))
 
-def reserve(usage):
+def reserve(usage,cap=CAP):
     u=usage()
     if u.get("remote_remaining") is not None and u["remote_remaining"]<=5:return False
-    if u.get("calls",0)>=min(CAP,u.get("local_limit",46)):return False
+    if u.get("calls",0)>=min(cap,u.get("local_limit",46)):return False
     with season_db.db() as db:
         return bool(db.execute("""INSERT INTO soccer_stats_day(day,calls)
             VALUES((now() at time zone 'UTC')::date,1)
             ON CONFLICT(day) DO UPDATE SET calls=soccer_stats_day.calls+1
-            WHERE soccer_stats_day.calls<%s RETURNING calls""",(CAP,)).fetchone())
+            WHERE soccer_stats_day.calls<%s RETURNING calls""",(cap,)).fetchone())
 
-def request(api,usage,path,params=None):
-    if not reserve(usage):raise RuntimeError("daily quota reserve reached")
+def request(api,usage,path,params=None,cap=CAP):
+    if not reserve(usage,cap):raise RuntimeError("daily quota reserve reached")
     return api(path,params=params,ttl=86400)
 
 def candidates(db):
@@ -104,11 +106,43 @@ def find_fixture(rows,m):
         if all(isinstance(v,str) and re.fullmatch(p+r"_[A-Za-z0-9]{5,32}",v) for p,v in (("match",mid),("team",hid),("team",aid))) and hid!=aid:out.append((mid,hid,aid))
     return out[0] if len(out)==1 else None
 
-def discover(api,usage,db,missing):
+def collection_context(db):
+    recent=db.execute("""SELECT a.competition_code code,count(*) total,
+        count(*) FILTER(WHERE f.fetched_at IS NOT NULL AND f.matched_starters=22) ready
+        FROM archive_matches a LEFT JOIN soccer_stats_fixture f USING(match_id)
+        WHERE a.season_year=2026 AND a.kickoff_utc>=now()-interval '60 days'
+        GROUP BY a.competition_code""").fetchall()
+    ratios={r["code"]:r["ready"]/r["total"] for r in recent if r["total"]}
+    upcoming=set()
+    if db.execute("SELECT to_regclass('lineup_live_fixtures') AS t").fetchone()["t"]:
+        rows=db.execute("""WITH live AS (
+          SELECT f.competition_code code,
+            CASE WHEN c->'team'->>'id' ~ '^[0-9]{1,8}$'
+              THEN 1000000000+(c->'team'->>'id')::int END source_id
+          FROM lineup_live_fixtures f
+          CROSS JOIN LATERAL jsonb_array_elements(f.event->'competitions'->0->'competitors') c
+          WHERE f.kickoff_utc BETWEEN now() AND now()+interval '72 hours'
+          AND f.status<>'unavailable')
+          SELECT DISTINCT live.code,coalesce(l.canonical_id,live.source_id) tid FROM live
+          LEFT JOIN archive_source_links l ON l.competition_code=live.code AND l.kind='team'
+          AND l.source_id=live.source_id WHERE live.source_id IS NOT NULL""").fetchall()
+        upcoming={(r["code"],r["tid"]) for r in rows}
+    return ratios,upcoming
+
+def collection_key(m,ratios,upcoming,now):
+    code=m["competition_code"]
+    age=(now-m["kickoff_utc"]).total_seconds()/86400
+    relevant=any((code,m[k]) in upcoming for k in ("home_team_id","away_team_id"))
+    tier=0 if relevant and age<=60 else (1 if age<=60 else 2)
+    order=PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)
+    return (tier,ratios.get(code,0.0),-m["kickoff_utc"].timestamp(),order.index(code),m["match_id"])
+
+def discover(api,usage,db,missing,context=None):
     eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
         WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
-    missing.sort(key=lambda m:(0 if m["local_date"]>=datetime.now(timezone.utc).date()-timedelta(days=3) else 1,
-        (PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)).index(m["competition_code"]),-m["kickoff_utc"].timestamp()))
+    ratios,upcoming=context if context is not None else collection_context(db)
+    now=datetime.now(timezone.utc)
+    missing.sort(key=lambda m:collection_key(m,ratios,upcoming,now))
     m0=next((m for m in missing if (m["competition_code"],week(m["local_date"])) not in eligible),None)
     if m0 is None:return False
     code=m0["competition_code"]; anchor=week(m0["local_date"])
@@ -181,14 +215,28 @@ def tick(api,usage):
     with season_db.db() as db:
         if not db.execute("SELECT pg_try_advisory_xact_lock(%s) AS ok",(LOCK,)).fetchone()["ok"]:return False
         try:
-            if coverage.step(db,lambda path,params:request(api,usage,path,params)):return True
+            if coverage.step(db,lambda path,params:request(api,usage,path,params,cap=COVERAGE_CAP)):return True
         except RuntimeError as e:
             if str(e)=="daily quota reserve reached":return False
             raise
-        f=db.execute("""SELECT f.*,m.home_team_id,m.away_team_id,m.competition_code FROM soccer_stats_fixture f
-            JOIN archive_matches m ON m.match_id=f.match_id
-            WHERE f.fetched_at IS NULL AND (f.last_attempt_at IS NULL OR f.last_attempt_at<now()-interval '1 day')
-            ORDER BY CASE WHEN m.competition_code IN ('TR1','GR1','BE1','DK1','NL1','NO1','SC1','SE1') THEN 0 ELSE 1 END,m.kickoff_utc DESC LIMIT 1""").fetchone()
+        context=collection_context(db)
+        ratios,upcoming=context
+        now=datetime.now(timezone.utc)
+        missing=candidates(db)
+        pending=db.execute("""SELECT f.*,m.home_team_id,m.away_team_id,m.competition_code,m.kickoff_utc
+            FROM soccer_stats_fixture f JOIN archive_matches m ON m.match_id=f.match_id
+            WHERE f.fetched_at IS NULL AND (f.last_attempt_at IS NULL OR f.last_attempt_at<now()-interval '1 day')""").fetchall()
+        f=min(pending,key=lambda m:collection_key(m,ratios,upcoming,now)) if pending else None
+        # Reserve a portion of the daily budget for discovering new leagues
+        # even while another competition has a pending match backlog.
+        attempts=db.execute("SELECT count(*) n FROM soccer_stats_listing_v2 WHERE attempted_at>=date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'").fetchone()["n"]
+        better=[m for m in missing if f is None or collection_key(m,ratios,upcoming,now)<collection_key(f,ratios,upcoming,now)]
+        if better and attempts<10:
+            try:
+                if discover(api,usage,db,better,context):return True
+            except RuntimeError as e:
+                if str(e)=="daily quota reserve reached":return False
+                raise
         if f:
             try:rows=request(api,usage,"/matches/"+f["provider_id"]+"/player-stats")
             except RuntimeError as e:
@@ -204,8 +252,7 @@ def tick(api,usage):
             except ValueError as e:
                 db.execute("UPDATE soccer_stats_fixture SET last_attempt_at=now(),last_error=%s WHERE match_id=%s",(str(e)[:160],f["match_id"]))
             return True
-        missing=candidates(db)
-        try:return discover(api,usage,db,missing)
+        try:return discover(api,usage,db,missing,context)
         except RuntimeError as e:
             if str(e)=="daily quota reserve reached":return False
             raise

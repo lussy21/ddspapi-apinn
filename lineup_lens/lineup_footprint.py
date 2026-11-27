@@ -97,7 +97,24 @@ def assess(current,history,stats,ratings=None,team_starts=None):
         if not absent and not newcomers:
             out.append({"line":LABELS[k],"status":"usual","text":"Συνήθης σύνθεση."});continue
         if len(absent)!=1 or len(newcomers)!=1:
-            out.append({"line":LABELS[k],"status":"changes","text":"Πολλαπλές αλλαγές· η ποιότητά τους δεν έχει ακόμη αξιολογηθεί."+details});continue
+            old_ids=sorted(absent)
+            new_ids=[p["id"] for p in newcomers]
+            old_roles=Counter(role(exact[i]) for i in old_ids if i in exact)
+            new_roles=Counter(role(p["code"]) for p in newcomers)
+            comparable=(len(old_ids)==len(new_ids) and len(old_ids)>1
+                        and not any(i in current_ids for i in old_ids)
+                        and sum(old_roles.values())==len(old_ids)
+                        and old_roles==new_roles)
+            if comparable:
+                broad={ROLE.get(p["code"],p["code"]) for p in newcomers}
+                if len(broad)==1:
+                    evidence=player_rating_evidence.compare_group(
+                        [ratings.get(i,[]) for i in old_ids],
+                        [ratings.get(i,[]) for i in new_ids],next(iter(broad)))
+                    if evidence is not None:
+                        status,msg=evidence
+                        out.append({"line":LABELS[k],"status":status,"text":"Συνολική αξιολόγηση αντικαταστατών. "+msg+details});continue
+            out.append({"line":LABELS[k],"status":"changes","text":"Πολλαπλές αλλαγές· δεν επαρκούν τα συγκρίσιμα στοιχεία."+details});continue
         old=next(iter(absent));new=newcomers[0]
         if old in current_ids or old not in exact or role(exact[old])!=role(new["code"]):
             out.append({"line":LABELS[k],"status":"changes","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."+details});continue

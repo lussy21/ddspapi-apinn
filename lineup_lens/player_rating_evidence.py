@@ -28,7 +28,9 @@ def profile(rows,position):
 def compare(a,b,position):
     x,y=profile(a,position),profile(b,position)
     if x is None or y is None:return None
-    delta=y[0]-x[0];uncertainty=sqrt(x[1]**2+y[1]**2)
+    return classify(y[0]-x[0],sqrt(x[1]**2+y[1]**2))
+
+def classify(delta,uncertainty):
     # Deliberately conservative experimental margins; not an inference test
     # or estimated probability. Do not rank conflicting/noisy evidence.
     margin=max(.30,1.5*uncertainty)
@@ -36,3 +38,16 @@ def compare(a,b,position):
     if delta<=-margin:return "negative","Χαμηλότερη καταγεγραμμένη βαθμολογία στη συγκεκριμένη γραμμή (Soccer Data)."
     if abs(delta)+uncertainty<=.30:return "similar","Παρόμοιες καταγεγραμμένες βαθμολογίες (Soccer Data)."
     return "unknown","Οι βαθμολογίες δεν δίνουν ακόμη σαφή διαφορά (Soccer Data)."
+
+def compare_group(old,new,position):
+    """Compare equal-size role groups without guessing individual pairings.
+    Each player's profile must qualify; the mean gives each slot equal weight.
+    Sum of uncertainty margins is conservative for correlated teammates.
+    """
+    if not old or len(old)!=len(new):return None
+    aa=[profile(r,position) for r in old];bb=[profile(r,position) for r in new]
+    if any(p is None for p in aa+bb):return None
+    n=len(aa)
+    delta=(sum(p[0] for p in bb)-sum(p[0] for p in aa))/n
+    uncertainty=sum(p[1] for p in aa+bb)/n
+    return classify(delta,uncertainty)
