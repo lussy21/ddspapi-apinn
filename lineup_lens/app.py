@@ -941,6 +941,30 @@ def private_player_totals():
     response.headers["Cache-Control"]="no-store, private"
     return response
 
+# Private pilot: no new external API calls for evaluation.
+@app.get("/api/lineup-footprint")
+def lineup_footprint():
+    if not PASS or not season_db.enabled():raise Problem("Μη διαθέσιμη ανάλυση.",503)
+    import lineup_footprint as footprint
+    try:
+        mid=int(request.args.get("match_id",""))
+        if not 500000000<mid<1000000000:raise ValueError("Μη έγκυρος αγώνας")
+        response=jsonify(footprint.for_match(mid))
+    except ValueError as exc:raise Problem(str(exc),400)
+    response.headers["Cache-Control"]="no-store, private"
+    return response
+
+def _private_sub_stats_backfill():
+    time.sleep(20)
+    try:
+        import private_11footy_subs
+        private_11footy_subs.run()
+    except Exception as exc:
+        app.logger.warning("Private substitutes backfill paused: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_PRIVATE_SUB_STATS","1")=="1":
+    threading.Thread(target=_private_sub_stats_backfill,daemon=True,name="private-11footy-subs").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
