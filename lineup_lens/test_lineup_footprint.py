@@ -27,7 +27,21 @@ class TestFootprint(unittest.TestCase):
         self.assertEqual(compare(samples(1,0,0),samples(3,1,1),"CB")[0],"unknown")
     def test_role_change_unknown(self):
         now=xi();now[9]=player(99,"LF")
-        self.assertEqual(assess(now,games(),{})[-1]["status"],"unknown")
+        self.assertEqual(assess(now,games(),{})[-1]["status"],"changes")
+    def test_skip_at_most_two_unknown_position_games(self):
+        history=games()
+        bad=xi();bad[0]["code"]=None
+        history.append({"kickoff_utc":6,"players":bad})
+        self.assertTrue(all(x["status"]=="usual" for x in assess(xi(),history,{})))
+    def test_partial_identity_does_not_hide_other_lines(self):
+        current=xi();current[2]=dict(player(-99,"CD-R"),unresolved=True)
+        a=assess(current,games(),{})
+        self.assertEqual([x["status"] for x in a],["usual","unknown","usual","usual"])
+    def test_multiple_changes_not_declared_weak(self):
+        current=xi();current[2]=player(90,"CD-R");current[3]=player(91,"CD-L")
+        a=assess(current,games(),{})
+        self.assertEqual(a[1]["status"],"changes")
+        self.assertIn("Player 3",a[1]["text"])
     def test_missing_field(self):
         self.assertIsNone(sample([{"match_id":i,"metrics":{"minutes_played":90,"goals":0}} for i in range(5)],("goals","assists")))
     def test_missing_history(self):
