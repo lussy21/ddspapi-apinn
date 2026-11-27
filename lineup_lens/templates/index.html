@@ -27,18 +27,19 @@
 </section>
 <section class="panel match-head"><div class="comp" id="competition">ΔΟΚΙΜΑΣΤΙΚΗ ΠΡΟΒΟΛΗ</div><div class="vs" id="matchTitle">Ομάδα Α – Ομάδα Β</div><div class="time" id="kickoff">Ενδεικτική σύνθεση • όχι πραγματικός αγώνας</div><div class="info"><span class="pill" id="lineupStatus">Επίδειξη ενδεκάδας</span><span class="pill grey" id="statsStatus">Δεδομένα παραδείγματος</span></div></section>
 
-<div class="topbar"><strong id="pitchHeading">Οι 11 βασικοί</strong><small id="pitchSubheading">Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
-<div class="tabs"><button class="active" id="homeTab">Ομάδα Α<span>4-3-3</span></button><button id="awayTab">Ομάδα Β<span>4-2-3-1</span></button></div>
-<div class="banner predicted hidden" id="archiveWarning" role="status"></div><div class="banner" id="demoWarning">Δεν εμφανίζουμε υποθετικές ενδεκάδες ή στατιστικά. Διάλεξε ημερομηνία και πραγματικό αγώνα για να ξεκινήσεις.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
-<section class="pitch" aria-label="Παίκτες πάνω στο γήπεδο"><div class="goal top"></div><div class="goal bottom"></div><div class="midline"></div><div class="lines" id="pitchLines"></div></section>
 <section class="panel hidden" id="footprintPanel" aria-live="polite">
-<p class="eyebrow">ΑΛΛΑΓΕΣ ΕΝΔΕΚΑΔΑΣ</p>
+<p class="eyebrow">ΕΠΙΔΡΑΣΗ ΕΝΔΕΚΑΔΑΣ</p>
 <div id="footprintContent"></div>
 <p class="footnote" id="footprintNote" style="margin-bottom:0"></p>
 </section>
+<details class="panel" id="lineupPitchDetails"><summary style="cursor:pointer;font-weight:700;color:#c5d5d9">Προβολή ενδεκάδων και γηπέδου</summary><div class="topbar"><strong id="pitchHeading">Οι 11 βασικοί</strong><small id="pitchSubheading">Επίσημες ενάρξεις σε ολόκληρη τη σεζόν</small></div>
+<div class="tabs"><button class="active" id="homeTab">Ομάδα Α<span>4-3-3</span></button><button id="awayTab">Ομάδα Β<span>4-2-3-1</span></button></div>
+<div class="banner predicted hidden" id="archiveWarning" role="status"></div><div class="banner" id="demoWarning">Δεν εμφανίζουμε υποθετικές ενδεκάδες ή στατιστικά. Διάλεξε ημερομηνία και πραγματικό αγώνα για να ξεκινήσεις.</div><div class="banner predicted hidden" id="predictionWarning">ΠΡΟΒΛΕΠΟΜΕΝΗ ενδεκάδα — οι 11 παίκτες μπορεί να αλλάξουν μέχρι την επίσημη ανακοίνωση. Οι ενάρξεις ελέγχονται από τις επίσημες ενδεκάδες προηγούμενων αγώνων, όταν πατήσεις επαλήθευση.</div>
+<section class="pitch" aria-label="Παίκτες πάνω στο γήπεδο"><div class="goal top"></div><div class="goal bottom"></div><div class="midline"></div><div class="lines" id="pitchLines"></div></section>
+</details>
 
-<details class="panel win-panel hidden" id="winPanel"><summary>Δείκτης νικών ενδεκάδας</summary><div id="winTeams"></div><p class="footnote">Γενικά: κάθε αγώνας μία φορά. 11άδα: νίκες και γκολ ανά βασική συμμετοχή με επιβεβαιωμένο σκορ. Δ = διαφορά από τον γενικό μέσο όρο (νίκες σε ποσοστιαίες μονάδες). Όχι πρόβλεψη.</p></details><div id="winPopup" class="win-popup hidden" role="status"></div><div class="summary"><div class="mini"><b id="coreCount">—</b><span id="coreLabel">Σταθεροί βασικοί (≥80% όλης της σεζόν)</span></div><div class="mini"><b id="rareCount">—</b><span id="rareLabel">Λίγες ενάρξεις φέτος (&lt;50%)</span></div></div>
-<div class="action"><button class="hidden" id="loadStats" disabled>Συλλογή ενδεκάδων σεζόν</button><button id="refresh">Έλεγξε ενδεκάδα</button><button class="hidden" id="watch">Αυτόματος έλεγχος</button></div><div class="message" id="message"></div>
+<details class="panel win-panel hidden" id="winPanel"><summary>Δείκτης νικών ενδεκάδας</summary><div id="winTeams"></div><p class="footnote">Γενικά: κάθε αγώνας μία φορά. 11άδα: νίκες και γκολ ανά βασική συμμετοχή με επιβεβαιωμένο σκορ. Δ = διαφορά από τον γενικό μέσο όρο (νίκες σε ποσοστιαίες μονάδες). Όχι πρόβλεψη.</p></details><div id="winPopup" class="win-popup hidden" role="status"></div><details class="panel"><summary style="cursor:pointer;font-size:12px;color:#93a4a6">Συμμετοχές βασικών</summary><div class="summary"><div class="mini"><b id="coreCount">—</b><span id="coreLabel">Σταθεροί βασικοί (≥80% όλης της σεζόν)</span></div><div class="mini"><b id="rareCount">—</b><span id="rareLabel">Λίγες ενάρξεις φέτος (&lt;50%)</span></div></div>
+</details><div class="action"><button class="hidden" id="loadStats" disabled>Συλλογή ενδεκάδων σεζόν</button><button id="refresh">Έλεγξε ενδεκάδα</button><button class="hidden" id="watch">Αυτόματος έλεγχος</button></div><div class="message" id="message"></div>
 <p class="footnote" id="pitchFootnote">Μετράμε βασικές συμμετοχές από τις ΕΠΙΣΗΜΕΣ ενδεκάδες ολόκληρης της τρέχουσας σεζόν, στην ίδια διοργάνωση. Αν λείπουν προηγούμενες 11άδες, το «≥» σημαίνει τουλάχιστον τόσες επιβεβαιωμένες ενάρξεις — όχι πλήρες αποτέλεσμα. Το κουμπί συλλέγει μέχρι 5 επιπλέον αγώνες ανά πάτημα, με προστασία του δωρεάν ορίου API. Οι προβλεπόμενες σημερινές ενδεκάδες παραμένουν μη επιβεβαιωμένες.</p>
 </main><script>
 const $=id=>document.getElementById(id);
@@ -3095,14 +3096,55 @@ async function refreshFootprint(){
   if(req!==footprintRequest||dataMode!=='live'||selected!==mid)return;
   const root=$('footprintContent');root.replaceChildren();
   if(!d.ready){root.textContent='Αναμονή επίσημων ενδεκάδων.';return}
+  const make=(tag,txt,style)=>{const e=document.createElement(tag);e.textContent=txt;if(style)e.style.cssText=style;return e};
+  const fmt=(n,d=1)=>Number(n).toLocaleString('el-GR',{maximumFractionDigits:d});
+  const signed=(n,d=1)=>(n>0?'+':'')+fmt(n,d);
   for(const team of d.teams){
-    const heading=document.createElement('h3');
-    heading.style.cssText='font-size:15px;margin:12px 0 7px;color:#f0f3f5';
-    heading.textContent=team.name;root.append(heading);
+    const heading=make('h3',team.name,'font-size:16px;margin:12px 0 7px;color:#f0f3f5');root.append(heading);
+    const impacts=team.impact?.length?team.impact:['Επίθεση','Κέντρο','Άμυνα','Τέρμα'].map(label=>({label,status:'unknown',reason:'Δεν επαρκούν τα δεδομένα.'}));
+    for(const r of impacts){
+      const detail=document.createElement('details');detail.style.cssText='padding:10px 0;border-top:1px solid #34505b';
+      const summary=document.createElement('summary');summary.style.cssText='list-style:none;cursor:pointer;display:block';
+      const top=document.createElement('div');top.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px';
+      top.append(make('b',r.label));
+      const measured=r.status==='measured',v=r.value;
+      const color=measured?(v>0?'#80dca0':v<0?'#f28282':'#a9b9be'):'#a9b9be';
+      const suffix=r.unit==='relative'?'%':r.unit==='pp'?' π.μ.':'';
+      const val=measured?signed(v,1)+suffix:r.status==='unchanged'?'Ίδια σύνθεση':'—';
+      top.append(make('b',val,'color:'+color+';font-size:17px'));summary.append(top);
+      if(measured){
+        const track=document.createElement('div');track.style.cssText='height:9px;position:relative;background:#293b44;border-radius:4px;margin:8px 0 4px;overflow:hidden';
+        const scale=r.unit==='relative'?100:r.unit==='pp'?20:1;
+        const w=Math.min(50,Math.abs(v)/scale*50);
+        const bar=document.createElement('span');bar.style.cssText='position:absolute;top:0;bottom:0;background:'+color+';width:'+w+'%;left:'+(v<0?50-w:50)+'%';
+        const zero=document.createElement('span');zero.style.cssText='position:absolute;left:50%;top:0;bottom:0;width:1px;background:#a9b9be';track.append(bar,zero);summary.append(track);
+        summary.append(make('small',r.metric+(r.small_sample?' · μικρό δείγμα':''),'color:#a9b9be;font-size:11px'));
+      }else summary.append(make('small',r.status==='unchanged'?'Καμία αλλαγή σύνθεσης':'Ανεπαρκή στοιχεία','color:#93a4a6;font-size:11px'));
+      detail.append(summary);
+      const body=document.createElement('div');body.style.cssText='padding:8px 0;color:#dce5e7;font-size:12px;line-height:1.55';
+      if(measured){
+        body.append(make('div','Συνήθως: '+fmt(r.baseline,3)+' → Σήμερα: '+fmt(r.current,3)));
+        body.append(make('small',r.source+' · '+r.reference_games+'/'+r.reference_total+' προηγ. ενδεκάδες · ελάχιστο δείγμα '+r.min_minutes+' λεπτά','color:#93a4a6;display:block;margin:4px 0'));
+        if(r.reference_only?.length)body.append(make('div','Δεν ξεκινούν σήμερα στη γραμμή: '+r.reference_only.join(', ')));
+        if(r.current_only?.length)body.append(make('div','Νέες επιλογές στη γραμμή: '+r.current_only.join(', ')));
+        if(r.players?.length){
+          const roster=document.createElement('div');roster.style.cssText='margin-top:5px';
+          for(const p of r.players)roster.append(make('div',(p.today?'Σήμερα · ':'Αναφορά · ')+p.name+': '+fmt(p.value,2)+(r.unit==='pp'?'%':'')+' ('+p.minutes+'′)'));
+          body.append(roster);
+        }
+      }else body.append(make('div',r.reason||'Δεν επαρκούν τα στοιχεία.'));
+      detail.append(body);root.append(detail);
+    }
+  }
+  const expanded=document.createElement('details');expanded.style.cssText='margin-top:12px;border-top:1px solid #34505b;padding-top:10px';
+  expanded.append(make('summary','Αλλαγές παικτών','cursor:pointer;font-size:13px;color:#a8d7e7;font-weight:700'));
+  const cards=document.createElement('div');expanded.append(cards);root.append(expanded);
+  for(const team of d.teams){
+    const heading=make('h3',team.name,'font-size:15px;margin:12px 0 7px;color:#f0f3f5');cards.append(heading);
     const pairs=team.replacements||[];
     if(!pairs.length){
       const p=document.createElement('p');p.style.cssText='color:#93a4a6;font-size:12px;margin:5px 0';
-      p.textContent='Δεν εντοπίστηκε ασφαλής αντιστοίχιση αλλαγής θέσης.';root.append(p);continue;
+      p.textContent='Δεν εντοπίστηκε ασφαλής αντιστοίχιση αλλαγής θέσης.';cards.append(p);continue;
     }
     for(const pair of pairs){
       const card=document.createElement('div');card.style.cssText='border-top:1px solid #34505b;padding:12px 0 10px';
@@ -3125,10 +3167,10 @@ async function refreshFootprint(){
       card.append(grid);
       const msg=document.createElement('p');msg.style.cssText='font-size:12px;line-height:1.5;margin:5px 0;color:#dce5e7';msg.textContent=pair.summary;card.append(msg);
       const basis=document.createElement('small');basis.style.cssText='font-size:10px;color:#93a4a6';basis.textContent=pair.basis+(pair.source?' · '+pair.source:'');card.append(basis);
-      root.append(card);
+      cards.append(card);
     }
   }
-  $('footprintNote').textContent='Σύγκριση θέσεων αναφοράς πριν από τη σέντρα. Όχι επιβεβαίωση απευθείας αντικατάστασης.';
+  $('footprintNote').textContent='Σύγκριση με έως 5 προηγούμενες ενδεκάδες, με στοιχεία πριν από τη σέντρα. Τα χρώματα δείχνουν μεταβολή του συγκεκριμένου δείκτη, όχι συνολική ποιότητα ή πρόβλεψη. π.μ. = ποσοστιαίες μονάδες.';
  }catch(e){if(req===footprintRequest){$('footprintContent').textContent='Η πιλοτική ανάλυση δεν είναι διαθέσιμη.';$('footprintNote').textContent='';}}
 }
 function queueFootprint(){
