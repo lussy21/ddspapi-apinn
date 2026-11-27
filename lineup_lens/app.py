@@ -1021,6 +1021,34 @@ def _summary_smoke_check():
 if season_db.enabled() and PASS and os.getenv("LINEUP_SUMMARY_SMOKE","1")=="1":
     threading.Thread(target=_summary_smoke_check,daemon=True,name="private-summary-smoke").start()
 
+# Verified FPL played-player data and private post-import smoke check.
+# No provider API requests. Audit results are recomputed, not a locked forecast.
+def _private_fpl_played_backfill():
+    time.sleep(20)
+    try:
+        import private_fpl_played
+        private_fpl_played.run()
+        import lineup_footprint
+        for mid in (901879225,901888240,901915521):
+            try:
+                result=lineup_footprint.for_match(mid)
+                with season_db.db() as db:
+                    db.execute("""CREATE TABLE IF NOT EXISTS lineup_footprint_smoke (
+                        version text NOT NULL,match_id integer NOT NULL,
+                        result jsonb NOT NULL,checked_at timestamptz NOT NULL DEFAULT now(),
+                        PRIMARY KEY(version,match_id))""")
+                    db.execute("""INSERT INTO lineup_footprint_smoke(version,match_id,result)
+                        VALUES(%s,%s,%s::jsonb) ON CONFLICT(version,match_id)
+                        DO UPDATE SET result=excluded.result,checked_at=now()""",
+                        ("played-metrics-v1",mid,json.dumps(result,ensure_ascii=False,allow_nan=False)))
+            except Exception as exc:
+                app.logger.warning("Footprint smoke held %s: %s",mid,type(exc).__name__)
+    except Exception as exc:
+        app.logger.warning("FPL played import held: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_FPL_PLAYED","1")=="1":
+    threading.Thread(target=_private_fpl_played_backfill,daemon=True,name="private-fpl-played").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
