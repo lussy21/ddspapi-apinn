@@ -11,7 +11,7 @@ BASE="https://github.com/peteowen1/pannadata/releases/download/opta-latest/"
 LEAGUES=dict(PL="EPL",SA="Serie_A",LL="La_Liga",BL="Bundesliga",L1="Ligue_1",GR1="Greek_Super_League",BE1="Belgian_First_Division",DK1="Danish_Superliga",NO1="Eliteserien",NL1="Eredivisie",TR1="Super_Lig",SC1="Scottish_Premiership",SE1="Allsvenskan",UCL="UCL",UEL="UEL",UECL="Conference_League")
 FIELDS=["minsPlayed","goals","goalAssist","totalScoringAtt","ontargetScoringAtt","totalAttAssist","totalPass","accuratePass","totalTackle","interception","totalClearance","ballRecovery","duelWon","aerialWon","saves","bigChanceCreated"]
 NAME_EVIDENCE={}
-REVIEWED_ALIASES={}
+REVIEWED_ALIASES=set()
 TRANSLATE=str.maketrans({"ß":"ss","ð":"d","đ":"d","ı":"i","ł":"l","ø":"o"})
 def tokens(s):
     t="".join(c for c in unicodedata.normalize("NFKD",str(s or "")) if not unicodedata.combining(c)).lower().translate(TRANSLATE)
@@ -103,6 +103,7 @@ def main():
     canonical=[r for p in sorted(directory.glob("part*.json")) for r in json.loads(p.read_text())]
     for exact,surnames,first,letter in json.loads((directory/"name_alias_fingerprints.json").read_text()):
         NAME_EVIDENCE.setdefault(exact,[]).append((surnames,first,letter))
+    REVIEWED_ALIASES.update(tuple(row) for row in json.loads((directory/"reviewed_opta_aliases.json").read_text()))
     assert len({r[0] for r in canonical})==len(canonical)
     with tempfile.TemporaryDirectory() as td:
         db=duckdb.connect()
