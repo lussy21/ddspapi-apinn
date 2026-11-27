@@ -1,0 +1,18 @@
+name: Lineup Lens ESPN remaining fixtures audit
+on:
+  push:
+    branches:
+      - research/lineup-bulk-player-stats-20261127
+    paths:
+      - 'lineup_lens/research_espn_gap_audit.py'
+      - '.github/workflows/lineup-espn-gap-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install duckdb
+      - run: python3 lineup_lens/research_espn_gap_audit.py
