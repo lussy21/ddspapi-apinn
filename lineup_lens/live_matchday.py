@@ -318,7 +318,16 @@ def lineup(mid):
                     domestic={"league":None,"played":None,"complete":False,"starts":{}}
             results=archive_results.history(db,league,tid,row["kickoff_utc"])
             players=[]
-            for p in ordered:
+            # Preserve the existing displayed pitch. Broad roles are derived
+            # only from a verified explicit formation when exact codes are absent.
+            broad=[]
+            if formation:
+                try:
+                    sizes=[int(x) for x in formation.split("-")]
+                    if sum(sizes)==10 and len(sizes)>=2:
+                        broad=["G"]+["D"]*sizes[0]+["M"]*sum(sizes[1:-1])+["F"]*sizes[-1]
+                except ValueError:pass
+            for i,p in enumerate(ordered):
                 pid=p["player_id"];name=p["player_name"]
                 if not final and league=="SE1" and "ohlsson" in archive.norm(name) and "degerfors" in archive.norm(t["name"]):
                     pid={7:1800000007,16:1800000016}.get(p["shirt_number"],pid)
@@ -330,6 +339,6 @@ def lineup(mid):
                         starts=hist[cid]["starts"]
                     elif cid not in hist and not any(archive.compatible(x["player_name"],name) for x in counts):
                         starts=0
-                players.append({"id":pid,"stats_player_id":cid if starts is not None and tid else None,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"position_code":p["position_code"],"starts":starts,"domestic_starts":domestic["starts"].get(p["player_id"]) if domestic else None,"wins":archive_results.player_stat(results,cid,starts),"domestic_wins":domestic.get("wins",{}).get(p["player_id"]) if domestic else None})
+                players.append({"id":pid,"stats_player_id":cid if starts is not None and tid else None,"name":name,"number":p["shirt_number"],"position":ROLE.get(p["position_code"]),"position_code":p["position_code"] if p["position_code"] in ROLE else (broad[i] if len(broad)==11 else None),"starts":starts,"domestic_starts":domestic["starts"].get(p["player_id"]) if domestic else None,"wins":archive_results.player_stat(results,cid,starts),"domestic_wins":domestic.get("wins",{}).get(p["player_id"]) if domestic else None})
             out[side]={"id":tid,"name":t["name"],"formation":formation,"played":played if verified else None,"verified":verified,"starting_xi":players,"positions_known":bool(formation),"position_source":t.get("position_source") if formation else None,"domestic":{k:domestic.get(k) for k in ("league","played","complete","baseline")} if domestic else None,"competition":league,"baseline":archive_results.team_totals(db,league,tid,row["kickoff_utc"])}
         return out
