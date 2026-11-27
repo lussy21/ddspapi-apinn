@@ -3074,19 +3074,21 @@ let archiveStatsMatchId=null;
 function closeWin(){ $('winPopup').classList.add('hidden') }
 async function appendPrivatePlayerStats(pop,p,t){
  const mid=dataMode==='archive'?archiveStatsMatchId:selected;
- if(!mid||!Number.isInteger(Number(p.id))||!Number.isInteger(Number(t.id)))return;
+ const pid=dataMode==='live'?p.stats_player_id:p.id;
+ if(!mid||pid==null||t.id==null||!Number.isInteger(Number(pid))||!Number.isInteger(Number(t.id)))return;
  const root=document.createElement('div');root.style.cssText='max-height:210px;overflow:auto;margin-top:8px;border-top:1px solid #395158;padding-top:6px';
  root.textContent='Φόρτωση ατομικών στατιστικών…';pop.append(root);
- const labels={minutes:'Λεπτά',goals:'Γκολ',assists:'Ασίστ',shots:'Σουτ',shots_on_target:'Σουτ στην εστία',xg:'xG',xa:'xA',key_passes:'Πάσες-κλειδιά',tackles:'Τάκλιν',interceptions:'Κοψίματα',clearances:'Απομακρύνσεις',recoveries:'Ανακτήσεις',duels_won:'Κερδισμένες μονομαχίες',saves:'Αποκρούσεις',passes:'Πάσες',accurate_passes:'Εύστοχες πάσες'};
+ const labels={minutes:'Λεπτά',goals:'Γκολ',assists:'Ασίστ',shots:'Σουτ',shots_on_target:'Σουτ στην εστία',xg:'xG',xa:'xA',key_passes:'Πάσες-κλειδιά',chances_created:'Ευκαιρίες που δημιούργησε',tackles:'Τάκλιν',interceptions:'Κοψίματα',clearances:'Απομακρύνσεις',recoveries:'Ανακτήσεις',duels_won:'Κερδισμένες μονομαχίες',saves:'Αποκρούσεις',passes:'Πάσες',accurate_passes:'Εύστοχες πάσες'};
  try{
-  const q=new URLSearchParams({mode:dataMode,match_id:String(mid),team_id:String(t.id),player_id:String(p.id)});
+  const q=new URLSearchParams({mode:dataMode,match_id:String(mid),team_id:String(t.id),player_id:String(pid)});
   const d=await api('/api/private-player-totals?'+q);
   if(!root.isConnected)return;
   root.replaceChildren();
   const head=document.createElement('small');head.textContent='Σεζόν • '+d.competition+' • '+d.starts+' καταγεγραμμένες βασικές συμμετοχές';root.append(head);
   if(!d.sources.length){let n=document.createElement('div');n.textContent='Δεν υπάρχουν ακόμη ατομικά στοιχεία.';root.append(n);return}
   for(const src of d.sources){
-   const h=document.createElement('div');h.style.cssText='color:#b4f05b;font-weight:700;margin:7px 0 3px';h.textContent=(src.source==='11footy'?'11footy (CC BY-NC 4.0)':'Soccer Data')+' • '+src.matches+'/'+d.starts+' αγώνες';root.append(h);
+   const h=document.createElement('div');h.style.cssText='color:#b4f05b;font-weight:700;margin:7px 0 3px';h.textContent=(src.source==='11footy'?'11footy (CC BY-NC 4.0)':src.source==='fpl_elo'?'FPL-Elo Insights':'Soccer Data')+' • '+src.matches+'/'+d.starts+' αγώνες';root.append(h);
+   if(src.source==='fpl_elo'){const link=document.createElement('a');link.href='https://github.com/randomcrit2020/FPL-Elo-Insights';link.target='_blank';link.rel='noopener noreferrer';link.textContent='Πηγή δεδομένων';link.style.color='#93a4a6';root.append(link)}
    for(const [k,v] of Object.entries(src.metrics)){if(v.value===null)continue;const line=document.createElement('div');const val=Number(v.value);line.textContent=(labels[k]||k)+': '+(Number.isFinite(val)?val.toLocaleString('el-GR',{maximumFractionDigits:2}):'—')+(v.matches<d.starts?' ('+v.matches+'/'+d.starts+' αγ.)':'');root.append(line)}
   }
   const note=document.createElement('small');note.textContent='Μόνο ως βασικός • οι πηγές δεν αθροίζονται.';root.append(note);
