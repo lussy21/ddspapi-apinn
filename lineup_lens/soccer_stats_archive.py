@@ -104,7 +104,173 @@ def find_fixture(rows,m):
         if all(isinstance(v,str) and re.fullmatch(p+r"_[A-Za-z0-9]{5,32}",v) for p,v in (("match",mid),("team",hid),("team",aid))) and hid!=aid:out.append((mid,hid,aid))
     return out[0] if len(out)==1 else None
 
-def discover(api,usage,db,missing):
+def collection_context(db):
+    recent=db.execute("""SELECT a.competition_code code,count(*) total,
+        count(*) FILTER(WHERE f.fetched_at IS NOT NULL AND f.matched_starters=22) ready
+        FROM archive_matches a LEFT JOIN soccer_stats_fixture f USING(match_id)
+        WHERE a.season_year=2026 AND a.kickoff_utc>=now()-interval '60 days'
+        GROUP BY a.competition_code""").fetchall()
+    ratios={r["code"]:r["ready"]/r["total"] for r in recent if r["total"]}
+    upcoming=set()
+    if db.execute("SELECT to_regclass('lineup_live_fixtures') AS t").fetchone()["t"]:
+        rows=db.execute("""WITH live AS (
+          SELECT f.competition_code code,
+            CASE WHEN c->'team'->>'id' ~ '^[0-9]{1,8}
+    eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
+        WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
+    ratios,upcoming=context if context is not None else collection_context(db)
+    now=datetime.now(timezone.utc)
+    missing.sort(key=lambda m:collection_key(m,ratios,upcoming,now))
+    m0=next((m for m in missing if (m["competition_code"],week(m["local_date"])) not in eligible),None)
+    if m0 is None:return False
+    code=m0["competition_code"]; anchor=week(m0["local_date"])
+    try:
+        rows=request(api,usage,"/matches",{"competition_id":m0["comp"],"season_id":m0["season_id"],"status":"finished",
+            "date_from":anchor.isoformat(),"date_to":(anchor+timedelta(days=6)).isoformat(),
+            "utc_offset":"+00:00","sort":"utc_date","per_page":100})
+        if not isinstance(rows,list) or len(rows)>=100:raise ValueError("fixture list missing or truncated")
+    except Exception as e:
+        if str(e)=="daily quota reserve reached" or getattr(e,"status",None)==429:raise
+        db.execute("""INSERT INTO soccer_stats_listing_v2(code,start_day,error) VALUES(%s,%s,%s)
+            ON CONFLICT(code,start_day) DO UPDATE SET attempted_at=now(),error=excluded.error""",(code,anchor,str(e)[:160]))
+        return True
+    n=0
+    for m in missing:
+        if m["competition_code"]!=code or week(m["local_date"])!=anchor:continue
+        hit=find_fixture(rows,m)
+        if hit:
+            db.execute("""INSERT INTO soccer_stats_fixture(match_id,provider_id,home_source_id,away_source_id)
+                VALUES(%s,%s,%s,%s) ON CONFLICT DO NOTHING""",(m["match_id"],*hit))
+            n+=1
+    db.execute("""INSERT INTO soccer_stats_listing_v2(code,start_day,matched) VALUES(%s,%s,%s)
+        ON CONFLICT(code,start_day) DO UPDATE SET attempted_at=now(),matched=excluded.matched,error=NULL""",(code,anchor,n))
+    status(db,f"{code} fixtures {anchor}: {n} matched")
+    return True
+
+def store(db,f,rows):
+    if not isinstance(rows,list) or not rows or len(rows)>100:raise ValueError("invalid stats roster")
+    old=db.execute("""SELECT s.team_id,s.player_id,p.player_name FROM archive_starters s
+        JOIN archive_players p ON p.player_id=s.player_id WHERE s.match_id=%s""",(f["match_id"],)).fetchall()
+    if len(old)!=22:raise ValueError("archive XI not complete")
+    sides={f["home_source_id"]:f["home_team_id"],f["away_source_id"]:f["away_team_id"]}
+    counts={tid:0 for tid in sides.values()};seen=set();linked=set();out=[]
+    for p in rows:
+        if not isinstance(p,dict):raise ValueError("invalid player record")
+        pid=p.get("player_id");name=p.get("player_name");tid=sides.get(p.get("team_id"));mins=p.get("minutes_played")
+        started=p.get("started");played=p.get("played")
+        if not isinstance(pid,str) or not re.fullmatch(r"player_[A-Za-z0-9]{5,32}",pid) or pid in seen or not isinstance(name,str) or not name.strip() or tid is None or type(mins) is not int or not 0<=mins<=150 or type(started) is not bool or type(played) is not bool:raise ValueError("unverified player identity or minutes")
+        seen.add(pid)
+        if started:counts[tid]+=1
+        matches=[q["player_id"] for q in old if started and q["team_id"]==tid and norm(q["player_name"])==norm(name)]
+        # Reuse only an already verified provider identity, within the same team.
+        known=db.execute("""SELECT DISTINCT canonical_player_id FROM soccer_stats_player
+            WHERE provider_player_id=%s AND team_id=%s AND started
+            AND canonical_player_id IS NOT NULL""",(pid,tid)).fetchall()
+        ids={r["canonical_player_id"] for r in known}
+        if len(ids)==1:
+            previous=next(iter(ids))
+            if started and previous in {q["player_id"] for q in old if q["team_id"]==tid}:
+                if not matches or matches==[previous]:matches=[previous]
+                else:matches=[]
+            elif not started and played and previous not in {q["player_id"] for q in old}:
+                matches=[previous]
+        canonical=matches[0] if len(matches)==1 and matches[0] not in linked else None
+        if canonical is not None:linked.add(canonical)
+        clean={k:p[k] for k in ("position","rating","passing","shooting","duels","defending","goalkeeping","general") if k in p}
+        out.append((f["match_id"],pid,tid,canonical,name,started,played,mins,json.dumps(clean,ensure_ascii=False,allow_nan=False)))
+    if any(v!=11 for v in counts.values()):raise ValueError("provider XI not complete")
+    verified_starters=sum(1 for r in out if r[5] and r[3] is not None)
+    # Preserve validated roster and raw stats; never infer unmatched canonical IDs.
+    for row in out:
+        db.execute("""INSERT INTO soccer_stats_player(match_id,provider_player_id,team_id,canonical_player_id,
+            player_name,started,played,minutes,stats) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
+            ON CONFLICT(match_id,provider_player_id) DO NOTHING""",row)
+    db.execute("""UPDATE soccer_stats_fixture SET fetched_at=now(),matched_starters=%s,player_rows=%s,last_error=NULL
+        WHERE match_id=%s""",(verified_starters,len(out),f["match_id"]))
+    status(db,f"{f['competition_code']} match {f['match_id']}: {verified_starters}/22 verified starters, {len(out)} player rows")
+
+def tick(api,usage):
+    with season_db.db() as db:
+        if not db.execute("SELECT pg_try_advisory_xact_lock(%s) AS ok",(LOCK,)).fetchone()["ok"]:return False
+        try:
+            if coverage.step(db,lambda path,params:request(api,usage,path,params)):return True
+        except RuntimeError as e:
+            if str(e)=="daily quota reserve reached":return False
+            raise
+        context=collection_context(db)
+        ratios,upcoming=context
+        now=datetime.now(timezone.utc)
+        missing=candidates(db)
+        pending=db.execute("""SELECT f.*,m.home_team_id,m.away_team_id,m.competition_code,m.kickoff_utc
+            FROM soccer_stats_fixture f JOIN archive_matches m ON m.match_id=f.match_id
+            WHERE f.fetched_at IS NULL AND (f.last_attempt_at IS NULL OR f.last_attempt_at<now()-interval '1 day')""").fetchall()
+        f=min(pending,key=lambda m:collection_key(m,ratios,upcoming,now)) if pending else None
+        # Reserve a portion of the daily budget for discovering new leagues
+        # even while another competition has a pending match backlog.
+        attempts=db.execute("SELECT count(*) n FROM soccer_stats_listing_v2 WHERE attempted_at>=date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'").fetchone()["n"]
+        better=[m for m in missing if f is None or collection_key(m,ratios,upcoming,now)<collection_key(f,ratios,upcoming,now)]
+        if better and attempts<10:
+            try:
+                if discover(api,usage,db,better,context):return True
+            except RuntimeError as e:
+                if str(e)=="daily quota reserve reached":return False
+                raise
+        if f:
+            try:rows=request(api,usage,"/matches/"+f["provider_id"]+"/player-stats")
+            except RuntimeError as e:
+                if str(e)=="daily quota reserve reached":return False
+                raise
+            except Exception as e:
+                if getattr(e,"status",None)==429:return False
+                db.execute("UPDATE soccer_stats_fixture SET last_attempt_at=now(),last_error=%s WHERE match_id=%s",(str(e)[:160],f["match_id"]))
+                return True
+            try:
+                # Validation and inserts are atomic, including rejection of a partial roster.
+                with db.transaction():store(db,f,rows)
+            except ValueError as e:
+                db.execute("UPDATE soccer_stats_fixture SET last_attempt_at=now(),last_error=%s WHERE match_id=%s",(str(e)[:160],f["match_id"]))
+            return True
+        try:return discover(api,usage,db,missing,context)
+        except RuntimeError as e:
+            if str(e)=="daily quota reserve reached":return False
+            raise
+
+def loop(api,usage):
+    while True:
+        try:
+            with season_db.db() as db:setup(db)
+            more=tick(api,usage)
+            time.sleep(2 if more else 600)
+        except Exception as e:
+            try:
+                with season_db.db() as db:
+                    setup(db);status(db,"Pilot paused: "+type(e).__name__)
+            except Exception:pass
+            print("Soccer Data PL pilot paused:",type(e).__name__,flush=True)
+            time.sleep(900)
+
+              THEN 1000000000+(c->'team'->>'id')::int END source_id
+          FROM lineup_live_fixtures f
+          CROSS JOIN LATERAL jsonb_array_elements(f.event->'competitions'->0->'competitors') c
+          WHERE f.kickoff_utc BETWEEN now() AND now()+interval '72 hours'
+          AND f.status<>'unavailable')
+          SELECT DISTINCT live.code,coalesce(l.canonical_id,live.source_id) tid FROM live
+          LEFT JOIN archive_source_links l ON l.competition_code=live.code AND l.kind='team'
+          AND l.source_id=live.source_id WHERE live.source_id IS NOT NULL""").fetchall()
+        upcoming={(r["code"],r["tid"]) for r in rows}
+    return ratios,upcoming
+
+def collection_key(m,ratios,upcoming,now):
+    code=m["competition_code"]
+    age=(now-m["kickoff_utc"]).total_seconds()/86400
+    relevant=any((code,m[k]) in upcoming for k in ("home_team_id","away_team_id"))
+    # Catch up upcoming teams first; otherwise balance recent coverage across
+    # competitions before old backfill. Stable sort for repeatable scheduling.
+    tier=0 if relevant and age<=60 else (1 if age<=60 else 2)
+    order=PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)
+    return (tier,ratios.get(code,0.0),-m["kickoff_utc"].timestamp(),order.index(code),m["match_id"])
+
+def discover(api,usage,db,missing,context=None):
     eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
         WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
     missing.sort(key=lambda m:(0 if m["local_date"]>=datetime.now(timezone.utc).date()-timedelta(days=3) else 1,
