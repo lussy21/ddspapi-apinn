@@ -64,10 +64,10 @@ def findings(current,rows):
             # Only flag clear absence of established contributions; one short
             # sample cannot prove a weaker player. No per90 extrapolation.
             if all(p["minutes"]>=360 and p["events"]>=3 for p in aa) and all(p["events"]==0 and p["minutes"]<360 for p in bb):
-                out.append({"kind":"attention","line":k,"text":LABELS[k]+": πιθανό ρίσκο παραγωγής — η καταγεγραμμένη συνεισφορά των απόντων δεν έχει ακόμη καλυφθεί από τις επιλογές που ξεκινούν.",
+                out.append({"kind":"attention","line":k,"text":LABELS[k]+": πιθανό ρίσκο παραγωγής. "+old_names+" εκτός, "+new_names+" μέσα με περιορισμένο δείγμα και χωρίς καταγεγραμμένα γκολ ή ασίστ.",
                     "detail":old_names+" → "+new_names+". Διαφορετικό μέγεθος δείγματος. Σύγκριση ευρείας θέσης ρόστερ, όχι ακριβούς τακτικού ρόλου."})
             elif all(p["minutes"]>=360 and p["events"]>=3 for p in bb) and all(p["events"]==0 and p["minutes"]<360 for p in aa):
-                out.append({"kind":"positive","line":k,"text":LABELS[k]+": οι επιλογές που ξεκινούν έχουν μεγαλύτερη καταγεγραμμένη παραγωγή από τους απόντες με περιορισμένο δείγμα.",
+                out.append({"kind":"neutral","line":k,"text":LABELS[k]+": "+new_names+" έχει καταγεγραμμένη παραγωγή· δεν τεκμηριώνεται αποδυνάμωση λόγω της αλλαγής.",
                     "detail":old_names+" → "+new_names+". Δεν αποδεικνύει συνολική υπεροχή."})
     return out
 
