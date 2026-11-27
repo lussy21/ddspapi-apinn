@@ -10,6 +10,7 @@ import duckdb
 BASE="https://github.com/peteowen1/pannadata/releases/download/opta-latest/"
 LEAGUES=dict(PL="EPL",SA="Serie_A",LL="La_Liga",BL="Bundesliga",L1="Ligue_1",GR1="Greek_Super_League",BE1="Belgian_First_Division",DK1="Danish_Superliga",NO1="Eliteserien",NL1="Eredivisie",TR1="Super_Lig",SC1="Scottish_Premiership",SE1="Allsvenskan",UCL="UCL",UEL="UEL",UECL="Conference_League")
 FIELDS=["minsPlayed","goals","goalAssist","totalScoringAtt","ontargetScoringAtt","totalAttAssist","totalPass","accuratePass","totalTackle","interception","totalClearance","ballRecovery","duelWon","aerialWon","saves","bigChanceCreated"]
+NAME_EVIDENCE={}
 TRANSLATE=str.maketrans({"ß":"ss","ð":"d","đ":"d","ı":"i","ł":"l","ø":"o"})
 def tokens(s):
     t="".join(c for c in unicodedata.normalize("NFKD",str(s or "")) if not unicodedata.combining(c)).lower().translate(TRANSLATE)
@@ -40,7 +41,26 @@ def profile(p):
         t=tokens(f)
         if len(t)>1:
             initials.update(fingerprint(t[0][0]+":"+last) for last in t[1:] if len(last)>=3)
-    return int_or_none(p.get("shirt_number")),exact,initials
+    # Expand full-name variants using actual provider first/last-name fields.
+    first_tokens=set()
+    surname_tokens=set()
+    for k in ("first_name","short_first_name"):
+        first_tokens.update(tokens(p.get(k)))
+    for k in ("last_name","short_last_name"):
+        surname_tokens.update(t for t in tokens(p.get(k)) if len(t)>=4)
+    for k in ("player_name","known_name"):
+        t=tokens(p.get(k))
+        if len(t)>1:
+            first_tokens.add(t[0])
+            if len(t[-1])>=4:surname_tokens.add(t[-1])
+    for a in first_tokens:
+        for b in surname_tokens:
+            exact.add(fingerprint(a+b))
+            initials.add(fingerprint(a[0]+":"+b))
+    return (int_or_none(p.get("shirt_number")),exact,initials,
+            {fingerprint(x) for x in surname_tokens},
+            {fingerprint(x) for x in first_tokens},
+            {x[0] for x in first_tokens if x})
 def reconcile_side(xi,source):
     if len(xi)!=11 or len(source)!=11 or len({str(p["player_id"]) for p in source})!=11:
         return None,0
@@ -49,14 +69,22 @@ def reconcile_side(xi,source):
     for jersey,exact,initial in xi:
         j=int_or_none(jersey)
         matches=[]
-        for i,(src_j,src_exact,src_initial) in enumerate(profiles):
+        for i,(src_j,src_exact,src_initial,src_surnames,src_first,src_first_initials) in enumerate(profiles):
             if j is not None and src_j!=j:continue
-            if exact in src_exact or (j is not None and initial is not None and initial in src_initial):
-                matches.append(i)
+            strong=exact in src_exact or (j is not None and initial is not None and initial in src_initial)
+            # A fallback needs an actual shared surname, matching first-name initial
+            # and the same match/team/jersey, never jersey alone.
+            weak=False
+            if j is not None and not strong:
+                for surnames,first,letter in NAME_EVIDENCE.get(exact,[]):
+                    if set(surnames)&src_surnames and (first in src_first or letter in src_first_initials):
+                        weak=True
+            if strong or weak:matches.append((i,strong))
         if len(matches)==1:resolved.append(matches[0])
         else:resolved.append(None)
     n=sum(i is not None for i in resolved)
-    if n==11 and len(set(resolved))==11:return [source[i] for i in resolved],11
+    if n==11 and len({m[0] for m in resolved})==11 and sum(m[1] for m in resolved)>=8:
+        return [source[m[0]] for m in resolved],11
     return None,n
 def download(name,path,maxbytes):
     with urlopen(Request(BASE+name,headers={"User-Agent":"LineupLens-Personal-Research/1.0"}),timeout=90) as r,path.open("wb") as w:
@@ -72,6 +100,8 @@ def rows(db,sql,params=()):
 def main():
     directory=Path(__file__).parent/"research_fingerprints"
     canonical=[r for p in sorted(directory.glob("part*.json")) for r in json.loads(p.read_text())]
+    for exact,surnames,first,letter in json.loads((directory/"name_alias_fingerprints.json").read_text()):
+        NAME_EVIDENCE.setdefault(exact,[]).append((surnames,first,letter))
     assert len({r[0] for r in canonical})==len(canonical)
     with tempfile.TemporaryDirectory() as td:
         db=duckdb.connect()
