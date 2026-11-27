@@ -43,12 +43,13 @@ def main():
                 continue
             start="2026-01-01" if code in ("NO1","SE1") else "2026-07-01"
             # Exclude unplayed and substitute rows; require 11 identified starters on each of 2 teams.
-            where=f"{league}=? AND season=\'{\'2026\' if code in (\'NO1\',\'SE1\') else \'2026-2027\'}\' AND {date_expr}>=? AND try_cast(gameStarted as integer)=1 AND lower(coalesce(cast(position as varchar),''))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
+            season_label="2026" if code in ("NO1","SE1") else "2026-2027"
+            where=f"{league}=? AND season=? AND {date_expr}>=? AND try_cast(gameStarted as integer)=1 AND lower(coalesce(cast(position as varchar),''))<>'substitute' AND player_id IS NOT NULL AND team_id IS NOT NULL"
             rows=db.execute(f"""WITH base AS (SELECT * FROM this_year WHERE {where}),
             teams AS (SELECT match_id,team_id,count(*) n,count(distinct player_id) players FROM base GROUP BY 1,2),
             valid AS (SELECT match_id FROM teams GROUP BY 1 HAVING count(*)=2 AND min(n)=11 AND max(n)=11 AND min(players)=11),
             verified AS (SELECT b.* FROM base b JOIN valid USING(match_id))
             SELECT count(distinct match_id),count(*),min({date_expr}),max({date_expr})
-            {''.join(',count('+k+')' for k in measures)} FROM verified""",[hit[0],start]).fetchone()
+            {''.join(',count('+k+')' for k in measures)} FROM verified""",[hit[0],season_label,start]).fetchone()
             print("AUDIT "+json.dumps({"code":code,"source_league":hit[0],"verified_source_matches":rows[0],"starter_rows":rows[1],"first":rows[2],"last":rows[3],"metric_counts":dict(zip(measures,rows[4:]))},default=str),flush=True)
 if __name__=="__main__":main()
