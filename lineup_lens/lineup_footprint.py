@@ -10,6 +10,7 @@ from archive_pitch import ROLE
 import archive_daily as archive
 import player_rating_evidence
 import role_metric_evidence
+import lineup_summary
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -249,5 +250,6 @@ def for_match(mid):
             if not tid:
                 lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
             else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff),load_role_metrics(db,code,tid,cutoff))
-            results.append({"name":t["name"],"lines":lines,"basis":code})
+            findings=lineup_summary.load(db,code,tid,cutoff,xi,lines,line) if tid else [{"kind":"neutral","text":"Δεν υπάρχει επαρκές ιστορικό ομάδας.","detail":""}]
+            results.append({"name":t["name"],"lines":lines,"basis":code,"findings":findings})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}

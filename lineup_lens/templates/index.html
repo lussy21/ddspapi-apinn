@@ -3111,22 +3111,35 @@ async function refreshFootprint(){
     }
     table.append(tr);
   }
-  root.append(table);
-  const title=document.createElement('p');title.style.cssText='font-size:13px;font-weight:700;margin:12px 0 6px;color:#dce5e7';title.textContent='Συμπέρασμα';root.append(title);
   for(const team of d.teams){
-    const changes=team.lines.filter(x=>x.status!=='usual');
-    const strong=changes.filter(x=>x.status==='positive'||x.status==='negative'||x.status==='similar'||x.status==='changes'||x.status==='familiar');
-    const unknown=changes.filter(x=>x.status==='unknown');
-    const p=document.createElement('p');p.style.cssText='font-size:12px;line-height:1.55;margin:5px 0;color:#dce5e7';
-    const detail=strong.map(x=>x.line+': '+x.text);
-    if(unknown.length)detail.push('Μη αξιολογημένες γραμμές: '+unknown.map(x=>x.line).join(', ')+'.');
-    p.textContent=team.name+(team.basis?' ('+team.basis+')':'')+': '+(detail.length?detail.join(' '):'Συνήθης σύνθεση στις γραμμές.');
-    root.append(p);
-    if(unknown.some(x=>x.text.includes('→')||x.text.includes('Εκτός συνήθους'))){
-      const reason=document.createElement('p');reason.style.cssText='font-size:11px;color:#93a4a6;margin:3px 0';reason.textContent=unknown.filter(x=>x.text.includes('→')||x.text.includes('Εκτός συνήθους')).map(x=>x.line+': '+x.text).join(' ');root.append(reason);
+    const heading=document.createElement('h3');
+    heading.style.cssText='font-size:15px;margin:12px 0 7px;color:#f0f3f5';
+    heading.textContent=team.name;root.append(heading);
+    for(const f of (team.findings||[])){
+      const p=document.createElement('p');
+      p.style.cssText='font-size:13px;line-height:1.55;margin:5px 0;color:'+(f.kind==='attention'?'#f0c46c':colors[f.kind]||'#dce5e7');
+      p.textContent=f.text;root.append(p);
     }
   }
-  $('footprintNote').textContent=d.note;
+  const disclaimer=document.createElement('p');
+  disclaimer.style.cssText='font-size:11px;color:#93a4a6;margin:10px 0';
+  disclaimer.textContent='Απουσία συνεισφοράς ≠ αποδεδειγμένη αποδυνάμωση. Η ποιότητα των αντικαταστατών παραμένει υπό αξιολόγηση.';
+  root.append(disclaimer);
+  const expanded=document.createElement('details');
+  const label=document.createElement('summary');label.textContent='Αναλυτικά στοιχεία και γραμμές';
+  label.style.cssText='font-size:12px;color:#a8d7e7;cursor:pointer;margin:8px 0';
+  expanded.append(label,table);
+  for(const team of d.teams){
+    const p=document.createElement('p');p.style.cssText='font-size:12px;line-height:1.55;color:#dce5e7';
+    p.textContent=team.name+': '+(team.findings||[]).map(f=>f.detail).filter(Boolean).join(' ');
+    expanded.append(p);
+    for(const x of team.lines.filter(x=>x.status!=='usual')){
+      const row=document.createElement('p');row.style.cssText='font-size:11px;color:#93a4a6;margin:3px 0';
+      row.textContent=x.line+': '+x.text;expanded.append(row);
+    }
+  }
+  root.append(expanded);
+  $('footprintNote').textContent='Ιστορικά δεδομένα πριν από τη σέντρα · Πιλοτική αξιολόγηση';
  }catch(e){if(req===footprintRequest){$('footprintContent').textContent='Η πιλοτική ανάλυση δεν είναι διαθέσιμη.';$('footprintNote').textContent='';}}
 }
 function queueFootprint(){
