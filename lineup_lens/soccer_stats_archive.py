@@ -151,7 +151,6 @@ def store(db,f,rows):
 def tick(api,usage):
     with season_db.db() as db:
         if not db.execute("SELECT pg_try_advisory_xact_lock(%s) AS ok",(LOCK,)).fetchone()["ok"]:return False
-        setup(db)
         f=db.execute("""SELECT f.*,m.home_team_id,m.away_team_id FROM soccer_stats_fixture f
             JOIN archive_matches m ON m.match_id=f.match_id
             WHERE f.fetched_at IS NULL AND (f.last_attempt_at IS NULL OR f.last_attempt_at<now()-interval '1 day')
@@ -180,6 +179,7 @@ def tick(api,usage):
 def loop(api,usage):
     while True:
         try:
+            with season_db.db() as db:setup(db)
             more=tick(api,usage)
             time.sleep(2 if more else 600)
         except Exception as e:
