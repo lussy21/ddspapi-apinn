@@ -3070,7 +3070,28 @@ function applyClubKit(shirt,t){
  shirt.title=k.name+' • χαρακτηριστικά χρώματα ομάδας, όχι επιβεβαιωμένη εμφάνιση αγώνα';
 }
 function winLabel(t,dom){return dom?(t.domestic?.league||'Πρωτάθλημα'):({UCL:'CL',UEL:'EL',UECL:'ECL'}[t.competition]||t.competition||'Διοργάνωση')}
+let archiveStatsMatchId=null;
 function closeWin(){ $('winPopup').classList.add('hidden') }
+async function appendPrivatePlayerStats(pop,p,t){
+ const mid=dataMode==='archive'?archiveStatsMatchId:selected;
+ if(!mid||!Number.isInteger(Number(p.id))||!Number.isInteger(Number(t.id)))return;
+ const root=document.createElement('div');root.style.cssText='max-height:210px;overflow:auto;margin-top:8px;border-top:1px solid #395158;padding-top:6px';
+ root.textContent='Φόρτωση ατομικών στατιστικών…';pop.append(root);
+ const labels={minutes:'Λεπτά',goals:'Γκολ',assists:'Ασίστ',shots:'Σουτ',shots_on_target:'Σουτ στην εστία',xg:'xG',xa:'xA',key_passes:'Πάσες-κλειδιά',tackles:'Τάκλιν',interceptions:'Κοψίματα',clearances:'Απομακρύνσεις',recoveries:'Ανακτήσεις',duels_won:'Κερδισμένες μονομαχίες',saves:'Αποκρούσεις',passes:'Πάσες',accurate_passes:'Εύστοχες πάσες'};
+ try{
+  const q=new URLSearchParams({mode:dataMode,match_id:String(mid),team_id:String(t.id),player_id:String(p.id)});
+  const d=await api('/api/private-player-totals?'+q);
+  if(!root.isConnected)return;
+  root.replaceChildren();
+  const head=document.createElement('small');head.textContent='Σεζόν • '+d.competition+' • '+d.starts+' καταγεγραμμένες βασικές συμμετοχές';root.append(head);
+  if(!d.sources.length){let n=document.createElement('div');n.textContent='Δεν υπάρχουν ακόμη ατομικά στοιχεία.';root.append(n);return}
+  for(const src of d.sources){
+   const h=document.createElement('div');h.style.cssText='color:#b4f05b;font-weight:700;margin:7px 0 3px';h.textContent=(src.source==='11footy'?'11footy (CC BY-NC 4.0)':'Soccer Data')+' • '+src.matches+'/'+d.starts+' αγώνες';root.append(h);
+   for(const [k,v] of Object.entries(src.metrics)){if(v.value===null)continue;const line=document.createElement('div');const val=Number(v.value);line.textContent=(labels[k]||k)+': '+(Number.isFinite(val)?val.toLocaleString('el-GR',{maximumFractionDigits:2}):'—')+(v.matches<d.starts?' ('+v.matches+'/'+d.starts+' αγ.)':'');root.append(line)}
+  }
+  const note=document.createElement('small');note.textContent='Μόνο ως βασικός • οι πηγές δεν αθροίζονται.';root.append(note);
+ }catch(e){if(root.isConnected)root.textContent='Τα ατομικά στοιχεία δεν είναι διαθέσιμα.'}
+}
 function showWin(p,t,d){
  const pop=$('winPopup');pop.replaceChildren();let b=document.createElement('b');b.textContent=p.name;pop.append(b);
  for(const dom of (t.domestic?[false,true]:[false])){
@@ -3088,6 +3109,7 @@ function showWin(p,t,d){
   }
   if(stat&&(stat.scored<stat.starts||(dom?!t.domestic.complete:!t.verified))){let sm=document.createElement('small');sm.textContent='Μερικό ιστορικό • '+stat.scored+'/'+stat.starts+' σκορ';pop.append(sm)}
  }
+ appendPrivatePlayerStats(pop,p,t);
  pop.classList.remove('hidden');pop.style.left='10px';pop.style.top='10px';
  let r=d.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
  pop.style.left=Math.max(10,Math.min(innerWidth-w-10,r.left+r.width/2-w/2))+'px';
@@ -3265,6 +3287,7 @@ async function showArchiveTeam(){
      (d.latest_match.home?.starting_xi?.length===11) &&
      (d.latest_match.away?.starting_xi?.length===11)){
      const snapshot=d.latest_match;
+     archiveStatsMatchId=snapshot.match_id;
      archiveSource=snapshot.source||'11footy';
      teams=[snapshot.home,snapshot.away];
      side=Number(snapshot.away.id)===tid?1:0;
