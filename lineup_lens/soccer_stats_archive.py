@@ -11,6 +11,9 @@ COMP="competition_705uv6jm8myn"
 SEASON="season_hr1ie7yrsdmt"
 LOCK=614439855
 CAP=40
+# Allocate uncovered leagues first (the current PL pilot already has match ratings).
+PRIORITY=('TR1','GR1','BE1','DK1','NL1','NO1','SC1','SE1')
+
 ALIASES={"mancity":"manchestercity","manutd":"manchesterunited","spurs":"tottenhamhotspur",
          "nottmforest":"nottinghamforest","nottmfor":"nottinghamforest",
          "newcastle":"newcastleunited","brighton":"brightonhovealbion",
@@ -105,7 +108,7 @@ def discover(api,usage,db,missing):
     eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
         WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
     missing.sort(key=lambda m:(0 if m["local_date"]>=datetime.now(timezone.utc).date()-timedelta(days=3) else 1,
-        coverage.ORDER.index(m["competition_code"]),-m["kickoff_utc"].timestamp()))
+        (PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)).index(m["competition_code"]),-m["kickoff_utc"].timestamp()))
     m0=next((m for m in missing if (m["competition_code"],week(m["local_date"])) not in eligible),None)
     if m0 is None:return False
     code=m0["competition_code"]; anchor=week(m0["local_date"])
@@ -185,7 +188,7 @@ def tick(api,usage):
         f=db.execute("""SELECT f.*,m.home_team_id,m.away_team_id,m.competition_code FROM soccer_stats_fixture f
             JOIN archive_matches m ON m.match_id=f.match_id
             WHERE f.fetched_at IS NULL AND (f.last_attempt_at IS NULL OR f.last_attempt_at<now()-interval '1 day')
-            ORDER BY m.kickoff_utc DESC LIMIT 1""").fetchone()
+            ORDER BY CASE WHEN m.competition_code IN ('TR1','GR1','BE1','DK1','NL1','NO1','SC1','SE1') THEN 0 ELSE 1 END,m.kickoff_utc DESC LIMIT 1""").fetchone()
         if f:
             try:rows=request(api,usage,"/matches/"+f["provider_id"]+"/player-stats")
             except RuntimeError as e:
