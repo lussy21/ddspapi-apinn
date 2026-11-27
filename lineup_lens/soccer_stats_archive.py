@@ -117,7 +117,27 @@ def collection_context(db):
     if db.execute("SELECT to_regclass('lineup_live_fixtures') AS t").fetchone()["t"]:
         rows=db.execute("""WITH live AS (
           SELECT f.competition_code code,
-            CASE WHEN c->'team'->>'id' ~ '^[0-9]{1,8}
+            CASE WHEN c->'team'->>'id' ~ '^[0-9]{1,8}$'
+              THEN 1000000000+(c->'team'->>'id')::int END source_id
+          FROM lineup_live_fixtures f
+          CROSS JOIN LATERAL jsonb_array_elements(f.event->'competitions'->0->'competitors') c
+          WHERE f.kickoff_utc BETWEEN now() AND now()+interval '72 hours'
+          AND f.status<>'unavailable')
+          SELECT DISTINCT live.code,coalesce(l.canonical_id,live.source_id) tid FROM live
+          LEFT JOIN archive_source_links l ON l.competition_code=live.code AND l.kind='team'
+          AND l.source_id=live.source_id WHERE live.source_id IS NOT NULL""").fetchall()
+        upcoming={(r["code"],r["tid"]) for r in rows}
+    return ratios,upcoming
+
+def collection_key(m,ratios,upcoming,now):
+    code=m["competition_code"]
+    age=(now-m["kickoff_utc"]).total_seconds()/86400
+    relevant=any((code,m[k]) in upcoming for k in ("home_team_id","away_team_id"))
+    tier=0 if relevant and age<=60 else (1 if age<=60 else 2)
+    order=PRIORITY+tuple(c for c in coverage.ORDER if c not in PRIORITY)
+    return (tier,ratios.get(code,0.0),-m["kickoff_utc"].timestamp(),order.index(code),m["match_id"])
+
+def discover(api,usage,db,missing,context=None):
     eligible={(r["code"],r["start_day"]) for r in db.execute("""SELECT code,start_day FROM soccer_stats_listing_v2
         WHERE attempted_at>now()-(CASE WHEN start_day>=current_date-14 THEN interval '1 day' ELSE interval '7 days' END)""").fetchall()}
     ratios,upcoming=context if context is not None else collection_context(db)
