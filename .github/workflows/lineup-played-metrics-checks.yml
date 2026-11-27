@@ -1,0 +1,28 @@
+name: Lineup Lens played metrics checks
+on:
+  push:
+    branches:
+      - feature/lineup-played-quality-final-20261127
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install -r lineup_lens/requirements.txt
+      - run: python3 -m compileall -q lineup_lens
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_played_metric_evidence.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_summary.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v
+      - run: |
+          PYTHONPATH=lineup_lens python3 - <<'PY'
+          from private_fpl_played import get,blob_sha,parse
+          raw=get(1,"playermatchstats")
+          assert blob_sha(raw)=="18c6a3428ef6eb32b9e3eadbfe9f43d953d4c7b1"
+          r=parse(raw)
+          p=parse(get(1,"players"))
+          assert len(r)==400
+          assert len({x["player_id"] for x in p})==len(p)
+          print("Exact previously verified FPL source blob available")
+          PY

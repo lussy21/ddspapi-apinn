@@ -11,6 +11,7 @@ import archive_daily as archive
 import player_rating_evidence
 import role_metric_evidence
 import lineup_summary
+import played_metric_evidence
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -63,7 +64,8 @@ def compare(a,b,code):
     if all(abs(d)<max(.15,.25*u) for d,u in zip(deltas,x)):
         return "similar","Παρόμοιες καταγεγραμμένες ενδείξεις."
     return "unknown","Μικτές ενδείξεις· δεν προκύπτει σαφής διαφορά."
-def assess(current,history,stats,ratings=None,team_starts=None,role_metrics=None):
+def assess(current,history,stats,ratings=None,team_starts=None,role_metrics=None,played_metrics=None):
+    played_metrics=played_metrics or {}
     role_metrics=role_metrics or {}
     ratings=ratings or {}
     team_starts=team_starts or {}
@@ -123,14 +125,17 @@ def assess(current,history,stats,ratings=None,team_starts=None,role_metrics=None
             out.append({"line":LABELS[k],"status":"changes","text":"Αλλαγή ρόλου· δεν υπάρχει ασφαλής σύγκριση."+details});continue
         rating=player_rating_evidence.compare(ratings.get(old,[]),ratings.get(new["id"],[]),ROLE.get(new["code"],new["code"]))
         metric=role_metric_evidence.evidence(role_metrics.get(old,[]),role_metrics.get(new["id"],[]),role(new["code"]))
+        played=played_metric_evidence.compare(played_metrics.get(old,[]),played_metrics.get(new["id"],[]),role(new["code"]),line(new["code"]))
         basic=compare(stats.get(old,[]),stats.get(new["id"],[]),new["code"])
         # Conflicting directional signals from separate sources cannot become
         # a confident quality label. No sums across providers.
-        evidence=[e for e in (rating,metric,basic) if e is not None and e[0] in ("positive","negative")]
+        evidence=[e for e in (rating,metric,played,basic) if e is not None and e[0] in ("positive","negative")]
         if len({e[0] for e in evidence})>1:
             status,msg="unknown","Οι διαθέσιμες πηγές δίνουν αντίθετες ενδείξεις."
         elif rating is not None and rating[0] in ("positive","negative","similar"):
             status,msg=rating
+        elif played is not None:
+            status,msg=played
         elif metric is not None:
             status,msg=metric
         elif rating is not None:
@@ -249,7 +254,7 @@ def for_match(mid):
                 if context:code,tid,xi=context
             if not tid:
                 lines=[{"line":LABELS[k],"status":"unknown","text":"Ανεπαρκής αντιστοίχιση ομάδας."} for k in LINES]
-            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff),load_role_metrics(db,code,tid,cutoff))
+            else:lines=assess(xi,load_history(db,code,tid,cutoff),load_stats(db,code,tid,cutoff),load_ratings(db,code,tid,cutoff),load_team_starts(db,code,tid,cutoff),load_role_metrics(db,code,tid,cutoff),played_metric_evidence.load(db,code,tid,cutoff))
             findings=lineup_summary.load(db,code,tid,cutoff,xi,lines,line) if tid else [{"kind":"neutral","text":"Δεν υπάρχει επαρκές ιστορικό ομάδας.","detail":""}]
             results.append({"name":t["name"],"lines":lines,"basis":code,"findings":findings})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
