@@ -69,9 +69,14 @@ def individual(ids,refs,sources,fields,mode,metric):
            current=round(sum(profiles[i]["values"][j] for i in ids),3)) for j,label in enumerate(("Γκολ","Ασίστ") if fields==("goals","assists") else ("xG","xA"))]
     return out
 
-def evaluate(current,history,sources,scores,formation=None):
+def evaluate(current,history,sources,scores,formation=None,priors=None):
     current=current_codes(current,formation);now=groups(current)
     matches=history_groups(history);recent=matches[:5]
+    current_positions={p['id']:p.get('code') for p in current}
+    hist_positions=defaultdict(dict)
+    for r in history:hist_positions[r['match_id']][r['player_id']]=r['position_code']
+    unresolved={p['id'] for p in current if p.get('unresolved')}
+    if priors is not None:import lineup_shrinkage as shrink
     names={r["player_id"]:r["player_name"] for r in history}
     names.update({p["id"]:p["name"] for p in current})
     results=[]
@@ -81,21 +86,34 @@ def evaluate(current,history,sources,scores,formation=None):
         results.append(row)
         if not now or len(recent)<3:continue
         ids=now[line];refs=[g[line] for m,g in recent]
-        if any(p.get("unresolved") and p["id"] in ids for p in current):continue
+        if priors is None and unresolved.intersection(ids):continue
+        ref_positions=[hist_positions[mid] for mid,g in recent]
+        def estimate(fields,mode,metric):
+            if priors is not None:
+                x=shrink.individual(ids,refs,current_positions,ref_positions,history,sources,priors,fields,mode,metric)
+                if x is not None:
+                    for p in x.get("profiles",[]):
+                        p["name"]=names.get(p["id"],str(p["id"]))
+                        if p["id"] in unresolved:p["state"]="μη επιβεβαιωμένη ταυτότητα · μόνο μέσος θέσης"
+                    return x
+            # Retain actual measured rates if a position prior is unavailable,
+            # but never label an unresolved identity as a measured player.
+            if unresolved.intersection(ids):return None
+            return individual(ids,refs,sources,fields,mode,metric)
         same=all(set(ids)==set(ref) for ref in refs)
         if key in ("MD","D"):
-            result=defensive(ids,refs,line,matches,scores)
+            result=shrink.defensive(ids,refs,line,matches,scores) if priors is not None else defensive(ids,refs,line,matches,scores)
         elif key=="G":
-            result=individual(ids,refs,sources,("goals_prevented","xgot_faced","goals_conceded","saves"),"keeper","Γκολ που απέτρεψε / 90′")
-            if result is None:
-                result=individual(ids,refs,sources,("goals_conceded",),"sum","Γκολ κατά / 90′")
-                if result:
-                    result["lower_better"]=True
-                    result["reason"]="Ιστορικά γκολ που δέχτηκε ο τερματοφύλακας ανά 90′. Εξαρτάται και από την άμυνα/αντίπαλο, δεν είναι ατομική αποτροπή γκολ."
+            prevented=estimate(("goals_prevented","xgot_faced","goals_conceded","saves"),"keeper","Γκολ που απέτρεψε / 90′")
+            conceded=estimate(("goals_conceded",),"sum","Γκολ κατά / 90′")
+            if conceded:
+                conceded["lower_better"]=True
+                conceded["reason"]+=" Ιστορικά γκολ κατά του τερματοφύλακα, εξαρτώνται και από την άμυνα/αντίπαλο."
+            result=prevented if prevented and (not conceded or prevented.get("individual_weight",1)>0 or conceded.get("individual_weight",1)==0) else conceded
         else:
-            actual=individual(ids,refs,sources,("goals","assists"),"sum","Γκολ + ασίστ / 90′")
-            xg=individual(ids,refs,sources,("xg",),"sum","xG / 90′")
-            xa=individual(ids,refs,sources,("xa",),"sum","xA / 90′")
+            actual=estimate(("goals","assists"),"sum","Γκολ + ασίστ / 90′")
+            xg=estimate(("xg",),"sum","xG / 90′")
+            xa=estimate(("xa",),"sum","xA / 90′")
             # Prefer real production as the common headline, show expected
             # metrics separately. Never add xG to xA or actual goals.
             available=[m for m in (actual,xg,xa) if m is not None]
