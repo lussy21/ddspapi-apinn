@@ -1040,7 +1040,7 @@ def _private_fpl_played_backfill():
                     db.execute("""INSERT INTO lineup_footprint_smoke(version,match_id,result)
                         VALUES(%s,%s,%s::jsonb) ON CONFLICT(version,match_id)
                         DO UPDATE SET result=excluded.result,checked_at=now()""",
-                        ("line-impact-v1",mid,json.dumps(result,ensure_ascii=False,allow_nan=False)))
+                        ("goal-context-v1",mid,json.dumps(result,ensure_ascii=False,allow_nan=False)))
             except Exception as exc:
                 app.logger.warning("Footprint smoke held %s: %s",mid,type(exc).__name__)
     except Exception as exc:
