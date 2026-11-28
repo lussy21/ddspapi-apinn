@@ -71,14 +71,18 @@ def player_profile(rows,fields,prior,starts):
     minutes=sum(m for m,v in valid)
     totals=[sum(v[j] for m,v in valid) for j in range(len(fields))]
     # A missing profile is not a recorded zero. The prior alone is explicitly marked.
-    if prior is None:return None
-    rates=prior["rates"]
-    adjusted=[(90*x+PRIOR_MINUTES*p)/(minutes+PRIOR_MINUTES) for x,p in zip(totals,rates)]
+    weight=min(minutes/PRIOR_MINUTES,1.0)
+    raw=[90*x/minutes for x in totals] if minutes else None
+    # From 450 valid minutes onward, no positional shrinkage at all.
+    # Below the threshold the individual weight increases linearly.
+    if weight<1 and prior is None:return None
+    rates=prior["rates"] if prior else None
+    adjusted=raw if weight==1 else [(90*x+(PRIOR_MINUTES-minutes)*p)/PRIOR_MINUTES for x,p in zip(totals,rates)]
     state=("χωρίς καταγεγραμμένα λεπτά" if not rows and not starts else "ελλιπή στατιστικά") if not minutes else (
            "μερικά στατιστικά" if minutes<all_minutes else ("μικρό δείγμα" if minutes<PRIOR_MINUTES else "ιστορικό διαθέσιμο"))
     return dict(values=adjusted,minutes=minutes,observed_minutes=all_minutes,matches=len(valid),
-                raw=[90*x/minutes for x in totals] if minutes else None,totals=totals if minutes else None,
-                prior=rates,prior_players=prior["players"],weight=minutes/(minutes+PRIOR_MINUTES),
+                raw=raw,totals=totals if minutes else None,
+                prior=rates,prior_players=prior["players"] if prior else 0,weight=weight,
                 state=state,starts=starts)
 
 def individual(ids,refs,positions,ref_positions,history,sources,priors,fields,mode,metric):
@@ -118,13 +122,14 @@ def individual(ids,refs,positions,ref_positions,history,sources,priors,fields,mo
     low=min(p["minutes"] for p in cur+[p for ps in bases for p in ps])
     missing=sum(p["minutes"]==0 for p in cur)
     short=sum(0<p["minutes"]<PRIOR_MINUTES for p in cur)
-    out=dict(status="estimated",metric=metric,unit="absolute",lower_better=False,
+    fully_observed=all(p["weight"]==1 and p["minutes"]==p["observed_minutes"] for p in cur+[p for ps in bases for p in ps])
+    out=dict(status="measured" if fully_observed else "estimated",metric=metric,unit="absolute",lower_better=False,
              baseline=round(baseline,3),current=round(cv,3),value=round(cv-baseline,3),source=source,
              reference_games=len(bases),reference_total=len(refs),min_minutes=round(low),
              sample_label=f"{missing} χωρίς στοιχεία · {short} μικρό δείγμα · ατομικό βάρος {round(cw*100)}%",
              small_sample=min(cw,rw)<.5 or missing>0,individual_weight=round(cw,3),
              reference_weight=round(rw,3),prior_minutes=PRIOR_MINUTES,profiles=cur,
-             reason="Εκτίμηση ανά 90′ με εξομάλυνση 450 λεπτών από πραγματικά δεδομένα ίδιας θέσης/πρωταθλήματος/πηγής. Περιλαμβάνει αλλαγές. Χωρίς ιστορικό δεν σημαίνει μηδέν ούτε βέβαιο ντεμπούτο. Δεν είναι πρόβλεψη ομαδικών γκολ.")
+             reason="Ρυθμοί ανά 90′: από 450 έγκυρα λεπτά και πάνω αποκλειστικά ατομικά στοιχεία, κάτω από 450 γραμμική εξομάλυνση προς πραγματικό μέσο όρο ίδιας θέσης/πρωταθλήματος/πηγής. Περιλαμβάνει αλλαγές. Χωρίς ιστορικό δεν σημαίνει μηδέν ούτε βέβαιο ντεμπούτο. Δεν είναι πρόβλεψη ομαδικών γκολ.")
     if fields==("goals","assists"):
         out["components"]=[dict(label=label,baseline=round(sum(sum(p["values"][j] for p in ps) for ps in bases)/len(bases),3),
            current=round(sum(p["values"][j] for p in cur),3)) for j,label in enumerate(("Γκολ","Ασίστ"))]

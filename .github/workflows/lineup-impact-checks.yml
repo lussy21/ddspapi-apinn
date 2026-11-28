@@ -6,6 +6,7 @@ on:
       - feature/lineup-goal-context-20261128
       - research/lineup-eight-leagues-stats-20261128
       - feature/lineup-shrinkage-20261128
+      - feature/lineup-linear-450-20261128
       - lineup-lens-personal
 permissions:
   contents: read

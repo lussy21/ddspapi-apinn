@@ -5,7 +5,7 @@ import lineup_goal_context as goal
 import lineup_shrinkage as shrink
 from simple_replacements import load_history,load_sources
 
-VERSION="shrinkage-v1-450m"
+VERSION="shrinkage-v2-linear-450m"
 MATCHES=(901884720,901878930)
 
 def run():

@@ -21,15 +21,41 @@ class ShrinkageTest(unittest.TestCase):
         self.assertIsNone(p["raw"])
     def test_twenty_minutes_as_sub_are_used(self):
         p=player_profile([dict(match_id=1,minutes=20,metrics={"goals":1})],("goals",),prior([.3]),0)
-        self.assertAlmostEqual(p["values"][0],(90+450*.3)/470)
-        self.assertAlmostEqual(p["weight"],20/470)
+        self.assertAlmostEqual(p["values"][0],(90+430*.3)/450)
+        self.assertAlmostEqual(p["weight"],20/450)
         self.assertEqual(p["raw"],[4.5])
         self.assertEqual(p["matches"],1)
     def test_ten_goals_vs_debut(self):
         rows=[dict(match_id=m,minutes=90,metrics={"goals":1}) for m in range(10)]
         p=player_profile(rows,("goals",),prior([.3]),10)
-        self.assertAlmostEqual(p["values"][0],(900+450*.3)/1350)
-        self.assertAlmostEqual(p["values"][0]-.3,7/15)
+        self.assertAlmostEqual(p["values"][0],1.0)
+        self.assertAlmostEqual(p["values"][0]-.3,.7)
+    def test_450_minutes_raw_exactly(self):
+        rows=[dict(match_id=m,minutes=90,metrics={"goals":1}) for m in range(5)]
+        p=player_profile(rows,("goals",),prior([.3]),5)
+        self.assertEqual(p["values"],[1.0])
+        self.assertEqual(p["weight"],1.0)
+        self.assertEqual(p["raw"],p["values"])
+        self.assertEqual(player_profile(rows,("goals",),None,5)["values"],[1.0])
+    def test_weight_continuous_at_threshold(self):
+        rows=[dict(match_id=m,minutes=90,metrics={"goals":1}) for m in range(4)]
+        rows.append(dict(match_id=4,minutes=89,metrics={"goals":0}))
+        p=player_profile(rows,("goals",),prior([.3]),4)
+        self.assertAlmostEqual(p["weight"],449/450)
+        self.assertAlmostEqual(p["values"][0],(360+.3)/450)
+    def test_three_full_matches_sixty_percent(self):
+        rows=[dict(match_id=m,minutes=90,metrics={"goals":1}) for m in range(3)]
+        p=player_profile(rows,("goals",),prior([.3]),3)
+        self.assertAlmostEqual(p["weight"],.6)
+        self.assertAlmostEqual(p["values"][0],.72)
+    def test_missing_field_does_not_count_toward_threshold(self):
+        rows=[dict(match_id=m,minutes=90,metrics={"goals":1,"assists":0}) for m in range(4)]
+        rows.append(dict(match_id=4,minutes=90,metrics={"goals":1}))
+        p=player_profile(rows,("goals","assists"),prior([.3,.1]),5)
+        self.assertEqual(p["minutes"],360)
+        self.assertEqual(p["observed_minutes"],450)
+        self.assertAlmostEqual(p["weight"],.8)
+        self.assertEqual(p["state"],"μερικά στατιστικά")
     def test_line_not_removed_for_debut(self):
         c,h,s=fixture();s["11footy"].pop(99)
         before=evaluate(c,h,s,{m:1 for m in range(1,6)})[0]
