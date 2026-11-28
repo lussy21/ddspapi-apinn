@@ -3102,6 +3102,32 @@ async function refreshFootprint(){
   const columns=document.createElement('div');columns.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';
   for(const team of d.teams)columns.append(make('b',team.name,'font-size:15px;text-align:center;overflow-wrap:anywhere;color:#f0f3f5'));
   root.append(columns);
+  const overall=document.createElement('section');overall.style.cssText='border-top:1px solid #34505b;margin-top:8px;padding:8px 0';
+  overall.append(make('b','Συνολική εκτίμηση ενδεκάδας','display:block;text-align:center;color:#e6edef;font-size:14px'));
+  const totalCells=document.createElement('div');totalCells.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:7px';
+  for(const team of d.teams){
+    const c=document.createElement('details');c.style.cssText='background:#192a34;border-radius:8px;padding:8px;min-width:0;overflow-wrap:anywhere';
+    const sum=document.createElement('summary');sum.style.cssText='list-style:none;cursor:pointer';
+    const body=document.createElement('div');body.style.cssText='font-size:11px;color:#c5d5d9;line-height:1.5;margin-top:6px;border-top:1px solid #34505b;padding-top:5px';
+    for(const [key,label,lower] of [['for_goals','Γκολ υπέρ',false],['against_goals','Γκολ κατά',true]]){
+      const g=team.team_goals?.[key];
+      const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 0';
+      line.append(make('span',label,'font-size:12px;color:#c5d5d9'));
+      const available=g&&g.current!=null;
+      line.append(make('b',available?fixed(g.current):'—','font-size:22px;color:'+(available&&g.status==='estimated'?colorFor({...g,lower_better:lower}):'#a9b9be')));
+      sum.append(line);
+      if(available){
+        body.append(make('div',label+': μ.ό. σεζόν '+fixed(g.baseline)+' → '+fixed(g.current)+(g.status==='historical'?' (χωρίς διόρθωση XI)':'')+(g.small_sample?' · μικρό δείγμα':'')+' · '+(g.reason||'')));
+      }
+    }
+    const gs=team.team_goals;
+    const hint=!gs||gs.for_goals?.status==='unknown'?'Ανεπαρκή στοιχεία':(gs.for_goals?.status==='historical'||gs.against_goals?.status==='historical')?'Μερική αξιολόγηση XI':(gs.for_goals?.small_sample||gs.against_goals?.small_sample)?'Μικρό δείγμα':'';
+    if(hint)sum.append(make('small',hint,'display:block;color:#f0c46c;text-align:center;font-size:10px'));
+    body.append(make('div','Ιστορική εκτίμηση ανά αγώνα, όχι xG από σουτ ή πρόβλεψη έναντι του σημερινού αντιπάλου.'));
+    c.append(sum,body);totalCells.append(c);
+  }
+  overall.append(totalCells,make('small','Ιστορική εκτίμηση ανά αγώνα · όχι xG','display:block;color:#93a4a6;text-align:center;font-size:10px;margin-top:4px'));
+  root.append(overall);
   root.append(make('p','Συνήθως → Σήμερα','color:#93a4a6;text-align:center;font-size:12px;margin:6px 0'));
   function colorFor(r){
     const v=r.current-r.baseline;
