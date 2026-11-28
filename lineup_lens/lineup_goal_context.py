@@ -89,10 +89,13 @@ def evaluate(current,history,sources,scores,formation=None):
             result=individual(ids,refs,sources,("goals_prevented","xgot_faced","goals_conceded","saves"),"keeper","Γκολ που απέτρεψε / 90′")
         else:
             actual=individual(ids,refs,sources,("goals","assists"),"sum","Γκολ + ασίστ / 90′")
-            expected=individual(ids,refs,sources,("xg","xa"),"sum","xG + xA / 90′")
-            # xG and xA are shown separately in the details, not added to actual goals.
-            result=actual or expected
-            if actual and expected:result["additional"]=expected
+            xg=individual(ids,refs,sources,("xg",),"sum","xG / 90′")
+            xa=individual(ids,refs,sources,("xa",),"sum","xA / 90′")
+            # Prefer real production as the common headline, show expected
+            # metrics separately. Never add xG to xA or actual goals.
+            available=[m for m in (actual,xg,xa) if m is not None]
+            result=available[0] if available else None
+            if result:result["additional"]=available[1:]
         if result:
             row.update(result)
             row["same_lineup"]=same
