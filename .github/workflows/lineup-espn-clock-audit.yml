@@ -1,0 +1,35 @@
+name: Lineup Lens ESPN clock and scoring audit
+on:
+  push:
+    branches:
+      - research/lineup-eight-leagues-stats-20261128
+    paths:
+      - ".github/workflows/lineup-espn-clock-audit.yml"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect exact substitution and goal schemas
+        run: |
+          python - <<'PY'
+          import json,urllib.request,concurrent.futures
+          samples=[('bel.1',401878941),('bel.1',401878936),('den.1',401874563),('gre.1',401896728),('ned.1',401875536),('nor.1',401843484),('sco.1',401878345),('swe.1',401842888),('tur.1',401888241)]
+          def inspect(pair):
+              league,mid=pair
+              try:
+                  url=f'https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/summary?event={mid}'
+                  with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'LineupLens-Research/1.0'}),timeout=20) as f:d=json.load(f)
+                  groups=d.get('rosters') or []
+                  result=[]
+                  for g in groups:
+                      players=g.get('roster') or []
+                      stat=lambda p: {x.get('name'):x.get('value') for x in p.get('stats',[])}
+                      relevant=[p for p in players if p.get('subbedIn') or p.get('subbedOut') or stat(p).get('redCards')]
+                      result.append(dict(team=(g.get('team') or {}).get('id'),players=len(players),scorers=sum(stat(p).get('totalGoals',0) or 0 for p in players),own_goals=sum(stat(p).get('ownGoals',0) or 0 for p in players),sub_examples=[dict(id=p.get('athlete',{}).get('id'),starter=p.get('starter'),subbedIn=p.get('subbedIn'),subbedOut=p.get('subbedOut'),appearances=stat(p).get('appearances'),plays=[{k:v for k,v in x.items() if k in ('clock','type','substitution','redCard','participants','text','period')} for x in (p.get('plays') or [])]) for p in relevant[:3]]))
+                  h=d.get('header') or {};c=(h.get('competitions') or [{}])[0]
+                  return dict(league=league,id=mid,teams=result,header_status=c.get('status'),score=[(x.get('id'),x.get('score')) for x in c.get('competitors',[])],key_events=(d.get('keyEvents') or [])[:2])
+              except Exception as e:return dict(league=league,id=mid,error=str(e))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+              for r in ex.map(inspect,samples):print('CLOCK',json.dumps(r,ensure_ascii=True),flush=True)
+          PY
