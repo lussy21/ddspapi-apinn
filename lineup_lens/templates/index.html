@@ -3112,10 +3112,14 @@ async function refreshFootprint(){
     for(const [key,label,lower] of [['for_goals','Γκολ υπέρ',false],['against_goals','Γκολ κατά',true]]){
       const g=team.team_goals?.[key];
       const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 0';
+      line.style.cssText='display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0';
       line.append(make('span',label,'font-size:12px;color:#c5d5d9'));
       const available=g&&g.current!=null;
-      line.append(make('b',available?fixed(g.current):'—','font-size:22px;color:'+(available&&g.status==='estimated'?colorFor({...g,lower_better:lower}):'#a9b9be')));
-      sum.append(line);
+      const numbers=document.createElement('div');numbers.style.cssText='display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:nowrap;font-variant-numeric:tabular-nums';
+      numbers.append(make('b',g&&g.baseline!=null?fixed(g.baseline):'—','font-size:18px;color:#c5d5d9'));
+      numbers.append(make('span','→','font-size:14px;color:#84989c'));
+      numbers.append(make('b',available?fixed(g.current):'—','font-size:20px;color:'+(available&&g.baseline!=null&&g.status==='estimated'?colorFor({...g,lower_better:lower}):'#a9b9be')));
+      line.append(numbers);sum.append(line);
       if(available){
         body.append(make('div',label+': μ.ό. σεζόν '+fixed(g.baseline)+' → '+fixed(g.current)+(g.status==='historical'?' (χωρίς διόρθωση XI)':'')+(g.small_sample?' · μικρό δείγμα':'')+' · '+(g.reason||'')));
       }
@@ -3126,7 +3130,7 @@ async function refreshFootprint(){
     body.append(make('div','Ιστορική εκτίμηση ανά αγώνα, όχι xG από σουτ ή πρόβλεψη έναντι του σημερινού αντιπάλου.'));
     c.append(sum,body);totalCells.append(c);
   }
-  overall.append(totalCells,make('small','Ιστορική εκτίμηση ανά αγώνα · όχι xG','display:block;color:#93a4a6;text-align:center;font-size:10px;margin-top:4px'));
+  overall.append(totalCells,make('small','Μ.Ο. σεζόν → Σημερινή 11άδα · όχι xG','display:block;color:#93a4a6;text-align:center;font-size:10px;margin-top:4px'));
   root.append(overall);
   root.append(make('p','Συνήθως → Σήμερα','color:#93a4a6;text-align:center;font-size:12px;margin:6px 0'));
   function colorFor(r){
