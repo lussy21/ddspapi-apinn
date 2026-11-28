@@ -3,9 +3,10 @@ from psycopg.types.json import Jsonb
 import season_db
 import lineup_goal_context as goal
 import lineup_shrinkage as shrink
+import lineup_team_goals as total
 from simple_replacements import load_history,load_sources
 
-VERSION="shrinkage-v2-linear-450m"
+VERSION="team-goals-v1"
 MATCHES=(901884720,901878930)
 
 def run():
@@ -32,7 +33,8 @@ def run():
                 after=goal.evaluate(cur,history,sources,scores,priors=priors)
                 result={"league":code,"before":before,"after":after,
                         "team":db.execute("SELECT team_name FROM archive_teams WHERE team_id=%s",(tid,)).fetchone()["team_name"],
-                        "cutoff":cutoff.isoformat()}
+                        "cutoff":cutoff.isoformat(),
+                        "team_goals":total.evaluate(cur,history,sources,priors,total.load_goals_for(db,code,tid,cutoff),scores)}
                 db.execute("""INSERT INTO lineup_shrinkage_audit(version,match_id,team_id,result)
                     VALUES(%s,%s,%s,%s) ON CONFLICT(version,match_id,team_id) DO UPDATE
                     SET result=excluded.result,checked_at=now()""",(VERSION,mid,tid,Jsonb(result)))
