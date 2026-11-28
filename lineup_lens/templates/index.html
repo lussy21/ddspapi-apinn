@@ -3115,7 +3115,8 @@ async function refreshFootprint(){
     nums.append(make('span','→','color:#84989c'));
     nums.append(make('b',fixed(r.current),'font-size:'+(compact?'14':'19')+'px;color:'+colorFor(r)));
     box.append(nums);
-    if(r.small_sample)box.append(make('small','Μικρό δείγμα','display:block;color:#f0c46c;font-size:10px;text-align:center'));
+    if(r.status==='estimated')box.append(make('small',r.small_sample?'Εκτίμηση · μικρό δείγμα':'Εκτίμηση με εξομάλυνση','display:block;color:#f0c46c;font-size:10px;text-align:center'));
+    else if(r.small_sample)box.append(make('small','Μικρό δείγμα','display:block;color:#f0c46c;font-size:10px;text-align:center'));
     return box;
   }
   const lines=[['F','Επίθεση'],['M','Κέντρο επιθετικά'],['MD','Κέντρο αμυντικά'],['D','Άμυνα'],['G','Τέρμα']];
@@ -3127,18 +3128,27 @@ async function refreshFootprint(){
       const r=team.impact?.find(x=>x.line===key)||{status:'unknown',reason:'Δεν επαρκούν τα στοιχεία.'};
       const cell=document.createElement('details');cell.style.cssText='min-width:0;background:#192a34;border-radius:8px;padding:8px;overflow-wrap:anywhere';
       const summary=document.createElement('summary');summary.style.cssText='display:block;cursor:pointer;list-style:none';
-      if(r.status==='measured'){
+      if(r.status==='measured'||r.status==='estimated'){
         summary.append(metricView(r));
         for(const m of r.components||[])summary.append(make('small',m.label+': '+fixed(m.baseline)+' → '+fixed(m.current),'display:block;font-size:10px;color:#b8c5c9;margin-top:3px'));
         for(const m of r.additional||[])summary.append(metricView(m,true));
       }else summary.append(make('div',r.status==='unchanged'?'Ίδια σύνθεση':'Ανεπαρκή στοιχεία','font-size:12px;color:#a9b9be;text-align:center;padding:8px 0'));
       cell.append(summary);
       const body=document.createElement('div');body.style.cssText='font-size:11px;color:#c5d5d9;line-height:1.5;margin-top:8px;border-top:1px solid #34505b;padding-top:6px';
-      if(r.status==='measured'){
+      if(r.status==='measured'||r.status==='estimated'){
         body.append(make('div',r.source+' · '+r.reference_games+'/'+r.reference_total+' ενδεκάδες αναφοράς'));
         body.append(make('div',r.sample_label||''));
         body.append(make('div',r.reason||''));
         if(r.today?.length)body.append(make('div','Σήμερα: '+r.today.join(', ')));
+        if(r.profiles?.length){
+          for(const p of r.profiles){
+            const raw=p.raw?p.raw.slice(0,r.metric.startsWith('Γκολ + ασίστ')?2:1).map(fixed).join(' / '):'—';
+            const est=p.values.slice(0,r.metric.startsWith('Γκολ + ασίστ')?2:1).map(fixed).join(' / ');
+            const counts=p.totals&&r.metric.startsWith('Γκολ + ασίστ')?' · '+fmt(p.totals[0])+' γκολ / '+fmt(p.totals[1])+' ασίστ':'';
+            const starts=p.state.includes('μη επιβεβαιωμένη')?'άγνωστες ενάρξεις':p.starts+' βασικός (αρχείο)';
+            body.append(make('div',p.name+' · '+starts+' · '+fmt(p.minutes,0)+'′ / '+p.matches+' συμμετ. με στοιχεία'+counts+' · '+p.state+' · πραγματικό/90′ '+raw+' → εκτίμηση '+est+' · βάρος '+fmt(p.weight*100,0)+'%','margin-top:5px;border-top:1px solid #34505b;padding-top:4px'));
+          }
+        }
         if(r.reference_only?.length)body.append(make('div','Παίκτες αναφοράς εκτός γραμμής: '+r.reference_only.join(', ')));
         for(const m of r.additional||[])body.append(make('div',m.metric+' · '+m.source+' · '+m.reference_games+'/'+m.reference_total+' ενδεκάδες · '+m.sample_label));
       }else body.append(make('div',r.reason||'Δεν επαρκούν τα στοιχεία.'));

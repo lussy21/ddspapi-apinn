@@ -1055,6 +1055,17 @@ def _private_fpl_played_backfill():
 if season_db.enabled() and PASS and os.getenv("LINEUP_FPL_PLAYED","1")=="1":
     threading.Thread(target=_private_fpl_played_backfill,daemon=True,name="private-fpl-played").start()
 
+def _shrinkage_historical_audit():
+    time.sleep(20)
+    try:
+        import lineup_shrinkage_audit
+        lineup_shrinkage_audit.run()
+    except Exception as exc:
+        app.logger.warning("Shrinkage historical audit held: %s",type(exc).__name__)
+
+if season_db.enabled() and PASS and os.getenv("LINEUP_SHRINKAGE_AUDIT","1")=="1":
+    threading.Thread(target=_shrinkage_historical_audit,daemon=True,name="private-shrinkage-audit").start()
+
 if __name__=="__main__":
     from waitress import serve
     serve(app,host="0.0.0.0",port=int(os.getenv("PORT","8000")),threads=4)
