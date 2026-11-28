@@ -15,6 +15,7 @@ import played_metric_evidence
 import season_role_comparison
 import simple_replacements
 import lineup_impact
+import lineup_goal_context
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -269,6 +270,6 @@ def for_match(mid):
                 history=simple_replacements.load_history(db,code,tid,cutoff)
                 sources=simple_replacements.load_sources(db,code,tid,cutoff)
                 replacements=[simple_replacements.decorate(p,sources) for p in simple_replacements.pairs(simple_replacements.current_codes(xi,t.get("formation")),history)]
-                impact=lineup_impact.evaluate(xi,history,sources,t.get("formation"))
+                impact=lineup_goal_context.evaluate(xi,history,sources,lineup_goal_context.load_scores(db,code,tid,cutoff),t.get("formation"))
             results.append({"name":t["name"],"lines":lines,"basis":code,"findings":findings,"replacements":replacements,"impact":impact})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
