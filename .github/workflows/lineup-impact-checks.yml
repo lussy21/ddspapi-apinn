@@ -7,6 +7,7 @@ on:
       - research/lineup-eight-leagues-stats-20261128
       - feature/lineup-shrinkage-20261128
       - feature/lineup-linear-450-20261128
+      - feature/lineup-team-goals-20261128
       - lineup-lens-personal
 permissions:
   contents: read
@@ -21,6 +22,7 @@ jobs:
       - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_goal_context.py' -v
       - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_espn_player_metrics.py' -v
       - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_shrinkage.py' -v
+      - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_team_goals.py' -v
       - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_simple_replacements.py' -v
       - run: PYTHONPATH=lineup_lens python3 -m unittest discover -s lineup_lens -p 'test_lineup_footprint.py' -v
       - run: |

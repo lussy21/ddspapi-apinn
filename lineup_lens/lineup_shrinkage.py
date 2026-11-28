@@ -11,7 +11,7 @@ PRIOR_MINUTES=450
 PRIOR_GAMES=5
 MIN_PRIOR_PLAYERS=8
 MIN_PRIOR_MINUTES=900
-FIELDSETS=(("goals","assists"),("xg",),("xa",),("goals_conceded",),
+FIELDSETS=(("goals","assists"),("goals",),("xg",),("xa",),("goals_conceded",),
            ("goals_prevented","xgot_faced","goals_conceded","saves"))
 
 def role(code):
