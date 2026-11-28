@@ -166,7 +166,7 @@ def load_history(db,league,tid,cutoff):
 
 
 def load_sources(db,league,tid,cutoff):
-    args=(league,tid,cutoff)
+    args=(league,tid,tid,cutoff)
     sources={}
     def add(name,rows):
         pool=defaultdict(list)
@@ -175,24 +175,24 @@ def load_sources(db,league,tid,cutoff):
         if pool:sources[name]=pool
     if league=="PL" and db.execute("SELECT to_regclass('lineup_fpl_played_metrics') t").fetchone()["t"]:
         add("FPL-Elo",db.execute("""SELECT p.match_id,p.player_id,p.minutes,p.metrics FROM lineup_fpl_played_metrics p JOIN archive_matches a USING(match_id)
-        WHERE a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",args).fetchall())
+        WHERE a.season_year=2026 AND a.competition_code=%s AND (%s::integer IS NULL OR p.team_id=%s) AND a.kickoff_utc<%s""",args).fetchall())
     if db.execute("SELECT to_regclass('lineup_private_match_stats') t").fetchone()["t"]:
         rows=db.execute("""SELECT p.match_id,p.player_id,p.metrics,(p.metrics->>'minutes_played')::numeric minutes FROM lineup_private_match_stats p JOIN archive_matches a USING(match_id)
-        WHERE p.source='11footy' AND p.release_name='11footy-2026-11-10' AND a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",args).fetchall()
+        WHERE p.source='11footy' AND p.release_name='11footy-2026-11-10' AND a.season_year=2026 AND a.competition_code=%s AND (%s::integer IS NULL OR p.team_id=%s) AND a.kickoff_utc<%s""",args).fetchall()
         if db.execute("SELECT to_regclass('lineup_private_sub_stats') t").fetchone()["t"]:
             rows+=db.execute("""SELECT p.match_id,p.player_id,p.metrics,(p.metrics->>'minutes_played')::numeric minutes FROM lineup_private_sub_stats p JOIN archive_matches a USING(match_id)
-            WHERE p.release_name='11footy-2026-11-10' AND a.season_year=2026 AND a.competition_code=%s AND p.team_id=%s AND a.kickoff_utc<%s""",args).fetchall()
+            WHERE p.release_name='11footy-2026-11-10' AND a.season_year=2026 AND a.competition_code=%s AND (%s::integer IS NULL OR p.team_id=%s) AND a.kickoff_utc<%s""",args).fetchall()
         add("11footy",rows)
     if db.execute("SELECT to_regclass('soccer_stats_verified_match_players') t").fetchone()["t"]:
         add("Soccer Data",db.execute("""SELECT match_id,canonical_player_id player_id,minutes,jsonb_build_object('goals',goals,'assists',assists,'duels_won',duels_won,'duels_lost',duels_lost,'recoveries',recoveries,'chances_created',key_passes,'saves',saves,'xg',xg,'xa',xa) metrics
-        FROM soccer_stats_verified_match_players WHERE season_year=2026 AND competition_code=%s AND team_id=%s AND kickoff_utc<%s AND canonical_player_id IS NOT NULL""",args).fetchall())
+        FROM soccer_stats_verified_match_players WHERE season_year=2026 AND competition_code=%s AND (%s::integer IS NULL OR team_id=%s) AND kickoff_utc<%s AND canonical_player_id IS NOT NULL""",args).fetchall())
     if db.execute("SELECT to_regclass('lineup_espn_player_metrics') t").fetchone()["t"]:
         from espn_player_metrics import SOURCE
         add(SOURCE,db.execute("""SELECT p.match_id,p.player_id,p.minutes,p.metrics
         FROM lineup_espn_player_metrics p JOIN archive_matches a USING(match_id)
         JOIN lineup_espn_stats_state z USING(match_id)
         WHERE z.status='complete' AND a.season_year=2026 AND a.competition_code=%s
-        AND p.team_id=%s AND a.kickoff_utc<%s""",args).fetchall())
+        AND (%s::integer IS NULL OR p.team_id=%s) AND a.kickoff_utc<%s""",args).fetchall())
     return sources
 
 
