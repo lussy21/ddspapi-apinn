@@ -87,6 +87,11 @@ def evaluate(current,history,sources,scores,formation=None):
             result=defensive(ids,refs,line,matches,scores)
         elif key=="G":
             result=individual(ids,refs,sources,("goals_prevented","xgot_faced","goals_conceded","saves"),"keeper","Γκολ που απέτρεψε / 90′")
+            if result is None:
+                result=individual(ids,refs,sources,("goals_conceded",),"sum","Γκολ κατά / 90′")
+                if result:
+                    result["lower_better"]=True
+                    result["reason"]="Ιστορικά γκολ που δέχτηκε ο τερματοφύλακας ανά 90′. Εξαρτάται και από την άμυνα/αντίπαλο, δεν είναι ατομική αποτροπή γκολ."
         else:
             actual=individual(ids,refs,sources,("goals","assists"),"sum","Γκολ + ασίστ / 90′")
             xg=individual(ids,refs,sources,("xg",),"sum","xG / 90′")

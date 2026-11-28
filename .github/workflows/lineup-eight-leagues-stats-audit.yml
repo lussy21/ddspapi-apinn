@@ -1,0 +1,46 @@
+name: Lineup Lens eight-league player-stat source audit
+on:
+  push:
+    branches:
+      - research/lineup-eight-leagues-stats-20261128
+    paths:
+      - ".github/workflows/lineup-eight-leagues-stats-audit.yml"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public historical ESPN summaries without database changes
+        run: |
+          python - <<'PY'
+          import json, collections, urllib.request, concurrent.futures
+          samples = [
+              ('BE1','bel.1',401878941), ('BE1','bel.1',401878936),
+              ('DK1','den.1',401874563), ('GR1','gre.1',401896728),
+              ('NL1','ned.1',401875536), ('NO1','nor.1',401843484),
+              ('SC1','sco.1',401878345), ('SE1','swe.1',401842888),
+              ('TR1','tur.1',401888241),
+          ]
+          def inspect(sample):
+              code,slug,mid = sample
+              try:
+                  url=f'https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/summary?event={mid}'
+                  req=urllib.request.Request(url,headers={'User-Agent':'LineupLens-Research/1.0'})
+                  with urllib.request.urlopen(req,timeout=22) as f:
+                      raw=f.read(4_000_001)
+                  if len(raw)>4_000_000: raise ValueError('oversized response')
+                  d=json.loads(raw)
+                  groups=d.get('rosters') or []
+                  entries=[p for g in groups for p in (g.get('roster') or [])]
+                  starters=[p for p in entries if p.get('starter') is True]
+                  counts=collections.Counter()
+                  for p in starters:
+                      counts.update(set(s.get('name') for s in (p.get('stats') or []) if isinstance(s,dict) and s.get('name') and s.get('value') is not None))
+                  example=next((p for p in starters if p.get('stats')), {})
+                  return dict(code=code,event=mid,teams=[(g.get('team') or {}).get('displayName') for g in groups],starters=len(starters),roster_count=len(entries),stat_counts=dict(counts),starter_fields=sorted(set(k for p in starters for k in p)),sample_stats=example.get('stats'),sample_subs=[{k:p.get(k) for k in ('starter','subbedIn','subbedOut')} for p in entries if p.get('subbedIn') or p.get('subbedOut')][:2],summary_keys=sorted(d),key_event_count=len(d.get('keyEvents') or []),header_id=(d.get('header') or {}).get('id'))
+              except Exception as e:
+                  return dict(code=code,event=mid,error=str(e))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+              for result in ex.map(inspect,samples):
+                  print('AUDIT',json.dumps(result,ensure_ascii=True),flush=True)
+          PY

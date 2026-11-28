@@ -918,6 +918,12 @@ if KEY and season_db.enabled() and os.getenv("LINEUP_SOCCER_STATS","1")=="1":
     import soccer_stats_archive
     threading.Thread(target=soccer_stats_archive.loop,args=(api,usage),daemon=True,name="soccer-stats-pl-pilot").start()
 
+# Independent ESPN historical player stats. Eight leagues, persistent checkpoints,
+# no Soccer Data calls and no changes to the confirmed lineup archive.
+if season_db.enabled() and PASS and os.getenv("LINEUP_ESPN_PLAYER_STATS","1")=="1":
+    import espn_player_metrics
+    threading.Thread(target=espn_player_metrics.loop,daemon=True,name="private-espn-player-metrics").start()
+
 # Private, non-commercial 11footy stats backfill. Separate storage; no API calls.
 def _private_11footy_stats_backfill():
     time.sleep(20)
