@@ -147,8 +147,9 @@ def parse(doc,match,expected):
     comps=header.get("competitions") or []
     if len(comps)!=1:raise InvalidStats("Unverified competition")
     comp=comps[0]
-    if (comp.get("status") or {}).get("type",{}).get("completed") is not True:
-        raise InvalidStats("Fixture not completed")
+    status=(comp.get("status") or {}).get("type",{})
+    if status.get("completed") is not True or status.get("name")!="STATUS_FULL_TIME":
+        raise InvalidStats("Fixture not verified regulation full time")
     competitors=comp.get("competitors") or []
     if len(competitors)!=2:raise InvalidStats("Expected two final scores")
     actual={}
