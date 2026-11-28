@@ -14,7 +14,7 @@ def sheet():
     sub=dict(substitution=True,clock=dict(displayValue="45'+2'"))
     red=dict(redCard=True,clock=dict(displayValue="70'"))
     h=[player(i,keeper=i==1,goals=int(i==2),assists=int(i==3),outs=i==11,plays=[sub] if i==11 else []) for i in range(1,12)]
-    h.append(player(12,starter=False,ins=True,plays=[sub]))
+    h.append(player(12,starter=False,ins=True,plays=[deepcopy(sub)]))
     a=[player(i,keeper=i==21,gc=1,red=int(i==31),plays=[red] if i==31 else []) for i in range(21,32)]
     doc=dict(header=dict(id="1",competitions=[dict(status=dict(type=dict(completed=True,name="STATUS_FULL_TIME")),
           competitors=[dict(id="1",score="1"),dict(id="2",score="0")])]),
