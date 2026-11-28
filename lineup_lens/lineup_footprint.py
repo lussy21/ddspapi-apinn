@@ -16,6 +16,7 @@ import season_role_comparison
 import simple_replacements
 import lineup_impact
 import lineup_goal_context
+import lineup_shrinkage
 EUROPE={"UCL","UEL","UECL"}
 
 LINES=("G","D","M","F")
@@ -248,7 +249,7 @@ def for_match(mid):
     if not d.get("ready") or not d.get("confirmed"):return {"ready":False}
     from datetime import datetime
     cutoff=datetime.fromisoformat(d["kickoff"])
-    results=[]
+    results=[];league_priors={}
     with season_db.db() as db:
         for side in ("home","away"):
             t=d[side];tid=t["id"];code=d["competition"]
@@ -270,6 +271,8 @@ def for_match(mid):
                 history=simple_replacements.load_history(db,code,tid,cutoff)
                 sources=simple_replacements.load_sources(db,code,tid,cutoff)
                 replacements=[simple_replacements.decorate(p,sources) for p in simple_replacements.pairs(simple_replacements.current_codes(xi,t.get("formation")),history)]
-                impact=lineup_goal_context.evaluate(xi,history,sources,lineup_goal_context.load_scores(db,code,tid,cutoff),t.get("formation"))
+                if code not in league_priors:
+                    league_priors[code]=lineup_shrinkage.load_priors(db,code,cutoff)
+                impact=lineup_goal_context.evaluate(xi,history,sources,lineup_goal_context.load_scores(db,code,tid,cutoff),t.get("formation"),league_priors[code])
             results.append({"name":t["name"],"lines":lines,"basis":code,"findings":findings,"replacements":replacements,"impact":impact})
     return {"ready":True,"teams":results,"note":"Πιλοτικό · Στις ευρωπαϊκές διοργανώσεις χρησιμοποιείται το διαθέσιμο εγχώριο ιστορικό. Γνώριμη επιλογή = συχνές βασικές συμμετοχές, όχι ισοδύναμη ποιότητα. Οι ατομικές ενδείξεις παραμένουν πιλοτικές."}
