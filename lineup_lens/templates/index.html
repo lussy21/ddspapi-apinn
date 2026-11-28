@@ -3098,43 +3098,53 @@ async function refreshFootprint(){
   if(!d.ready){root.textContent='Αναμονή επίσημων ενδεκάδων.';return}
   const make=(tag,txt,style)=>{const e=document.createElement(tag);e.textContent=txt;if(style)e.style.cssText=style;return e};
   const fmt=(n,d=1)=>Number(n).toLocaleString('el-GR',{maximumFractionDigits:d});
-  const signed=(n,d=1)=>(n>0?'+':'')+fmt(n,d);
-  for(const team of d.teams){
-    const heading=make('h3',team.name,'font-size:16px;margin:12px 0 7px;color:#f0f3f5');root.append(heading);
-    const impacts=team.impact?.length?team.impact:['Επίθεση','Κέντρο','Άμυνα','Τέρμα'].map(label=>({label,status:'unknown',reason:'Δεν επαρκούν τα δεδομένα.'}));
-    for(const r of impacts){
-      const detail=document.createElement('details');detail.style.cssText='padding:10px 0;border-top:1px solid #34505b';
-      const summary=document.createElement('summary');summary.style.cssText='list-style:none;cursor:pointer;display:block';
-      const top=document.createElement('div');top.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px';
-      top.append(make('b',r.label));
-      const measured=r.status==='measured',v=r.value;
-      const color=measured?(v>0?'#80dca0':v<0?'#f28282':'#a9b9be'):'#a9b9be';
-      const suffix=r.unit==='relative'?'%':r.unit==='pp'?' π.μ.':'';
-      const val=measured?signed(v,1)+suffix:r.status==='unchanged'?'Ίδια σύνθεση':'—';
-      top.append(make('b',val,'color:'+color+';font-size:17px'));summary.append(top);
-      if(measured){
-        const track=document.createElement('div');track.style.cssText='height:9px;position:relative;background:#293b44;border-radius:4px;margin:8px 0 4px;overflow:hidden';
-        const scale=r.unit==='relative'?100:r.unit==='pp'?20:1;
-        const w=Math.min(50,Math.abs(v)/scale*50);
-        const bar=document.createElement('span');bar.style.cssText='position:absolute;top:0;bottom:0;background:'+color+';width:'+w+'%;left:'+(v<0?50-w:50)+'%';
-        const zero=document.createElement('span');zero.style.cssText='position:absolute;left:50%;top:0;bottom:0;width:1px;background:#a9b9be';track.append(bar,zero);summary.append(track);
-        summary.append(make('small',r.metric+(r.small_sample?' · μικρό δείγμα':''),'color:#a9b9be;font-size:11px'));
-      }else summary.append(make('small',r.status==='unchanged'?'Καμία αλλαγή σύνθεσης':'Ανεπαρκή στοιχεία','color:#93a4a6;font-size:11px'));
-      detail.append(summary);
-      const body=document.createElement('div');body.style.cssText='padding:8px 0;color:#dce5e7;font-size:12px;line-height:1.55';
-      if(measured){
-        body.append(make('div','Συνήθως: '+fmt(r.baseline,3)+' → Σήμερα: '+fmt(r.current,3)));
-        body.append(make('small',r.source+' · '+r.reference_games+'/'+r.reference_total+' προηγ. ενδεκάδες · ελάχιστο δείγμα '+r.min_minutes+' λεπτά','color:#93a4a6;display:block;margin:4px 0'));
-        if(r.reference_only?.length)body.append(make('div','Δεν ξεκινούν σήμερα στη γραμμή: '+r.reference_only.join(', ')));
-        if(r.current_only?.length)body.append(make('div','Νέες επιλογές στη γραμμή: '+r.current_only.join(', ')));
-        if(r.players?.length){
-          const roster=document.createElement('div');roster.style.cssText='margin-top:5px';
-          for(const p of r.players)roster.append(make('div',(p.today?'Σήμερα · ':'Αναφορά · ')+p.name+': '+fmt(p.value,2)+(r.unit==='pp'?'%':'')+' ('+p.minutes+'′)'));
-          body.append(roster);
-        }
+  const fixed=n=>Number(n).toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const columns=document.createElement('div');columns.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';
+  for(const team of d.teams)columns.append(make('b',team.name,'font-size:15px;text-align:center;overflow-wrap:anywhere;color:#f0f3f5'));
+  root.append(columns);
+  root.append(make('p','Συνήθως → Σήμερα','color:#93a4a6;text-align:center;font-size:12px;margin:6px 0'));
+  function colorFor(r){
+    const v=r.current-r.baseline;
+    return Math.abs(v)<.005?'#a9b9be':(r.lower_better?v<0:v>0)?'#80dca0':'#f28282';
+  }
+  function metricView(r,compact=false){
+    const box=document.createElement('div');box.style.cssText='margin-top:5px';
+    box.append(make('small',r.metric,'display:block;color:#a9b9be;font-size:11px;overflow-wrap:anywhere'));
+    const nums=document.createElement('div');nums.style.cssText='display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;line-height:1.35';
+    nums.append(make('b',fixed(r.baseline),'font-size:'+(compact?'14':'19')+'px;color:#c5d5d9'));
+    nums.append(make('span','→','color:#84989c'));
+    nums.append(make('b',fixed(r.current),'font-size:'+(compact?'14':'19')+'px;color:'+colorFor(r)));
+    box.append(nums);
+    if(r.small_sample)box.append(make('small','Μικρό δείγμα','display:block;color:#f0c46c;font-size:10px;text-align:center'));
+    return box;
+  }
+  const lines=[['F','Επίθεση'],['M','Κέντρο επιθετικά'],['MD','Κέντρο αμυντικά'],['D','Άμυνα'],['G','Τέρμα']];
+  for(const [key,label] of lines){
+    const row=document.createElement('section');row.style.cssText='border-top:1px solid #34505b;padding:10px 0';
+    row.append(make('b',label,'display:block;text-align:center;color:#e6edef;font-size:14px'));
+    const cells=document.createElement('div');cells.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';
+    for(const team of d.teams){
+      const r=team.impact?.find(x=>x.line===key)||{status:'unknown',reason:'Δεν επαρκούν τα στοιχεία.'};
+      const cell=document.createElement('details');cell.style.cssText='min-width:0;background:#192a34;border-radius:8px;padding:8px;overflow-wrap:anywhere';
+      const summary=document.createElement('summary');summary.style.cssText='display:block;cursor:pointer;list-style:none';
+      if(r.status==='measured'){
+        summary.append(metricView(r));
+        for(const m of r.components||[])summary.append(make('small',m.label+': '+fixed(m.baseline)+' → '+fixed(m.current),'display:block;font-size:10px;color:#b8c5c9;margin-top:3px'));
+        for(const m of r.additional||[])summary.append(metricView(m,true));
+      }else summary.append(make('div',r.status==='unchanged'?'Ίδια σύνθεση':'Ανεπαρκή στοιχεία','font-size:12px;color:#a9b9be;text-align:center;padding:8px 0'));
+      cell.append(summary);
+      const body=document.createElement('div');body.style.cssText='font-size:11px;color:#c5d5d9;line-height:1.5;margin-top:8px;border-top:1px solid #34505b;padding-top:6px';
+      if(r.status==='measured'){
+        body.append(make('div',r.source+' · '+r.reference_games+'/'+r.reference_total+' ενδεκάδες αναφοράς'));
+        body.append(make('div',r.sample_label||''));
+        body.append(make('div',r.reason||''));
+        if(r.today?.length)body.append(make('div','Σήμερα: '+r.today.join(', ')));
+        if(r.reference_only?.length)body.append(make('div','Παίκτες αναφοράς εκτός γραμμής: '+r.reference_only.join(', ')));
+        for(const m of r.additional||[])body.append(make('div',m.metric+' · '+m.source+' · '+m.reference_games+'/'+m.reference_total+' ενδεκάδες · '+m.sample_label));
       }else body.append(make('div',r.reason||'Δεν επαρκούν τα στοιχεία.'));
-      detail.append(body);root.append(detail);
+      cell.append(body);cells.append(cell);
     }
+    row.append(cells);root.append(row);
   }
   const expanded=document.createElement('details');expanded.style.cssText='margin-top:12px;border-top:1px solid #34505b;padding-top:10px';
   expanded.append(make('summary','Αλλαγές παικτών','cursor:pointer;font-size:13px;color:#a8d7e7;font-weight:700'));
@@ -3170,7 +3180,7 @@ async function refreshFootprint(){
       cards.append(card);
     }
   }
-  $('footprintNote').textContent='Σύγκριση με έως 5 προηγούμενες ενδεκάδες, με στοιχεία πριν από τη σέντρα. Τα χρώματα δείχνουν μεταβολή του συγκεκριμένου δείκτη, όχι συνολική ποιότητα ή πρόβλεψη. π.μ. = ποσοστιαίες μονάδες.';
+  $('footprintNote').textContent='Σύγκριση με έως 5 προηγούμενες ενδεκάδες. Γκολ και ασίστ: ιστορικοί ατομικοί ρυθμοί, όχι προβλεπόμενα γκολ. Γκολ κατά: σταθμισμένος μέσος όρος τελικών σκορ με τη σύνθεση της γραμμής, όχι ατομική ευθύνη. Οι αμυντικοί δείκτες δεν αθροίζονται. Δεν έχει γίνει προσαρμογή αντιπάλου/έδρας.';
  }catch(e){if(req===footprintRequest){$('footprintContent').textContent='Η πιλοτική ανάλυση δεν είναι διαθέσιμη.';$('footprintNote').textContent='';}}
 }
 function queueFootprint(){
