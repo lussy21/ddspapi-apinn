@@ -1,0 +1,36 @@
+name: Lineup Lens ESPN verified player metrics check
+on:
+  push:
+    branches:
+      - research/lineup-eight-leagues-stats-20261128
+    paths:
+      - "lineup_lens/espn_player_metrics.py"
+      - ".github/workflows/lineup-espn-stats-parser-check.yml"
+      - "lineup_lens/test_espn_player_metrics.py"
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test clock conventions and historical sample
+        run: |
+          PYTHONPATH=lineup_lens python - <<'PY'
+          import json, concurrent.futures
+          from espn_player_metrics import parse,fetch,minute
+          assert minute({'displayValue':"45'+2'"})==45
+          assert minute({'displayValue':"90'+4'"})==90
+          assert minute({'displayValue':"67'"})==67
+          fixtures=json.loads('''[{"match_id":901878936,"competition_code":"BE1","home_team_id":1000005786,"away_team_id":1000005807,"home_goals":0,"away_goals":1,"home_xi":[1500195532,1500214764,1500260236,1500274012,1500303751,1500326895,1500355120,1500355866,1500379459,1500386389,1500402525],"away_xi":[1500239870,1500241066,1500247940,1500298901,1500306031,1500330077,1500344857,1500356478,1500361211,1500363067,1500385284]},{"match_id":901878941,"competition_code":"BE1","home_team_id":1000000441,"away_team_id":1000005579,"home_goals":1,"away_goals":0,"home_xi":[1500152749,1500192475,1500231780,1500287172,1500288490,1500290101,1500312187,1500351860,1500369978,1500395942,1500410536],"away_xi":[1500004804,1500180547,1500276727,1500279287,1500282276,1500300983,1500305931,1500323045,1500353471,1500384411,1500401002]},{"match_id":901874563,"competition_code":"DK1","home_team_id":1000008118,"away_team_id":1000000575,"home_goals":1,"away_goals":1,"home_xi":[1500226212,1500228550,1500237660,1500255314,1500263499,1500287797,1500289672,1500301856,1500368540,1500386349,1500407343],"away_xi":[1500227032,1500237966,1500274976,1500275089,1500288479,1500290039,1500304068,1500346525,1500357341,1500393123,1500400230]},{"match_id":901896728,"competition_code":"GR1","home_team_id":1000008354,"away_team_id":1000011553,"home_goals":0,"away_goals":1,"home_xi":[1500123651,1500176917,1500191846,1500239467,1500243529,1500257220,1500297054,1500312775,1500330456,1500361013,1500363827],"away_xi":[1500131983,1500183640,1500221227,1500241415,1500243754,1500246833,1500261420,1500261422,1500275406,1500291712,1500306513]},{"match_id":901875536,"competition_code":"NL1","home_team_id":1000000145,"away_team_id":1000000156,"home_goals":1,"away_goals":1,"home_xi":[1500193448,1500218947,1500227420,1500289883,1500319297,1500319298,1500341423,1500351290,1500352987,1500371412,1500385716],"away_xi":[1500170327,1500200194,1500208840,1500286946,1500307375,1500315631,1500318531,1500320464,1500347344,1500380174,1500395480]},{"match_id":901843484,"competition_code":"NO1","home_team_id":1000005002,"away_team_id":1000000987,"home_goals":0,"away_goals":2,"home_xi":[1500012577,1500235963,1500238109,1500251612,1500271086,1500324174,1500334112,1500347328,1500356987,1500368577,1500379133],"away_xi":[1500235504,1500255219,1500271767,1500284210,1500308547,1500312881,1500357025,1500358392,1500363001,1500363494,1500368078]},{"match_id":901878345,"competition_code":"SC1","home_team_id":1000000257,"away_team_id":1000000263,"home_goals":3,"away_goals":2,"home_xi":[1500212953,1500232289,1500260027,1500277234,1500283179,1500322732,1500340208,1500345115,1500351372,1500354979,1500392280],"away_xi":[1500147108,1500172005,1500217499,1500223369,1500266493,1500282970,1500322761,1500324755,1500364525,1500385545,1500408153]},{"match_id":901842888,"competition_code":"SE1","home_team_id":1000002495,"away_team_id":1000002556,"home_goals":3,"away_goals":1,"home_xi":[1500022967,1500170727,1500218436,1500272714,1500303670,1500312880,1500313464,1500318778,1500320883,1500344869,1500382504],"away_xi":[1500191495,1500257624,1500289519,1500289882,1500307947,1500336483,1500341335,1500349811,1500383948,1500406963,1500421469]},{"match_id":901888241,"competition_code":"TR1","home_team_id":1000009078,"away_team_id":1000007648,"home_goals":1,"away_goals":2,"home_xi":[1500143774,1500202173,1500212334,1500236628,1500240062,1500297014,1500297033,1500308850,1500324561,1500349018,1500387821],"away_xi":[1500165892,1500177065,1500206999,1500218616,1500273223,1500277382,1500296563,1500317076,1500324814,1500356185,1500396075]}]''')
+          def test(m):
+              try:
+                  expected={m['home_team_id']:set(m['home_xi']),m['away_team_id']:set(m['away_xi'])}
+                  rows=parse(fetch(m['competition_code'],m['match_id']),m,expected)
+                  assert sum(r['started'] for r in rows)==22
+                  return dict(id=m['match_id'],league=m['competition_code'],rows=len(rows),starters=22,keepers=sum('saves' in r['metrics'] for r in rows),minutes=sum(r['minutes'] for r in rows),goals=sum(r['metrics']['goals'] for r in rows),assists=sum(r['metrics']['assists'] for r in rows))
+              except Exception as e:
+                  return dict(id=m['match_id'],league=m['competition_code'],error=type(e).__name__+': '+str(e))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:results=list(ex.map(test,fixtures))
+          for r in results:print('VERIFIED',json.dumps(r,ensure_ascii=True),flush=True)
+          assert all('error' not in r for r in results), 'Historical pilot validation failed'
+          PY
